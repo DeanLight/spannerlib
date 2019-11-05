@@ -1,0 +1,116 @@
+\documentclass[a4paper,11pt,pdftex]{article}
+
+\usepackage{a4wide}
+\usepackage{xspace}
+\usepackage{url}
+
+\newcommand{\implname}{Spanner Workbench\xspace}
+\newcommand{\ie}{IE\xspace}
+
+
+\begin{document}
+
+\title{\implname\\Design Document}
+\date{\today}
+
+\maketitle
+
+The \emph{\implname} is intended to become of an implementation that allows
+declarative expression of Information Extraction tasks. \implname is based on
+the (rule-based) approach to Information Extraction as expressed by
+XLog~\cite{?}, SystemT~\cite{?}, and DeepDive~\cite{?}. In this approach, complex extractor logic is expressed by combining \emph{primitive extractors} (e.g., tokenizers, dictionaries, part-of-speech taggers, regular expressions matchers, \dots) through algebraic combinators.
+
+In particular, \implname implements the theoretical framework of Document
+Spanners~\cite{?}, which formalizes the rule-based approach to Information
+Extraction cited above. In this framework, a \emph{document spanner} (or just
+spanner for short) is any function that takes a document as input and yields a
+relation over the \emph{spans} (text intervals) of this input.  Various
+languages for expressing document spanners have recently been studied. \implname
+will implement \textsf{RGXLog}~\cite{?}, which is the closure of  regular expression formulas under recursive Datalog programs.
+
+This design document is intended to describe the concrete syntax of \ie programs in version 0.1 of the \implname. 
+
+\section{Syntax and Semantics}
+\label{sec:syntax}
+
+\paragraph*{Primitive extractors.} The only primitive extractors that we intend to support in version 0.1 are \emph{functional regex formulas}. Essentially, a regex formula is a regular expression with capture variables. In the literature~\cite{?} such functional regex formulas are often given a very simple syntax, e.g.,
+\[ \gamma ::= \emptyset \mid \varepsilon \mid \sigma \mid \gamma \vee \gamma \mid \gamma \cdot \gamma \mid \gamma^* \mid x\{\gamma\},\]
+where $\varepsilon$ represents the empty string, $\sigma$ ranges over alphabet letters, and $x$ ranges over variable names.
+While this minimalistic syntax is appealing for theoretical investigation, it is
+cumbersome to use in practice. Indeed, regular expressions in practice have many
+convenient abbreviations (see e.g.,
+\url{https://www.pcre.org/current/doc/html/pcre2pattern.html}).
+
+
+As a concrete syntax for regex formulas, it is proposed to use the syntax of
+Python regular expressions, where we interpret \emph{named capture groups} to
+indicate variable capture. (See
+\url{https://www.regular-expressions.info/named.html} for a discussion on named
+capture groups.) Unnamed capture groups are ignored. Backreferences are not allowed (since this allows recognition of non-regular languages). As usual, functional regex formulas are given a \emph{all-match} semantics instead of the unique match semantics supported by Python/Perl/POSIX regular expressions. We enforce functionality by syntactic checks.
+
+Some examples:
+\begin{itemize}
+\item The expression \verb!a(?P<x>b)c(?P<y>d)! has two named capture groups: \verb!(?P<x>b)! and \verb!(?P<y>d)! where the former matches $b$ (binding the matched span to $x$, and the latter matches $d$ (binding the matched span to $y$). As such, matching the entire expression against the document $abcd$ is successful, and outputs the singleton relation with the tuple $t$ where $t(x) = [1,2>$ and $t(y) = [3,4>$.
+\item  The expression \verb![.*(?P<year>\d\d\d\d).*(?P<amount>\d+)\sEUR! matches the input document \verb!In 2019 we earned 2000 EUR!, extracting 2019 in \verb!year!, and 2000 in \verb!amount!
+\end{itemize}
+
+Issues to resolve:
+\begin{itemize}
+\item Do we require that a regex formula always matches the entire document? Or do we implicitly assume that it is prefixed by $.*$ and suffixed by $.*$ (i.e., find any occurrence), unless it starts with the anchors (\verb!^! and  \verb!$!)? In the second example above, we explicitly added \verb!.*! at the beginning to make sure that matching could start anywhere.
+\item The .NET framework allows named groups by means of the slightly simpler syntax \verb!(?<name>e)! where name is the variable name and e is the regex. I would actually prefer to use this syntax. (Note that Java and Perl allow both).
+\item What is the input alphabet that we are considering? It may be simplest to assume that all input is UTF8 encoded. This is compatible with ASCII, but also allows to process international text.
+\end{itemize}
+
+
+\paragraph*{Rules, Programs and Queries}
+\label{sec:rules}
+
+In version 0.1, a \emph{program} will essentially be a (standard) Datalog program where:
+\begin{itemize}
+\item all predicate symbols are \emph{intensional}
+\item regex formulas function as \emph{extensional} relations
+\item all variables are of \emph{span} type. (I.e., every variable can only store spans, not strings or other data).
+\end{itemize}
+This corresponds to what is described in ``Recursive Programs for Document Spanners'', published in ICDT 2019.
+
+\smallskip
+Syntactic considerations:
+\begin{itemize}
+\item It is proposed to use \verb!<-! for separating rule heads from rule bodies.
+\item It is proposed to not impose any syntactic restrictions on relation and variable names.  (In some Datalog variants, variable names must start with a capital \dots).
+\end{itemize}
+
+\smallskip
+Issues to resolve:
+\begin{itemize}
+\item How do we specify that a program needs to be run on a given input document ? One possibility would be to have some kind of \emph{query expression} like \[ \verb!extract R(x,z,_) from '/home/stijn/test.txt'! \]
+  that specifies the target relation to extract, as well as the file. It is only when we get such a query expression that the program is evaluated.
+\item Do we already provision for modularity (e.g., grouping rules in modules, having namespaces to avoid nameclashes etc) in this version? We can probably omit it for now.
+\item Do we  foresee already in version 0.1 syntactic sugar for things that are expressible, but cumbersome to express? E.g., the $\varsigma$ operator, same length, prefix, \dots.
+\end{itemize}
+ 
+
+\section{Grammar}
+\label{sec:grammar}
+
+TO BE DONE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
