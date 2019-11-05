@@ -8,7 +8,7 @@
     - [Sources of inspiration](#sources-of-inspiration)
     - [resources about building interpreters:](#resources-about-building-interpreters)
     - [relevant papers](#relevant-papers)
-  - [front end of the interpreter](#front-end-of-the-interpreter)
+  - [The REPL of the interpreter](#the-repl-of-the-interpreter)
   - [build of the interpreter](#build-of-the-interpreter)
       - [Lexer and Parser](#lexer-and-parser)
     - [The mirco-passes in general](#the-mirco-passes-in-general)
@@ -21,6 +21,12 @@
     - [garbage collection](#garbage-collection)
 
 <!-- /code_chunk_output -->
+
+The spanner workbench is an interpreter and a REPL system for spanner-like languages.
+Our goal in developing the spanner workbench are two fold
+* First and foremost, to allow students learning about spanner languages an easy to use system to play around with the languages.
+* A later goal is to provide a easily modifiable framework that allows researchers to easily test and deploy new algorithms and optimizations to spanner languages.
+
 
 ## external resources
 ### Sources of inspiration
@@ -45,14 +51,29 @@ Here is a [python implementation of a Datalog library](https://github.com/pcarbo
 
 ### relevant papers
 
-[spannerlog](papers/spanner_log_Y_nachshon.pdf)
-[Recursive RGXLog](papers/Recures_programs_for_document_spanners.pdf)
+* [spannerlog](papers/spanner_log_Y_nachshon.pdf)
+* [Recursive RGXLog](papers/Recures_programs_for_document_spanners.pdf)
 
 
-## front end of the interpreter
-//TODO insert model/class diagram of the interpreter - jupyter communication
+## The REPL of the interpreter
+Programming wise, the question of how to implement an interpreter is orthogonal to how to 
+implement a Read Evaluate Print Loop (REPL) interface for the interpreter.
+You can think of it like the frontend and the backend of the app.
 
-//TODO explain frontend backend distinction and the magic system in jupyter
+The way we decided to implement the front end of the workbench if to use jupyter notebook's magic system. As seen bellow, it is a system that allows you to delegate running a piece of code to an external module. Specifically for our case, we can delegate 
+running code that is written in our own syntax (RGXLog at the moment) to an instance of our interpreter.
+
+Here is an example of langugage magic in bash.
+![bash_magic](doc/bash_magic_example.png)
+
+Here is schematic view of the interaction
+![interfacing with jupyter noebook](doc/Ipython_magic_scheme.svg)
+
+Here is a list of resources and examples for building magic systems:
+* [intro to magic usage](https://blog.dominodatalab.com/lesser-known-ways-of-using-notebooks/)
+* [Guide to deifne your own magic system](https://ipython.readthedocs.io/en/stable/config/custommagics.html)
+* [Implementation of R magic system](https://bitbucket.org/rpy2/rpy2/src/default/rpy2/ipython/rmagic.py)
+  * Note that this is overkill for us, its just so you can see how a mature cross language magic system can be implemented.
 
 ## build of the interpreter
 
