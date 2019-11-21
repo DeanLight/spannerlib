@@ -1,5 +1,3 @@
-
-If something doesn't render well go to the [html version of the README](README.html)
 # Spanner Workbench
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
@@ -227,8 +225,7 @@ Lets look at the following example
 ```
 Without merging  terms with overlapping structures,
 this would naively generate something that abstractly looks like this
-<html>
-<img src='https://g.gravizo.com/svg?
+<!--
  digraph G {
    D_and [label="and"]
    E_and [label="and"]
@@ -239,15 +236,13 @@ this would naively generate something that abstractly looks like this
    D_and ->{A,B,C}
    E_and -> {A,C,F} 
  }
-'/>
-</html>
+-->
+![](./doc/naive_term_graph.svg)
 
 The weakness with this approach is that `A AND C` is computed twice.
 
 A version of the term graph that takes care to merge terms with overlapping structures would look more like this
-
-<html>
-<img src='https://g.gravizo.com/svg?
+<!--
  digraph G {
    D_and [label="and"]
    E_and [label="and"]
@@ -259,8 +254,9 @@ A version of the term graph that takes care to merge terms with overlapping stru
    E_and -> {and,F} 
    and -> {A,C}
  }
-'/>
-</html>
+ -->
+![](./doc/shared_term_graph.svg)
+
 Here, we realized that A,C is a joint component and that we need only compute it once.
 This would be the automatic equivalent of a smart programmer, refactoring the query above to look like
 
