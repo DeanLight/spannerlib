@@ -1,0 +1,28 @@
+ 
+ naive_graph
+ digraph G {
+   D_and [label="and"]
+   E_and [label="and"]
+   x->OR [style=dotted]
+   E->E_and [style=dotted]
+   D->D_and [style=dotted]
+   OR -> {D_and,E_and}
+   D_and ->{A,B,C}
+   E_and -> {A,C,F} 
+ }
+ naive_graph
+
+
+ shared_graph
+ digraph G {
+   D_and [label="and"]
+   E_and [label="and"]
+   x->OR [style=dotted]
+   E->E_and [style=dotted]
+   D->D_and [style=dotted]
+   OR -> {D_and,E_and}
+   D_and ->{and,B}
+   E_and -> {and,F} 
+   and -> {A,C}
+ }
+ shared_graph

@@ -1,3 +1,5 @@
+
+If something doesn't render well go to the [html version of the README](README.html)
 # Spanner Workbench
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
