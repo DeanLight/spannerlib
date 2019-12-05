@@ -82,10 +82,15 @@ Syntactic considerations:
 \item It is proposed to use \verb!<-! for separating rule heads from rule bodies.
 \item It is proposed to not impose any syntactic restrictions on relation and variable names.  (In some Datalog variants, variable names must start with a capital \dots).
 \item Inside a rule body, a regex formulas is denoted as follows:  $\textsf{RGX}\texttt{<}f\texttt{>}(x_1,\dots,x_n)$. Here, $f$ is a regex formula and $x_1, \dots, x_n$ is a listing of all the variables in $f$. (Note that these variables may appear in a different order in $f$).
-\item To specify that a program needs to be run on a given input document we allow special expressions like \[ \verb!extract R(x,z,_) from d!\]  that specifies the target relation to extract, as well as where to extract from. Here, $d$ is allowed to be (1) a constant string or (2) a string variable. We allow defining and instantiating string variables by the syntax
+\item To specify that a regex formula inside a rule needs to executed on a specific input document,  we  use  epxressions like \[ \verb!extract RGX<f>(x_1,\dots,x_n)  from  d!\]  that specifies the regex formula as well as where to extract from. Here, $d$ is allowed to be (1) a constant string or (2) a string variable. We allow defining and instantiating string variables by the syntax
   \[ d= \textsf{'some string'},\]
   (which initializes $d$ to the corresponding string literal, or \[ d = \textsf{read('data/a.txt')}\]
   which loads the contents of the file \verb!data/a.txt! into string variable $d$.
+
+% \item To specify that a regex program needs to be run on a given input document we allow special expressions like \[ \verb!extract R(x,z,_) from d!\]  that specifies the target relation to extract, as well as where to extract from. Here, $d$ is allowed to be (1) a constant string or (2) a string variable. We allow defining and instantiating string variables by the syntax
+%   \[ d= \textsf{'some string'},\]
+%   (which initializes $d$ to the corresponding string literal, or \[ d = \textsf{read('data/a.txt')}\]
+%   which loads the contents of the file \verb!data/a.txt! into string variable $d$.
 \end{itemize}
 
 \smallskip
