@@ -1,0 +1,2 @@
+#!/bin/env bash
+docker run -it -p 8888:8888 -v ~/PycharmProjects/spanner_workbench/src:/home/jovyan/spanner_workbench spanner_workbench

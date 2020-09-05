@@ -1,2 +1,0 @@
-#!/bin/env bash
-sudo docker build -t spanner_workbench .
