@@ -21,6 +21,11 @@ class CalculateTree(Transformer):
         return self.vars[name]
 
 
+@v_args(inline=True)
+class TestTransformer(Transformer):
+    integer = int
+
+
 # noinspection PyUnusedLocal
 @register_cell_magic
 def lark(line, cell):
@@ -37,10 +42,9 @@ def rgx(line, cell):
         # for now, plug the whole "cell" string into the parser
         # line by line made sense for calc, not so much for query / queries
         # as far as i can tell, at least at this present moment
-        pass
-        # parser = Lark(grammar, parser='lalr', transformer=CalculateTree())
-        #
-        # non_empty_lines = (line for line in cell.splitlines() if len(line))
-        #
-        # for line in non_empty_lines:
-        #     print(parser.parse(line))
+        parser = Lark(grammar, parser='lalr', transformer=TestTransformer(), debug=True)
+
+        non_empty_lines = (line for line in cell.splitlines() if len(line))
+
+        for line in non_empty_lines:
+            print(parser.parse(line))
