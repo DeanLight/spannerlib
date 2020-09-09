@@ -3,20 +3,23 @@
 // tokens in the regex to a function, might have to change the regular expressions to recursive
 // list definitions.
 
-?start: (statement _NEWLINE)* (statement)?
+?start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
 
 ?statement: relation_declaration
-      | fact
-      | rule
-      | query
-      | assign_string
-      | assign_span
+          | fact
+          | rule
+          | query
+          | assign_string
+          | assign_span
+          | assign_var
 
 assign_string: name "=" string -> assign_normal_string
              | name "=" "read" "(" string ")" -> assign_string_from_file_string_param
              | name "=" "read" "(" name ")" -> assign_string_from_file_var_param
 
 assign_span: name "=" span
+
+assign_var: name "=" name
 
 relation_declaration: "new" name "(" decl_term ("," decl_term)* ")"
 
@@ -57,6 +60,8 @@ span: "[" int "," int ")"
 
 ?name: NAME
 
+_COMMENT: "#" /[^\n]*/
+
 // CNAME: ("_"|LETTER) ("_"|LETTER|DIGIT)*
 %import common.CNAME -> NAME
 %import common.WS_INLINE
@@ -64,3 +69,5 @@ span: "[" int "," int ")"
 %import common.ESCAPED_STRING -> STRING
 %import common.INT -> INT
 %import common.NEWLINE -> _NEWLINE
+%ignore _NEWLINE
+%ignore _COMMENT
