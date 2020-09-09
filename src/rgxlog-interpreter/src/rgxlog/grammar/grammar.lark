@@ -3,7 +3,9 @@
 // tokens in the regex to a function, might have to change the regular expressions to recursive
 // list definitions.
 
-?start: relation_declaration
+?start: (statement _NEWLINE)* (statement)?
+
+?statement: relation_declaration
       | fact
       | rule
       | query
@@ -24,7 +26,7 @@ relation_declaration: "new" name "(" decl_term ("," decl_term)* ")"
 rule: rule_head "<-" rule_body_relation ("," rule_body_relation)*
 
 // without "rule" we will get a shift/reduce conflict with relation
-rule_head: "rule" name "(" name_list ")"
+rule_head: name "(" name_list ")"
 
 rule_body_relation: relation -> rule_body_normal_relation
                   | rgx_relation -> rule_body_rgx_relation
@@ -32,7 +34,7 @@ rule_body_relation: relation -> rule_body_normal_relation
 
 fact: relation
 
-query: relation "?"
+query: "?" relation
 
 relation: name "(" term ("," term)* ")"
 
@@ -49,7 +51,7 @@ span: "[" int "," int ")"
 
 ?int: INT -> integer
 
-?string: ESCAPED_STRING
+?string: STRING
 
 ?name_list: name ("," name)*
 
@@ -59,5 +61,6 @@ span: "[" int "," int ")"
 %import common.CNAME -> NAME
 %import common.WS_INLINE
 %ignore WS_INLINE
-%import common.ESCAPED_STRING
+%import common.ESCAPED_STRING -> STRING
 %import common.INT -> INT
+%import common.NEWLINE -> _NEWLINE
