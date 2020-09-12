@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="my-pkg-coldfear-rgxlog-interpreter",
-    version="0.0.7",
+    version="0.0.9",
     author="Example Author",
     author_email="author@example.com",
     description="A small example package",

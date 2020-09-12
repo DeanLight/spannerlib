@@ -14,7 +14,8 @@ class TestTransformer(Transformer):
 @register_cell_magic
 def spanner(line, cell):
     grammar_path = os.path.dirname(rgxlog.grammar.__file__)
-    with open(f'{grammar_path}/grammar.lark', 'r') as grammar:
+    grammar_file = 'grammar.lark'  # TODO: make it overrideable to end users?
+    with open(f'{grammar_path}/{grammar_file}', 'r') as grammar:
         parser = Lark(grammar, parser='earley', debug=False)
         parse_tree = parser.parse(cell)
         parse_tree = TestTransformer().transform(parse_tree)

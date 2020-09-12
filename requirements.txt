@@ -1,1 +1,4 @@
 lark-parser==0.9.0
+ipython~=7.18.1
+setuptools~=50.2.0
+networkx~=2.5
