@@ -7,15 +7,15 @@ import networkx as nx
 class SymbolTableBase(ABC):
     @abstractmethod
     def add_variable(self, name, data):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def remove_variable(self, name):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def get_all_variables(self):
-        raise NotImplementedError
+        pass
 
     def __repr__(self):
         print(self.get_all_variables())
@@ -37,47 +37,47 @@ class SymbolTable(SymbolTableBase):
         del self._var_to_node[name]
 
     def get_all_variables(self):
-        return [(var, data) for var, data in self._var_to_node.items()]
+        return ((var, data) for var, data in self._var_to_node.items())
 
 
 class MemoryHeapBase(ABC):
     @abstractmethod
     def collect_garbage(self):
-        raise NotImplementedError
+        pass
 
 
 # TODO: the term graph is itself a heap, what use is there to have a separate
 # TODO: structure for it? better just force it to implement heap methods imo
 # TODO: i assume some optimizations would not occur on a single node but rather,
 # TODO: they would happen on the entire term graph (global optimizations)
-# TODO: what interface would be comfy for this purpose? (graph func callback?)
+# TODO: what interface would be comfy for this purpose?
 class TermGraphBase(MemoryHeapBase):
     @abstractmethod
     def add_term(self, name, data):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def remove_term(self, name):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def get_node_state(self, name):
-        # for now, computer / not computed / dirty (?)
-        raise NotImplementedError
+        # for now, computed / not computed / dirty (?)
+        pass
 
     @abstractmethod
     def get_term_data(self, name):
         # will be called to get an AST and send it to the execution engine
         # or get the result of a node's computation
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def transform_node_data(self, name, transformer):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def transform_graph(self):
-        raise NotImplementedError
+        pass
 
 
 class TermGraph(TermGraphBase):
@@ -85,6 +85,7 @@ class TermGraph(TermGraphBase):
         self._g = nx.Graph()
 
     def add_term(self, name, attr: dict):  # attr[state / data]
+        # TODO: attr should have data but not state, we set state to not comp
         self._g.add_node(node_for_adding=name, attr=attr)
 
     def remove_term(self, name):
@@ -114,11 +115,11 @@ class SessionBase(ABC):
 
     @abstractmethod
     def read_state(self):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def update_state(self):  # TODO: probably split to several smaller functions
-        raise NotImplementedError
+        pass
 
     def __repr__(self):
         print(repr(self._st))
@@ -127,9 +128,17 @@ class SessionBase(ABC):
     def __str__(self):
         print('Symbol Table:')
         print(str(self._st))
-        print('Term Graph')
+        print('Term Graph:')
         print(str(self._tg))
 
 
 class Session(SessionBase):
+    pass
+
+
+class ExecutionBase:
+    pass
+
+
+class Execution(ExecutionBase):
     pass
