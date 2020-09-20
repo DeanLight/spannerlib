@@ -4,6 +4,7 @@ from lark import Lark, Transformer, v_args
 from lark.visitors import Interpreter, Visitor_Recursive
 from IPython.core.magic import register_cell_magic
 
+NODES_OF_LIST_WITH_VAR_NAMES = {"term_list", "fact_term_list"}
 
 class MultilineStringToStringVisitor(Visitor_Recursive):
 
@@ -45,46 +46,67 @@ class CheckReferencedVariablesInterpreter(Interpreter):
         super().__init__()
         self.vars = set()
 
+    def __add_var_name_to_vars(self, var_name_node):
+        assert_correct_node(var_name_node, "var_name", 1)
+        var_name = var_name_node.children[0]
+        self.vars.add(var_name)
+
+    def __check_defined_variable(self, var_name_node):
+        assert_correct_node(var_name_node, "var_name", 1)
+        var_name = var_name_node.children[0]
+        if var_name not in self.vars:
+            raise NameError("variable " + var_name + " is not defined")
+
+    def __check_defined_variables_in_list(self, tree):
+        assert tree.data in NODES_OF_LIST_WITH_VAR_NAMES
+        for child in tree.children:
+            if child.data == "var_name":
+                self.__check_defined_variable(child)
+
     def assign_literal_string(self, tree):
         assert_correct_node(tree, "assign_literal_string", 2, "var_name", "string")
-        var_name = tree.children[0].children[0]
-        self.vars.add(var_name)
+        self.__add_var_name_to_vars(tree.children[0])
 
     def assign_string_from_file_string_param(self, tree):
         assert_correct_node(tree, "assign_string_from_file_string_param", 2, "var_name", "string")
-        var_name = tree.children[0].children[0]
-        self.vars.add(var_name)
+        self.__add_var_name_to_vars(tree.children[0])
 
     def assign_string_from_file_var_param(self, tree):
         assert_correct_node(tree, "assign_string_from_file_var_param", 2, "var_name", "var_name")
-        right_var_name = tree.children[1].children[0]
-        if right_var_name not in self.vars:
-            raise NameError("variable " + right_var_name + " is not defined")
-        left_var_name = tree.children[0].children[0]
-        self.vars.add(left_var_name)
+        self.__check_defined_variable(tree.children[1])
+        self.__add_var_name_to_vars(tree.children[0])
 
     def assign_span(self, tree):
         assert_correct_node(tree, "assign_span", 2, "var_name", "span")
-        var_name = tree.children[0].children[0]
-        self.vars.add(var_name)
+        self.__add_var_name_to_vars(tree.children[0])
+
+    def assign_int(self, tree):
+        assert_correct_node(tree, "assign_int", 2, "var_name", "integer")
+        self.__add_var_name_to_vars(tree.children[0])
 
     def assign_var(self, tree):
         assert_correct_node(tree, "assign_var", 2, "var_name", "var_name")
-        right_var_name = tree.children[1].children[0]
-        if right_var_name not in self.vars:
-            raise NameError("variable " + right_var_name + " is not defined")
-        left_var_name = tree.children[0].children[0]
-        self.vars.add(left_var_name)
+        self.__check_defined_variable(tree.children[1])
+        self.__add_var_name_to_vars(tree.children[0])
 
-    # TODO after we decide what to do with free variables:
-    # TODO relation
-    # TODO rgx_relation
+    def relation(self, tree):
+        assert_correct_node(tree, "relation", 2, "relation_name", "term_list")
+        self.__check_defined_variables_in_list(tree.children[1])
+
+    def fact(self, tree):
+        assert_correct_node(tree, "fact", 2, "relation_name", "fact_term_list")
+        self.__check_defined_variables_in_list(tree.children[1])
+
     def rgx_ie_relation(self, tree):
         assert_correct_node(tree, "rgx_ie_relation", 3, "term_list", "term_list", "var_name")
-        var_name = tree.children[-1].children[0]
-        if var_name not in self.vars:
-            raise NameError("variable " + var_name + " is not defined")
-    # TODO ie relation
+        self.__check_defined_variables_in_list(tree.children[0])
+        self.__check_defined_variables_in_list(tree.children[1])
+        self.__check_defined_variable(tree.children[2])
+
+    def func_ie_relation(self, tree):
+        assert_correct_node(tree, "func_ie_relation", 3, "function_name", "term_list", "term_list")
+        self.__check_defined_variables_in_list(tree.children[1])
+        self.__check_defined_variables_in_list(tree.children[2])
 
 
 def assert_correct_node(tree, node_name, len_children=None, *children_names):

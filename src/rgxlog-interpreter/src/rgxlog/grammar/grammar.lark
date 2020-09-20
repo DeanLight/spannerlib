@@ -6,6 +6,7 @@ start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
           | query
           | assign_string
           | assign_span
+          | assign_int
           | assign_var
 
 assign_string: var_name "=" string -> assign_literal_string
@@ -13,6 +14,8 @@ assign_string: var_name "=" string -> assign_literal_string
              | var_name "=" "read" "(" var_name ")" -> assign_string_from_file_var_param
 
 assign_span: var_name "=" span
+
+assign_int: var_name "=" int
 
 assign_var: var_name "=" var_name
 
@@ -22,6 +25,7 @@ decl_term_list: decl_term ("," decl_term)*
 
 ?decl_term: "str" -> decl_string
           | "spn" -> decl_span
+          | "int" -> decl_int
 
 rule: rule_head "<-" rule_body
 
@@ -43,6 +47,7 @@ term_list: term ("," term)*
 
 ?term: span
      | string
+     | int
      | var_name
      | free_var_name
 
@@ -52,6 +57,7 @@ fact_term_list: fact_term ("," fact_term)*
 
 ?fact_term: span
           | string
+          | int
           | var_name
 
 span: "[" int "," int ")"
