@@ -103,7 +103,7 @@ And here are some illegal free variable names:
 
 
 # Local variable assignment<a class="anchor" id="local_var_assignment"></a>
-RGXlog allows you to use two types of variables: strings and spans.
+RGXlog allows you to use three types of variables: strings, integers and spans.
 The assignment of a string is intuitive:
 
 
@@ -130,6 +130,25 @@ b4 = "this is a multiline string" # b4 holds the same value as b3
       assign_literal_string
         var_name	b4
         string	this is a multiline string
+    
+    
+
+The assignment of integers is also very simple:
+
+
+```python
+%%spanner
+n = 4
+n2 = n # n2 = 4
+```
+
+    start
+      assign_int
+        var_name	n
+        integer	4
+      assign_var
+        var_name	n2
+        var_name	n
     
     
 
@@ -181,7 +200,7 @@ c = read(b) # c holds the same string value as a
 
 # Derclaring a relation<a class="anchor" id="declare_relations"></a>
 RGXlog allows you to define and query relations.
-You have to declare a relation before you can use it (unless you define it with a rule as we'll see in the "rules" chapter). Each term in a relation could be a string or a span. Here are some examples for declaring relations:
+You have to declare a relation before you can use it (unless you define it with a rule as we'll see in the "rules" chapter). Each term in a relation could be a string, an integer or a span. Here are some examples for declaring relations:
 
 
 ```python
@@ -190,8 +209,10 @@ You have to declare a relation before you can use it (unless you define it with 
 new brothers(str, str)
 # 'confused' is a relation with one string term.
 new confused(str)
-# 'verb' is a relation with one string term, and one span term 
-new verb(str, spn)
+# 'animal' is a relation with one string term and one span term 
+new animal(str, spn)
+# 'scores' is a relation with one string term and one int term
+new scores(str, int)
 ```
 
     start
@@ -205,10 +226,15 @@ new verb(str, spn)
         decl_term_list
           decl_string
       relation_declaration
-        relation_name	verb
+        relation_name	animal
         decl_term_list
           decl_string
           decl_span
+      relation_declaration
+        relation_name	scores
+        decl_term_list
+          decl_string
+          decl_int
     
     
 
@@ -233,6 +259,9 @@ noun("Life finds a way", [0,4))
 new sisters(str, str)
 sisters("alice", "rin")
 # sisters([0,4), "rin") # illegal as [0,4) is not a string
+# example with int
+new goals(str, int)
+goals("kronovi", 10)                          
 ```
 
     start
@@ -258,6 +287,16 @@ sisters("alice", "rin")
         fact_term_list
           string	alice
           string	rin
+      relation_declaration
+        relation_name	goals
+        decl_term_list
+          decl_string
+          decl_int
+      fact
+        relation_name	goals
+        fact_term_list
+          string	kronovi
+          integer	10
     
     
 
@@ -339,7 +378,13 @@ new verb(str, spn)
 verb("Ron eats quickly.", [4,8))
 verb("You write neatly.", [4,9))
 ?verb("Ron eats quickly.", X) # returns [4,8)
-?verb(X,[4,9)) # returns "You write neatly."                            
+?verb(X,[4,9)) # returns "You write neatly."
+         
+new orders(str, int)
+orders("pie", 4)
+orders("pizza", 4)
+orders("cake", 0)
+?orders(X, 4) # retutns "pie" and "pizza"         
 ```
 
     start
@@ -436,6 +481,32 @@ verb("You write neatly.", [4,9))
             span
               integer	4
               integer	9
+      relation_declaration
+        relation_name	orders
+        decl_term_list
+          decl_string
+          decl_int
+      fact
+        relation_name	orders
+        fact_term_list
+          string	pie
+          integer	4
+      fact
+        relation_name	orders
+        fact_term_list
+          string	pizza
+          integer	4
+      fact
+        relation_name	orders
+        fact_term_list
+          string	cake
+          integer	0
+      query
+        relation
+          relation_name	orders
+          term_list
+            free_var_name	X
+            integer	4
     
     
 
@@ -476,7 +547,7 @@ report = "In 2019 we earned 2000 EUR"
 # you can use line overflow escape to separate your statement (like in python)
 annual_earning(Year,Amount) <- extract RGX<".*(?<Year>\d\d\d\d).*(?<Amount>\d+)\sEUR"> \
 (Year, Amount) from report
-?annual_earning(X,Y) # returns ("2019", 2000)
+?annual_earning(X,Y) # returns ("2019", "2000")
 ```
 
     start
@@ -579,14 +650,14 @@ You can use line overflow escapes if you want to split your statements into mult
 
 ```python
 %%spanner
-b \
+k \
 = "some " \
 "string"
 ```
 
     start
       assign_literal_string
-        var_name	b
+        var_name	k
         string	some string
     
     
