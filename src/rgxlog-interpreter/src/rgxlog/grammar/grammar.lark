@@ -37,7 +37,10 @@ rule_body: rule_body_relation ("," rule_body_relation)*
                    | ie_relation
 
 ie_relation: function_name "<" term_list ">" "(" term_list ")" -> func_ie_relation
-           | "extract" _separator "RGX" "<" term_list ">" "(" term_list ")" "from" _separator var_name -> rgx_ie_relation
+           | "extract" _separator "RGX" "<" (rgx_relation_arg) ">" "(" term_list ")" "from" _separator var_name -> rgx_ie_relation
+
+rgx_relation_arg: string
+                | var_name
 
 query: "?" relation
 
