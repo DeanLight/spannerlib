@@ -1,7 +1,6 @@
-
 # Spanner Workbench Introduction
 In this tutorial you will learn the basics of spanner workbench:
-* [how to install, import and use RGXlog](#use_rgxlog)
+* [how to install, import and use RGXLog](#use_rgxlog)
 * [local and free variables](#local_and_free_vars)
 * [local variable assignment](#local_var_assignment)
 * [reading from a file](#read_a_file)
@@ -9,19 +8,19 @@ In this tutorial you will learn the basics of spanner workbench:
 * [adding facts](#facts)
 * [adding rules](#rules)
 * [queries](#queries)
-* [using RGXlog's primitive information extractor: functional regex formulas](#RGX_ie)
+* [using RGXLog's primitive information extractor: functional regex formulas](#RGX_ie)
 * [using custom information extractors](#custom_ie)
 * [additional small features](#small_features)
 
-At the end of this tutorial there is also an [example for a small RGXlog program.](#example_program)
+At the end of this tutorial there is also an [example for a small RGXLog program.](#example_program)
 
-# Using RGXlog<a class="anchor" id="use_rgxlog"></a>
+# Using RGXLog<a class="anchor" id="use_rgxlog"></a>
 
 prerequisites:
 
 * Have [Python](https://www.python.org/downloads/) version 3.8 or above installed
 
-To install RGXlog run the following command in your terminal:
+To install RGXLog run the following command in your terminal:
 
 ```bash
 $ python3 -m pip install --upgrade --index-url https://test.pypi.org/simple/ --no-deps my-pkg-coldfear-rgxlog-interpreter
@@ -31,7 +30,7 @@ $ python3 -m pip install --upgrade --index-url https://test.pypi.org/simple/ --n
 
 * If this command doesn't work, try calling python instead of python3 (or whatever name you have for your python installation)
 
-You can also install RGXlog in the current Jupyter kernel:
+You can also install RGXLog in the current Jupyter kernel:
 
 
 ```python
@@ -48,9 +47,9 @@ current_python=sys.executable
     Collecting my-pkg-coldfear-rgxlog-interpreter
     [31m  Could not find a version that satisfies the requirement my-pkg-coldfear-rgxlog-interpreter (from versions: )[0m
     [31mNo matching distribution found for my-pkg-coldfear-rgxlog-interpreter[0m
+    
 
-
-In order to use RGXlog in jupyter notebooks, you must first import it:
+In order to use RGXLog in jupyter notebooks, you must first import it:
 
 
 
@@ -58,7 +57,7 @@ In order to use RGXlog in jupyter notebooks, you must first import it:
 import rgxlog
 ```
 
-Importing the rglog library automatically loads the `%%spanner` cell magic which accepts RGXLog queries as shown bellow.
+Importing the RGXLog library automatically loads the `%%spanner` cell magic which accepts RGXLog queries as shown below.
 
 
 
@@ -80,11 +79,11 @@ uncle("bob", "greg")
           string	bob
           string	greg
     
-
+    
 
 # Local and free variables<a class="anchor" id="local_and_free_vars"></a>
 
-RGXlog distinguishes two kinds of variables.
+RGXLog distinguishes two kinds of variables.
 
 The first kind are local variables. These are variables that store a single value (e.g. string). They work similarly to variables in python. A local variable must be defined via assignment before being used.
 
@@ -101,7 +100,7 @@ And here are some illegal local variable names:
 * `1_a`
 
 
-The second kind of variables are free variables. Free variables do not hold any value and are used to define relations inside queries and rules (you will see a lot of examples for these in later chapters). Free variables do not need to be declared or defined before being used.
+The second kind of variables are free variables. Free variables do not hold any value and are used to define relations inside [queries](#queries) and [rules](#rules). Free variables do not need to be declared or defined before being used.
 
 A free variable name must begin with an uppercase letter and can be continued with letters, digits and underscores
 
@@ -117,7 +116,7 @@ And here are some illegal free variable names:
 
 
 # Local variable assignment<a class="anchor" id="local_var_assignment"></a>
-RGXlog allows you to use three types of variables: strings, integers and spans.
+RGXLog allows you to use three types of variables: strings, integers and spans.
 The assignment of a string is intuitive:
 
 
@@ -145,7 +144,7 @@ b4 = "this is a multiline string" # b4 holds the same value as b3
         var_name	b4
         string	this is a multiline string
     
-
+    
 
 The assignment of integers is also very simple:
 
@@ -164,7 +163,7 @@ n2 = n # n2 = 4
         var_name	n2
         var_name	n
     
-
+    
 
  A span identifies a substring of a string by specifying its bounding indices. It is constructed from two integers.
  You can assign a span value like this:
@@ -186,7 +185,7 @@ span2 = span1 # span2 value is [3,7)
         var_name	span2
         var_name	span1
     
-
+    
 
 # Reading from a file<a class="anchor" id="read_a_file"></a>
 You can also perform a string assignment by reading from a file. You will need to provide a path to a file by either using a string literal or a string variable:
@@ -210,10 +209,10 @@ c = read(b) # c holds the same string value as a
         var_name	c
         var_name	b
     
-
+    
 
 # Derclaring a relation<a class="anchor" id="declare_relations"></a>
-RGXlog allows you to define and query relations.
+RGXLog allows you to define and query relations.
 You have to declare a relation before you can use it (unless you define it with a rule as we'll see in the "rules" chapter). Each term in a relation could be a string, an integer or a span. Here are some examples for declaring relations:
 
 
@@ -250,14 +249,16 @@ new scores(str, int)
           decl_string
           decl_int
     
-
+    
 
 # Facts<a class="anchor" id="facts"></a>
-RGXlog is an extension of Datalog, a declarative logic programming language. In Datalog you can declare "facts", essentially adding tuples to a relation. To do it you use the following syntax:
+RGXLog is an extension of Datalog, a declarative logic programming language. In Datalog you can declare "facts", essentially adding tuples to a relation. To do it you use the following syntax:
 
+```
 relation_name(term_1,term_2,...term_3)
+```
 
-where each term is either a constant or a local variable that is from the same variable type that was declared for relation_name at the same location.
+where each `term` is either a constant or a local variable that is from the same variable type that was declared for `relation_name` at the same location.
 
 For example:
 
@@ -312,11 +313,11 @@ goals("kronovi", 10)
           string	kronovi
           integer	10
     
-
+    
 
 # Rules<a class="anchor" id="rules"></a>
 Datalog allows you to deduce new tuples for a relation.
-RGXlog includes this feature as well:
+RGXLog includes this feature as well:
 
 
 ```python
@@ -362,10 +363,10 @@ grandparent(X,Z) <- parent(X,Y), parent(Y,Z) # ',' is a short hand to the 'and' 
               free_var_name	Y
               free_var_name	Z
     
-
+    
 
 # Queries<a class="anchor" id="queries"></a>
-Querying is very simple in RGXlog. You can query by using constant values, local variables and free variables:
+Querying is very simple in RGXLog. You can query by using constant values, local variables and free variables:
 
 
 ```python
@@ -522,7 +523,7 @@ orders("cake", 0)
             free_var_name	X
             integer	4
     
-
+    
 
 You may have noticed that the query
 
@@ -539,20 +540,20 @@ A good example for using free variables to construct a relation is the query:
 ?grandfather("george", X)
 ```
 
-which finds all of george's grandchildren (X) and constructs a tuple for each one.
+which finds all of george's grandchildren (`X`) and constructs a tuple for each one.
 
 # Functional regex formulas<a class="anchor" id="RGX_ie"></a>
-RGXlog supports information extraction using a regular expressions and named capture groups (for now in rule bodies only).
+RGXLog supports information extraction using a regular expressions and named capture groups (for now in rule bodies only).
 You will first need to define a string variable either by using a literal or a load from a file, and then you can use the following syntax in a rule body:
 
 ```
-extract RGX\<term_1,term_2,...term_n>(x_1, x_2, ...,x_n) from s
+extract RGX<regex_formula>(x_1, x_2, ...,x_n) from s
 ```
 
 where:
-* term_1,term_2,...,term_n are strings that repressents regular expressions in .NET syntax (for now we also allow all data types, not just strings, TBD what they're used for)
-* x_1, x_2, ... x_n can be any terms including capture groups that appear in the regular expressions. They're used to construct the tuples of the resulting relation
-* s is a string variable that the information will be extracted from
+* `regex_formula` is either a string literal or a string variable that represents your regular expression.
+* `x_1`, `x_2`, ... `x_n` can be any terms including capture groups that appear in the regular expressions. They're used to construct the tuples of the resulting relation. the number of terms has to be the same as the number of capture groups used in `regex_formula`.
+* `s` is a string variable that the information will be extracted from.
 
 For example:
 
@@ -591,19 +592,19 @@ annual_earning(Year,Amount) <- extract RGX<".*(?<Year>\d\d\d\d).*(?<Amount>\d+)\
             free_var_name	X
             free_var_name	Y
     
-
+    
 
 # Custom information extractors<a class="anchor" id="custom_ie"></a>
-RGXlog allows you to define and use your own information extractors. You can use them only in rule bodies (TBD). The following is the syntax for custom information extractors:
+RGXLog allows you to define and use your own information extractors. You can use them only in rule bodies (TBD). The following is the syntax for custom information extractors:
 
 ```
 func<term_1,term_2,...term_n>(x_1, x_2, ..., x_n)
 ```
 
 where:
-* func is a IE function that was previously defined (TBD where it was defined)     
-* term_1,term_2,...,term_n are the parameters for func
-* x_1, ... x_n could be any type of terms, and are used to construct tuples of the resulting relation
+* `func` is a IE function that was previously defined (TBD where it was defined)     
+* `term_1`,`term_2`,...,`term_n` are the parameters for func
+* `x_1`, ... `x_n` could be any type of terms, and are used to construct tuples of the resulting relation
 
 For example:
 
@@ -660,7 +661,7 @@ happy_grandmother(X) <- grandmother(X,Z),get_happy<sentence>(X)
           term_list
             free_var_name	X
     
-
+    
 
 # Additional small features<a class="anchor" id="small_features"></a>
 You can use line overflow escapes if you want to split your statements into multiple lines
@@ -678,9 +679,9 @@ k \
         var_name	k
         string	some string
     
+    
 
-
-# RGXlog program example<a class="anchor" id="example_program"></a>
+# RGXLog program example<a class="anchor" id="example_program"></a>
 
 
 ```python
@@ -870,4 +871,4 @@ enrolled_in_chemistry(Student)
             free_var_name	X
             string	100
     
-
+    
