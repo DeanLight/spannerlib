@@ -70,7 +70,7 @@ _separator: (_WS_INLINE | _LINE_OVERFLOW_ESCAPE)+
 int: INT -> integer
 
 string: STRING -> string
-       | STRING ((_LINE_OVERFLOW_ESCAPE)* STRING)+  -> multiline_string
+      | STRING ((_LINE_OVERFLOW_ESCAPE)* STRING)+ -> multiline_string
 
 free_var_name_list: free_var_name ("," free_var_name)*
 
@@ -85,6 +85,7 @@ var_name: LOWER_CASE_NAME
 free_var_name : UPPER_CASE_NAME
 
 LOWER_CASE_NAME: ("_"|LCASE_LETTER) ("_"|LETTER|DIGIT)*
+
 UPPER_CASE_NAME: UCASE_LETTER ("_"|LETTER|DIGIT)*
 
 _COMMENT: "#" /[^\n]*/
