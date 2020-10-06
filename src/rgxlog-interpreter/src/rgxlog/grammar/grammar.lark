@@ -1,7 +1,8 @@
 start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
 
 ?statement: relation_declaration
-          | fact
+          | add_fact
+          | remove_fact
           | rule
           | query
           | assign_string
@@ -19,7 +20,7 @@ assign_int: var_name "=" int
 
 assign_var: var_name "=" var_name
 
-relation_declaration: "new" _separator relation_name "(" decl_term_list ")"
+relation_declaration: "new" _SEPARATOR relation_name "(" decl_term_list ")"
 
 decl_term_list: decl_term ("," decl_term)*
 
@@ -31,16 +32,15 @@ rule: rule_head "<-" rule_body
 
 rule_head: relation_name "(" free_var_name_list ")"
 
-rule_body: rule_body_relation ("," rule_body_relation)*
+rule_body: rule_body_relation_list
+
+rule_body_relation_list: rule_body_relation ("," rule_body_relation)*
 
 ?rule_body_relation: relation
                    | ie_relation
 
 ie_relation: function_name "<" term_list ">" "(" term_list ")" -> func_ie_relation
-           | "extract" _separator "RGX" "<" (rgx_relation_arg) ">" "(" term_list ")" "from" _separator var_name -> rgx_ie_relation
-
-rgx_relation_arg: string
-                | var_name
+           | "extract" _SEPARATOR "RGX" "<" (term_list) ">" "(" term_list ")" "from" _SEPARATOR var_name -> rgx_ie_relation
 
 query: "?" relation
 
@@ -48,29 +48,26 @@ relation: relation_name "(" term_list ")"
 
 term_list: term ("," term)*
 
-?term: span
-     | string
-     | int
-     | var_name
+?term: const_term
      | free_var_name
 
-fact: relation_name "(" fact_term_list ")"
+add_fact: relation_name "(" const_term_list ")"
+        | relation_name "(" const_term_list ")" "<-" _TRUE
 
-fact_term_list: fact_term ("," fact_term)*
+remove_fact: relation_name "(" const_term_list ")" "<-" _FALSE
 
-?fact_term: span
+const_term_list: const_term ("," const_term)*
+
+?const_term: span
           | string
           | int
           | var_name
 
 span: "[" int "," int ")"
 
-_separator: (_WS_INLINE | _LINE_OVERFLOW_ESCAPE)+
-
 int: INT -> integer
 
-string: STRING -> string
-       | STRING ((_LINE_OVERFLOW_ESCAPE)* STRING)+  -> multiline_string
+string: STRING
 
 free_var_name_list: free_var_name ("," free_var_name)*
 
@@ -84,17 +81,23 @@ var_name: LOWER_CASE_NAME
 
 free_var_name : UPPER_CASE_NAME
 
+_TRUE: "True"
+_FALSE: "False"
+
 LOWER_CASE_NAME: ("_"|LCASE_LETTER) ("_"|LETTER|DIGIT)*
 UPPER_CASE_NAME: UCASE_LETTER ("_"|LETTER|DIGIT)*
 
 _COMMENT: "#" /[^\n]*/
+
+_SEPARATOR: (_WS_INLINE | _LINE_OVERFLOW_ESCAPE)+
+
+STRING: "\"" (_STRING_INTERNAL (_LINE_OVERFLOW_ESCAPE)+)* _STRING_INTERNAL "\""
 
 _LINE_OVERFLOW_ESCAPE: "\\" _NEWLINE
 
 _NEWLINE: CR? LF
 CR : /\r/
 LF : /\n/
-
 
 // common definitions can be found at: https://github.com/lark-parser/lark/blob/master/lark/grammars/common.lark
 %import common.LCASE_LETTER
@@ -103,7 +106,7 @@ LF : /\n/
 %import common.DIGIT
 %import common.WS_INLINE -> _WS_INLINE
 %ignore _WS_INLINE
-%import common.ESCAPED_STRING -> STRING
+%import common._STRING_ESC_INNER -> _STRING_INTERNAL
 %import common.INT -> INT
 %ignore _LINE_OVERFLOW_ESCAPE
 %ignore _COMMENT
