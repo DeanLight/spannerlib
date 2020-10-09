@@ -8,7 +8,7 @@ from rgxlog.server.connection_utils import get_connection_address
 def start_listener():
     address = get_connection_address('remote_listener')
 
-    # logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
     try:
         with Listener(address) as listener:

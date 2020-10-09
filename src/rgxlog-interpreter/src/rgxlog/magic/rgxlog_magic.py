@@ -1,92 +1,66 @@
 import json
-import shlex
-import subprocess
 
-from multiprocessing import Process, Queue
+# from IPython import get_ipython
 from IPython.core.magic import register_cell_magic
-from rgxlog.server.local_client import start_client
-from rgxlog.server.remote_listener import start_listener
+from rgxlog.rgxlog import Rgxlog
 
-configuration = dict()
-reply_queue = Queue()
-request_queue = Queue()
-client_process: Process
-listener_process: Process
-initialized = False
+# from IPython.core.magic import (Magics, magics_class, cell_magic)
+
+# noinspection PyTypeChecker
+rgx: Rgxlog = None
 
 
-# TODO: clean spaghetti
-# TODO: load state? (make state per-notebook?)
-# TODO: make a standard config format and check adherence to it
-# TODO: configuration['run'] = debug/local/remote
-# TODO: sane defaults for when configuration is empty / partially empty
+# noinspection PyUnusedLocal
 @register_cell_magic
 def initialize(line, cell):
-    global request_queue
-    global reply_queue
-    global client_process
-    global listener_process
-    global configuration
-    global initialized
+    global rgx
 
+    user_config = dict()
     try:
-        configuration = json.loads(cell)
+        user_config = json.loads(cell)
     except json.JSONDecodeError:
-        print('cell is not in json format')
-        exit()
+        raise ValueError('cell is not in json format')
 
-    command = configuration.get('remote_run_command', None)
-    remote_ip = configuration.get('remote_ip', None)
-    remote_port = configuration.get('remote_port', None)
-
-    if configuration.get('run', 'local') == 'local':
-        listener_process = Process(target=start_listener)
-        listener_process.start()
-    elif configuration['run'] == 'remote':
-        subprocess.Popen(shlex.split(command))  # listener_process.start() remotely
-    else:
-        # debug, (so we start the server manually in an IDE)
-        pass
-
-    client_process = Process(target=start_client, args=(request_queue, reply_queue, remote_ip, remote_port))
-    client_process.start()
-
-    initialized = True
+    rgx = Rgxlog(
+        ip=user_config.get('remote_ip', None),
+        port=user_config.get('remote_port', None),
+        remote_run_command=user_config.get('remote_run_command', None),
+        remote_kill_command=user_config.get('remote_kill_command', None),
+        debug=user_config.get('debug', False)
+    )
 
 
+# noinspection PyUnusedLocal
 @register_cell_magic
 def spanner(line, cell):
-    global initialized
-    global request_queue
-    global reply_queue
+    global rgx
 
-    if not initialized:
-        initialize(None, '{}')
+    if not rgx:
+        rgx = Rgxlog()
 
-    # send cell to client
-    request_queue.put(cell)
-    # wait for server response
-    reply = reply_queue.get()
-    # notebook prints the result
-    print(reply)
+    result = rgx.execute(cell)
+    print(result)
 
 
-# TODO: save state?
+# noinspection PyUnusedLocal
 @register_cell_magic
 def finalize(line, cell):
-    global request_queue
-    global listener_process
-    global configuration
-    global initialized
+    global rgx
 
-    request_queue.put(None)  # stops client, and the client does the same to listener
-    client_process.join()
+    if rgx:
+        rgx.disconnect()
+        rgx = None
 
-    # only used if listener was started and no connection was made (the listener is deadlocked waiting to connect)
-    if 'remote_kill_command' in configuration and configuration['run'] == 'remote':
-        command = configuration['remote_kill_command']
-        subprocess.Popen(shlex.split(command))
-    else:
-        listener_process.join()
-
-    initialized = False
+# @magics_class
+# class SpannerMagics(Magics):
+#     def __init__(self, shell):
+#         super(SpannerMagics, self).__init__(shell)
+#
+#     @cell_magic
+#     def test(self, line, cell):
+#         # print(self.shell.user_ns)
+#         print(self.shell.user_ns['z'])
+#
+#
+# ip = get_ipython()
+# ip.register_magics(SpannerMagics)
