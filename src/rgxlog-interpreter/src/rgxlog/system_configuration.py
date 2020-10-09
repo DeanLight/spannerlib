@@ -11,7 +11,8 @@ system_configuration = {
         'connection_retries': 3,
         'retry_sleep': 2,
         'ip': 'localhost',
-        'port': 7945
+        'port': 7945,
+        'max_port': 2 ** 16
     },
 
     'default_remote_listener_config': {

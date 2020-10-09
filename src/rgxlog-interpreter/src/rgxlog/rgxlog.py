@@ -21,8 +21,7 @@ class Rgxlog:
         self._remote_port = port
         self._reply_queue = Queue()
         self._request_queue = Queue()
-        client_args = (self._request_queue, self._reply_queue, self._remote_ip, self._remote_port)
-        self._client_process = Process(target=start_client, args=client_args)
+        self._good_port = Queue(1)
 
         if self._debug:
             self._debug_server_init()
@@ -31,15 +30,15 @@ class Rgxlog:
         else:  # server runs locally
             self._local_server_init()
 
+        client_args = (self._request_queue, self._reply_queue, self._remote_ip, self._remote_port)
+        self._client_process = Process(target=start_client, args=client_args)
         self._client_process.start()
 
     def execute(self, query):
         if not query:
             raise ValueError('empty query!')
 
-        # send cell to client
         self._request_queue.put(query)
-        # wait for server response
         reply = self._reply_queue.get()
         return reply
 
@@ -65,8 +64,9 @@ class Rgxlog:
         subprocess.Popen(shlex.split(self._remote_run_command))
 
     def _local_server_init(self):
-        self.listener_process = Process(target=start_listener)
+        self.listener_process = Process(target=start_listener, args=(self._good_port,))
         self.listener_process.start()
+        self._remote_port = self._good_port.get()
 
     @staticmethod
     def _debug_server_disconnect():

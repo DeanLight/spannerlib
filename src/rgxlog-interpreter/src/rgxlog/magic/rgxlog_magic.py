@@ -32,7 +32,7 @@ def initialize(line, cell):
 
 # noinspection PyUnusedLocal
 @register_cell_magic
-def spanner(line, cell):
+def spanner(line, cell):  # TODO add parameter for existing rgxlog object
     global rgx
 
     if not rgx:

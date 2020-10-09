@@ -7,12 +7,12 @@ from rgxlog.system_configuration import system_configuration
 
 
 def start_client(request_queue, reply_queue, remote_ip=None, remote_port=None):
-    assert bool(remote_ip) == bool(remote_port)
-
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
     if not remote_ip:
         address = get_connection_address('local_client')
+        if remote_port:
+            address[1] = remote_port
     else:
         address = (remote_ip, remote_port)
 
@@ -21,7 +21,7 @@ def start_client(request_queue, reply_queue, remote_ip=None, remote_port=None):
 
     for retry_number in range(connection_retries):
         try:
-            with Client(address) as conn:
+            with Client((address[0], address[1])) as conn:
                 logging.info(f'client connected to {address[0]}:{address[1]}')
                 while task := request_queue.get():
                     # print(f'client sending {task}')
