@@ -22,7 +22,7 @@ def initialize(line, cell):
         raise ValueError('cell is not in json format')
 
     rgx = Rgxlog(
-        ip=user_config.get('remote_ip', None),
+        server_ip=user_config.get('remote_ip', None),
         port=user_config.get('remote_port', None),
         remote_run_command=user_config.get('remote_run_command', None),
         remote_kill_command=user_config.get('remote_kill_command', None),
