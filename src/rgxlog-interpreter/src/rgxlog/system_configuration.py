@@ -16,6 +16,7 @@ system_configuration = {
         # 'user_config_filename': 'remote_listener_user_config',
         # 'user_config_path': f'{os.path.dirname(os.path.abspath(rgxlog.__file__))}/server',
         # 'ip': '192.168.0.100',
-        # 'port': 2**15
+        'ip': 'localhost',
+        'port': 2 ** 15
     },
 }

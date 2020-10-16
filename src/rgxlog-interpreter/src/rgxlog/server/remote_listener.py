@@ -30,7 +30,7 @@ def start_listener(ip, port=None, port_pipe: Queue = None):
                     logging.info(f'listener accepted connection from {listener.last_accepted}')
 
                     while msg := conn.recv():  # 'None' closes the connection
-                        result = lark_pipeline(msg)  # showtime
+                        result = lark_pipeline(msg)
                         conn.send(result)
                     logging.info('listener connection closed')
                     break
@@ -38,7 +38,8 @@ def start_listener(ip, port=None, port_pipe: Queue = None):
             if len(port_range) != 1:
                 logging.info(f'port {port} taken, trying a different one...')
 
-    port_pipe.put(None)  # failed to capture port / done using said port
+    if port_pipe:
+        port_pipe.put(None)  # failed to capture port / done using said port
 
 
 if __name__ == '__main__':

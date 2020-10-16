@@ -10,7 +10,7 @@ rgx: Rgxlog = None
 
 # noinspection PyUnusedLocal
 @register_cell_magic
-def initialize(line, cell):
+def configure(line, cell):
     global rgx
 
     user_config = dict()

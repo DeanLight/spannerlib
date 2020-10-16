@@ -17,7 +17,7 @@ def start_client(request_queue, reply_queue, remote_port, remote_ip='localhost')
     for retry_number in range(connection_retries):
         try:
             with Client((ip, port)) as conn:
-                # logging.info(f'client connected to {ip}:{port}')
+                logging.info(f'client connected to {ip}:{port}')
 
                 while task := request_queue.get():
                     conn.send(task)
@@ -27,9 +27,9 @@ def start_client(request_queue, reply_queue, remote_port, remote_ip='localhost')
                 conn.send(None)  # notify server to shutdown
                 logging.info('client connection closed')
                 break
-        # except EOFError:
-        #     logging.info('client connection closed')
-        #     break
+        except EOFError:
+            logging.info('client connection closed')
+            break
         except (ConnectionRefusedError, OSError):
             logging.error(f'client connection to {ip}:{port} refused')
             if retry_number < connection_retries - 1:

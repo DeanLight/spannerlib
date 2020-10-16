@@ -33,6 +33,7 @@ class Rgxlog:
         client_args = (self._request_queue, self._reply_queue, self._remote_port, self._remote_ip)
         self._client_process = Process(target=start_client, args=client_args)
         self._client_process.start()
+        self._connected = True
 
     def __del__(self):
         self.disconnect()
@@ -68,7 +69,7 @@ class Rgxlog:
     def _remote_server_init(self):
         assert self._remote_run_command
         subprocess.Popen(shlex.split(self._remote_run_command))
-        self._connected = True  # TODO: some handshake
+        # TODO: some handshake
 
     def _local_server_init(self):
         if self._remote_port:
@@ -84,8 +85,6 @@ class Rgxlog:
         if self._remote_port is None:
             raise ConnectionError
 
-        self._connected = True
-
     @staticmethod
     def _debug_server_disconnect():
         print("don't forget to manually stop the server!")
@@ -97,4 +96,3 @@ class Rgxlog:
 
     def _local_server_disconnect(self):
         self.listener_process.join()
-
