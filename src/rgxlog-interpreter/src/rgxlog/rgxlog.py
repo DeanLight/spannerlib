@@ -21,6 +21,7 @@ class Rgxlog:
         self._reply_queue = Queue(1)
         self._request_queue = Queue(1)
         self._port_pipe = Queue(1)
+        self._connected = False
 
         if self._debug:
             self._debug_server_init()
@@ -33,7 +34,12 @@ class Rgxlog:
         self._client_process = Process(target=start_client, args=client_args)
         self._client_process.start()
 
+    def __del__(self):
+        self.disconnect()
+
     def execute(self, query):
+        if not self._connected:
+            raise ConnectionError
         if not query:
             raise ValueError('empty query!')
 
@@ -43,15 +49,17 @@ class Rgxlog:
 
     def disconnect(self):
         # 'None' message notifies the client to finish
-        self._request_queue.put(None)  # TODO: make a standard message format
-        self._client_process.join()
+        if self._connected:
+            self._request_queue.put(None)  # TODO: make a standard message format
+            self._client_process.join()
 
-        if self._debug:
-            self._debug_server_disconnect()
-        elif self._running_remotely:
-            self._remote_server_disconnect()
-        else:
-            self._local_server_disconnect()
+            if self._debug:
+                self._debug_server_disconnect()
+            elif self._running_remotely:
+                self._remote_server_disconnect()
+            else:
+                self._local_server_disconnect()
+            self._connected = False
 
     @staticmethod
     def _debug_server_init():
@@ -60,17 +68,23 @@ class Rgxlog:
     def _remote_server_init(self):
         assert self._remote_run_command
         subprocess.Popen(shlex.split(self._remote_run_command))
+        self._connected = True  # TODO: some handshake
 
     def _local_server_init(self):
         if self._remote_port:
-            listener_args = ('localhost', self._remote_port, None)
+            listener_args = ('localhost', self._remote_port, self._port_pipe)
             self.listener_process = Process(target=start_listener, args=listener_args)
             self.listener_process.start()
         else:
             listener_args = ('localhost', None, self._port_pipe)
             self.listener_process = Process(target=start_listener, args=listener_args)
             self.listener_process.start()
-            self._remote_port = self._port_pipe.get()
+
+        self._remote_port = self._port_pipe.get()
+        if self._remote_port is None:
+            raise ConnectionError
+
+        self._connected = True
 
     @staticmethod
     def _debug_server_disconnect():
@@ -83,3 +97,4 @@ class Rgxlog:
 
     def _local_server_disconnect(self):
         self.listener_process.join()
+

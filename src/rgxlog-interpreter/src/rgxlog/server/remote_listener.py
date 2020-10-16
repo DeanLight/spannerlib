@@ -9,10 +9,9 @@ from rgxlog.system_configuration import system_configuration
 
 
 def start_listener(ip, port=None, port_pipe: Queue = None):
-    assert (port and not port_pipe) or (port_pipe and not port)
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
-    if port_pipe:
+    if not port:
         min_port = system_configuration['default_local_client_config']['min_port']
         max_port = system_configuration['default_local_client_config']['max_port']
         port_range = cycle(range(min_port, max_port + 1))
@@ -22,7 +21,7 @@ def start_listener(ip, port=None, port_pipe: Queue = None):
     for port in port_range:
         try:
             with Listener((ip, port)) as listener:
-                logging.info(f'listening on {ip}:{port}')
+                # logging.info(f'listening on {ip}:{port}')
 
                 if port_pipe:
                     port_pipe.put(port)  # notify the parent process what port was successfully taken
@@ -33,11 +32,13 @@ def start_listener(ip, port=None, port_pipe: Queue = None):
                     while msg := conn.recv():  # 'None' closes the connection
                         result = lark_pipeline(msg)  # showtime
                         conn.send(result)
-
+                    logging.info('listener connection closed')
                     break
         except OSError:  # port already taken
-            logging.info(f'port {port} taken, trying a different one...')
-    logging.info('listener connection closed')
+            if len(port_range) != 1:
+                logging.info(f'port {port} taken, trying a different one...')
+
+    port_pipe.put(None)  # failed to capture port / done using said port
 
 
 if __name__ == '__main__':

@@ -1,3 +1,6 @@
+from abc import abstractmethod
+
+
 class MemoryHeap:
     def collect_garbage(self):
         self._some_func()

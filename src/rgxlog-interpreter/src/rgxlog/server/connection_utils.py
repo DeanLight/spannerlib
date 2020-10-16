@@ -3,6 +3,7 @@ from rgxlog.system_configuration import system_configuration
 
 
 def get_connection_address(configuration):
+    print("get_connection_address is deprecated")
     assert configuration in ('local_client', 'remote_listener')
 
     default = system_configuration[f'default_{configuration}_config']

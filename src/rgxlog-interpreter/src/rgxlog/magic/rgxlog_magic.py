@@ -1,10 +1,8 @@
 import json
 
-# from IPython import get_ipython
-from IPython.core.magic import register_cell_magic
+from IPython.core.magic import register_cell_magic, register_line_magic, register_line_cell_magic
 from rgxlog.rgxlog import Rgxlog
-
-# from IPython.core.magic import (Magics, magics_class, cell_magic)
+from IPython.core import magic_arguments
 
 # noinspection PyTypeChecker
 rgx: Rgxlog = None
@@ -30,37 +28,20 @@ def initialize(line, cell):
     )
 
 
-# noinspection PyUnusedLocal
-@register_cell_magic
-def spanner(line, cell):  # TODO add parameter for existing rgxlog object
+@magic_arguments.magic_arguments()
+@magic_arguments.argument('--shutdown', '-s', action='store_const', const=True, dest='shutdown', help='testing')
+@register_line_cell_magic
+def spanner(line, cell=None):
     global rgx
+    args = magic_arguments.parse_argstring(spanner, line)
+    if args.shutdown:
+        if rgx:
+            rgx.disconnect()
+            rgx = None
+            print('disconnected')
+    else:
+        if not rgx:
+            rgx = Rgxlog()
 
-    if not rgx:
-        rgx = Rgxlog()
-
-    result = rgx.execute(cell)
-    print(result)
-
-
-# noinspection PyUnusedLocal
-@register_cell_magic
-def finalize(line, cell):
-    global rgx
-
-    if rgx:
-        rgx.disconnect()
-        rgx = None
-
-# @magics_class
-# class SpannerMagics(Magics):
-#     def __init__(self, shell):
-#         super(SpannerMagics, self).__init__(shell)
-#
-#     @cell_magic
-#     def test(self, line, cell):
-#         # print(self.shell.user_ns)
-#         print(self.shell.user_ns['z'])
-#
-#
-# ip = get_ipython()
-# ip.register_magics(SpannerMagics)
+        result = rgx.execute(cell)
+        print(result)
