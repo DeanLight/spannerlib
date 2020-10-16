@@ -11,6 +11,9 @@ from lark.visitors import Interpreter, Visitor_Recursive
 
 
 def run_passes(tree, pass_list):
+    """
+    Runs the passes in pass_list on tree, one after another.
+    """
     for cur_pass in pass_list:
         if issubclass(cur_pass, Visitor) or issubclass(cur_pass, Visitor_Recursive) or \
                 issubclass(cur_pass, Interpreter):
@@ -27,23 +30,27 @@ def run_passes(tree, pass_list):
 passes = [
     lark_passes.RemoveTokensTransformer,
     lark_passes.StringVisitor,
-    # TODO uncomment when we catch exceptions
-    # lark_passes.CheckReferencedVariablesInterpreter,
-    # lark_passes.CheckReferencedRelationsInterpreter,
-    # lark_passes.CheckRuleSafetyVisitor,
-    # lark_passes.TypeCheckingInterpreter,
-    # graph_converters.LarkTreeToNetxTreeConverter
+    lark_passes.CheckReferencedVariablesInterpreter,
+    lark_passes.CheckReferencedRelationsInterpreter,
+    lark_passes.CheckRuleSafetyVisitor,
+    lark_passes.TypeCheckingInterpreter,
+    graph_converters.LarkTreeToNetxTreeConverter
 ]
 
 
-# TODO: make a pipeline ( like, for transform in transforms: prev = transform(prev) )
 def lark_pipeline(query_string):
     grammar_path = os.path.dirname(rgxlog.grammar.__file__)
     grammar_file = 'grammar.lark'
     with open(f'{grammar_path}/{grammar_file}', 'r') as grammar:
         parser = Lark(grammar, parser='lalr', debug=True, propagate_positions=True)
-        parse_tree = parser.parse(query_string)
-        parse_tree = run_passes(parse_tree, passes)
+        try:
+            parse_tree = parser.parse(query_string)
+        except Exception:
+            return "exception during parsing"
+        try:
+            parse_tree = run_passes(parse_tree, passes)
+        except Exception:
+            return "exception during semantic checks"
         return parse_tree.pretty()
         # for child in parse_tree.children:
         #     print(child)

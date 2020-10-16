@@ -2,6 +2,9 @@ import networkx as nx
 
 
 class NetxTree(nx.OrderedDiGraph):
+    """
+    A class that defines a Networkx tree
+    """
 
     def __init__(self, root=0):
         super().__init__()
@@ -14,6 +17,10 @@ class NetxTree(nx.OrderedDiGraph):
         return self.__root
 
     def pretty(self, indent_str='  '):
+        """
+        prints a representation of the networkx tree.
+        Works similarly to lark's pretty() function.
+        """
         return ''.join(self._pretty(self.__root, 0, indent_str))
 
     def _pretty(self, node, level, indent_str):

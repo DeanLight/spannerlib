@@ -6,6 +6,9 @@ from collections import deque
 
 
 class Converter(ABC):
+    """
+    Abstract class for converters
+    """
 
     def __init__(self):
         super().__init__()
@@ -17,6 +20,9 @@ class Converter(ABC):
 
 
 class LarkTreeToNetxTreeConverter(Converter):
+    """
+    Converts a lark tree to a Networkx tree
+    """
 
     def __init__(self):
         super().__init__()
@@ -47,6 +53,9 @@ class LarkTreeToNetxTreeConverter(Converter):
 
 
 class NetxTreeToLarkTreeConverter(Converter):
+    """
+    Converts a Networkx tree to a Lark tree
+    """
 
     def __init__(self):
         super().__init__()
