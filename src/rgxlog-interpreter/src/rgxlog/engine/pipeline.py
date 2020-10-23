@@ -12,8 +12,8 @@ from lark.visitors import Interpreter, Visitor_Recursive
 
 def run_passes(tree, pass_list):
     for cur_pass in pass_list:
-        if issubclass(cur_pass, Visitor) or issubclass(cur_pass, Visitor_Recursive) or issubclass(cur_pass,
-                                                                                                  Interpreter):
+        if issubclass(cur_pass, Visitor) or issubclass(cur_pass, Visitor_Recursive) \
+                or issubclass(cur_pass, Interpreter):
             cur_pass().visit(tree)
         elif issubclass(cur_pass, Transformer):
             tree = cur_pass().transform(tree)
