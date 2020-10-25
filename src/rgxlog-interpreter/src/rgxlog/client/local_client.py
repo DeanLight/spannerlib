@@ -8,7 +8,7 @@ from rgxlog.system_configuration import system_configuration
 def start_client(request_queue, reply_queue, remote_port, remote_ip='localhost'):
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
-    ip = 'localhost' if not remote_ip else remote_ip
+    ip = remote_ip
     port = remote_port
 
     connection_retries = system_configuration['default_local_client_config']['connection_retries']
