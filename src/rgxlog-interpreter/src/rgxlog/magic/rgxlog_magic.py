@@ -21,12 +21,12 @@ def spanner(line, cell=None):
     args = magic_arguments.parse_argstring(spanner, line)
 
     if args.shutdown:
-        if rgx:
+        if rgx is not None:
             rgx.disconnect()
             rgx = None
             print('disconnected')
     else:
-        if not rgx:
+        if rgx is None:
             user_config = dict()
             if args.configure:
                 try:
