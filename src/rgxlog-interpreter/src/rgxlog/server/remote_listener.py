@@ -23,6 +23,11 @@ def start_listener(ip, port=None, taken_port: Queue = None):
     When no port is supplied, the listener will try to bind to an available
     port and if it succeeds in doing so it will place the taken port in
     taken_port.
+
+    Args:
+        ip: ip to listen on
+        port: port to listen on
+        taken_port: notify the parent process which port was taken
     """
     logging.basicConfig(format='%(asctime)s - %(message)s')
 
@@ -48,7 +53,7 @@ def start_listener(ip, port=None, taken_port: Queue = None):
             break
 
     if taken_port is not None:
-        taken_port.put(using_port)  # notify the parent process which port was taken (None signifies failure)
+        taken_port.put(using_port)
 
     if using_port is None:
         logging.error(f'no suitable port in range [{min_port}, {max_port}] was found')

@@ -23,19 +23,20 @@ class Client:
                  remote_kill_command=None,
                  remote_debug=False):
         """
-        :param remote_ip: Server ip
-        :param remote_port: Server port
-        :param remote_run_command: [DEBUG] shell command to start the remote server
-        :param remote_kill_command: [DEBUG] shell command to kill the remote server in case it hangs unexpectedly
-        :param remote_debug: [DEBUG] enable remote_{run, kill}_command for remote debugging
+        Args:
+            remote_ip: server ip
+            remote_port: port
+            remote_run_command: [DEBUG] shell command to start the remote server
+            remote_kill_command: [DEBUG] shell command to kill the remote server in case it hangs unexpectedly
+            remote_debug: [DEBUG] enable remote_{run, kill}_command for remote debugging
         """
-        self._running_remotely = remote_ip and remote_ip not in ('localhost', '127.0.0.1')
+        self._running_remotely = remote_ip not in ('localhost', '127.0.0.1')
 
-        if not remote_debug and any((remote_run_command, remote_kill_command)):
+        if not remote_debug and (remote_run_command or remote_kill_command):
             raise ValueError('remote run / kill commands are only valid when debugging')
-        if remote_debug and not all((remote_port, remote_run_command, remote_kill_command)):
+        if remote_debug and not (remote_port and remote_run_command and remote_kill_command):
             raise ValueError('missing port / run command / kill command')
-        if self._running_remotely and not all((remote_ip, remote_port)):
+        if self._running_remotely and not (remote_ip and remote_port):
             raise ValueError('missing remote_ip / remote_port')
 
         self._remote_ip = remote_ip
@@ -44,14 +45,13 @@ class Client:
         self._remote_kill_command = remote_kill_command
         self._remote_debug = remote_debug
 
-        self._taken_port = Queue(1)
+        self._taken_port = Queue(1)  # used to notify the parent process which port was taken by the server
         self._connection = None
 
         self.connected = False
 
-        if self._running_remotely:
-            if self._remote_debug:
-                self._start_remote_debug_server()
+        if self._running_remotely and self._remote_debug:
+            self._start_remote_debug_server()
         else:
             self._run_local_server()
 
