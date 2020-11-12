@@ -1,8 +1,6 @@
 import networkx as nx
 from rgxlog.engine.custom_trees import NetxTree
 from abc import ABC, abstractmethod
-from rgxlog.engine.term_graph import NetxTermGraph
-from rgxlog.engine.symbol_table import SymbolTable
 from rgxlog.engine.complex_values import Span, Relation, RelationDeclaration, IERelation
 from rgxlog.engine.datatypes import DataTypes, get_datatype_string, get_datatype_enum
 
@@ -28,7 +26,7 @@ class NetxPass(ABC):
     Abstract class networkx passes
     """
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__()
 
     @abstractmethod
@@ -36,28 +34,16 @@ class NetxPass(ABC):
         pass
 
 
-class NetxEnginePass(ABC):
-    """
-    Abstract class networkx passes
-    """
-
-    def __init__(self):
-        super().__init__()
-
-    @abstractmethod
-    def visit(self, netx_tree: NetxTree, term_graph: NetxTermGraph, symbol_table: SymbolTable):
-        pass
-
-
-class ResolveVariablesPass(NetxEnginePass):
+class ResolveVariablesPass(NetxPass):
     """
     This pass performs the variable assignments and replaces variable references with their values.
     """
 
-    def __init__(self):
+    def __init__(self, **kw):
+        self.symbol_table = kw['symbol_table']
         super().__init__()
 
-    def visit(self, netx_tree: NetxTree, term_graph: NetxTermGraph, symbol_table: SymbolTable):
+    def visit(self, netx_tree: NetxTree):
         data_attr = nx.get_node_attributes(netx_tree, "data")
         nodes_to_remove = set()
         for node in nx.dfs_postorder_nodes(netx_tree, source=netx_tree.get_root()):
@@ -83,20 +69,20 @@ class ResolveVariablesPass(NetxEnginePass):
                 left_var_name = netx_tree.get_node_value(successors[0])
                 if value_node_type == "var_name":
                     right_var_name = netx_tree.get_node_value(successors[1])
-                    assigned_value = symbol_table.get_variable_value(right_var_name)
-                    assigned_type = symbol_table.get_variable_type(right_var_name)
+                    assigned_value = self.symbol_table.get_variable_value(right_var_name)
+                    assigned_type = self.symbol_table.get_variable_type(right_var_name)
                 else:
                     value_node = list(netx_tree.successors(successors[1]))[0]
                     assigned_value = netx_tree.nodes[value_node]['value']
                     assigned_type = get_datatype_enum(value_node_type)
-                symbol_table.set_variable_type(left_var_name, assigned_type)
-                symbol_table.set_variable_value(left_var_name, assigned_value)
+                self.symbol_table.set_variable_type(left_var_name, assigned_type)
+                self.symbol_table.set_variable_value(left_var_name, assigned_value)
             if data_attr[node] == "read_assignment":
                 value_node_type = data_attr[successors[1]]
                 assert_correct_node(netx_tree, node, "read_assignment", 2, "var_name", value_node_type)
                 if value_node_type == "var_name":
                     right_var_name = netx_tree.get_node_value(successors[1])
-                    read_param = symbol_table.get_variable_value(right_var_name)
+                    read_param = self.symbol_table.get_variable_value(right_var_name)
                 else:
                     read_param = netx_tree.get_node_value(successors[1])
                 try:
@@ -106,15 +92,15 @@ class ResolveVariablesPass(NetxEnginePass):
                 except Exception:
                     raise Exception("couldn't open file")
                 left_var_name = netx_tree.get_node_value(successors[0])
-                symbol_table.set_variable_type(left_var_name, DataTypes.STRING)
-                symbol_table.set_variable_value(left_var_name, assigned_value)
+                self.symbol_table.set_variable_type(left_var_name, DataTypes.STRING)
+                self.symbol_table.set_variable_value(left_var_name, assigned_value)
             if data_attr[node] in ["term_list", "const_term_list"]:
                 for term_node in list(netx_tree.successors(node)):
                     if data_attr[term_node] == "var_name":
                         assert_correct_node(netx_tree, term_node, "var_name", 1)
                         var_name = netx_tree.get_node_value(term_node)
-                        var_type = symbol_table.get_variable_type(var_name)
-                        var_value = symbol_table.get_variable_value(var_name)
+                        var_type = self.symbol_table.get_variable_type(var_name)
+                        var_value = self.symbol_table.get_variable_value(var_name)
                         netx_tree.nodes[term_node]['data'] = get_datatype_string(var_type)
                         netx_tree.set_node_value(term_node, var_value)
         # can only remove nodes after the iteration
@@ -129,7 +115,7 @@ class SimplifyRelationsPass(NetxPass):
     instance as a value (instead of the default grammar representation that contains multiple nodes)
     """
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__()
 
     @staticmethod
@@ -205,17 +191,18 @@ class SimplifyRelationsPass(NetxPass):
             netx_tree.remove_node(node)
 
 
-class AddNetxTreeToTermGraphPass(NetxEnginePass):
+class AddNetxTreeToTermGraphPass(NetxPass):
     """Adds the input ast as a tree to the term graph forest"""
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__()
+        self.term_graph = kw['term_graph']
         self.term_graph_root = None
 
-    def visit(self, netx_tree: NetxTree, term_graph: NetxTermGraph, symbol_table: SymbolTable):
+    def visit(self, netx_tree: NetxTree):
         data_attr = nx.get_node_attributes(netx_tree, "data")
-        self.term_graph_root = term_graph.add_term(type='program_root')
-        term_graph.add_dependency(term_graph.get_root(), self.term_graph_root)
+        self.term_graph_root = self.term_graph.add_term(type='program_root')
+        self.term_graph.add_dependency(self.term_graph.get_root(), self.term_graph_root)
         for node in nx.dfs_postorder_nodes(netx_tree, source=netx_tree.get_root()):
             if node not in data_attr:
                 continue
@@ -223,21 +210,21 @@ class AddNetxTreeToTermGraphPass(NetxEnginePass):
             node_type = data_attr[node]
             if node_type in ["add_fact", "remove_fact", "relation_declaration"]:
                 relation_value = netx_tree.get_node_value(node)
-                new_node = term_graph.add_term(type=node_type, value=relation_value)
-                term_graph.add_dependency(self.term_graph_root, new_node)
+                new_node = self.term_graph.add_term(type=node_type, value=relation_value)
+                self.term_graph.add_dependency(self.term_graph_root, new_node)
             if node_type == "query":
                 relation_value = netx_tree.get_node_value(successors[0])
-                new_node = term_graph.add_term(type=node_type, value=relation_value)
-                term_graph.add_dependency(self.term_graph_root, new_node)
+                new_node = self.term_graph.add_term(type=node_type, value=relation_value)
+                self.term_graph.add_dependency(self.term_graph_root, new_node)
             if node_type == "rule":
                 assert_correct_node(netx_tree, node, "rule", 2, "rule_head", "rule_body")
-                new_rule_node = term_graph.add_term(type=node_type)
+                new_rule_node = self.term_graph.add_term(type=node_type)
                 rule_head_value = netx_tree.get_node_value(successors[0])
-                new_rule_head_node = term_graph.add_term(type="rule_head", value=rule_head_value)
-                new_rule_body_node = term_graph.add_term(type="rule_body")
-                term_graph.add_dependency(self.term_graph_root, new_rule_node)
-                term_graph.add_dependency(new_rule_node, new_rule_head_node)
-                term_graph.add_dependency(new_rule_node, new_rule_body_node)
+                new_rule_head_node = self.term_graph.add_term(type="rule_head", value=rule_head_value)
+                new_rule_body_node = self.term_graph.add_term(type="rule_body")
+                self.term_graph.add_dependency(self.term_graph_root, new_rule_node)
+                self.term_graph.add_dependency(new_rule_node, new_rule_head_node)
+                self.term_graph.add_dependency(new_rule_node, new_rule_body_node)
                 rule_body_node = successors[1]
                 assert_correct_node(netx_tree, rule_body_node, "rule_body", 1, "rule_body_relation_list")
                 rule_body_relations_list_node = list(netx_tree.successors(rule_body_node))[0]
@@ -246,6 +233,6 @@ class AddNetxTreeToTermGraphPass(NetxEnginePass):
                 for rule_body_relation_node in rule_body_relation_nodes:
                     rule_body_relation_type = data_attr[rule_body_relation_node]
                     rule_body_relation_value = netx_tree.get_node_value(rule_body_relation_node)
-                    new_rule_body_relation_node = term_graph.add_term(type=rule_body_relation_type,
-                                                                      value=rule_body_relation_value)
-                    term_graph.add_dependency(new_rule_body_node, new_rule_body_relation_node)
+                    new_rule_body_relation_node = self.term_graph.add_term(type=rule_body_relation_type,
+                                                                           value=rule_body_relation_value)
+                    self.term_graph.add_dependency(new_rule_body_node, new_rule_body_relation_node)

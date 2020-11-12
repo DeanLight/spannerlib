@@ -1,24 +1,39 @@
 import os
 
-from lark import Lark, Transformer, v_args
-from lark.visitors import Interpreter, Visitor_Recursive
 import rgxlog.grammar
 from rgxlog.engine.graph_converters import Converter
 import rgxlog.engine.graph_converters as graph_converters
 import rgxlog.engine.lark_passes as lark_passes
 from lark import Lark, Transformer, Visitor
 from lark.visitors import Interpreter, Visitor_Recursive
+import rgxlog.engine.execution as execution
+from rgxlog.engine.execution import ExecutionBase, PydatalogEngine
+import rgxlog.engine.netx_passes as netx_passes
+from rgxlog.engine.netx_passes import NetxPass
+from rgxlog.engine.symbol_table import SymbolTable
+from rgxlog.engine.term_graph import NetxTermGraph
+
+symbol_table = SymbolTable()
+term_graph = NetxTermGraph()
+pydatalog_engine = PydatalogEngine(debug=True)
 
 
-def run_passes(tree, pass_list):
+def run_passes(tree, pass_list, datalog_engine):
+    """
+    Runs the passes in pass_list on tree, one after another.
+    """
     for cur_pass in pass_list:
-        if issubclass(cur_pass, Visitor) or issubclass(cur_pass, Visitor_Recursive) \
-                or issubclass(cur_pass, Interpreter):
-            cur_pass().visit(tree)
+        if issubclass(cur_pass, Visitor) or issubclass(cur_pass, Visitor_Recursive) or \
+                issubclass(cur_pass, Interpreter):
+            cur_pass(symbol_table=symbol_table, term_graph=term_graph).visit(tree)
         elif issubclass(cur_pass, Transformer):
-            tree = cur_pass().transform(tree)
+            tree = cur_pass(symbol_table=symbol_table, term_graph=term_graph).transform(tree)
         elif issubclass(cur_pass, Converter):
             tree = cur_pass().convert(tree)
+        elif issubclass(cur_pass, NetxPass):
+            cur_pass(symbol_table=symbol_table, term_graph=term_graph).visit(tree)
+        elif issubclass(cur_pass, ExecutionBase):
+            term_graph.transform_graph(cur_pass(datalog_engine, symbol_table))
         else:
             assert 0
     return tree
@@ -29,10 +44,18 @@ passes = [
     lark_passes.RemoveTokensTransformer,
     lark_passes.StringVisitor,
     lark_passes.CheckReferencedVariablesInterpreter,
+    lark_passes.CheckFilesInterpreter,
+    lark_passes.CheckReservedRelationNames,
     lark_passes.CheckReferencedRelationsInterpreter,
+    lark_passes.CheckReferencedIERelationsVisitor,
     lark_passes.CheckRuleSafetyVisitor,
     lark_passes.TypeCheckingInterpreter,
-    graph_converters.LarkTreeToNetxTreeConverter
+    lark_passes.ReorderRuleBodyVisitor,
+    graph_converters.LarkTreeToNetxTreeConverter,
+    netx_passes.ResolveVariablesPass,
+    netx_passes.SimplifyRelationsPass,
+    netx_passes.AddNetxTreeToTermGraphPass,
+    execution.NetworkxExecution
 ]
 
 
@@ -43,12 +66,13 @@ def lark_pipeline(query_string):
         parser = Lark(grammar, parser='lalr', debug=True, propagate_positions=True)
         try:
             parse_tree = parser.parse(query_string)
-        except Exception:
-            return "exception during parsing"
+        except Exception as e:
+            return "exception during parsing" + "\n" + str(e)
         try:
-            parse_tree = run_passes(parse_tree, passes)
-        except Exception:
-            return "exception during semantic checks"
+            parse_tree = run_passes(parse_tree, passes, pydatalog_engine)
+            print("success")
+        except Exception as e:
+            return "exception during semantic checks" + "\n" + str(e)
         return parse_tree.pretty()
         # for child in parse_tree.children:
         #     print(child)
@@ -59,3 +83,15 @@ def lark_pipeline(query_string):
         #     print(parser.parse(line).pretty())
         #     print(parser.parse(line))
         #     print('-----------------------------------')
+
+
+if __name__ == "__main__":
+    some_input = """
+    b = "bob"
+    b2 = b # b2's value is "bob"
+    # you can write multiline strings using a line overflow escape like in python
+    b3 = "this is a multiline  \
+    string"
+    b4 = "this is a multiline string" # b4 holds the same value as b3
+    """
+    lark_pipeline(some_input)

@@ -86,7 +86,7 @@ class CheckReferencedVariablesInterpreter(Interpreter):
         assert_correct_node(var_name_node, "var_name", 1)
         var_name = var_name_node.children[0]
         if var_name not in self.vars and not self.symbol_table.contains_variable(var_name):
-            raise Exception
+            raise Exception("variable not defined")
 
     def __check_if_vars_in_list_not_defined(self, tree):
         assert tree.data in NODES_OF_LIST_WITH_VAR_NAMES
@@ -204,6 +204,7 @@ class CheckReferencedRelationsInterpreter(Interpreter):
 
     def __init__(self, **kw):
         super().__init__()
+        self.symbol_table = kw['symbol_table']
         self.relation_name_to_arity = dict()
 
     def __add_relation_definition(self, relation_name_node, schema_defining_node):
@@ -218,18 +219,21 @@ class CheckReferencedRelationsInterpreter(Interpreter):
         assert_correct_node(relation_name_node, "relation_name", 1)
         assert term_list_node.data in NODES_OF_TERM_LISTS
         relation_name = relation_name_node.children[0]
-        if relation_name not in self.relation_name_to_arity:
-            raise Exception
+        if relation_name in self.relation_name_to_arity:
+            correct_arity = self.relation_name_to_arity[relation_name]
+        elif self.symbol_table.contains_relation(relation_name):
+            correct_arity = len(self.symbol_table.get_relation_schema(relation_name))
+        else:
+            raise Exception("relation not defined")
         arity = len(term_list_node.children)
-        correct_arity = self.relation_name_to_arity[relation_name]
         if arity != correct_arity:
-            raise Exception
+            raise Exception("incorrect arity")
 
     def __check_if_relation_already_defined(self, relation_name_node):
         assert_correct_node(relation_name_node, "relation_name", 1)
         relation_name = relation_name_node.children[0]
         if relation_name in self.relation_name_to_arity:
-            raise Exception
+            raise Exception("relation already defined")
 
     def relation_declaration(self, tree):
         assert_correct_node(tree, "relation_declaration", 2, "relation_name", "decl_term_list")
@@ -371,7 +375,7 @@ class CheckRuleSafetyVisitor(Visitor_Recursive):
         # make sure that every free var in the rule head appears at least once in the rule body
         invalid_free_var_names = rule_head_free_vars.difference(rule_body_free_vars)
         if invalid_free_var_names:
-            raise Exception
+            raise Exception("rule not safe")
         # check that every relation in the rule body is safe
         # initialize assuming every relation is unsafe and every free variable is unbound
         safe_relation_indexes = set()
@@ -390,7 +394,7 @@ class CheckRuleSafetyVisitor(Visitor_Recursive):
                         bound_free_vars = bound_free_vars.union(output_free_vars)
                         safe_relation_indexes.add(idx)
         if len(safe_relation_indexes) != len(rule_body_relations):
-            raise Exception
+            raise Exception("rule not safe")
 
 
 class ReorderRuleBodyVisitor(Visitor_Recursive):
@@ -457,7 +461,7 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
                         reordered_relations_idx.add(idx)
                         reordered_relations.append(relation_node)
         if len(reordered_relations) != len(rule_body_relations):
-            raise Exception
+            raise Exception("rule not safe")
         rule_body_relation_list_node.children = reordered_relations
 
 
@@ -573,7 +577,7 @@ class TypeCheckingInterpreter(Interpreter):
         term_types = self.__get_term_types_list(term_list_node)
         schema = self.__get_relation_schema(relation_name_node)
         if schema != term_types:
-            raise Exception
+            raise Exception("typechecking failed")
 
     def remove_fact(self, tree):
         assert_correct_node(tree, "remove_fact", 2, "relation_name", "const_term_list")
@@ -582,7 +586,7 @@ class TypeCheckingInterpreter(Interpreter):
         term_types = self.__get_term_types_list(term_list_node)
         schema = self.__get_relation_schema(relation_name_node)
         if schema != term_types:
-            raise Exception
+            raise Exception("typechecking failed")
 
     def query(self, tree):
         assert_correct_node(tree, "query", 1, "relation")
@@ -593,7 +597,7 @@ class TypeCheckingInterpreter(Interpreter):
         term_types = self.__get_term_types_list(term_list_node, relation_name_node=relation_name_node)
         schema = self.__get_relation_schema(relation_name_node)
         if schema != term_types:
-            raise Exception
+            raise Exception("typechecking failed")
 
     def __type_check_rule_body_term_list(self, term_list_node: Tree, correct_types: list,
                                          free_var_to_type: dict):
@@ -617,7 +621,7 @@ class TypeCheckingInterpreter(Interpreter):
                     free_var_type = free_var_to_type[free_var]
                     if free_var_type != correct_type:
                         # found a conflicted free var
-                        raise Exception
+                        raise Exception("free var conflict found in typechecking")
                 else:
                     # free var does not currently have a type, map it to the correct type
                     free_var_to_type[free_var] = correct_type
@@ -625,7 +629,7 @@ class TypeCheckingInterpreter(Interpreter):
                 term_type = self.__get_const_value_type(term_node)
                 if term_type != correct_type:
                     # term is not properly typed
-                    raise Exception
+                    raise Exception("typechecking failed")
 
     def rule(self, tree):
         assert_correct_node(tree, "rule", 2, "rule_head", "rule_body")

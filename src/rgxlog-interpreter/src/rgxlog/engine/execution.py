@@ -228,8 +228,10 @@ class ExecutionBase(ABC):
     Abstraction for a class that gets a term graph and execute it
     """
 
-    def __init__(self):
+    def __init__(self, datalog_engine, symbol_table):
         super().__init__()
+        self.datalog_engine = datalog_engine
+        self.symbol_table = symbol_table
 
     @abstractmethod
     def transform(self, term_graph, root_name):
@@ -242,9 +244,7 @@ class NetworkxExecution(ExecutionBase):
     """
 
     def __init__(self, datalog_engine: DatalogEngineBase, symbol_table: SymbolTable):
-        super().__init__()
-        self.datalog_engine = datalog_engine
-        self.symbol_table = symbol_table
+        super().__init__(datalog_engine, symbol_table)
 
     def transform(self, term_graph: nx.OrderedDiGraph, root_name):
         for node in nx.dfs_postorder_nodes(term_graph, source=root_name):
