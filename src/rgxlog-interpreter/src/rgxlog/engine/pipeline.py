@@ -12,6 +12,8 @@ import rgxlog.engine.netx_passes as netx_passes
 from rgxlog.engine.netx_passes import NetxPass
 from rgxlog.engine.symbol_table import SymbolTable
 from rgxlog.engine.term_graph import NetxTermGraph
+import sys
+import io
 
 symbol_table = SymbolTable()
 term_graph = NetxTermGraph()
@@ -69,11 +71,15 @@ def lark_pipeline(query_string):
         except Exception as e:
             return "exception during parsing" + "\n" + str(e)
         try:
-            parse_tree = run_passes(parse_tree, passes, pydatalog_engine)
-            print("success")
+            original_stdout = sys.stdout
+            temp_stdout = io.StringIO()
+            sys.stdout = temp_stdout
+            run_passes(parse_tree, passes, pydatalog_engine)
         except Exception as e:
+            sys.stdout = original_stdout
             return "exception during semantic checks" + "\n" + str(e)
-        return parse_tree.pretty()
+        sys.stdout = original_stdout
+        return temp_stdout.getvalue()
         # for child in parse_tree.children:
         #     print(child)
         # leaving this commented for now as it might be useful for debugging
@@ -87,11 +93,8 @@ def lark_pipeline(query_string):
 
 if __name__ == "__main__":
     some_input = """
-    b = "bob"
-    b2 = b # b2's value is "bob"
-    # you can write multiline strings using a line overflow escape like in python
-    b3 = "this is a multiline  \
-    string"
-    b4 = "this is a multiline string" # b4 holds the same value as b3
+    new A(str)
+    A("bob")
+    ?A(X)
     """
     lark_pipeline(some_input)
