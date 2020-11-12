@@ -1,0 +1,70 @@
+## regular datalog
+
+Parent(john,bob)
+Parent(bill,john)
+
+Grandparent(x,z) :- parent(x,y),parent(y,z)
+
+## adding sentiment analysis
+Parent(john,bob)
+Parent(bill,john)
+
+Grandparent(x,z) :- parent(x,y),parent(y,z)
+
+# transcripts of conversations
+Docs(d)
+
+HappyGradparent(x) :- Grantparent(x,z),Happy(x) # Happy doesnt exist
+
+
+
+# python
+from CoreNLP import sentiment_entity
+
+def get_happy(docs):
+	happy_people=Unary_relation()
+	For each doc in docs:
+		results=sentiment_entity(doc,"happy")
+			for result in results:
+				happy_people.add(result)
+
+	return happy_people 
+
+## Procedural datalog
+
+Parent(john,bob)
+Parent(bill,john)
+
+Grandparent(x,z) :- parent(x,y),parent(y,z)
+
+Docs(d)
+
+HappyGradparent(x) :- Grantparent(x,z),get_happy<Docs(d)>(x)
+
+
+
+## spanner proto behind the scenes
+
+# figure out that get_happy is a procedural function
+# look for it in the python code
+
+# run get happy on docs and save it in relation called get_happy_results_113(x)
+
+# change code to say 
+HappyGradparent(x) :- Grantparent(x,z),get_happy_results_113(x)
+
+
+
+##
+
+
+helpful_molecules(x):- RGX<\W\w\d+>(x),topic_sentence(y,"lung"),
+						sentiment(y,"positive"),dependency(x,y),
+						named_entitity(x)
+
+topic_sentence(y,"lung") :- Lang_term<Docs(d),"lung">(y),topic_extract<Docs(d)>(y,x)
+
+# python
+def Lang_term(documents,search_terms):
+	...
+
