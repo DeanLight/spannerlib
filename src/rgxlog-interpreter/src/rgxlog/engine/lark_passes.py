@@ -232,7 +232,7 @@ class CheckReferencedRelationsInterpreter(Interpreter):
     def __check_if_relation_already_defined(self, relation_name_node):
         assert_correct_node(relation_name_node, "relation_name", 1)
         relation_name = relation_name_node.children[0]
-        if relation_name in self.relation_name_to_arity:
+        if relation_name in self.relation_name_to_arity or self.symbol_table.contains_relation(relation_name):
             raise Exception("relation already defined")
 
     def relation_declaration(self, tree):

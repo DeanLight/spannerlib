@@ -17,7 +17,7 @@ import io
 
 symbol_table = SymbolTable()
 term_graph = NetxTermGraph()
-pydatalog_engine = PydatalogEngine(debug=True)
+pydatalog_engine = PydatalogEngine(debug=False)
 
 
 def run_passes(tree, pass_list, datalog_engine):

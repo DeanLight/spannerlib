@@ -114,7 +114,7 @@ class PydatalogEngine(DatalogEngineBase):
         schema_length = len(declaration.schema)
         temp_fact = relation_name + "("
         for i in range(schema_length):
-            temp_fact += "1"
+            temp_fact += "None"
             if i != schema_length - 1:
                 temp_fact += ", "
         temp_fact += ")"
