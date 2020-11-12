@@ -57,6 +57,9 @@ class Client:
 
         self.connect()
 
+    def __del__(self):
+        self.disconnect()
+
     def connect(self):
         """
         Establish a connection to the server
@@ -67,15 +70,16 @@ class Client:
             connection_retries = system_configuration['default_local_client_config']['connection_retries']
             sleep_between_retries = system_configuration['default_local_client_config']['retry_sleep']
 
+            last_retry = connection_retries - 1
             for retry_number in range(connection_retries):
                 try:
                     self._connection = Client_((self._remote_ip, self._remote_port))
                     break
                 except (ConnectionRefusedError, OSError):
                     logging.warning(f'client connection to {self._remote_ip}:{self._remote_port} refused')
-                    if retry_number < connection_retries - 1:
-                        logging.info(f'client retrying connection')
+                    if retry_number != last_retry:
                         sleep(sleep_between_retries)
+                        logging.info(f'client retrying connection')
 
             if self._connection is None:
                 logging.error('client could not connect to listener')
@@ -83,8 +87,21 @@ class Client:
                 logging.info(f'client connected to {self._remote_ip}:{self._remote_port}')
                 self.connected = True
 
-    def __del__(self):
-        self.disconnect()
+    def disconnect(self):
+        """
+        Disconnect from the server
+        """
+        if self.connected:
+            self._connection.send(None)  # 'None' message notifies the client to finish
+            self._connection.close()
+            logging.info('client connection closed')
+
+            if self._running_remotely:
+                if self._remote_debug:
+                    self._stop_remote_debug_server()
+            else:
+                self._stop_local_server()
+            self.connected = False
 
     def execute(self, query):
         """
@@ -105,31 +122,6 @@ class Client:
 
         return reply
 
-    def disconnect(self):
-        """
-        Disconnect from the server
-        """
-        if self.connected:
-            self._connection.send(None)  # 'None' message notifies the client to finish
-            self._connection.close()
-            logging.info('client connection closed')
-
-            if self._running_remotely:
-                if self._remote_debug:
-                    self._stop_remote_debug_server()
-            else:
-                self._stop_local_server()
-            self.connected = False
-
-    def _start_remote_debug_server(self):
-        """
-        [DEBUG]
-        Uses the remote run command to start the remote server for debugging
-        """
-        assert self._remote_run_command
-        subprocess.Popen(shlex.split(self._remote_run_command))
-        # TODO: some handshake
-
     def _run_local_server(self):
         """
         Starts the server locally
@@ -146,6 +138,21 @@ class Client:
         if self._remote_port is None:
             raise ConnectionError
 
+    def _stop_local_server(self):
+        """
+        Stops the local server
+        """
+        self._listener_process.join()
+
+    def _start_remote_debug_server(self):
+        """
+        [DEBUG]
+        Uses the remote run command to start the remote server for debugging
+        """
+        assert self._remote_run_command
+        subprocess.Popen(shlex.split(self._remote_run_command))
+        # TODO: some handshake
+
     def _stop_remote_debug_server(self):
         """
         [DEBUG]
@@ -154,12 +161,6 @@ class Client:
         assert self._remote_kill_command
         command = self._remote_kill_command
         subprocess.Popen(shlex.split(command))
-
-    def _stop_local_server(self):
-        """
-        Stops the local server
-        """
-        self._listener_process.join()
 
 
 if __name__ == '__main__':
