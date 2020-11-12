@@ -30,12 +30,13 @@ class LarkTreeToNetxTreeConverter(Converter):
     @staticmethod
     def convert(lark_tree: LarkTree) -> NetxTree:
         new_netx_node = 0
-        netx_tree = NetxTree(root=new_netx_node)
+        netx_tree = NetxTree()
         netx_node_to_lark_node = dict()
         q = deque()
         q.append(new_netx_node)
         netx_node_to_lark_node[new_netx_node] = lark_tree
         netx_tree.add_node(new_netx_node, data=lark_tree.data)
+        netx_tree.set_root(new_netx_node)
         new_netx_node += 1
         while q:
             cur_netx_node = q.popleft()

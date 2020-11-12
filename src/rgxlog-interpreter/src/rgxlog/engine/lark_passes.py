@@ -1,6 +1,7 @@
-from lark import Transformer, v_args, Visitor, Tree
+from lark import Transformer, v_args, Tree
 from lark.visitors import Interpreter, Visitor_Recursive
-from enum import Enum
+from rgxlog.engine.datatypes import DataTypes, get_datatype_enum
+import rgxlog.engine.ie_functions as ie_functions
 
 NODES_OF_LIST_WITH_VAR_NAMES = {"term_list", "const_term_list"}
 NODES_OF_LIST_WITH_RELATION_NODES = {"rule_body_relation_list"}
@@ -8,12 +9,6 @@ NODES_OF_LIST_WITH_FREE_VAR_NAMES = {"term_list", "free_var_name_list"}
 NODES_OF_TERM_LISTS = {"term_list", "const_term_list"}
 NODES_OF_RULE_BODY_TERM_LISTS = {"term_list"}
 SCHEMA_DEFINING_NODES = {"decl_term_list", "free_var_name_list"}
-
-
-class VarTypes(Enum):
-    STRING = 0
-    SPAN = 1
-    INT = 2
 
 
 def assert_correct_node(tree, node_name, len_children=None, *children_names):
@@ -36,19 +31,23 @@ class RemoveTokensTransformer(Transformer):
     should be used before all the other passes as they assume no tokens exists
     """
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__(visit_tokens=True)
 
-    def INT(self, args):
+    @staticmethod
+    def INT(args):
         return int(args[0:])
 
-    def LOWER_CASE_NAME(self, args):
+    @staticmethod
+    def LOWER_CASE_NAME(args):
         return args[0:]
 
-    def UPPER_CASE_NAME(self, args):
+    @staticmethod
+    def UPPER_CASE_NAME(args):
         return args[0:]
 
-    def STRING(self, args):
+    @staticmethod
+    def STRING(args):
         # removes the quotation marks
         return args[1:-1]
 
@@ -59,7 +58,11 @@ class StringVisitor(Visitor_Recursive):
      Removes the line overflow escapes from strings
      """
 
-    def string(self, tree):
+    def __init__(self, **kw):
+        super().__init__()
+
+    @staticmethod
+    def string(tree):
         tree.children[0] = tree.children[0].replace('\\\n', '')
 
 
@@ -69,9 +72,10 @@ class CheckReferencedVariablesInterpreter(Interpreter):
     checks whether each variable reference refers to a defined variable.
     """
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__()
         self.vars = set()
+        self.symbol_table = kw['symbol_table']
 
     def __add_var_name_to_vars(self, var_name_node):
         assert_correct_node(var_name_node, "var_name", 1)
@@ -81,7 +85,7 @@ class CheckReferencedVariablesInterpreter(Interpreter):
     def __check_if_var_not_defined(self, var_name_node):
         assert_correct_node(var_name_node, "var_name", 1)
         var_name = var_name_node.children[0]
-        if var_name not in self.vars:
+        if var_name not in self.vars and not self.symbol_table.contains_variable(var_name):
             raise Exception
 
     def __check_if_vars_in_list_not_defined(self, tree):
@@ -90,30 +94,18 @@ class CheckReferencedVariablesInterpreter(Interpreter):
             if child.data == "var_name":
                 self.__check_if_var_not_defined(child)
 
-    def assign_literal_string(self, tree):
-        assert_correct_node(tree, "assign_literal_string", 2, "var_name", "string")
+    def assignment(self, tree):
+        value_type = tree.children[1].data
+        assert_correct_node(tree, "assignment", 2, "var_name", value_type)
+        if value_type == "var_name":
+            self.__check_if_var_not_defined(tree.children[1])
         self.__add_var_name_to_vars(tree.children[0])
 
-    def assign_string_from_file_string_param(self, tree):
-        assert_correct_node(tree, "assign_string_from_file_string_param", 2, "var_name", "string")
-        self.__add_var_name_to_vars(tree.children[0])
-
-    def assign_string_from_file_var_param(self, tree):
-        assert_correct_node(tree, "assign_string_from_file_var_param", 2, "var_name", "var_name")
-        self.__check_if_var_not_defined(tree.children[1])
-        self.__add_var_name_to_vars(tree.children[0])
-
-    def assign_span(self, tree):
-        assert_correct_node(tree, "assign_span", 2, "var_name", "span")
-        self.__add_var_name_to_vars(tree.children[0])
-
-    def assign_int(self, tree):
-        assert_correct_node(tree, "assign_int", 2, "var_name", "integer")
-        self.__add_var_name_to_vars(tree.children[0])
-
-    def assign_var(self, tree):
-        assert_correct_node(tree, "assign_var", 2, "var_name", "var_name")
-        self.__check_if_var_not_defined(tree.children[1])
+    def read_assignment(self, tree):
+        value_type = tree.children[1].data
+        assert_correct_node(tree, "read_assignment", 2, "var_name", value_type)
+        if value_type == "var_name":
+            self.__check_if_var_not_defined(tree.children[1])
         self.__add_var_name_to_vars(tree.children[0])
 
     def relation(self, tree):
@@ -128,16 +120,79 @@ class CheckReferencedVariablesInterpreter(Interpreter):
         assert_correct_node(tree, "remove_fact", 2, "relation_name", "const_term_list")
         self.__check_if_vars_in_list_not_defined(tree.children[1])
 
-    def rgx_ie_relation(self, tree):
-        assert_correct_node(tree, "rgx_ie_relation", 3, "term_list", "term_list", "var_name")
-        self.__check_if_vars_in_list_not_defined(tree.children[0])
-        self.__check_if_vars_in_list_not_defined(tree.children[1])
-        self.__check_if_var_not_defined(tree.children[2])
-
-    def func_ie_relation(self, tree):
-        assert_correct_node(tree, "func_ie_relation", 3, "function_name", "term_list", "term_list")
+    def ie_relation(self, tree):
+        assert_correct_node(tree, "ie_relation", 3, "relation_name", "term_list", "term_list")
         self.__check_if_vars_in_list_not_defined(tree.children[1])
         self.__check_if_vars_in_list_not_defined(tree.children[2])
+
+
+class CheckFilesInterpreter(Interpreter):
+    """
+    A lark tree semantic check.
+    checks for existence and access to external documents
+    """
+
+    def __init__(self, **kw):
+        super().__init__()
+        self.symbol_table = kw['symbol_table']
+        self.var_name_to_value = dict()
+
+    def assignment(self, tree):
+        value_node = tree.children[1]
+        value_type = value_node.data
+        assert_correct_node(tree, "assignment", 2, "var_name", value_type)
+        if value_type == "var_name":
+            right_var_name = value_node.children[0]
+            if self.symbol_table.contains_variable(right_var_name):
+                value = self.symbol_table.get_variable_value(right_var_name)
+            elif right_var_name in self.var_name_to_value:
+                value = self.var_name_to_value[right_var_name]
+            else:
+                assert 0
+        else:
+            value = value_node.children[0]
+        left_var_name = tree.children[0].children[0]
+        self.var_name_to_value[left_var_name] = value
+
+    def read_assignment(self, tree):
+        read_param_node = tree.children[1]
+        read_param_type = read_param_node.data
+        assert_correct_node(tree, "read_assignment", 2, "var_name", read_param_type)
+        assert_correct_node(read_param_node, read_param_type, 1)
+        read_param = read_param_node.children[0]
+        if read_param_type == "var_name":
+            if read_param in self.var_name_to_value:
+                read_param = self.var_name_to_value[read_param]
+            elif self.symbol_table.contains_variable(read_param):
+                read_param = self.symbol_table.get_variable_value(read_param)
+            else:
+                assert 0
+        assert_correct_node(tree.children[0], "var_name", 1)
+        left_var_name = tree.children[0].children[0]
+        try:
+            file = open(read_param, 'r')
+            self.var_name_to_value[left_var_name] = file.read()
+            file.close()
+        except Exception:
+            raise Exception("couldn't open file")
+
+
+class CheckReservedRelationNames(Interpreter):
+    """
+    A lark tree semantic check.
+    Checks if there are relations in the program with a name that starts with "__rgxlog__"
+    if such relations exist, throw an exception as this is a reserved name for rgxlog.
+    """
+
+    def __init__(self, **kw):
+        super().__init__()
+
+    @staticmethod
+    def relation_name(tree):
+        assert_correct_node(tree, "relation_name", 1)
+        name = tree.children[0]
+        if name.startswith("__rgxlog__"):
+            raise Exception("names starting with __rgxlog__ cannot be used")
 
 
 class CheckReferencedRelationsInterpreter(Interpreter):
@@ -147,7 +202,7 @@ class CheckReferencedRelationsInterpreter(Interpreter):
     Also checks if the relation reference uses the correct arity.
     """
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__()
         self.relation_name_to_arity = dict()
 
@@ -215,19 +270,19 @@ class CheckReferencedIERelationsVisitor(Visitor_Recursive):
     """
     A lark tree semantic check.
     checks whether each ie relation reference refers to a defined ie function.
-    Also checks if the ie relation reference uses the correct arity for the ie function.
     """
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__()
 
-    def func_ie_relation(self, tree):
-        assert_correct_node(tree, "func_ie_relation", 3, "function_name", "term_list", "term_list")
-        # TODO
-
-    def rgx_ie_relation(self, tree):
-        assert_correct_node(tree, "rgx_ie_relation", 3, "term_list", "term_list", "var_name")
-        # TODO
+    @staticmethod
+    def ie_relation(tree):
+        assert_correct_node(tree, "ie_relation", 3, "relation_name", "term_list", "term_list")
+        ie_func_name = tree.children[0].children[0]
+        try:
+            getattr(ie_functions, ie_func_name)
+        except Exception:
+            raise Exception("can't find ie function")
 
 
 class CheckRuleSafetyVisitor(Visitor_Recursive):
@@ -262,7 +317,7 @@ class CheckRuleSafetyVisitor(Visitor_Recursive):
     safe relation.
     """
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__()
 
     @staticmethod
@@ -279,23 +334,21 @@ class CheckRuleSafetyVisitor(Visitor_Recursive):
         if relation_node.data == "relation":
             assert_correct_node(relation_node, "relation", 2, "relation_name", "term_list")
             return set()  # normal relations don't have an input
-        elif relation_node.data == "func_ie_relation":
-            assert_correct_node(relation_node, "func_ie_relation", 3, "function_name", "term_list", "term_list")
+        elif relation_node.data == "ie_relation":
+            assert_correct_node(relation_node, "ie_relation", 3, "relation_name", "term_list", "term_list")
             return self.__get_set_of_free_var_names(relation_node.children[1])
         else:
-            assert_correct_node(relation_node, "rgx_ie_relation", 3, "term_list", "term_list", "var_name")
-            return self.__get_set_of_free_var_names(relation_node.children[0])
+            assert 0
 
     def __get_set_of_output_free_var_names(self, relation_node):
         if relation_node.data == "relation":
             assert_correct_node(relation_node, "relation", 2, "relation_name", "term_list")
             return self.__get_set_of_free_var_names(relation_node.children[1])
-        elif relation_node.data == "func_ie_relation":
-            assert_correct_node(relation_node, "func_ie_relation", 3, "function_name", "term_list", "term_list")
+        elif relation_node.data == "ie_relation":
+            assert_correct_node(relation_node, "ie_relation", 3, "relation_name", "term_list", "term_list")
             return self.__get_set_of_free_var_names(relation_node.children[2])
         else:
-            assert_correct_node(relation_node, "rgx_ie_relation", 3, "term_list", "term_list", "var_name")
-            return self.__get_set_of_free_var_names(relation_node.children[1])
+            assert 0
 
     def rule(self, tree):
         assert_correct_node(tree, "rule", 2, "rule_head", "rule_body")
@@ -323,22 +376,89 @@ class CheckRuleSafetyVisitor(Visitor_Recursive):
         # initialize assuming every relation is unsafe and every free variable is unbound
         safe_relation_indexes = set()
         bound_free_vars = set()
-        found_safe_relation_in_cur_iter = True
-        while len(safe_relation_indexes) != len(rule_body_relations) \
-                and found_safe_relation_in_cur_iter:
-            found_safe_relation_in_cur_iter = False
+        found_safe_relation = True
+        while len(safe_relation_indexes) != len(rule_body_relations) and found_safe_relation:
+            found_safe_relation = False
             for idx, relation_node in enumerate(rule_body_relations):
                 if idx not in safe_relation_indexes:
                     input_free_vars = self.__get_set_of_input_free_var_names(relation_node)
                     unbound_free_vars = input_free_vars.difference(bound_free_vars)
                     if not unbound_free_vars:
                         # relation is safe, mark all of its output variables as bound
-                        found_safe_relation_in_cur_iter = True
+                        found_safe_relation = True
                         output_free_vars = self.__get_set_of_output_free_var_names(relation_node)
                         bound_free_vars = bound_free_vars.union(output_free_vars)
                         safe_relation_indexes.add(idx)
         if len(safe_relation_indexes) != len(rule_body_relations):
             raise Exception
+
+
+class ReorderRuleBodyVisitor(Visitor_Recursive):
+    """
+    Reorders each rule body so that each relation in the rule body has its input free variables bound by
+    the relations to its right.
+    """
+
+    def __init__(self, **kw):
+        super().__init__()
+
+    @staticmethod
+    def __get_set_of_free_var_names(list_node):
+        assert list_node.data in NODES_OF_LIST_WITH_FREE_VAR_NAMES
+        free_var_names = set()
+        for term_node in list_node.children:
+            if term_node.data == "free_var_name":
+                assert_correct_node(term_node, "free_var_name", 1)
+                free_var_names.add(term_node.children[0])
+        return free_var_names
+
+    def __get_set_of_input_free_var_names(self, relation_node):
+        if relation_node.data == "relation":
+            assert_correct_node(relation_node, "relation", 2, "relation_name", "term_list")
+            return set()  # normal relations don't have an input
+        elif relation_node.data == "ie_relation":
+            assert_correct_node(relation_node, "ie_relation", 3, "relation_name", "term_list", "term_list")
+            return self.__get_set_of_free_var_names(relation_node.children[1])
+        else:
+            assert 0
+
+    def __get_set_of_output_free_var_names(self, relation_node):
+        if relation_node.data == "relation":
+            assert_correct_node(relation_node, "relation", 2, "relation_name", "term_list")
+            return self.__get_set_of_free_var_names(relation_node.children[1])
+        elif relation_node.data == "ie_relation":
+            assert_correct_node(relation_node, "ie_relation", 3, "relation_name", "term_list", "term_list")
+            return self.__get_set_of_free_var_names(relation_node.children[2])
+        else:
+            assert 0
+
+    def rule(self, tree):
+        assert_correct_node(tree, "rule", 2, "rule_head", "rule_body")
+        assert_correct_node(tree.children[1], "rule_body", 1, "rule_body_relation_list")
+        rule_body_relation_list_node = tree.children[1].children[0]
+        assert_correct_node(rule_body_relation_list_node, "rule_body_relation_list")
+        rule_body_relations = rule_body_relation_list_node.children
+        # initialize assuming every relation is unsafe and every free variable is unbound
+        reordered_relations = []
+        reordered_relations_idx = set()
+        bound_free_vars = set()
+        found_safe_relation = True
+        while len(reordered_relations) != len(rule_body_relations) and found_safe_relation:
+            found_safe_relation = False
+            for idx, relation_node in enumerate(rule_body_relations):
+                if idx not in reordered_relations_idx:
+                    input_free_vars = self.__get_set_of_input_free_var_names(relation_node)
+                    unbound_free_vars = input_free_vars.difference(bound_free_vars)
+                    if not unbound_free_vars:
+                        # relation is safe, mark all of its output variables as bound
+                        found_safe_relation = True
+                        output_free_vars = self.__get_set_of_output_free_var_names(relation_node)
+                        bound_free_vars = bound_free_vars.union(output_free_vars)
+                        reordered_relations_idx.add(idx)
+                        reordered_relations.append(relation_node)
+        if len(reordered_relations) != len(rule_body_relations):
+            raise Exception
+        rule_body_relation_list_node.children = reordered_relations
 
 
 class TypeCheckingInterpreter(Interpreter):
@@ -358,48 +478,37 @@ class TypeCheckingInterpreter(Interpreter):
     C(X) <- A(X), B(X) # error since X is expected to be both an int and a string
     """
 
-    def __init__(self):
+    def __init__(self, **kw):
         super().__init__()
-        self.var_name_to_type = dict()
-        self.relation_name_to_schema = dict()
+        self.symbol_table = kw['symbol_table']
 
-    def __add_var_type(self, var_name_node, var_type: VarTypes):
+    def __add_var_type(self, var_name_node, var_type: DataTypes):
         assert_correct_node(var_name_node, "var_name", 1)
         var_name = var_name_node.children[0]
-        self.var_name_to_type[var_name] = var_type
+        self.symbol_table.set_variable_type(var_name, var_type)
 
     def __get_var_type(self, var_name_node):
         assert_correct_node(var_name_node, "var_name", 1)
         var_name = var_name_node.children[0]
-        assert var_name in self.var_name_to_type
-        return self.var_name_to_type[var_name]
+        return self.symbol_table.get_variable_type(var_name)
 
     def __add_relation_schema(self, relation_name_node, relation_schema):
         assert_correct_node(relation_name_node, "relation_name", 1)
         relation_name = relation_name_node.children[0]
-        assert relation_name not in self.relation_name_to_schema
-        self.relation_name_to_schema[relation_name] = relation_schema
+        self.symbol_table.set_relation_schema(relation_name, relation_schema)
 
     def __get_relation_schema(self, relation_name_node):
         assert_correct_node(relation_name_node, "relation_name", 1)
         relation_name = relation_name_node.children[0]
-        assert relation_name in self.relation_name_to_schema
-        return self.relation_name_to_schema[relation_name]
+        return self.symbol_table.get_relation_schema(relation_name)
 
-    def __get_const_term_type(self, const_term_node):
+    def __get_const_value_type(self, const_term_node):
         term_type = const_term_node.data
-        if term_type == "string":
-            return VarTypes.STRING
-        elif term_type == "span":
-            return VarTypes.SPAN
-        elif term_type == "integer":
-            return VarTypes.INT
-        elif term_type == "var_name":
+        if term_type == "var_name":
             assert_correct_node(const_term_node, "var_name", 1)
             return self.__get_var_type(const_term_node)
         else:
-            # do not allow for term type of "free_var_name" as it is not a constant
-            assert 0
+            return get_datatype_enum(term_type)
 
     def __get_term_types_list(self, term_list_node: Tree, free_var_mapping: dict = None,
                               relation_name_node: Tree = None):
@@ -409,7 +518,7 @@ class TypeCheckingInterpreter(Interpreter):
         :param term_list_node: node of a list of terms (e.g. terms used when declaring a fact).
         :param free_var_mapping: when encountering a free variable, get its type from this mapping.
         :param relation_name_node: when encountering a free variable, get its type from the schema of this relation.
-        :return: a list of the term types
+        :return: a list of the term types nb
         """
         assert term_list_node.data in NODES_OF_TERM_LISTS
         term_nodes = term_list_node.children
@@ -430,32 +539,16 @@ class TypeCheckingInterpreter(Interpreter):
                 else:
                     assert 0
             else:
-                term_types.append(self.__get_const_term_type(term_node))
+                term_types.append(self.__get_const_value_type(term_node))
         return term_types
 
-    def assign_literal_string(self, tree):
-        assert_correct_node(tree, "assign_literal_string", 2, "var_name", "string")
-        self.__add_var_type(tree.children[0], VarTypes.STRING)
+    def assignment(self, tree):
+        assert_correct_node(tree, "assignment", 2, "var_name", tree.children[1].data)
+        self.__add_var_type(tree.children[0], self.__get_const_value_type(tree.children[1]))
 
-    def assign_string_from_file_string_param(self, tree):
-        assert_correct_node(tree, "assign_string_from_file_string_param", 2, "var_name", "string")
-        self.__add_var_type(tree.children[0], VarTypes.STRING)
-
-    def assign_string_from_file_var_param(self, tree):
-        assert_correct_node(tree, "assign_string_from_file_var_param", 2, "var_name", "var_name")
-        self.__add_var_type(tree.children[0], VarTypes.STRING)
-
-    def assign_span(self, tree):
-        assert_correct_node(tree, "assign_span", 2, "var_name", "span")
-        self.__add_var_type(tree.children[0], VarTypes.SPAN)
-
-    def assign_int(self, tree):
-        assert_correct_node(tree, "assign_int", 2, "var_name", "integer")
-        self.__add_var_type(tree.children[0], VarTypes.INT)
-
-    def assign_var(self, tree):
-        assert_correct_node(tree, "assign_var", 2, "var_name", "var_name")
-        self.__add_var_type(tree.children[0], self.__get_var_type(tree.children[1]))
+    def read_assignment(self, tree):
+        assert_correct_node(tree, "read_assignment", 2, "var_name", tree.children[1].data)
+        self.__add_var_type(tree.children[0], DataTypes.STRING)
 
     def relation_declaration(self, tree):
         assert_correct_node(tree, "relation_declaration", 2, "relation_name", "decl_term_list")
@@ -464,11 +557,11 @@ class TypeCheckingInterpreter(Interpreter):
         declared_schema = []
         for term_node in decl_term_list_node.children:
             if term_node.data == "decl_string":
-                declared_schema.append(VarTypes.STRING)
+                declared_schema.append(DataTypes.STRING)
             elif term_node.data == "decl_span":
-                declared_schema.append(VarTypes.SPAN)
+                declared_schema.append(DataTypes.SPAN)
             elif term_node.data == "decl_int":
-                declared_schema.append(VarTypes.INT)
+                declared_schema.append(DataTypes.INT)
             else:
                 assert 0
         self.__add_relation_schema(tree.children[0], declared_schema)
@@ -529,7 +622,7 @@ class TypeCheckingInterpreter(Interpreter):
                     # free var does not currently have a type, map it to the correct type
                     free_var_to_type[free_var] = correct_type
             else:
-                term_type = self.__get_const_term_type(term_node)
+                term_type = self.__get_const_value_type(term_node)
                 if term_type != correct_type:
                     # term is not properly typed
                     raise Exception
@@ -539,7 +632,6 @@ class TypeCheckingInterpreter(Interpreter):
         assert_correct_node(tree.children[0], "rule_head", 2, "relation_name", "free_var_name_list")
         assert_correct_node(tree.children[1], "rule_body", 1, "rule_body_relation_list")
         rule_head_name_node = tree.children[0].children[0]
-        assert rule_head_name_node.children[0] not in self.relation_name_to_schema
         rule_head_term_list_node = tree.children[0].children[1]
         rule_body_relation_list_node = tree.children[1].children[0]
         assert_correct_node(rule_head_name_node, "relation_name", 1)
@@ -555,12 +647,20 @@ class TypeCheckingInterpreter(Interpreter):
                 term_list_node = relation_node.children[1]
                 schema = self.__get_relation_schema(relation_name_node)
                 self.__type_check_rule_body_term_list(term_list_node, schema, free_var_to_type)
-            elif relation_node.data == "func_ie_relation":
-                assert_correct_node(relation_node, "func_ie_relation", 3, "function_name", "term_list", "term_list")
-                # TODO
+            elif relation_node.data == "ie_relation":
+                assert_correct_node(relation_node, "ie_relation", 3, "relation_name", "term_list", "term_list")
+                ie_func_name = relation_node.children[0].children[0]
+                input_term_list_node = relation_node.children[1]
+                output_term_list_node = relation_node.children[2]
+                ie_func_data = getattr(ie_functions, ie_func_name)
+                input_schema = ie_func_data.get_input_types()
+                output_schema = ie_func_data.get_output_types(len(output_term_list_node.children))
+                if output_schema is None:
+                    raise Exception("invalid output arity")
+                self.__type_check_rule_body_term_list(input_term_list_node, input_schema, free_var_to_type)
+                self.__type_check_rule_body_term_list(output_term_list_node, output_schema, free_var_to_type)
             else:
-                assert_correct_node(relation_node, "rgx_ie_relation", 3, "term_list", "term_list", "var_name")
-                # TODO
+                assert 0
 
         # no issues were found, add the new schema to the schema dict
         rule_head_schema = []
@@ -570,5 +670,4 @@ class TypeCheckingInterpreter(Interpreter):
             assert free_var_name in free_var_to_type
             var_type = free_var_to_type[free_var_name]
             rule_head_schema.append(var_type)
-        rule_head_name = rule_head_name_node.children[0]
-        self.relation_name_to_schema[rule_head_name] = rule_head_schema
+        self.__add_relation_schema(rule_head_name_node, rule_head_schema)
