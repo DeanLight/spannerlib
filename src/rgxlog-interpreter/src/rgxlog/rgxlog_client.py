@@ -64,28 +64,30 @@ class Client:
         """
         Establish a connection to the server
         """
-        if not self.connected:
-            logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+        if self.connected:
+            return
 
-            connection_retries = system_configuration['default_local_client_config']['connection_retries']
-            sleep_between_retries = system_configuration['default_local_client_config']['retry_sleep']
+        logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
-            last_retry = connection_retries - 1
-            for retry_number in range(connection_retries):
-                try:
-                    self._connection = Client_((self._remote_ip, self._remote_port))
-                    break
-                except (ConnectionRefusedError, OSError):
-                    logging.warning(f'client connection to {self._remote_ip}:{self._remote_port} refused')
-                    if retry_number != last_retry:
-                        sleep(sleep_between_retries)
-                        logging.info(f'client retrying connection')
+        connection_retries = system_configuration['default_local_client_config']['connection_retries']
+        sleep_between_retries = system_configuration['default_local_client_config']['retry_sleep']
 
-            if self._connection is None:
-                logging.error('client could not connect to listener')
-            else:
-                logging.info(f'client connected to {self._remote_ip}:{self._remote_port}')
-                self.connected = True
+        last_retry = connection_retries - 1
+        for retry_number in range(connection_retries):
+            try:
+                self._connection = Client_((self._remote_ip, self._remote_port))
+                break
+            except (ConnectionRefusedError, OSError):
+                logging.warning(f'client connection to {self._remote_ip}:{self._remote_port} refused')
+                if retry_number != last_retry:
+                    sleep(sleep_between_retries)
+                    logging.info(f'client retrying connection')
+
+        if self._connection is None:
+            logging.error('client could not connect to listener')
+        else:
+            logging.info(f'client connected to {self._remote_ip}:{self._remote_port}')
+            self.connected = True
 
     def disconnect(self):
         """
