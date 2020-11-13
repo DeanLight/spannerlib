@@ -86,9 +86,20 @@ class PydatalogEngine(DatalogEngineBase):
         self.new_temp_relation_idx = 0
         self.debug = debug
 
-    def __get_new_temp_relation_name(self):
+    def __create_new_temp_relation(self, arity):
+        """
+        creates a new temporary relation
+        Args:
+            arity: the temporary relation's arity (needed for declaration)
+
+        Returns: the new temporary relation's name
+
+        """
         temp_relation_name = "__rgxlog__" + str(self.new_temp_relation_idx)
         self.new_temp_relation_idx += 1
+        # in pyDatalog there's no typechecking so we can put anything we want in the schema
+        declaration = RelationDeclaration(temp_relation_name, [DataTypes.FREE_VAR] * arity)
+        self.declare_relation(declaration)
         return temp_relation_name
 
     def __extract_temp_relation(self, relations: list) -> Relation:
@@ -97,7 +108,6 @@ class PydatalogEngine(DatalogEngineBase):
         relation.
         for example: for input relation A(X,Y,X), B("b",3,W) we'll get some_temp(X,Y,W)
         """
-        temp_relation_name = self.__get_new_temp_relation_name()
         temp_relation_terms = []
         for relation in relations:
             for idx, term in enumerate(relation.terms):
@@ -105,6 +115,7 @@ class PydatalogEngine(DatalogEngineBase):
                     # if the term is a free variable and is not in the temp relation terms already, add it as a term.
                     temp_relation_terms.append(term)
         temp_relation_types = [DataTypes.FREE_VAR] * len(temp_relation_terms)
+        temp_relation_name = self.__create_new_temp_relation(len(temp_relation_terms))
         return Relation(temp_relation_name, temp_relation_terms, temp_relation_types)
 
     def declare_relation(self, declaration: RelationDeclaration):
@@ -119,7 +130,6 @@ class PydatalogEngine(DatalogEngineBase):
                 temp_fact += ", "
         temp_fact += ")"
         if self.debug:
-            print("(the following 'add fact' and 'remove fact' are loaded in order to declare a relation)")
             print("+" + temp_fact)
             print("-" + temp_fact)
         pyDatalog.load("+" + temp_fact)
@@ -159,12 +169,19 @@ class PydatalogEngine(DatalogEngineBase):
 
     def compute_rule_body_ie_relation(self, ie_relation: IERelation, ie_func_data: IEFunctionData,
                                       bounding_relation: Relation):
-        input_relation = Relation(self.__get_new_temp_relation_name(), ie_relation.input_terms,
-                                  ie_relation.input_term_types)
-        output_relation = Relation(self.__get_new_temp_relation_name(), ie_relation.output_terms,
-                                   ie_relation.output_term_types)
-        # extract the input into an input relation.
-        self.add_rule(input_relation, [bounding_relation])
+        input_relation_name = self.__create_new_temp_relation(len(ie_relation.input_terms))
+        output_relation_name = self.__create_new_temp_relation(len(ie_relation.output_terms))
+        input_relation = Relation(input_relation_name, ie_relation.input_terms, ie_relation.input_term_types)
+        output_relation = Relation(output_relation_name, ie_relation.output_terms, ie_relation.output_term_types)
+        if bounding_relation is None:
+            # special case where the ie relation is the first rule body relation
+            for input_term_type in ie_relation.input_term_types:
+                # check if the relation is not bounded, should never happen
+                assert input_term_type != DataTypes.FREE_VAR
+            self.add_fact(Relation(input_relation.name, ie_relation.input_terms, ie_relation.input_term_types))
+        else:
+            # extract the input into an input relation.
+            self.add_rule(input_relation, [bounding_relation])
         # get a list of input tuples. to get them we query pyDatalog using the input relation name, and all
         # of the terms will be free variables (so we get the whole tuple)
         query_str = input_relation.name + "("
@@ -320,15 +337,20 @@ class NetworkxExecution(ExecutionBase):
                             temp_result = self.datalog_engine.aggregate_relations_to_temp_relation(
                                 [temp_result, term_graph.nodes[relation_node]['value']])
                     elif term_graph.nodes[relation_node]['type'] == 'ie_relation':
-                        assert temp_result is not None
                         ie_func_data = getattr(ie_functions, relation_value.name)
                         term_graph.nodes[relation_node]['value'] = self.datalog_engine.compute_rule_body_ie_relation(
                             relation_value, ie_func_data, temp_result)
-                        temp_result = self.datalog_engine.aggregate_relations_to_temp_relation(
-                            [temp_result, term_graph.nodes[relation_node]['value']])
+                        if temp_result is not None:
+                            temp_result = self.datalog_engine.aggregate_relations_to_temp_relation(
+                                [temp_result, term_graph.nodes[relation_node]['value']])
+                        else:
+                            temp_result = term_graph.nodes[relation_node]['value']
                         term_graph.nodes[relation_node]['state'] = EvalState.COMPUTED
                     else:
                         assert 0
                 rule_head_value = term_graph.nodes[rule_head_node]['value']
+                rule_head_declaration = RelationDeclaration(rule_head_value.name,
+                                                            self.symbol_table.get_relation_schema(rule_head_value.name))
+                self.datalog_engine.declare_relation(rule_head_declaration)
                 self.datalog_engine.add_rule(rule_head_value, [temp_result])
             term_graph.nodes[node]['state'] = EvalState.COMPUTED
