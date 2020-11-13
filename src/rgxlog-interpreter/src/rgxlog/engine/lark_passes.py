@@ -523,10 +523,12 @@ class TypeCheckingInterpreter(Interpreter):
         """
         get a list of the term types. The optional variables determine what type is assigned to a free
         variable, one and only one of them should be used.
-        :param term_list_node: node of a list of terms (e.g. terms used when declaring a fact).
-        :param free_var_mapping: when encountering a free variable, get its type from this mapping.
-        :param relation_name_node: when encountering a free variable, get its type from the schema of this relation.
-        :return: a list of the term types nb
+        Args:
+            term_list_node: node of a list of terms (e.g. terms used when declaring a fact).
+            free_var_mapping: when encountering a free variable, get its type from this mapping.
+            relation_name_node: when encountering a free variable, get its type from the schema of this relation.
+
+        Returns: a list of the term types nb
         """
         assert term_list_node.data in NODES_OF_TERM_LISTS
         term_nodes = term_list_node.children
@@ -608,10 +610,10 @@ class TypeCheckingInterpreter(Interpreter):
         """
         checks if a rule body relation is properly typed
         also checks for conflicting free variables
-        :param term_list_node: the term list of a rule body relation
-        :param correct_types: a list of the types that the terms in the term list should have
-        :param free_var_to_type: a mapping of free variables to their type (those that are currently known)
-        :return:
+        Args:
+            term_list_node: the term list of a rule body relation
+            correct_types: a list of the types that the terms in the term list should have
+            free_var_to_type: a mapping of free variables to their type (those that are currently known)
         """
         assert term_list_node.data in NODES_OF_RULE_BODY_TERM_LISTS
         assert len(term_list_node.children) == len(correct_types)

@@ -44,14 +44,18 @@ class DatalogEngineBase(ABC):
     @abstractmethod
     def compute_rule_body_ie_relation(self, ie_relation, ie_func_data, bounding_relation):
         """
+        computes a rule body ie relation
         since ie relations may have input free variables, we need to use another relation to determine the inputs
         for ie_relation. Each free variable that appears as an ie_relation input term must appear at least once in the
         bounding_relation terms.
-        :param ie_relation: a relation that determines the input and output terms of the ie function
-        :param ie_func_data: the data for the ie function
-        :param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
-        extracted from it
-        :return: resulting relation
+        Should the ie relation not have any input free variables, bounding_relation can be None
+        Args:
+            ie_relation: a relation that determines the input and output terms of the ie function
+            ie_func_data: the data for the ie function
+            bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
+            extracted from it
+
+        Returns: resulting relation
         """
         pass
 
@@ -79,7 +83,8 @@ class PydatalogEngine(DatalogEngineBase):
 
     def __init__(self, debug=False):
         """
-        :param debug: print the commands that are loaded into pyDatalog
+        Args:
+            debug: print the commands that are loaded into pyDatalog
         """
         super().__init__()
         self.temp_relations = dict()
@@ -93,7 +98,6 @@ class PydatalogEngine(DatalogEngineBase):
             arity: the temporary relation's arity (needed for declaration)
 
         Returns: the new temporary relation's name
-
         """
         temp_relation_name = "__rgxlog__" + str(self.new_temp_relation_idx)
         self.new_temp_relation_idx += 1
