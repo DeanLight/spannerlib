@@ -283,10 +283,14 @@ class CheckReferencedIERelationsVisitor(Visitor_Recursive):
     def ie_relation(tree):
         assert_correct_node(tree, "ie_relation", 3, "relation_name", "term_list", "term_list")
         ie_func_name = tree.children[0].children[0]
+        ie_func_input_arity = len(tree.children[1].children)
         try:
-            getattr(ie_functions, ie_func_name)
+            ie_function_data = getattr(ie_functions, ie_func_name)
         except Exception:
             raise Exception("can't find ie function")
+        correct_arity = len(ie_function_data.get_input_types())
+        if ie_func_input_arity != correct_arity:
+            raise Exception("incorrect input arity")
 
 
 class CheckRuleSafetyVisitor(Visitor_Recursive):
