@@ -114,8 +114,8 @@ class PydatalogEngine(DatalogEngineBase):
         """
         temp_relation_terms = []
         for relation in relations:
-            for idx, term in enumerate(relation.terms):
-                if relation.term_types[idx] == DataTypes.FREE_VAR and term not in temp_relation_terms:
+            for idx, term in enumerate(relation.term_list):
+                if relation.type_list[idx] == DataTypes.FREE_VAR and term not in temp_relation_terms:
                     # if the term is a free variable and is not in the temp relation terms already, add it as a term.
                     temp_relation_terms.append(term)
         temp_relation_types = [DataTypes.FREE_VAR] * len(temp_relation_terms)

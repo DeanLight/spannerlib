@@ -47,24 +47,31 @@ class IEFunctionData(ABC):
 
 
 class RGX(IEFunctionData):
+    """
+    Performs a regex information extraction.
+    Results are tuples of spans
+    """
 
     def __init__(self):
         super().__init__()
 
     @staticmethod
     def ie_function(text, regex_formula):
+        """
+        Args:
+            text: The input text for the regex operation
+            regex_formula: the formula of the regex operation
+
+        Returns: tuples of spans that represents the results
+        """
         compiled_rgx = re.compile(regex_formula)
         num_groups = compiled_rgx.groups
-        ret = []
         for match in re.finditer(compiled_rgx, text):
-            cur_tuple = []
             if num_groups == 0:
-                cur_tuple.append(match.span())
+                matched_spans = [match.span()]
             else:
-                for i in range(1, num_groups + 1):
-                    cur_tuple.append(match.span(i))
-            ret.append(cur_tuple)
-        return ret
+                matched_spans = [match.span(i) for i in range(1, num_groups + 1)]
+            yield matched_spans
 
     @staticmethod
     def get_input_types():
@@ -76,24 +83,31 @@ class RGX(IEFunctionData):
 
 
 class RGXString(IEFunctionData):
+    """
+    Performs a regex information extraction.
+    Results are tuples of strings
+    """
 
     def __init__(self):
         super().__init__()
 
     @staticmethod
     def ie_function(text, regex_formula):
+        """
+        Args:
+            text: The input text for the regex operation
+            regex_formula: the formula of the regex operation
+
+        Returns: tuples of strings that represents the results
+        """
         compiled_rgx = re.compile(regex_formula)
         num_groups = compiled_rgx.groups
-        ret = []
         for match in re.finditer(compiled_rgx, text):
-            cur_tuple = []
             if num_groups == 0:
-                cur_tuple.append(match.group())
+                matched_strings = [match.group()]
             else:
-                for i in range(1, num_groups + 1):
-                    cur_tuple.append(match.group(i))
-            ret.append(cur_tuple)
-        return ret
+                matched_strings = [group for group in match.groups()]
+            yield matched_strings
 
     @staticmethod
     def get_input_types():
