@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from rgxlog.engine.datatypes import get_datatype_string
 
 
 class SymbolTableBase(ABC):
@@ -55,12 +54,12 @@ class SymbolTableBase(ABC):
     def __str__(self):
         ret = 'Variable\tType\tValue'
         for name, var_type, var_value in self.get_all_variables():
-            ret += f'\n{name}\t{get_datatype_string(var_type)}\t{var_value}'
+            ret += f'\n{name}\t{var_type.to_string()}\t{var_value}'
         ret += '\nRelation\tSchema'
         for relation, schema in self.get_all_relations():
             ret += f'\n{relation}\t('
             for idx, term_type in enumerate(schema):
-                ret += get_datatype_string(term_type)
+                ret += term_type.to_string()
                 if idx < len(schema) - 1:
                     ret += ", "
             ret += ")"

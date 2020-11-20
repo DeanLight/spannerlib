@@ -75,11 +75,11 @@ class RGX(IEFunctionData):
 
     @staticmethod
     def get_input_types():
-        return DataTypes.STRING, DataTypes.STRING
+        return DataTypes.string, DataTypes.string
 
     @staticmethod
     def get_output_types(output_arity):
-        return tuple([DataTypes.SPAN] * output_arity)
+        return tuple([DataTypes.span] * output_arity)
 
 
 class RGXString(IEFunctionData):
@@ -111,8 +111,8 @@ class RGXString(IEFunctionData):
 
     @staticmethod
     def get_input_types():
-        return DataTypes.STRING, DataTypes.STRING
+        return DataTypes.string, DataTypes.string
 
     @staticmethod
     def get_output_types(output_arity):
-        return tuple([DataTypes.STRING] * output_arity)
+        return tuple([DataTypes.string] * output_arity)

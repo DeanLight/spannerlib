@@ -1,6 +1,6 @@
 from lark import Transformer, v_args, Tree
 from lark.visitors import Interpreter, Visitor_Recursive
-from rgxlog.engine.datatypes import DataTypes, get_datatype_enum
+from rgxlog.engine.datatypes import DataTypes
 import rgxlog.engine.ie_functions as ie_functions
 
 NODES_OF_LIST_WITH_VAR_NAMES = {"term_list", "const_term_list"}
@@ -516,7 +516,7 @@ class TypeCheckingInterpreter(Interpreter):
             assert_correct_node(const_term_node, "var_name", 1)
             return self.__get_var_type(const_term_node)
         else:
-            return get_datatype_enum(term_type)
+            return DataTypes.from_string(term_type)
 
     def __get_term_types_list(self, term_list_node: Tree, free_var_mapping: dict = None,
                               relation_name_node: Tree = None):
@@ -558,7 +558,7 @@ class TypeCheckingInterpreter(Interpreter):
 
     def read_assignment(self, tree):
         assert_correct_node(tree, "read_assignment", 2, "var_name", tree.children[1].data)
-        self.__add_var_type(tree.children[0], DataTypes.STRING)
+        self.__add_var_type(tree.children[0], DataTypes.string)
 
     def relation_declaration(self, tree):
         assert_correct_node(tree, "relation_declaration", 2, "relation_name", "decl_term_list")
@@ -567,11 +567,11 @@ class TypeCheckingInterpreter(Interpreter):
         declared_schema = []
         for term_node in decl_term_list_node.children:
             if term_node.data == "decl_string":
-                declared_schema.append(DataTypes.STRING)
+                declared_schema.append(DataTypes.string)
             elif term_node.data == "decl_span":
-                declared_schema.append(DataTypes.SPAN)
+                declared_schema.append(DataTypes.span)
             elif term_node.data == "decl_int":
-                declared_schema.append(DataTypes.INT)
+                declared_schema.append(DataTypes.int)
             else:
                 assert 0
         self.__add_relation_schema(tree.children[0], declared_schema)

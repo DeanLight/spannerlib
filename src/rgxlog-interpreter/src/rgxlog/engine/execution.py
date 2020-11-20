@@ -102,7 +102,7 @@ class PydatalogEngine(DatalogEngineBase):
         temp_relation_name = "__rgxlog__" + str(self.new_temp_relation_idx)
         self.new_temp_relation_idx += 1
         # in pyDatalog there's no typechecking so we can put anything we want in the schema
-        declaration = RelationDeclaration(temp_relation_name, [DataTypes.FREE_VAR] * arity)
+        declaration = RelationDeclaration(temp_relation_name, [DataTypes.free_var_name] * arity)
         self.declare_relation(declaration)
         return temp_relation_name
 
@@ -115,10 +115,10 @@ class PydatalogEngine(DatalogEngineBase):
         temp_relation_terms = []
         for relation in relations:
             for idx, term in enumerate(relation.term_list):
-                if relation.type_list[idx] == DataTypes.FREE_VAR and term not in temp_relation_terms:
+                if relation.type_list[idx] == DataTypes.free_var_name and term not in temp_relation_terms:
                     # if the term is a free variable and is not in the temp relation terms already, add it as a term.
                     temp_relation_terms.append(term)
-        temp_relation_types = [DataTypes.FREE_VAR] * len(temp_relation_terms)
+        temp_relation_types = [DataTypes.free_var_name] * len(temp_relation_terms)
         temp_relation_name = self.__create_new_temp_relation(len(temp_relation_terms))
         return Relation(temp_relation_name, temp_relation_terms, temp_relation_types)
 
@@ -181,7 +181,7 @@ class PydatalogEngine(DatalogEngineBase):
             # special case where the ie relation is the first rule body relation
             for input_term_type in ie_relation.input_type_list:
                 # check if the relation is not bounded, should never happen
-                assert input_term_type != DataTypes.FREE_VAR
+                assert input_term_type != DataTypes.free_var_name
             self.add_fact(Relation(input_relation.name, ie_relation.input_term_list, ie_relation.input_type_list))
         else:
             # extract the input into an input relation.
@@ -206,11 +206,11 @@ class PydatalogEngine(DatalogEngineBase):
             actual_output_types = []
             for value in ie_output:
                 if isinstance(value, int):
-                    actual_output_types.append(DataTypes.INT)
+                    actual_output_types.append(DataTypes.int)
                 elif isinstance(value, str):
-                    actual_output_types.append(DataTypes.STRING)
+                    actual_output_types.append(DataTypes.string)
                 elif isinstance(value, tuple) and len(value) == 2:
-                    actual_output_types.append(DataTypes.SPAN)
+                    actual_output_types.append(DataTypes.span)
                 else:
                     raise Exception("invalid output type")
             if tuple(actual_output_types) != ie_output_types:
@@ -219,7 +219,7 @@ class PydatalogEngine(DatalogEngineBase):
         for i in range(len(ie_outputs)):
             ie_outputs[i] = list(ie_outputs[i])
             for j in range(len(ie_output_types)):
-                if ie_output_types[j] == DataTypes.SPAN:
+                if ie_output_types[j] == DataTypes.span:
                     span_tuple = ie_outputs[i][j]
                     assert len(span_tuple) == 2
                     ie_outputs[i][j] = Span(span_tuple[0], span_tuple[1])

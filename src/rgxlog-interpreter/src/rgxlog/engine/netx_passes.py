@@ -2,7 +2,7 @@ import networkx as nx
 from rgxlog.engine.custom_trees import NetxTree
 from abc import ABC, abstractmethod
 from rgxlog.engine.complex_values import Span, Relation, RelationDeclaration, IERelation
-from rgxlog.engine.datatypes import DataTypes, get_datatype_string, get_datatype_enum
+from rgxlog.engine.datatypes import DataTypes
 
 
 def assert_correct_node(netx_tree: NetxTree, node, node_name, len_children=None, *children_names):
@@ -74,7 +74,7 @@ class ResolveVariablesPass(NetxPass):
                 else:
                     value_node = list(netx_tree.successors(successors[1]))[0]
                     assigned_value = netx_tree.nodes[value_node]['value']
-                    assigned_type = get_datatype_enum(value_node_type)
+                    assigned_type = DataTypes.from_string(value_node_type)
                 self.symbol_table.set_variable_type(left_var_name, assigned_type)
                 self.symbol_table.set_variable_value(left_var_name, assigned_value)
             if data_attr[node] == "read_assignment":
@@ -92,7 +92,7 @@ class ResolveVariablesPass(NetxPass):
                 except Exception:
                     raise Exception("couldn't open file")
                 left_var_name = netx_tree.get_node_value(successors[0])
-                self.symbol_table.set_variable_type(left_var_name, DataTypes.STRING)
+                self.symbol_table.set_variable_type(left_var_name, DataTypes.string)
                 self.symbol_table.set_variable_value(left_var_name, assigned_value)
             if data_attr[node] in ["term_list", "const_term_list"]:
                 for term_node in list(netx_tree.successors(node)):
@@ -101,7 +101,7 @@ class ResolveVariablesPass(NetxPass):
                         var_name = netx_tree.get_node_value(term_node)
                         var_type = self.symbol_table.get_variable_type(var_name)
                         var_value = self.symbol_table.get_variable_value(var_name)
-                        netx_tree.nodes[term_node]['data'] = get_datatype_string(var_type)
+                        netx_tree.nodes[term_node]['data'] = var_type.to_string()
                         netx_tree.set_node_value(term_node, var_value)
         # can only remove nodes after the iteration
         for node in nodes_to_remove:
@@ -130,7 +130,7 @@ class SimplifyRelationsPass(NetxPass):
         types = []
         for term_node in term_nodes:
             node_type = netx_tree.nodes[term_node]['data']
-            types.append(get_datatype_enum(node_type))
+            types.append(DataTypes.from_string(node_type))
         return types
 
     def visit(self, netx_tree: NetxTree):
@@ -174,11 +174,11 @@ class SimplifyRelationsPass(NetxPass):
                 for schema_node in schema_nodes:
                     schema_node_type = netx_tree.nodes[schema_node]['data']
                     if schema_node_type == "decl_string":
-                        relation_schema.append(DataTypes.STRING)
+                        relation_schema.append(DataTypes.string)
                     elif schema_node_type == "decl_span":
-                        relation_schema.append(DataTypes.SPAN)
+                        relation_schema.append(DataTypes.span)
                     elif schema_node_type == "decl_int":
-                        relation_schema.append(DataTypes.INT)
+                        relation_schema.append(DataTypes.int)
                     else:
                         assert 0
                 netx_tree.nodes[successors[0]].clear()

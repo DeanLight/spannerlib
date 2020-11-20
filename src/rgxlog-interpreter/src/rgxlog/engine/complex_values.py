@@ -6,7 +6,7 @@ def get_term_list_string(term_list, type_list):
     returns a string representation of the term list.
     quotes are added to string terms so they will not be confused with variables.
     """
-    terms_with_quoted_strings = [f"\"{term}\"" if term_type is DataTypes.STRING
+    terms_with_quoted_strings = [f"\"{term}\"" if term_type is DataTypes.string
                                  else str(term)
                                  for term, term_type in zip(term_list, type_list)]
     term_list_string = ', '.join(terms_with_quoted_strings)
@@ -68,8 +68,8 @@ class Relation:
         spans are represented as tuples of length 2 (see get_pydatalog_string() of the Span class)
         """
         pydatalog_string_terms = \
-            [f"\"{term}\"" if term_type is DataTypes.STRING
-             else term.get_pydatalog_string() if term_type is DataTypes.SPAN
+            [f"\"{term}\"" if term_type is DataTypes.string
+             else term.get_pydatalog_string() if term_type is DataTypes.span
              else str(term)
              for term, term_type in zip(self.term_list, self.type_list)]
         term_list_pydatalog_string = ', '.join(pydatalog_string_terms)
@@ -137,11 +137,11 @@ class RelationDeclaration:
     def __str__(self):
         type_strings = []
         for term_type in self.type_list:
-            if term_type is DataTypes.STRING:
+            if term_type is DataTypes.string:
                 type_strings.append('str')
-            elif term_type is DataTypes.SPAN:
+            elif term_type is DataTypes.span:
                 type_strings.append('spn')
-            elif term_type is DataTypes.INT:
+            elif term_type is DataTypes.int:
                 type_strings.append('int')
             else:
                 raise Exception(f"invalid term type ({term_type})")
