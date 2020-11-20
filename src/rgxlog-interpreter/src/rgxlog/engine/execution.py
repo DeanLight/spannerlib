@@ -126,7 +126,7 @@ class PydatalogEngine(DatalogEngineBase):
         # add and remove a temporary fact to the relation that is declared, this creates an empty
         # relation in pyDatalog so it is allowed to be queried
         relation_name = declaration.name
-        schema_length = len(declaration.schema)
+        schema_length = len(declaration.type_list)
         temp_fact = relation_name + "("
         for i in range(schema_length):
             temp_fact += "None"
@@ -173,25 +173,25 @@ class PydatalogEngine(DatalogEngineBase):
 
     def compute_rule_body_ie_relation(self, ie_relation: IERelation, ie_func_data: IEFunctionData,
                                       bounding_relation: Relation):
-        input_relation_name = self.__create_new_temp_relation(len(ie_relation.input_terms))
-        output_relation_name = self.__create_new_temp_relation(len(ie_relation.output_terms))
-        input_relation = Relation(input_relation_name, ie_relation.input_terms, ie_relation.input_term_types)
-        output_relation = Relation(output_relation_name, ie_relation.output_terms, ie_relation.output_term_types)
+        input_relation_name = self.__create_new_temp_relation(len(ie_relation.input_term_list))
+        output_relation_name = self.__create_new_temp_relation(len(ie_relation.output_term_list))
+        input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
+        output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
         if bounding_relation is None:
             # special case where the ie relation is the first rule body relation
-            for input_term_type in ie_relation.input_term_types:
+            for input_term_type in ie_relation.input_type_list:
                 # check if the relation is not bounded, should never happen
                 assert input_term_type != DataTypes.FREE_VAR
-            self.add_fact(Relation(input_relation.name, ie_relation.input_terms, ie_relation.input_term_types))
+            self.add_fact(Relation(input_relation.name, ie_relation.input_term_list, ie_relation.input_type_list))
         else:
             # extract the input into an input relation.
             self.add_rule(input_relation, [bounding_relation])
         # get a list of input tuples. to get them we query pyDatalog using the input relation name, and all
         # of the terms will be free variables (so we get the whole tuple)
         query_str = input_relation.name + "("
-        for i in range(len(input_relation.terms)):
+        for i in range(len(input_relation.term_list)):
             query_str += "X" + str(i)
-            if i < len(input_relation.terms) - 1:
+            if i < len(input_relation.term_list) - 1:
                 query_str += ","
         query_str += ")"
         ie_inputs = pyDatalog.ask(query_str).answers
@@ -200,7 +200,7 @@ class PydatalogEngine(DatalogEngineBase):
         for idx, ie_input in enumerate(ie_inputs):
             output = ie_func_data.ie_function(*ie_input)
             ie_outputs.extend(output)
-        ie_output_types = tuple(ie_func_data.get_output_types(len(ie_relation.output_terms)))
+        ie_output_types = tuple(ie_func_data.get_output_types(len(ie_relation.output_term_list)))
         # check output types
         for ie_output in ie_outputs:
             actual_output_types = []
