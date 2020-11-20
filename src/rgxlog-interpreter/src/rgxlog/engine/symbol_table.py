@@ -2,7 +2,9 @@ from abc import ABC, abstractmethod
 
 
 class SymbolTableBase(ABC):
-
+    """
+    An abstraction for a symbol table
+    """
     @abstractmethod
     def set_variable_type(self, var_name, var_type):
         pass
@@ -52,6 +54,9 @@ class SymbolTableBase(ABC):
         pass
 
     def __str__(self):
+        """
+        returns a string representation of the symbol table for debugging purposes
+        """
         ret = 'Variable\tType\tValue'
         for name, var_type, var_value in self.get_all_variables():
             ret += f'\n{name}\t{var_type.to_string()}\t{var_value}'

@@ -178,7 +178,7 @@ class SimplifyRelationsPass(NetxPass):
                     elif schema_node_type == "decl_span":
                         relation_schema.append(DataTypes.span)
                     elif schema_node_type == "decl_int":
-                        relation_schema.append(DataTypes.int)
+                        relation_schema.append(DataTypes.integer)
                     else:
                         assert 0
                 netx_tree.nodes[successors[0]].clear()

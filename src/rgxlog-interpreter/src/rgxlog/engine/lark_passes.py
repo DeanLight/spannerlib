@@ -571,7 +571,7 @@ class TypeCheckingInterpreter(Interpreter):
             elif term_node.data == "decl_span":
                 declared_schema.append(DataTypes.span)
             elif term_node.data == "decl_int":
-                declared_schema.append(DataTypes.int)
+                declared_schema.append(DataTypes.integer)
             else:
                 assert 0
         self.__add_relation_schema(tree.children[0], declared_schema)

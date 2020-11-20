@@ -7,7 +7,7 @@ class DataTypes(Enum):
     """
     string = 0
     span = 1
-    int = 2
+    integer = 2
     free_var_name = 3
 
     def to_string(self):

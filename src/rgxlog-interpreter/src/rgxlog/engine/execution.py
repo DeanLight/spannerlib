@@ -206,7 +206,7 @@ class PydatalogEngine(DatalogEngineBase):
             actual_output_types = []
             for value in ie_output:
                 if isinstance(value, int):
-                    actual_output_types.append(DataTypes.int)
+                    actual_output_types.append(DataTypes.integer)
                 elif isinstance(value, str):
                     actual_output_types.append(DataTypes.string)
                 elif isinstance(value, tuple) and len(value) == 2:

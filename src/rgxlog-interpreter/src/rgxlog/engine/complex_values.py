@@ -141,7 +141,7 @@ class RelationDeclaration:
                 type_strings.append('str')
             elif term_type is DataTypes.span:
                 type_strings.append('spn')
-            elif term_type is DataTypes.int:
+            elif term_type is DataTypes.integer:
                 type_strings.append('int')
             else:
                 raise Exception(f"invalid term type ({term_type})")
