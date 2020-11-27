@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 import networkx as nx
 from rgxlog.engine.term_graph import EvalState
-from rgxlog.engine.complex_values import Relation, RelationDeclaration, IERelation, Span
+from rgxlog.engine.complex_values import Relation, RelationDeclaration, IERelation
 from pyDatalog import pyDatalog
-from rgxlog.engine.datatypes import DataTypes
+from rgxlog.engine.datatypes import DataTypes, Span
 from rgxlog.engine.symbol_table import SymbolTable
 import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.ie_functions import IEFunctionData

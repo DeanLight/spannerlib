@@ -9,6 +9,7 @@ class DataTypes(Enum):
     span = 1
     integer = 2
     free_var_name = 3
+    var_name = 4
 
     def to_string(self):
         """
@@ -29,3 +30,31 @@ class DataTypes(Enum):
         except Exception:
             # raise this exception instead of the default one as it is simpler to read
             raise Exception(f"invalid datatype string: {datatype_string}")
+
+
+class Span:
+    """A representation of a span"""
+
+    def __init__(self, span_start, span_end):
+        """
+        Args:
+            span_start: the first (included) index of the span
+            span_end: the last (excluded) index of the span
+        """
+        self.span_start = span_start
+        self.span_end = span_end
+
+    def __repr__(self):
+        return f"Span(span_start={self.span_start}, span_end={self.span_end})"
+
+    def __str__(self):
+        return f"[{self.span_start}, {self.span_end})"
+
+    def get_pydatalog_string(self):
+        """
+        the pyDatalog execution engine receives instructions via strings.
+        return a string representation of a span term in pyDatalog.
+        since there's no built in representation of a span in pyDatalog, and custom classes do not seem to work
+        as intended in pyDatalog, we represent a span using a tuple of length 2.
+        """
+        return f"({self.span_start}, {self.span_end})"

@@ -13,31 +13,6 @@ def get_term_list_string(term_list, type_list):
     return term_list_string
 
 
-class Span:
-    """A representation of a span"""
-
-    def __init__(self, span_start, span_end):
-        """
-        Args:
-            span_start: the first (included) index of the span
-            span_end: the last (excluded) index of the span
-        """
-        self.span_start = span_start
-        self.span_end = span_end
-
-    def __str__(self):
-        return f"[{self.span_start}, {self.span_end})"
-
-    def get_pydatalog_string(self):
-        """
-        the pyDatalog execution engine receives instructions via strings.
-        return a string representation of a span term in pyDatalog.
-        since there's no built in representation of a span in pyDatalog, and custom classes do not seem to work
-        as intended in pyDatalog, we represent a span using a tuple of length 2.
-        """
-        return f"({self.span_start}, {self.span_end})"
-
-
 class Relation:
     """a representation of a normal relation"""
 

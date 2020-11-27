@@ -1,11 +1,11 @@
 import networkx as nx
 from rgxlog.engine.custom_trees import NetxTree
 from abc import ABC, abstractmethod
-from rgxlog.engine.complex_values import Span, Relation, RelationDeclaration, IERelation
-from rgxlog.engine.datatypes import DataTypes
+from rgxlog.engine.complex_values import Relation, RelationDeclaration, IERelation
+from rgxlog.engine.datatypes import DataTypes, Span
 
 
-def assert_correct_node(netx_tree: NetxTree, node, node_name, len_children=None, *children_names):
+def assert_expected_node(netx_tree: NetxTree, node, node_name, len_children=None, *children_names):
     nodes = netx_tree.nodes
     children = list(netx_tree.successors(node))
     assert nodes[node]['data'] == node_name, "bad node name: " + node_name + \
@@ -53,9 +53,9 @@ class ResolveVariablesPass(NetxPass):
             if data_attr[node] == "span":
                 # convert span to a complex value
                 # this is done here and not in a different pass as span might contain variables in future updates
-                assert_correct_node(netx_tree, node, "span", 2, "integer", "integer")
-                assert_correct_node(netx_tree, successors[0], "integer")
-                assert_correct_node(netx_tree, successors[1], "integer")
+                assert_expected_node(netx_tree, node, "span", 2, "integer", "integer")
+                assert_expected_node(netx_tree, successors[0], "integer")
+                assert_expected_node(netx_tree, successors[1], "integer")
                 left_num = netx_tree.get_node_value(successors[0])
                 right_num = netx_tree.get_node_value(successors[1])
                 span_value = Span(left_num, right_num)
@@ -65,7 +65,7 @@ class ResolveVariablesPass(NetxPass):
                 nodes_to_remove.add(successors[1])
             if data_attr[node] == "assignment":
                 value_node_type = data_attr[successors[1]]
-                assert_correct_node(netx_tree, node, "assignment", 2, "var_name", value_node_type)
+                assert_expected_node(netx_tree, node, "assignment", 2, "var_name", value_node_type)
                 left_var_name = netx_tree.get_node_value(successors[0])
                 if value_node_type == "var_name":
                     right_var_name = netx_tree.get_node_value(successors[1])
@@ -79,7 +79,7 @@ class ResolveVariablesPass(NetxPass):
                 self.symbol_table.set_variable_value(left_var_name, assigned_value)
             if data_attr[node] == "read_assignment":
                 value_node_type = data_attr[successors[1]]
-                assert_correct_node(netx_tree, node, "read_assignment", 2, "var_name", value_node_type)
+                assert_expected_node(netx_tree, node, "read_assignment", 2, "var_name", value_node_type)
                 if value_node_type == "var_name":
                     right_var_name = netx_tree.get_node_value(successors[1])
                     read_param = self.symbol_table.get_variable_value(right_var_name)
@@ -97,7 +97,7 @@ class ResolveVariablesPass(NetxPass):
             if data_attr[node] in ["term_list", "const_term_list"]:
                 for term_node in list(netx_tree.successors(node)):
                     if data_attr[term_node] == "var_name":
-                        assert_correct_node(netx_tree, term_node, "var_name", 1)
+                        assert_expected_node(netx_tree, term_node, "var_name", 1)
                         var_name = netx_tree.get_node_value(term_node)
                         var_type = self.symbol_table.get_variable_type(var_name)
                         var_value = self.symbol_table.get_variable_value(var_name)
@@ -151,7 +151,7 @@ class SimplifyRelationsPass(NetxPass):
                 nodes_to_remove.append(successors[1])
                 nodes_to_remove.extend(term_list_nodes[1:])
             elif data_attr[node] == "ie_relation":
-                assert_correct_node(netx_tree, node, "ie_relation", 3, "relation_name", "term_list", "term_list")
+                assert_expected_node(netx_tree, node, "ie_relation", 3, "relation_name", "term_list", "term_list")
                 relation_name = netx_tree.get_node_value(successors[0])
                 input_term_nodes = list(netx_tree.successors(successors[1]))
                 output_term_nodes = list(netx_tree.successors(successors[2]))
@@ -167,7 +167,7 @@ class SimplifyRelationsPass(NetxPass):
                 nodes_to_remove.extend(input_term_nodes)
                 nodes_to_remove.extend(output_term_nodes)
             elif data_attr[node] == "relation_declaration":
-                assert_correct_node(netx_tree, node, "relation_declaration", 2, "relation_name", "decl_term_list")
+                assert_expected_node(netx_tree, node, "relation_declaration", 2, "relation_name", "decl_term_list")
                 relation_name = netx_tree.get_node_value(successors[0])
                 schema_nodes = list(netx_tree.successors(successors[1]))
                 relation_schema = []
@@ -217,7 +217,7 @@ class AddNetxTreeToTermGraphPass(NetxPass):
                 new_node = self.term_graph.add_term(type=node_type, value=relation_value)
                 self.term_graph.add_dependency(self.term_graph_root, new_node)
             if node_type == "rule":
-                assert_correct_node(netx_tree, node, "rule", 2, "rule_head", "rule_body")
+                assert_expected_node(netx_tree, node, "rule", 2, "rule_head", "rule_body")
                 new_rule_node = self.term_graph.add_term(type=node_type)
                 rule_head_value = netx_tree.get_node_value(successors[0])
                 new_rule_head_node = self.term_graph.add_term(type="rule_head", value=rule_head_value)
@@ -226,9 +226,9 @@ class AddNetxTreeToTermGraphPass(NetxPass):
                 self.term_graph.add_dependency(new_rule_node, new_rule_head_node)
                 self.term_graph.add_dependency(new_rule_node, new_rule_body_node)
                 rule_body_node = successors[1]
-                assert_correct_node(netx_tree, rule_body_node, "rule_body", 1, "rule_body_relation_list")
+                assert_expected_node(netx_tree, rule_body_node, "rule_body", 1, "rule_body_relation_list")
                 rule_body_relations_list_node = list(netx_tree.successors(rule_body_node))[0]
-                assert_correct_node(netx_tree, rule_body_relations_list_node, "rule_body_relation_list")
+                assert_expected_node(netx_tree, rule_body_relations_list_node, "rule_body_relation_list")
                 rule_body_relation_nodes = list(netx_tree.successors(rule_body_relations_list_node))
                 for rule_body_relation_node in rule_body_relation_nodes:
                     rule_body_relation_type = data_attr[rule_body_relation_node]
