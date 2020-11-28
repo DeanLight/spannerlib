@@ -57,6 +57,25 @@ class RemoveTokensTransformer(Transformer):
         return args[1:-1]
 
 
+class CheckReservedRelationNames(Interpreter):
+    """
+    A lark tree semantic check.
+    Checks if there are relations in the program with a name that starts with "__rgxlog__"
+    if such relations exist, throw an exception as this is a reserved name for rgxlog.
+    """
+
+    def __init__(self, **kw):
+        super().__init__()
+
+    @staticmethod
+    def relation_name(relation_name_node):
+        assert_expected_node_structure(relation_name_node, node_name="relation_name", num_children=1)
+        relation_name = relation_name_node.children[0]
+        if relation_name.startswith("__rgxlog__"):
+            raise Exception(f'encountered relation name: {relation_name}. '
+                            f'names starting with __rgxlog__ are reserved')
+
+
 class StringFixVisitor(Visitor_Recursive):
     """
      Fixes the strings in the lark tree.
@@ -468,97 +487,106 @@ class CheckFilesInterpreter(Interpreter):
             raise Exception("couldn't open file")
 
 
-class CheckReservedRelationNames(Interpreter):
+class CheckRelationsRedefinitionInterpreter(Interpreter):
     """
     A lark tree semantic check.
-    Checks if there are relations in the program with a name that starts with "__rgxlog__"
-    if such relations exist, throw an exception as this is a reserved name for rgxlog.
+    checks if a relation is being redefined, and raises an exception if this is the case.
+    relations can be defined either by a relation declaration or by rules
+    """
+    """
+    TODO: in a future version of rgxlog we might want to allow for a rule head to be "redefined", meaning
+    a relation could be defined by multiple rule heads. This would mean changing this pass as it does
+    not allow for this.
     """
 
     def __init__(self, **kw):
         super().__init__()
+        self.symbol_table = kw['symbol_table']
 
-    @staticmethod
-    def relation_name(tree):
-        assert_expected_node_structure(tree, "relation_name", 1)
-        name = tree.children[0]
-        if name.startswith("__rgxlog__"):
-            raise Exception("names starting with __rgxlog__ cannot be used")
+    def __check_if_relation_is_already_defined(self, relation_name):
+        """
+        an utility function that checks if a relation is already defined and raises an exception
+        if it does.
+
+        Args:
+            relation_name: the relation name to be checked for redefinition
+        """
+        if self.symbol_table.contains_relation(relation_name):
+            raise Exception(f'relation "{relation_name}" is already defined. relation redefinition is not allowed')
+
+    def relation_declaration(self, relation_decl_node):
+        relation_decl = relation_decl_node.children[0]
+        self.__check_if_relation_is_already_defined(relation_decl.relation_name)
+
+    def rule(self, rule_node):
+        """
+        a rule is a definition of the relation that appears in the rule head.
+        this function checks that the relation that appears in the rule head is not being redefined.
+        """
+        rule = rule_node.children[0]
+        self.__check_if_relation_is_already_defined(rule.head_relation.relation_name)
 
 
-class CheckReferencedRelationsInterpreter(Interpreter):
+class CheckReferencedRelationsExistenceAndArityInterpreter(Interpreter):
     """
     A lark tree semantic check.
-    checks whether each non ie relation reference refers to a defined relation.
+    Checks whether each relation (that is not an ie relation) reference refers to a defined relation.
     Also checks if the relation reference uses the correct arity.
     """
 
     def __init__(self, **kw):
         super().__init__()
         self.symbol_table = kw['symbol_table']
-        self.relation_name_to_arity = dict()
 
-    def __add_relation_definition(self, relation_name_node, schema_defining_node):
-        assert_expected_node_structure(relation_name_node, "relation_name", 1)
-        assert schema_defining_node.data in SCHEMA_DEFINING_NODES
-        relation_name = relation_name_node.children[0]
-        assert relation_name not in self.relation_name_to_arity
-        arity = len(schema_defining_node.children)
-        self.relation_name_to_arity[relation_name] = arity
+    def __check_relation_exists_and_correct_arity(self, relation_name, arity):
+        """
+        An utility function that checks if a referenced relation exists and if the correct arity was used
 
-    def __check_if_relation_not_defined(self, relation_name_node, term_list_node):
-        assert_expected_node_structure(relation_name_node, "relation_name", 1)
-        assert term_list_node.data in NODES_OF_TERM_LISTS
-        relation_name = relation_name_node.children[0]
-        if relation_name in self.relation_name_to_arity:
-            correct_arity = self.relation_name_to_arity[relation_name]
-        elif self.symbol_table.contains_relation(relation_name):
-            correct_arity = len(self.symbol_table.get_relation_schema(relation_name))
-        else:
-            raise Exception("relation not defined")
-        arity = len(term_list_node.children)
+        Args:
+            relation_name: the relation that was referenced
+            arity: the arity that was used.
+        """
+
+        # check if the relation exists using the symbol table
+        if not self.symbol_table.contains_relation(relation_name):
+            raise Exception(f'relation "{relation_name}" is not defined')
+
+        # at this point we know the relation exists but we still need to check that the correct arity was used
+        # get the correct arity
+        relation_schema = self.symbol_table.get_relation_schema(relation_name)
+        correct_arity = len(relation_schema)
+
+        # check if that arity that was used is correct
         if arity != correct_arity:
-            raise Exception("incorrect arity")
+            raise Exception(f'relation "{relation_name}" was referenced with an incorrect arity: {arity}. The'
+                            f'correct arity is: {correct_arity}')
 
-    def __check_if_relation_already_defined(self, relation_name_node):
-        assert_expected_node_structure(relation_name_node, "relation_name", 1)
-        relation_name = relation_name_node.children[0]
-        if relation_name in self.relation_name_to_arity or self.symbol_table.contains_relation(relation_name):
-            raise Exception("relation already defined")
+    def query(self, query_node):
+        query = query_node.children[0]
+        arity = len(query.term_list)
+        self.__check_relation_exists_and_correct_arity(query.relation_name, arity)
 
-    def relation_declaration(self, tree):
-        assert_expected_node_structure(tree, "relation_declaration", 2, "relation_name", "decl_term_list")
-        self.__check_if_relation_already_defined(tree.children[0])
-        self.__add_relation_definition(tree.children[0], tree.children[1])
+    def add_fact(self, fact_node):
+        fact = fact_node.children[0]
+        arity = len(fact.term_list)
+        self.__check_relation_exists_and_correct_arity(fact.relation_name, arity)
 
-    def query(self, tree):
-        assert_expected_node_structure(tree, "query", 1, "relation")
-        relation_node = tree.children[0]
-        assert_expected_node_structure(relation_node, "relation", 2, "relation_name", "term_list")
-        self.__check_if_relation_not_defined(relation_node.children[0], relation_node.children[1])
+    def remove_fact(self, fact_node):
+        fact = fact_node.children[0]
+        arity = len(fact.term_list)
+        self.__check_relation_exists_and_correct_arity(fact.relation_name, arity)
 
-    def add_fact(self, tree):
-        assert_expected_node_structure(tree, "add_fact", 2, "relation_name", "const_term_list")
-        self.__check_if_relation_not_defined(tree.children[0], tree.children[1])
-
-    def remove_fact(self, tree):
-        assert_expected_node_structure(tree, "remove_fact", 2, "relation_name", "const_term_list")
-        self.__check_if_relation_not_defined(tree.children[0], tree.children[1])
-
-    def rule(self, tree):
-        assert_expected_node_structure(tree, "rule", 2, "rule_head", "rule_body")
-        rule_head_node = tree.children[0]
-        rule_body_node = tree.children[1]
-        assert_expected_node_structure(rule_head_node, "rule_head", 2, "relation_name", "free_var_name_list")
-        assert_expected_node_structure(rule_body_node, "rule_body", 1, "rule_body_relation_list")
-        self.__check_if_relation_already_defined(rule_head_node.children[0])
-        relation_list_node = rule_body_node.children[0]
-        assert_expected_node_structure(relation_list_node, "rule_body_relation_list")
-        for relation_node in relation_list_node.children:
-            if relation_node.data == "relation":
-                assert_expected_node_structure(relation_node, "relation", 2, "relation_name", "term_list")
-                self.__check_if_relation_not_defined(relation_node.children[0], relation_node.children[1])
-        self.__add_relation_definition(rule_head_node.children[0], rule_head_node.children[1])
+    def rule(self, rule_node):
+        """
+        a rule is a definition of the relation in the rule head. Therefore the rule head reference does not
+        need to be checked.
+        The rule body references relations that should already exist. Those will be checked in this method.
+        """
+        rule = rule_node.children[0]
+        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+            if relation_type == "relation":
+                arity = len(relation.term_list)
+                self.__check_relation_exists_and_correct_arity(relation.name, arity)
 
 
 class CheckReferencedIERelationsVisitor(Visitor_Recursive):
