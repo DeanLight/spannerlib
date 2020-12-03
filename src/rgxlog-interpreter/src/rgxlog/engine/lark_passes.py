@@ -4,6 +4,8 @@ from rgxlog.engine.datatypes import DataTypes
 import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.named_ast_nodes import *
 from rgxlog.engine.datatypes import Span
+import rgxlog.engine.term_graph_values as term_graph_values
+from itertools import count
 
 NODES_OF_LIST_WITH_VAR_NAMES = {"term_list", "const_term_list"}
 NODES_OF_LIST_WITH_RELATION_NODES = {"rule_body_relation_list"}
@@ -160,9 +162,9 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
 
         # get a named node that represents this assignment
         if assignment_type == "assignment":
-            named_assignment_node = AssignmentNode(var_name, value, value_type)
+            named_assignment_node = Assignment(var_name, value, value_type)
         elif assignment_type == "read_assignment":
-            named_assignment_node = ReadAssignmentNode(var_name, value, value_type)
+            named_assignment_node = ReadAssignment(var_name, value, value_type)
         else:
             raise Exception(f'received unexpected assignment type: {assignment_type}')
 
@@ -202,7 +204,7 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
         type_list = [DataTypes.from_string(term_node.data) for term_node in term_list_node.children]
 
         # create a named relation node and return it
-        named_relation_node = RelationNode(relation_name, term_list, type_list)
+        named_relation_node = Relation(relation_name, term_list, type_list)
         return named_relation_node
 
     @staticmethod
@@ -238,8 +240,8 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
         output_type_list = [DataTypes.from_string(term_node.data) for term_node in output_term_list_node.children]
 
         # create a named ie relation node and return it
-        named_ie_relation_node = IERelationNode(relation_name, input_term_list, input_type_list,
-                                                output_term_list, output_type_list)
+        named_ie_relation_node = IERelation(relation_name, input_term_list, input_type_list,
+                                            output_term_list, output_type_list)
         return named_ie_relation_node
 
     def __fact_aux(self, fact_node: Tree):
@@ -261,11 +263,11 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
 
         # create a named node that is fitting for this fact
         if fact_type == "add_fact":
-            named_fact_node = AddFactNode(named_relation_node.relation_name, named_relation_node.term_list,
-                                          named_relation_node.type_list)
+            named_fact_node = AddFact(named_relation_node.relation_name, named_relation_node.term_list,
+                                      named_relation_node.type_list)
         elif fact_type == "remove_fact":
-            named_fact_node = RemoveFactNode(named_relation_node.relation_name, named_relation_node.term_list,
-                                             named_relation_node.type_list)
+            named_fact_node = RemoveFact(named_relation_node.relation_name, named_relation_node.term_list,
+                                         named_relation_node.type_list)
         else:
             raise Exception(f'unexpected fact type: {fact_type}')
 
@@ -290,8 +292,8 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
         named_relation_node = self.__create_named_relation_node(relation_name_node, term_list_node)
 
         # create a named node for the query
-        query_named_node = QueryNode(named_relation_node.relation_name, named_relation_node.term_list,
-                                     named_relation_node.type_list)
+        query_named_node = Query(named_relation_node.relation_name, named_relation_node.term_list,
+                                 named_relation_node.type_list)
 
         # replace the current query representation with the named query node
         query_node.children = [query_named_node]
@@ -323,7 +325,7 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
                 raise Exception(f'unexpected declaration term node type: {decl_term_node_type}')
 
         # create a named node for the relation declaration
-        relation_decl_named_node = RelationDeclarationNode(relation_name, type_list)
+        relation_decl_named_node = RelationDeclaration(relation_name, type_list)
 
         # replace the current relation declaration representation with the named relation declaration node
         relation_decl_node.children = [relation_decl_named_node]
@@ -375,7 +377,7 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
         body_relation_type_list = [relation_node.data for relation_node in rule_body_relation_nodes.children]
 
         # create a named rule node
-        named_rule_node = RuleNode(named_head_relation_node, named_body_relation_list, body_relation_type_list)
+        named_rule_node = Rule(named_head_relation_node, named_body_relation_list, body_relation_type_list)
 
         # replace the current rule representation with the named rule node
         rule_node.children = [named_rule_node]
@@ -491,12 +493,12 @@ class CheckRelationsRedefinitionInterpreter(Interpreter):
     """
     A lark tree semantic check.
     checks if a relation is being redefined, and raises an exception if this is the case.
-    relations can be defined either by a relation declaration or by rules
+    relations can be defined either by a relation declaration or by appearing in a rule head
     """
     """
     TODO: in a future version of rgxlog we might want to allow for a rule head to be "redefined", meaning
-    a relation could be defined by multiple rule heads. This would mean changing this pass as it does
-    not allow for this.
+    a relation could be defined by multiple rule heads, allowing for recursion. 
+    This would mean changing this pass as it does not allow a relation to appear in multiple rule heads.
     """
 
     def __init__(self, **kw):
@@ -589,27 +591,45 @@ class CheckReferencedRelationsExistenceAndArityInterpreter(Interpreter):
                 self.__check_relation_exists_and_correct_arity(relation.name, arity)
 
 
-class CheckReferencedIERelationsVisitor(Visitor_Recursive):
+class CheckReferencedIERelationsExistenceAndArityVisitor(Visitor_Recursive):
     """
     A lark tree semantic check.
-    checks whether each ie relation reference refers to a defined ie function.
+    Checks whether each ie relation reference refers to a defined ie function.
+    Also checks if the correct input arity and output arity for the ie function were used.
     """
 
     def __init__(self, **kw):
         super().__init__()
 
     @staticmethod
-    def ie_relation(tree):
-        assert_expected_node_structure(tree, "ie_relation", 3, "relation_name", "term_list", "term_list")
-        ie_func_name = tree.children[0].children[0]
-        ie_func_input_arity = len(tree.children[1].children)
-        try:
-            ie_function_data = getattr(ie_functions, ie_func_name)
-        except Exception:
-            raise Exception("can't find ie function")
-        correct_arity = len(ie_function_data.get_input_types())
-        if ie_func_input_arity != correct_arity:
-            raise Exception("incorrect input arity")
+    def rule(rule_node):
+        rule = rule_node.children[0]
+        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+            if relation_type == "ie_relation":
+                # found an ie relation, check if its ie function exists and if the correct input arity was used
+
+                # get the name of the ie function, it is the same as the name of the ie relation
+                ie_func_name = relation.relation_name
+                try:
+                    # get the data of the ie function
+                    ie_function_data = getattr(ie_functions, ie_func_name)
+                except Exception:
+                    # couldn't find the ie function, raise an exception
+                    raise Exception(f'the information extraction function "{ie_func_name}" does not exist')
+
+                # the ie function exists, check if the correct input arity was used
+                used_input_arity = len(relation.input_term_list)
+                correct_input_arity = len(ie_function_data.get_input_types())
+                if used_input_arity != correct_input_arity:
+                    raise Exception(f'used incorrect input arity for ie function "{ie_func_name}":'
+                                    f' {used_input_arity} (should be {correct_input_arity})')
+
+                # check if the correct output arity was used
+                used_output_arity = len(relation.output_term_list)
+                correct_output_arity = len(ie_function_data.get_output_types(used_output_arity))
+                if used_output_arity != correct_output_arity:
+                    raise Exception(f'used incorrect output arity for ie function {ie_func_name}:'
+                                    f' {used_output_arity} (should be {correct_output_arity})')
 
 
 class CheckRuleSafetyVisitor(Visitor_Recursive):
@@ -619,7 +639,7 @@ class CheckRuleSafetyVisitor(Visitor_Recursive):
 
     For a rule to be safe, two conditions must apply:
 
-    1. Every free variable in the head occurs at least once in the body as an output of a relation.
+    1. Every free variable in the head occurs at least once in the body as an output term of a relation.
 
     examples:
     a. "parent(X,Y) <- son(X)" is not a safe rule because the free variable Y only appears in the rule head.
@@ -648,144 +668,238 @@ class CheckRuleSafetyVisitor(Visitor_Recursive):
         super().__init__()
 
     @staticmethod
-    def __get_set_of_free_var_names(list_node):
-        assert list_node.data in NODES_OF_LIST_WITH_FREE_VAR_NAMES
-        free_var_names = set()
-        for term_node in list_node.children:
-            if term_node.data == "free_var_name":
-                assert_expected_node_structure(term_node, "free_var_name", 1)
-                free_var_names.add(term_node.children[0])
+    def __get_set_of_free_var_names(term_list, type_list):
+        """
+        Args:
+            term_list: a list of terms
+            type_list: a list of the term types
+
+        Returns: a set of all the free variable names in term_list
+        """
+        free_var_names = set(term for term, term_type in zip(term_list, type_list)
+                             if term_type is DataTypes.free_var_name)
         return free_var_names
 
-    def __get_set_of_input_free_var_names(self, relation_node):
-        if relation_node.data == "relation":
-            assert_expected_node_structure(relation_node, "relation", 2, "relation_name", "term_list")
-            return set()  # normal relations don't have an input
-        elif relation_node.data == "ie_relation":
-            assert_expected_node_structure(relation_node, "ie_relation", 3, "relation_name", "term_list", "term_list")
-            return self.__get_set_of_free_var_names(relation_node.children[1])
-        else:
-            assert 0
+    def __get_set_of_input_free_var_names(self, relation, relation_type):
+        """
+        Args:
+            relation: a relation (either a normal relation or an ie relation)
+            relation_type: the type of the relation
 
-    def __get_set_of_output_free_var_names(self, relation_node):
-        if relation_node.data == "relation":
-            assert_expected_node_structure(relation_node, "relation", 2, "relation_name", "term_list")
-            return self.__get_set_of_free_var_names(relation_node.children[1])
-        elif relation_node.data == "ie_relation":
-            assert_expected_node_structure(relation_node, "ie_relation", 3, "relation_name", "term_list", "term_list")
-            return self.__get_set_of_free_var_names(relation_node.children[2])
+        Returns: a set of the free variable input terms of the relation
+        """
+        if relation_type == "relation":
+            # normal relations don't have input terms, return an empty set
+            return set()
+        elif relation_type == "ie_relation":
+            # return a set of the free variables in the input term list
+            return self.__get_set_of_free_var_names(relation.input_term_list, relation.input_type_list)
         else:
-            assert 0
+            raise Exception(f'unexpected relation type: {relation_type}')
 
-    def rule(self, tree):
-        assert_expected_node_structure(tree, "rule", 2, "rule_head", "rule_body")
-        assert_expected_node_structure(tree.children[0], "rule_head", 2, "relation_name", "free_var_name_list")
-        assert_expected_node_structure(tree.children[1], "rule_body", 1, "rule_body_relation_list")
-        rule_head_term_list_node = tree.children[0].children[1]
-        rule_body_relation_list_node = tree.children[1].children[0]
-        assert_expected_node_structure(rule_head_term_list_node, "free_var_name_list")
-        assert_expected_node_structure(rule_body_relation_list_node, "rule_body_relation_list")
-        rule_body_relations = rule_body_relation_list_node.children
-        # check that every free variable in the head occurs at least once in the body as an output of a relation.
+    def __get_set_of_output_free_var_names(self, relation, relation_type):
+        """
+        Args:
+            relation: a relation (either a normal relation or an ie relation)
+            relation_type: the type of the relation
+
+        Returns: a set of the free variable output terms of the relation
+        """
+        if relation_type == "relation":
+            # the term list of a normal relation serves as the output term list, return its free variables
+            return self.__get_set_of_free_var_names(relation.term_list, relation.type_list)
+        elif relation_type == "ie_relation":
+            # return a set of the free variables in the output term list
+            return self.__get_set_of_free_var_names(relation.output_term_list, relation.output_type_list)
+        else:
+            raise Exception(f'unexpected relation type: {relation_type}')
+
+    def rule(self, rule_node):
+        rule = rule_node.children[0]
+
+        # check condition 1:
+        # every free variable in the head occurs at least once in the body as an output term of a relation.
+
         # get the free variables in the rule head
-        rule_head_free_vars = self.__get_set_of_free_var_names(rule_head_term_list_node)
-        # get the free variables in the rule body
-        rule_body_free_vars = set()
-        for relation_node in rule_body_relations:
-            # get all the free variables that appear in the relation's output
-            relation_output_free_vars = self.__get_set_of_output_free_var_names(relation_node)
-            rule_body_free_vars = rule_body_free_vars.union(relation_output_free_vars)
+        head_relation_term_list = rule.head_relation.term_list
+        head_relation_type_list = rule.head_relation.type_list
+        rule_head_free_vars = self.__get_set_of_free_var_names(head_relation_term_list, head_relation_type_list)
+
+        # get the free variables in the rule body that serve as output terms.
+        rule_body_output_free_var_sets = [self.__get_set_of_output_free_var_names(relation, relation_type)
+                                          for relation, relation_type in
+                                          zip(rule.body_relation_list, rule.body_relation_type_list)]
+        rule_body_output_free_vars = set().union(*rule_body_output_free_var_sets)
+
         # make sure that every free var in the rule head appears at least once in the rule body
-        invalid_free_var_names = rule_head_free_vars.difference(rule_body_free_vars)
+        invalid_free_var_names = rule_head_free_vars.difference(rule_body_output_free_vars)
         if invalid_free_var_names:
-            raise Exception("rule not safe")
-        # check that every relation in the rule body is safe
+            raise Exception(f'The rule "{rule}" \n'
+                            f'is not safe because the following free variables appear in the '
+                            'rule head but not as output terms in the rule body:\n'
+                            f'{invalid_free_var_names}')
+
+        # check condition 2:
+        # every free variable is bound.
+        # we will do this by checking that all of the rule body relations are safe.
+
+        # use a fix point iteration algorithm to find if all the relations are safe:
+        # a. iterate over all of the rule body relations and check if they are safe, meaning all their input
+        # free variable terms are bound.
+        # b. if a new safe relation was found, mark its output free variables as bound
+        # c. repeat step 'a' until all relations were found to be safe relations,
+        # or no new safe relations were found.
+
         # initialize assuming every relation is unsafe and every free variable is unbound
-        safe_relation_indexes = set()
+        safe_relations = set()
         bound_free_vars = set()
-        found_safe_relation = True
-        while len(safe_relation_indexes) != len(rule_body_relations) and found_safe_relation:
-            found_safe_relation = False
-            for idx, relation_node in enumerate(rule_body_relations):
-                if idx not in safe_relation_indexes:
-                    input_free_vars = self.__get_set_of_input_free_var_names(relation_node)
-                    unbound_free_vars = input_free_vars.difference(bound_free_vars)
-                    if not unbound_free_vars:
-                        # relation is safe, mark all of its output variables as bound
-                        found_safe_relation = True
-                        output_free_vars = self.__get_set_of_output_free_var_names(relation_node)
+        found_new_safe_relation = False
+        all_relations_are_safe = False
+        first_pass = True
+
+        while first_pass or (found_new_safe_relation and not all_relations_are_safe):
+            first_pass = False
+            found_new_safe_relation = False
+
+            # try to find new safe relations
+            for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+                if relation not in safe_relations:
+                    # this relation was not marked as safe yet.
+                    # check if all of its input free variable terms are bound
+                    input_free_vars = self.__get_set_of_input_free_var_names(relation, relation_type)
+                    unbound_input_free_vars = input_free_vars.difference(bound_free_vars)
+                    if not unbound_input_free_vars:
+                        # all input free variables are bound, mark the relation as safe
+                        safe_relations.add(relation)
+                        # mark the relation's output free variables as bound
+                        output_free_vars = self.__get_set_of_output_free_var_names(relation, relation_type)
                         bound_free_vars = bound_free_vars.union(output_free_vars)
-                        safe_relation_indexes.add(idx)
-        if len(safe_relation_indexes) != len(rule_body_relations):
-            raise Exception("rule not safe")
+                        # make sure we iterate over the relations again if not all of them were found
+                        # to be safe
+                        found_new_safe_relation = True
+            # the pass was completed, check if all of the relations were found to be safe
+            all_relations_are_safe = len(safe_relations) == len(rule.body_relation_list)
+
+        if not all_relations_are_safe:
+            # condition 2 check failed, get all of the unbound free variables and pass them in an exception
+            rule_body_input_free_var_sets = [self.__get_set_of_input_free_var_names(relation, relation_type)
+                                             for relation, relation_type in
+                                             zip(rule.body_relation_list, rule.body_relation_type_list)]
+            rule_body_input_free_vars = set().union(*rule_body_input_free_var_sets)
+            unbound_free_vars = rule_body_input_free_vars.difference(bound_free_vars)
+            raise Exception(f'The rule "{rule}" \n'
+                            f'is not safe because the following free variables are not bound:\n'
+                            f'{unbound_free_vars}')
 
 
 class ReorderRuleBodyVisitor(Visitor_Recursive):
     """
     Reorders each rule body so that each relation in the rule body has its input free variables bound by
     the relations to its right.
+    This way it is possible to easily compute the rule body relations from left to right. for more details see
+    execution.NetworkxExecution
     """
 
     def __init__(self, **kw):
         super().__init__()
 
     @staticmethod
-    def __get_set_of_free_var_names(list_node):
-        assert list_node.data in NODES_OF_LIST_WITH_FREE_VAR_NAMES
-        free_var_names = set()
-        for term_node in list_node.children:
-            if term_node.data == "free_var_name":
-                assert_expected_node_structure(term_node, "free_var_name", 1)
-                free_var_names.add(term_node.children[0])
+    def __get_set_of_free_var_names(term_list, type_list):
+        """
+        Args:
+            term_list: a list of terms
+            type_list: a list of the term types
+
+        Returns: a set of all the free variable names in term_list
+        """
+        free_var_names = set(term for term, term_type in zip(term_list, type_list)
+                             if term_type is DataTypes.free_var_name)
         return free_var_names
 
-    def __get_set_of_input_free_var_names(self, relation_node):
-        if relation_node.data == "relation":
-            assert_expected_node_structure(relation_node, "relation", 2, "relation_name", "term_list")
-            return set()  # normal relations don't have an input
-        elif relation_node.data == "ie_relation":
-            assert_expected_node_structure(relation_node, "ie_relation", 3, "relation_name", "term_list", "term_list")
-            return self.__get_set_of_free_var_names(relation_node.children[1])
-        else:
-            assert 0
+    def __get_set_of_input_free_var_names(self, relation, relation_type):
+        """
+        Args:
+            relation: a relation (either a normal relation or an ie relation)
+            relation_type: the type of the relation
 
-    def __get_set_of_output_free_var_names(self, relation_node):
-        if relation_node.data == "relation":
-            assert_expected_node_structure(relation_node, "relation", 2, "relation_name", "term_list")
-            return self.__get_set_of_free_var_names(relation_node.children[1])
-        elif relation_node.data == "ie_relation":
-            assert_expected_node_structure(relation_node, "ie_relation", 3, "relation_name", "term_list", "term_list")
-            return self.__get_set_of_free_var_names(relation_node.children[2])
+        Returns: a set of the free variable input terms of the relation
+        """
+        if relation_type == "relation":
+            # normal relations don't have input terms, return an empty set
+            return set()
+        elif relation_type == "ie_relation":
+            # return a set of the free variables in the input term list
+            return self.__get_set_of_free_var_names(relation.input_term_list, relation.input_type_list)
         else:
-            assert 0
+            raise Exception(f'unexpected relation type: {relation_type}')
 
-    def rule(self, tree):
-        assert_expected_node_structure(tree, "rule", 2, "rule_head", "rule_body")
-        assert_expected_node_structure(tree.children[1], "rule_body", 1, "rule_body_relation_list")
-        rule_body_relation_list_node = tree.children[1].children[0]
-        assert_expected_node_structure(rule_body_relation_list_node, "rule_body_relation_list")
-        rule_body_relations = rule_body_relation_list_node.children
+    def __get_set_of_output_free_var_names(self, relation, relation_type):
+        """
+        Args:
+            relation: a relation (either a normal relation or an ie relation)
+            relation_type: the type of the relation
+
+        Returns: a set of the free variable output terms of the relation
+        """
+        if relation_type == "relation":
+            # the term list of a normal relation serves as the output term list, return its free variables
+            return self.__get_set_of_free_var_names(relation.term_list, relation.type_list)
+        elif relation_type == "ie_relation":
+            # return a set of the free variables in the output term list
+            return self.__get_set_of_free_var_names(relation.output_term_list, relation.output_type_list)
+        else:
+            raise Exception(f'unexpected relation type: {relation_type}')
+
+    def rule(self, rule_node):
+        rule = rule_node.children[0]
+
+        # in order to reorder the relations, we will use the same algorithm from the CheckRuleSafetyVisitor pass.
+        # when a safe relation is found, it will be inserted into a list. This way, the relations
+
+        # use a fix point iteration algorithm to find if all the relations are safe:
+        # a. iterate over all of the rule body relations and check if they are safe, meaning all their input
+        # free variable terms are bound.
+        # b. if a new safe relation was found, mark its output free variables as bound
+        # c. repeat step 'a' until all relations were found to be safe relations,
+        # or no new safe relations were found.
+
         # initialize assuming every relation is unsafe and every free variable is unbound
-        reordered_relations = []
-        reordered_relations_idx = set()
+        reordered_relations_list = list()
         bound_free_vars = set()
-        found_safe_relation = True
-        while len(reordered_relations) != len(rule_body_relations) and found_safe_relation:
-            found_safe_relation = False
-            for idx, relation_node in enumerate(rule_body_relations):
-                if idx not in reordered_relations_idx:
-                    input_free_vars = self.__get_set_of_input_free_var_names(relation_node)
-                    unbound_free_vars = input_free_vars.difference(bound_free_vars)
-                    if not unbound_free_vars:
-                        # relation is safe, mark all of its output variables as bound
-                        found_safe_relation = True
-                        output_free_vars = self.__get_set_of_output_free_var_names(relation_node)
+        found_new_safe_relation = False
+        all_relations_were_reordered = False
+        first_pass = True
+
+        while first_pass or (found_new_safe_relation and not all_relations_were_reordered):
+            first_pass = False
+            found_new_safe_relation = False
+
+            # try to find new safe relations
+            for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+                if relation not in reordered_relations_list:
+                    # this relation was not marked as safe yet.
+                    # check if all of its input free variable terms are bound
+                    input_free_vars = self.__get_set_of_input_free_var_names(relation, relation_type)
+                    unbound_input_free_vars = input_free_vars.difference(bound_free_vars)
+                    if not unbound_input_free_vars:
+                        # all input free variables are bound, mark the relation as safe
+                        reordered_relations_list.append(relation)
+                        # mark the relation's output free variables as bound
+                        output_free_vars = self.__get_set_of_output_free_var_names(relation, relation_type)
                         bound_free_vars = bound_free_vars.union(output_free_vars)
-                        reordered_relations_idx.add(idx)
-                        reordered_relations.append(relation_node)
-        if len(reordered_relations) != len(rule_body_relations):
-            raise Exception("rule not safe")
-        rule_body_relation_list_node.children = reordered_relations
+                        # make sure we iterate over the relations again if not all of them were found
+                        # to be safe
+                        found_new_safe_relation = True
+            # the pass was completed, check if all of the relations were found to be safe
+            all_relations_were_reordered = len(reordered_relations_list) == len(rule.body_relation_list)
+
+        if not all_relations_were_reordered:
+            raise Exception(f'the rule "{rule}"\n'
+                            f'this pass assumes its input rule is safe, '
+                            f'so make sure to check for rule safety before using it')
+
+        # replace the current relation list with the reordered relation list
+        rule.body_relation_list = reordered_relations_list
 
 
 class TypeCheckingInterpreter(Interpreter):
@@ -1001,3 +1115,228 @@ class TypeCheckingInterpreter(Interpreter):
             var_type = free_var_to_type[free_var_name]
             rule_head_schema.append(var_type)
         self.__add_relation_schema(rule_head_name_node, rule_head_schema)
+
+
+class ResolveVariablesInterpreter(Interpreter):
+    """
+    a lark execution pass
+    This pass performs the variable assignments and replaces variable references with their literal values.
+    """
+
+    def __init__(self, **kw):
+        super().__init__()
+        self.symbol_table = kw['symbol_table']
+
+    def assignment(self, assignment_node):
+        assignment = assignment_node.children[0]
+
+        # get the assigned value and type
+        if assignment.value_type is DataTypes.var_name:
+            # the assigned value is a variable, get its value and type using the symbol table.
+            assigned_var_name = assignment.value
+            assigned_value = self.symbol_table.get_variable_value(assigned_var_name)
+            assigned_type = self.symbol_table.get_variable_type(assigned_var_name)
+        else:
+            # the assigned value is a literal, get its value and type
+            # (they already exist in the assignment named node)
+            assigned_value = assignment.value
+            assigned_type = assignment.value_type
+
+        # perform the assignment by saving the variable attributes in the symbol table
+        self.symbol_table.set_variable_value_and_type(assignment.var_name, assigned_value, assigned_type)
+
+    def read_assignment(self, assignment_node):
+        assignment = assignment_node.children[0]
+
+        # get the argument for the read() function
+        if assignment.value_type is DataTypes.var_name:
+            # the argument is a variable, get its literal value
+            read_arg_var_name = assignment.value
+            read_arg = self.symbol_table.get_variable_value(read_arg_var_name)
+        else:
+            # the argument is a literal string, get it from the assignment node
+            read_arg = assignment.value
+
+        # try to read the file and get its content as a single string. this string is the assigned value.
+        try:
+            file = open(read_arg, 'r')
+            assigned_value = file.read()
+            file.close()
+        except Exception:
+            raise Exception(f'could not open file "{read_arg}"')
+
+        # perform the assignment by saving the variable attributes in the symbol table
+        # note that since this is a read assignment, the type of the variable will always be a string
+        self.symbol_table.set_variable_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
+
+    def __get_term_list_with_resolved_var_values(self, term_list, type_list):
+        # TODO
+        resolved_var_values_term_list = [
+            self.symbol_table.get_variable_value(term) if term_type is DataTypes.var_name
+            else term
+            for term, term_type in zip(term_list, type_list)]
+        return resolved_var_values_term_list
+
+    def __get_type_list_with_resolved_var_types(self, term_list, type_list):
+        # TODO
+        resolved_var_types_type_list = [
+            self.symbol_table.get_variable_type(term) if term_type is DataTypes.var_name
+            else term_type
+            for term, term_type in zip(term_list, type_list)]
+        return resolved_var_types_type_list
+
+    def resolve_var_terms_in_relation(self, relation: Relation):
+        # TODO commenting
+
+        term_list = relation.term_list
+        type_list = relation.type_list
+
+        relation.term_list = self.__get_term_list_with_resolved_var_values(term_list, type_list)
+        relation.type_list = self.__get_type_list_with_resolved_var_types(term_list, type_list)
+
+    def resolve_var_terms_in_ie_relation(self, relation: IERelation):
+        # TODO commenting
+
+        input_term_list = relation.input_term_list
+        input_type_list = relation.input_type_list
+
+        relation.input_term_list = self.__get_term_list_with_resolved_var_values(input_term_list, input_type_list)
+        relation.input_type_list = self.__get_type_list_with_resolved_var_types(input_term_list, input_type_list)
+
+        output_term_list = relation.output_term_list
+        output_type_list = relation.output_type_list
+
+        relation.output_term_list = self.__get_term_list_with_resolved_var_values(output_term_list, output_type_list)
+        relation.output_type_list = self.__get_type_list_with_resolved_var_types(output_term_list, output_type_list)
+
+    def query(self, query_node):
+        query = query_node.children[0]
+        self.resolve_var_terms_in_relation(query)
+
+    def add_fact(self, fact_node):
+        fact = fact_node.children[0]
+        self.resolve_var_terms_in_relation(fact)
+
+    def remove_fact(self, fact_node):
+        fact = fact_node.children[0]
+        self.resolve_var_terms_in_relation(fact)
+
+    def rule(self, rule_node):
+        rule = rule_node.children[0]
+
+        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+            if relation_type == "relation":
+                self.resolve_var_terms_in_relation(relation)
+            elif relation_type == "ie_relation":
+                self.resolve_var_terms_in_ie_relation(relation)
+            else:
+                raise Exception(f'unexpected relation type: {relation_type}')
+
+
+class AddStatementsToNetxTermGraphInterpreter(Interpreter):
+    """
+    a lark execution pass.
+    This pass adds each statement in the input parse tree to the term graph.
+    This pass is made to work with execution.NetworkxExecution as the execution engine and
+    term_graph.NetxTermGraph as the term graph.
+
+    Each statement in the term graph will be a child of the term graph's root.
+
+    each statement in the term graph will have a type attribute that contains the statement's name in the
+    rgxlog grammar.
+
+    some nodes in the term graph will contain a value attribute that would describe that statement.
+    e.g. a add_fact node would have a value which is a term_graph_values.Relation instance that describes the
+    fact that will be added.
+
+    Some statements are more complex and will be described by more than a single node, e.g. a rule node.
+    The reason for this is that we want a single netx node to not contain more than one term_graph_values.Relation
+    (or term_graph_values.IERelation) value. This will make the term graph a "graph of relation nodes", allowing
+     for flexibility for optimization in the future.
+    """
+
+    def __init__(self, **kw):
+        super().__init__()
+        self.term_graph = kw['term_graph']
+
+    def __add_statement_to_term_graph(self, statement_type, statement_value):
+        """
+        An utility function that adds a statement to the term graph, meaning it adds a node that
+        represents the statement to the term graph, then attach the node to the term graph's root.
+        Should only be used for simple statements (i.e. can be described by a single node)
+
+        Args:
+            statement_type: the type of the statement, (e.g. add_fact). should be the same as the statement's
+            name in the grammar. Will be set as the node's type attribute.
+            statement_value: will be set as the value attribute of the node.
+        """
+        new_statement_node = self.term_graph.add_term(type=statement_type, value=statement_value)
+        self.term_graph.add_dependency(self.term_graph.get_root(), new_statement_node)
+
+    def add_fact(self, fact_node):
+        fact = fact_node.children[0]
+        # add the fact to the term graph
+        self.__add_statement_to_term_graph("add_fact", fact)
+
+    def remove_fact(self, fact_node):
+        fact = fact_node.children[0]
+        # create a relation that describes the fact, then add the fact to the term graph
+        fact_relation = term_graph_values.Relation(fact.relation_name, fact.term_list, fact.type_list)
+        self.__add_statement_to_term_graph("remove_fact", fact_relation)
+
+    def query(self, query_node):
+        query = query_node.children[0]
+        # create a relation that describes the query, then add the query to the term graph
+        query_relation = term_graph_values.Relation(query.relation_name, query.term_list, query.type_list)
+        self.__add_statement_to_term_graph("query", query_relation)
+
+    def relation_declaration(self, relation_decl_node):
+        relation_decl = relation_decl_node.children[0]
+        # create the declaration as a term graph value, then add it to the term graph
+        decl_term_graph_value = RelationDeclaration(
+            relation_decl.relation_name, relation_decl.type_list)
+        self.__add_statement_to_term_graph("relation_declaration", decl_term_graph_value)
+
+    def rule(self, rule_node):
+        rule = rule_node.children[0]
+
+        # create the root of the rule statement in the term graph. Note that this is an "empty" node (it does
+        # not contain a value). This is because the rule statement will be defined by the children of this node.
+        tg_rule_node = self.term_graph.add_term(type="rule")
+        # attach the rule node to the term graph root
+        self.term_graph.add_dependency(self.term_graph.get_root(), tg_rule_node)
+
+        # create the rule head node for the term graph.
+        # since a rule head is defined by a single relation, this node will contain a value which is that relation.
+        rule_head_relation = rule.head_relation
+        tg_head_relation = term_graph_values.Relation(
+            rule_head_relation.relation_name, rule_head_relation.term_list, rule_head_relation.type_list)
+        tg_head_relation_node = self.term_graph.add_term(type="rule_head", value=tg_head_relation)
+        # attach the rule head node to the rule statement node
+        self.term_graph.add_dependency(tg_rule_node, tg_head_relation_node)
+
+        # create the rule body node. Unlike the rule head node, we can't define the rule body node with a value
+        # since a rule body can be defined by multiple relations.
+        # Instead, each of the rule body relations will be represented by a term graph node
+        # that a child of the rule body node.
+        tg_rule_body_node = self.term_graph.add_term(type="rule_body")
+        # attach the rule body node to the rule statement node
+        self.term_graph.add_dependency(tg_rule_node, tg_rule_body_node)
+
+        # add each rule body relation to the graph as a child node of the rule body node.
+        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+            if relation_type == 'relation':
+                # this is a normal relation, create a term graph relation for it
+                tg_body_relation = term_graph_values.Relation(
+                    relation.relation_name, relation.term_list, relation.type_list)
+            elif relation_type == 'ie_relation':
+                # this is an ie relation, create a term graph ie relation for it
+                tg_body_relation = term_graph_values.IERelation(
+                    relation.relation_name, relation.input_term_list, relation.input_type_list,
+                    relation.output_term_list, relation.output_type_list)
+            else:
+                raise Exception(f'unexpected relation type: {relation_type}')
+            # add the relation to the term graph
+            tg_body_relation_node = self.term_graph.add_term(type=relation_type, value=tg_body_relation)
+            # attach the relation to the rule body
+            self.term_graph.add_dependency(tg_rule_body_node, tg_body_relation_node)

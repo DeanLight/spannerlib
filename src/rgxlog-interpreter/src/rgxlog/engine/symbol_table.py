@@ -11,6 +11,12 @@ class SymbolTableBase(ABC):
     It also keeps track of the relation names that were defined in the program and their schemas.
     """
 
+    # TODO redesign with only set_variable_value_and_type method for manipulating variables
+
+    @abstractmethod
+    def set_variable_value_and_type(self, var_name, var_value, var_type):
+        pass
+
     @abstractmethod
     def set_variable_type(self, var_name, var_type):
         """set the type of a variable in the symbol table"""
@@ -106,6 +112,10 @@ class SymbolTable(SymbolTableBase):
         self._var_to_value = {}
         self._var_to_type = {}
         self._relation_to_schema = {}
+
+    def set_variable_value_and_type(self, var_name, var_value, var_type):
+        self._var_to_value[var_name] = var_value
+        self._var_to_type[var_name] = var_type
 
     def set_variable_type(self, var_name, var_type):
         self._var_to_type[var_name] = var_type

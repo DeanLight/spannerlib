@@ -1,7 +1,6 @@
 import networkx as nx
 from rgxlog.engine.custom_trees import NetxTree
 from abc import ABC, abstractmethod
-from rgxlog.engine.complex_values import Relation, RelationDeclaration, IERelation
 from rgxlog.engine.datatypes import DataTypes, Span
 
 
@@ -36,12 +35,13 @@ class NetxPass(ABC):
 
 class ResolveVariablesPass(NetxPass):
     """
-    This pass performs the variable assignments and replaces variable references with their values.
+    a netx execution pass
+    This pass performs the variable assignments and replaces variable references with their literal values.
     """
 
     def __init__(self, **kw):
-        self.symbol_table = kw['symbol_table']
         super().__init__()
+        self.symbol_table = kw['symbol_table']
 
     def visit(self, netx_tree: NetxTree):
         data_attr = nx.get_node_attributes(netx_tree, "data")
@@ -110,7 +110,7 @@ class ResolveVariablesPass(NetxPass):
 
 class SimplifyRelationsPass(NetxPass):
     """
-    this pass redefines each relation in the tree using classes from 'complex_values.py' file
+    this pass redefines each relation in the tree using classes from 'term_graph_values.py' file
     For example, a normal relation will be represented by a single node containing a complex_values.Relation
     instance as a value (instead of the default grammar representation that contains multiple nodes)
     """

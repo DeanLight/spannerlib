@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 import networkx as nx
 from rgxlog.engine.term_graph import EvalState
-from rgxlog.engine.complex_values import Relation, RelationDeclaration, IERelation
 from pyDatalog import pyDatalog
 from rgxlog.engine.datatypes import DataTypes, Span
 from rgxlog.engine.symbol_table import SymbolTable
 import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.ie_functions import IEFunctionData
+from rgxlog.engine.named_ast_nodes import *
 
 
 class DatalogEngineBase(ABC):
@@ -125,7 +125,7 @@ class PydatalogEngine(DatalogEngineBase):
     def declare_relation(self, declaration: RelationDeclaration):
         # add and remove a temporary fact to the relation that is declared, this creates an empty
         # relation in pyDatalog so it is allowed to be queried
-        relation_name = declaration.name
+        relation_name = declaration.relation_name
         schema_length = len(declaration.type_list)
         temp_fact = relation_name + "("
         for i in range(schema_length):
@@ -182,13 +182,13 @@ class PydatalogEngine(DatalogEngineBase):
             for input_term_type in ie_relation.input_type_list:
                 # check if the relation is not bounded, should never happen
                 assert input_term_type != DataTypes.free_var_name
-            self.add_fact(Relation(input_relation.name, ie_relation.input_term_list, ie_relation.input_type_list))
+            self.add_fact(Relation(input_relation.relation_name, ie_relation.input_term_list, ie_relation.input_type_list))
         else:
             # extract the input into an input relation.
             self.add_rule(input_relation, [bounding_relation])
         # get a list of input tuples. to get them we query pyDatalog using the input relation name, and all
         # of the terms will be free variables (so we get the whole tuple)
-        query_str = input_relation.name + "("
+        query_str = input_relation.relation_name + "("
         for i in range(len(input_relation.term_list)):
             query_str += "X" + str(i)
             if i < len(input_relation.term_list) - 1:
@@ -225,7 +225,7 @@ class PydatalogEngine(DatalogEngineBase):
                     ie_outputs[i][j] = Span(span_tuple[0], span_tuple[1])
         # add the outputs to the output relation
         for ie_output in ie_outputs:
-            output_fact = Relation(output_relation.name, ie_output, ie_output_types)
+            output_fact = Relation(output_relation.relation_name, ie_output, ie_output_types)
             self.add_fact(output_fact)
         # return the result relation. it's a temp relation that is the inner join of the input and output relations
         return self.aggregate_relations_to_temp_relation([input_relation, output_relation])
