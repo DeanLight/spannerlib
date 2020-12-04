@@ -182,7 +182,8 @@ class PydatalogEngine(DatalogEngineBase):
             for input_term_type in ie_relation.input_type_list:
                 # check if the relation is not bounded, should never happen
                 assert input_term_type != DataTypes.free_var_name
-            self.add_fact(Relation(input_relation.relation_name, ie_relation.input_term_list, ie_relation.input_type_list))
+            self.add_fact(
+                Relation(input_relation.relation_name, ie_relation.input_term_list, ie_relation.input_type_list))
         else:
             # extract the input into an input relation.
             self.add_rule(input_relation, [bounding_relation])
@@ -341,7 +342,7 @@ class NetworkxExecution(ExecutionBase):
                             temp_result = self.datalog_engine.aggregate_relations_to_temp_relation(
                                 [temp_result, term_graph.nodes[relation_node]['value']])
                     elif term_graph.nodes[relation_node]['type'] == 'ie_relation':
-                        ie_func_data = getattr(ie_functions, relation_value.name)
+                        ie_func_data = getattr(ie_functions, relation_value.relation_name)
                         term_graph.nodes[relation_node]['value'] = self.datalog_engine.compute_rule_body_ie_relation(
                             relation_value, ie_func_data, temp_result)
                         if temp_result is not None:
@@ -353,8 +354,9 @@ class NetworkxExecution(ExecutionBase):
                     else:
                         assert 0
                 rule_head_value = term_graph.nodes[rule_head_node]['value']
-                rule_head_declaration = RelationDeclaration(rule_head_value.name,
-                                                            self.symbol_table.get_relation_schema(rule_head_value.name))
+                rule_head_declaration = RelationDeclaration(rule_head_value.relation_name,
+                                                            self.symbol_table.get_relation_schema(
+                                                                rule_head_value.relation_name))
                 self.datalog_engine.declare_relation(rule_head_declaration)
                 self.datalog_engine.add_rule(rule_head_value, [temp_result])
             term_graph.nodes[node]['state'] = EvalState.COMPUTED
