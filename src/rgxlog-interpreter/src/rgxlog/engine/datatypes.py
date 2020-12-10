@@ -44,9 +44,6 @@ class Span:
         self.span_start = span_start
         self.span_end = span_end
 
-    def __repr__(self):
-        return f"Span(span_start={self.span_start}, span_end={self.span_end})"
-
     def __str__(self):
         return f"[{self.span_start}, {self.span_end})"
 

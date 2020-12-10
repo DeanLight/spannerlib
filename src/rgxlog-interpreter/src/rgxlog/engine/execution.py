@@ -6,7 +6,7 @@ from rgxlog.engine.datatypes import DataTypes, Span
 from rgxlog.engine.symbol_table import SymbolTable
 import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.ie_functions import IEFunctionData
-from rgxlog.engine.named_ast_nodes import *
+from rgxlog.engine.structured_nodes import *
 
 
 class DatalogEngineBase(ABC):

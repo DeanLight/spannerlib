@@ -1,19 +1,24 @@
 """
-TODO
-for each statement node in the grammar, this module contains a matching named tuple that will represent
-that statement in the semantic c
+for each statement node in the rgxlog grammar, this module contains a matching class that can represent
+that statement in the abstract syntax tree. classes representations for relations are also included.
+
+these classes are useful as they represent a statement with a single instance, instead of a lark tree,
+thus simplifying the code required for semantic checks and manipulations of the statement.
 """
-# TODO decide on a single interface (to_string vs __str__) and use it
+
 from rgxlog.engine.datatypes import DataTypes
-from collections import namedtuple
 
-
-# TODO short description for every named tuple
 
 def get_term_list_string(term_list, type_list):
     """
     returns a string representation of the term list.
     quotes are added to string terms so they will not be confused with variables.
+
+    Args:
+        term_list: the term list to be turned into a string
+        type_list: the types of the terms in term_list
+
+    Returns: a string representation of the term list
     """
     terms_with_quoted_strings = [f'"{term}"' if term_type is DataTypes.string
                                  else str(term)
@@ -29,7 +34,7 @@ class Relation:
         """
         Args:
             relation_name: the name of the relation
-            term_list: a list of the relation terms. must be either literal values or free variables
+            term_list: a list of the relation terms.
             type_list: a list of the relation term types.
         """
         if len(term_list) != len(type_list):
@@ -47,7 +52,7 @@ class Relation:
     def get_pydatalog_string(self):
         """
         the pyDatalog execution engine receives instructions via strings.
-        return a relation representation of a span term in pyDatalog.
+        return a relation representation of a relation in pyDatalog.
         quotes are added to string terms so pyDatalog will not be confused between strings and variables.
         spans are represented as tuples of length 2 (see get_pydatalog_string() of the Span class)
         """
@@ -107,7 +112,7 @@ class IERelation:
 
 
 class RelationDeclaration:
-    """a representation of a relation declaration"""
+    """a representation of a relation_declaration statement"""
 
     def __init__(self, relation_name, type_list):
         """
@@ -139,26 +144,47 @@ class RelationDeclaration:
 
 
 class AddFact(Relation):
+    """
+    a representation of an add_fact statement
+    inherits from relation as a fact can be defined by a relation
+    """
 
     def __init__(self, relation_name, term_list, type_list):
         super().__init__(relation_name, term_list, type_list)
 
 
 class RemoveFact(Relation):
+    """
+    a representation of a remove_fact statement
+    inherits from relation as a fact can be defined by a relation
+    """
 
     def __init__(self, relation_name, term_list, type_list):
         super().__init__(relation_name, term_list, type_list)
 
 
 class Query(Relation):
+    """
+    a representation of a query statement
+    inherits from relation as a query can be defined by a relation
+    """
 
     def __init__(self, relation_name, term_list, type_list):
         super().__init__(relation_name, term_list, type_list)
 
 
 class Rule:
+    """
+    a representation of a rule statement
+    """
 
-    def __init__(self, head_relation, body_relation_list, body_relation_type_list):
+    def __init__(self, head_relation: Relation, body_relation_list, body_relation_type_list):
+        """
+        Args:
+            head_relation: the rule head, which is represented by a single relation
+            body_relation_list: a list of the rule body relations
+            body_relation_type_list: a list of the rule body relations types (e.g. "relation", "ie_relation")
+        """
         self.head_relation = head_relation
         self.body_relation_list = body_relation_list
         self.body_relation_type_list = body_relation_type_list
@@ -175,14 +201,24 @@ class Rule:
 
 
 class Assignment:
+    """
+    a representation of an assignment statement
+    """
 
     def __init__(self, var_name, value, value_type):
+        """
+        Args:
+            var_name: the variable name to be assigned a value
+            value: the assigned value
+            value_type: the assigned value's type
+        """
         self.var_name = var_name
         self.value = value
         self.value_type = value_type
 
     def __str__(self):
         if self.value_type is DataTypes.string:
+            # add quotes to a literal string value
             value_string = f'"{self.value}"'
         else:
             value_string = str(self.value)
@@ -190,15 +226,29 @@ class Assignment:
 
 
 class ReadAssignment:
+    """
+    a representation of a read_assignment statement
+    """
 
-    def __init__(self, var_name, value, value_type):
+    def __init__(self, var_name, read_arg, read_arg_type):
+        """
+        Args:
+            var_name: the variable name to be assigned a value
+            read_arg: the argument that is passed to the read() function (e.g. "some_file" in 's = read("some_file")')
+            read_arg_type: the type of the argument that is passed to the read function
+        """
+        if read_arg_type not in [DataTypes.string, DataTypes.var_name]:
+            raise Exception(
+                f'the argument that was passed to the read() function has an unexpected type: {read_arg_type}')
+
         self.var_name = var_name
-        self.value = value
-        self.value_type = value_type
+        self.read_arg = read_arg
+        self.read_arg_type = read_arg_type
 
     def __str__(self):
-        if self.value_type is DataTypes.string:
-            value_string = f'"{self.value}"'
+        if self.read_arg_type is DataTypes.string:
+            # add quotes to a literal string argument
+            read_arg_string = f'"{self.read_arg}"'
         else:
-            value_string = str(self.value)
-        return f'{self.var_name} = read({value_string})'
+            read_arg_string = str(self.read_arg)
+        return f'{self.var_name} = read({read_arg_string})'
