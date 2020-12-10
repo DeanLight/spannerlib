@@ -1,33 +1,37 @@
 from lark import Transformer, v_args, Tree
 from lark.visitors import Interpreter, Visitor_Recursive
-from rgxlog.engine.datatypes import DataTypes
 import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.named_ast_nodes import *
 from rgxlog.engine.datatypes import Span
-import rgxlog.engine.term_graph_values as term_graph_values
-from itertools import count
-
-NODES_OF_LIST_WITH_VAR_NAMES = {"term_list", "const_term_list"}
-NODES_OF_LIST_WITH_RELATION_NODES = {"rule_body_relation_list"}
-NODES_OF_LIST_WITH_FREE_VAR_NAMES = {"term_list", "free_var_name_list"}
-NODES_OF_TERM_LISTS = {"term_list", "const_term_list"}
-NODES_OF_RULE_BODY_TERM_LISTS = {"term_list"}
-SCHEMA_DEFINING_NODES = {"decl_term_list", "free_var_name_list"}
 
 
-# TODO fix the calls that we have to use only kwargs once the rewrite is done
-def assert_expected_node_structure(node, node_name=None, num_children=None, *children_names):
+def assert_expected_node_structure(lark_node, node_name=None, num_children=None, children_names=None):
+    """
+    Asserts that a lark node has the structure that it is expected to have.
+
+    Args:
+        lark_node: a node of a lark tree that will be checked
+        node_name: the expected name of the node (that should be found in lark_node.data)
+        num_children: the expected number of children that the node has
+        children_names: a list of the expected children names, in the order that they should appear
+        in the lark_node.children list
+    """
     if node_name is not None:
-        assert node.data == node_name, "bad node name: " + node_name + \
-                                       "\n actual node name: " + node.data
+        if lark_node.data != node_name:
+            raise Exception(f'bad node name: {node_name}\n'
+                            f'actual node name: {lark_node.data}')
+
     if num_children is not None:
-        assert len(node.children) == num_children, "bad number of children: " + str(num_children) + \
-                                                   "\n actual number of children: " + str(len(node.children))
+        if len(lark_node.children) != num_children:
+            raise Exception(f'bad number of children: {str(num_children)}\n'
+                            f'actual number of children: {str(len(lark_node.children))}')
+
     if children_names is not None:
-        for idx, name in enumerate(children_names):
-            assert node.children[idx].data == name, "bad child name at index " + str(idx) + ": " + \
-                                                    name + \
-                                                    "\n actual child name: " + node.children[idx].data
+        actual_children_names = [child_node.data for child_node in lark_node.children]
+        for name, expected_name in zip(actual_children_names, children_names):
+            if name != expected_name:
+                raise Exception(f'bad children names: {children_names}\n'
+                                f'actual children names: {actual_children_names}')
 
 
 @v_args(inline=False)
@@ -114,7 +118,8 @@ class ConvertSpanNodeToSpanDataTypeVisitor(Visitor_Recursive):
     @staticmethod
     def span(span_node):
         # perform assertion to make sure we got the expected node structure
-        assert_expected_node_structure(span_node, "span", 2, "integer", "integer")
+        assert_expected_node_structure(span_node, node_name="span", num_children=2,
+                                       children_names=["integer", "integer"])
 
         # get the span start and end
         span_start = span_node.children[0].children[0]
@@ -150,7 +155,8 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
         var_name_node = assignment_node.children[0]
         value_node = assignment_node.children[1]
         # since there are multiple types of assigned values, we get the current type using value_node.data
-        assert_expected_node_structure(assignment_node, assignment_type, 2, "var_name", value_node.data)
+        assert_expected_node_structure(assignment_node, node_name=assignment_type, num_children=2,
+                                       children_names=["var_name", value_node.data])
         assert_expected_node_structure(var_name_node, node_name="var_name", num_children=1)
         assert_expected_node_structure(value_node, node_name=value_node.data, num_children=1)
 
@@ -254,7 +260,8 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
 
         # perform assertion to make sure we got the expected node structure
         fact_type = fact_node.data
-        assert_expected_node_structure(fact_node, fact_type, 2, "relation_name", "const_term_list")
+        assert_expected_node_structure(fact_node, node_name=fact_type, num_children=2,
+                                       children_names=["relation_name", "const_term_list"])
 
         # a fact is defined by a relation, create that relation using the utility function
         relation_name_node = fact_node.children[0]
@@ -284,7 +291,8 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
 
         # perform assertion to make sure we got the expected node structure
         query_type = query_node.data
-        assert_expected_node_structure(query_node, query_type, 2, "relation_name", "term_list")
+        assert_expected_node_structure(query_node, node_name=query_type, num_children=2,
+                                       children_names=["relation_name", "term_list"])
 
         # a query is defined by a relation, create that relation using the utility function
         relation_name_node = query_node.children[0]
@@ -302,8 +310,8 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
     def relation_declaration(relation_decl_node):
 
         # perform assertion to make sure we got the expected node structure
-        assert_expected_node_structure(relation_decl_node, "relation_declaration", 2, "relation_name",
-                                       "decl_term_list")
+        assert_expected_node_structure(relation_decl_node, node_name="relation_declaration", num_children=2,
+                                       children_names=["relation_name", "decl_term_list"])
         relation_name_node = relation_decl_node.children[0]
         decl_term_list_node = relation_decl_node.children[1]
         assert_expected_node_structure(relation_name_node, node_name="relation_name", num_children=1)
@@ -333,10 +341,12 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
     def rule(self, rule_node):
 
         # perform assertion to make sure we got the expected node structure
-        assert_expected_node_structure(rule_node, "rule", 2, "rule_head", "rule_body_relation_list")
+        assert_expected_node_structure(rule_node, node_name="rule", num_children=2,
+                                       children_names=["rule_head", "rule_body_relation_list"])
         rule_head_node = rule_node.children[0]
         rule_body_relation_nodes = rule_node.children[1]
-        assert_expected_node_structure(rule_head_node, "rule_head", 2, "relation_name", "free_var_name_list")
+        assert_expected_node_structure(rule_head_node, node_name="rule_head", num_children=2,
+                                       children_names=["relation_name", "free_var_name_list"])
         assert_expected_node_structure(rule_body_relation_nodes, node_name="rule_body_relation_list")
 
         # create the named relation node that defines the head of the rule
@@ -352,7 +362,8 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
 
             if relation_type == "relation":
                 # this is a normal relation, get it's name and terms and construct a named relation node
-                assert_expected_node_structure(relation_node, "relation", 2, "relation_name", "term_list")
+                assert_expected_node_structure(relation_node, node_name="relation", num_children=2,
+                                               children_names=["relation_name", "term_list"])
                 relation_name_node = relation_node.children[0]
                 term_list_node = relation_node.children[1]
                 named_relation_node = self.__create_named_relation_node(relation_name_node, term_list_node)
@@ -361,7 +372,8 @@ class ConvertStatementsToNamedNodesVisitor(Visitor_Recursive):
                 # this is an ie relation, get it's name, input terms and output term and construct a named ie
                 # relation node
                 assert_expected_node_structure(relation_node,
-                                               "ie_relation", 3, "relation_name", "term_list", "term_list")
+                                               node_name="ie_relation", num_children=3,
+                                               children_names=["relation_name", "term_list", "term_list"])
                 relation_name_node = relation_node.children[0]
                 input_term_list_node = relation_node.children[1]
                 output_term_list_node = relation_node.children[2]
@@ -438,55 +450,55 @@ class CheckReferencedVariablesInterpreter(Interpreter):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-class CheckFilesInterpreter(Interpreter):
-    """
-    A lark tree semantic check.
-    checks for existence and access to external documents
-    """
-
-    def __init__(self, **kw):
-        super().__init__()
-        self.symbol_table = kw['symbol_table']
-        self.var_name_to_value = dict()
-
-    def assignment(self, tree):
-        value_node = tree.children[1]
-        value_type = value_node.data
-        assert_expected_node_structure(tree, "assignment", 2, "var_name", value_type)
-        if value_type == "var_name":
-            right_var_name = value_node.children[0]
-            if self.symbol_table.contains_variable(right_var_name):
-                value = self.symbol_table.get_variable_value(right_var_name)
-            elif right_var_name in self.var_name_to_value:
-                value = self.var_name_to_value[right_var_name]
-            else:
-                assert 0
-        else:
-            value = value_node.children[0]
-        left_var_name = tree.children[0].children[0]
-        self.var_name_to_value[left_var_name] = value
-
-    def read_assignment(self, tree):
-        read_param_node = tree.children[1]
-        read_param_type = read_param_node.data
-        assert_expected_node_structure(tree, "read_assignment", 2, "var_name", read_param_type)
-        assert_expected_node_structure(read_param_node, read_param_type, 1)
-        read_param = read_param_node.children[0]
-        if read_param_type == "var_name":
-            if read_param in self.var_name_to_value:
-                read_param = self.var_name_to_value[read_param]
-            elif self.symbol_table.contains_variable(read_param):
-                read_param = self.symbol_table.get_variable_value(read_param)
-            else:
-                assert 0
-        assert_expected_node_structure(tree.children[0], "var_name", 1)
-        left_var_name = tree.children[0].children[0]
-        try:
-            file = open(read_param, 'r')
-            self.var_name_to_value[left_var_name] = file.read()
-            file.close()
-        except Exception:
-            raise Exception("couldn't open file")
+# class CheckFilesInterpreter(Interpreter):
+#     """
+#     A lark tree semantic check.
+#     checks for existence and access to external documents
+#     """
+#
+#     def __init__(self, **kw):
+#         super().__init__()
+#         self.symbol_table = kw['symbol_table']
+#         self.var_name_to_value = dict()
+#
+#     def assignment(self, tree):
+#         value_node = tree.children[1]
+#         value_type = value_node.data
+#         assert_expected_node_structure(tree, "assignment", 2, "var_name", value_type)
+#         if value_type == "var_name":
+#             right_var_name = value_node.children[0]
+#             if self.symbol_table.contains_variable(right_var_name):
+#                 value = self.symbol_table.get_variable_value(right_var_name)
+#             elif right_var_name in self.var_name_to_value:
+#                 value = self.var_name_to_value[right_var_name]
+#             else:
+#                 assert 0
+#         else:
+#             value = value_node.children[0]
+#         left_var_name = tree.children[0].children[0]
+#         self.var_name_to_value[left_var_name] = value
+#
+#     def read_assignment(self, tree):
+#         read_param_node = tree.children[1]
+#         read_param_type = read_param_node.data
+#         assert_expected_node_structure(tree, "read_assignment", 2, "var_name", read_param_type)
+#         assert_expected_node_structure(read_param_node, read_param_type, 1)
+#         read_param = read_param_node.children[0]
+#         if read_param_type == "var_name":
+#             if read_param in self.var_name_to_value:
+#                 read_param = self.var_name_to_value[read_param]
+#             elif self.symbol_table.contains_variable(read_param):
+#                 read_param = self.symbol_table.get_variable_value(read_param)
+#             else:
+#                 assert 0
+#         assert_expected_node_structure(tree.children[0], "var_name", 1)
+#         left_var_name = tree.children[0].children[0]
+#         try:
+#             file = open(read_param, 'r')
+#             self.var_name_to_value[left_var_name] = file.read()
+#             file.close()
+#         except Exception:
+#             raise Exception("couldn't open file")
 
 
 class CheckRelationsRedefinitionInterpreter(Interpreter):
