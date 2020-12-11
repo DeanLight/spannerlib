@@ -31,6 +31,7 @@ from lark.visitors import Interpreter, Visitor_Recursive
 import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.structured_nodes import *
 from rgxlog.engine.datatypes import Span
+from typing import Union
 
 
 def assert_expected_node_structure(lark_node, node_name=None, num_children=None, children_names=None):
@@ -701,7 +702,7 @@ class CheckRuleSafety(Visitor_Recursive):
                              if term_type is DataTypes.free_var_name)
         return free_var_names
 
-    def __get_set_of_input_free_var_names(self, relation, relation_type):
+    def __get_set_of_input_free_var_names(self, relation: Union[Relation, IERelation], relation_type: str):
         """
         Args:
             relation: a relation (either a normal relation or an ie relation)
@@ -718,7 +719,7 @@ class CheckRuleSafety(Visitor_Recursive):
         else:
             raise Exception(f'unexpected relation type: {relation_type}')
 
-    def __get_set_of_output_free_var_names(self, relation, relation_type):
+    def __get_set_of_output_free_var_names(self, relation: Union[Relation, IERelation], relation_type: str):
         """
         Args:
             relation: a relation (either a normal relation or an ie relation)
@@ -842,7 +843,7 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
                              if term_type is DataTypes.free_var_name)
         return free_var_names
 
-    def __get_set_of_input_free_var_names(self, relation, relation_type):
+    def __get_set_of_input_free_var_names(self, relation: Union[Relation, IERelation], relation_type: str):
         """
         Args:
             relation: a relation (either a normal relation or an ie relation)
@@ -859,7 +860,7 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
         else:
             raise Exception(f'unexpected relation type: {relation_type}')
 
-    def __get_set_of_output_free_var_names(self, relation, relation_type):
+    def __get_set_of_output_free_var_names(self, relation: Union[Relation, IERelation], relation_type: str):
         """
         Args:
             relation: a relation (either a normal relation or an ie relation)
