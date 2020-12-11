@@ -70,25 +70,29 @@ class RemoveTokens(Transformer):
     """
 
     def __init__(self, **kw):
-        super().__init__(visit_tokens=True)  # allows us to visit the tokens.
+        super().__init__(visit_tokens=True)
 
     @staticmethod
     def INT(args):
-        # transform the previous string representation to an integer
-        return int(args[0:])
+        string_of_integer = args[0:]
+        integer = int(string_of_integer)
+        return integer
 
     @staticmethod
     def LOWER_CASE_NAME(args):
-        return args[0:]
+        name_string = args[0:]
+        return name_string
 
     @staticmethod
     def UPPER_CASE_NAME(args):
-        return args[0:]
+        name_string = args[0:]
+        return name_string
 
     @staticmethod
     def STRING(args):
-        # removes the quotation marks
-        return args[1:-1]
+        quoted_string = args
+        unquoted_string = quoted_string[1:-1]
+        return unquoted_string
 
 
 class CheckReservedRelationNames(Interpreter):
