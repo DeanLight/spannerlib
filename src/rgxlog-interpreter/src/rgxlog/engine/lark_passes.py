@@ -737,19 +737,20 @@ class CheckRuleSafety(Visitor_Recursive):
 
     def rule(self, rule_node):
         rule = rule_node.children[0]
+        head_relation = rule.head_relation
+        body_relation_list = rule.body_relation_list
+        body_relation_type_list = rule.body_relation_type_list
 
         # check condition 1:
         # every free variable in the head occurs at least once in the body as an output term of a relation.
 
         # get the free variables in the rule head
-        head_relation_term_list = rule.head_relation.term_list
-        head_relation_type_list = rule.head_relation.type_list
-        rule_head_free_vars = self.__get_set_of_free_var_names(head_relation_term_list, head_relation_type_list)
+        rule_head_free_vars = self.__get_set_of_free_var_names(head_relation.term_list, head_relation.type_list)
 
         # get the free variables in the rule body that serve as output terms.
         rule_body_output_free_var_sets = [self.__get_set_of_output_free_var_names(relation, relation_type)
                                           for relation, relation_type in
-                                          zip(rule.body_relation_list, rule.body_relation_type_list)]
+                                          zip(body_relation_list, body_relation_type_list)]
         rule_body_output_free_vars = set().union(*rule_body_output_free_var_sets)
 
         # make sure that every free variable in the rule head appears at least once as an output term
@@ -784,7 +785,7 @@ class CheckRuleSafety(Visitor_Recursive):
             found_new_safe_relation = False
 
             # try to find new safe relations
-            for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+            for relation, relation_type in zip(body_relation_list, body_relation_type_list):
                 if relation not in safe_relations:
                     # this relation was not marked as safe yet.
                     # check if all of its input free variable terms are bound
@@ -800,13 +801,13 @@ class CheckRuleSafety(Visitor_Recursive):
                         # to be safe
                         found_new_safe_relation = True
             # the pass was completed, check if all of the relations were found to be safe
-            all_relations_are_safe = len(safe_relations) == len(rule.body_relation_list)
+            all_relations_are_safe = len(safe_relations) == len(body_relation_list)
 
         if not all_relations_are_safe:
             # condition 2 check failed, get all of the unbound free variables and pass them in an exception
             rule_body_input_free_var_sets = [self.__get_set_of_input_free_var_names(relation, relation_type)
                                              for relation, relation_type in
-                                             zip(rule.body_relation_list, rule.body_relation_type_list)]
+                                             zip(body_relation_list, body_relation_type_list)]
             rule_body_input_free_vars = set().union(*rule_body_input_free_var_sets)
             unbound_free_vars = rule_body_input_free_vars.difference(bound_free_vars)
             raise Exception(f'The rule "{rule}" \n'
