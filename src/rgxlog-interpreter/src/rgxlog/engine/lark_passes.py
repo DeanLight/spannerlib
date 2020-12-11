@@ -931,7 +931,34 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
         rule.body_relation_type_list = reordered_relations_type_list
 
 
-class TypeCheckingInterpreter(Interpreter):
+class TypeCheckAssignments(Interpreter):
+    """
+    a lark semantic check
+    performs type checking for assignments
+    in the current version of lark, this type checking is only required for read assignments
+    """
+
+    def __init__(self, **kw):
+        super().__init__()
+        self.symbol_table = kw['symbol_table']
+
+    def read_assignment(self, assignment_node):
+        assignment = assignment_node.children[0]
+
+        # get the type of the argument for the read() function
+        if assignment.read_arg_type is DataTypes.var_name:
+            read_arg_var_name = assignment.read_arg
+            read_arg_type = self.symbol_table.get_variable_type(read_arg_var_name)
+        else:
+            read_arg_type = assignment.read_arg_type
+
+        # if the argument is not of type string, raise and exception
+        if read_arg_type is not DataTypes.string:
+            raise Exception(f'type checking failed for the read assignment {assignment}\n'
+                            f'because the argument type for read() was {read_arg_type} (must be a string)')
+
+
+class TypeCheckRelationsAndSaveSchemas(Interpreter):
     """
     A lark tree semantic check.
     This pass makes the following assumptions and might not work correctly if they are not met
@@ -948,6 +975,9 @@ class TypeCheckingInterpreter(Interpreter):
     new A(str)
     new B(int)
     C(X) <- A(X), B(X) # error since X is expected to be both an int and a string
+
+    this pass also writes the relation schemas that it finds in relation declarations and rule heads to the
+    symbol table
     """
 
     def __init__(self, **kw):
@@ -984,7 +1014,7 @@ class TypeCheckingInterpreter(Interpreter):
 
     def relation_declaration(self, relation_decl_node):
         relation_decl = relation_decl_node.children[0]
-        self.symbol_table.set_relation_schema(relation_decl.relation_name, relation_decl.type_list)
+        self.symbol_table.add_relation_schema(relation_decl.relation_name, relation_decl.type_list)
 
     def add_fact(self, fact_node):
         fact = fact_node.children[0]
@@ -1039,10 +1069,10 @@ class TypeCheckingInterpreter(Interpreter):
                     # free var already has a type, make sure there's no conflict with the expected type.
                     free_var_type = free_var_to_type[free_var]
                     if free_var_type != correct_type:
-                        # found a conflicted free var
+                        # found a conflicted free var, add it to the conflicted free vars set
                         conflicted_free_vars.add(free_var)
                 else:
-                    # free var does not currently have a type, map it to the expected type
+                    # free var does not currently have a type, map it to the correct type
                     free_var_to_type[free_var] = correct_type
 
     def rule(self, rule_node):
@@ -1101,13 +1131,14 @@ class TypeCheckingInterpreter(Interpreter):
         # and add it to the symbol table
         head_relation = rule.head_relation
         rule_head_schema = [free_var_to_type[term] for term in head_relation.term_list]
-        self.symbol_table.set_relation_schema(head_relation.relation_name, rule_head_schema)
+        self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema)
 
 
-class ResolveVariablesInterpreter(Interpreter):
+class ResolveVariablesReferences(Interpreter):
     """
     a lark execution pass
-    This pass performs the variable assignments and replaces variable references with their literal values.
+    this pass replaces variable references with their literal values.
+    also replaces DataTypes.var_name types with the real type of the variable
     """
 
     def __init__(self, **kw):
@@ -1116,111 +1147,108 @@ class ResolveVariablesInterpreter(Interpreter):
 
     def assignment(self, assignment_node):
         assignment = assignment_node.children[0]
-
-        # get the assigned value and type
+        # if the assigned value is a variable, replace it with its literal value
         if assignment.value_type is DataTypes.var_name:
-            # the assigned value is a variable, get its value and type using the symbol table.
             assigned_var_name = assignment.value
-            assigned_value = self.symbol_table.get_variable_value(assigned_var_name)
-            assigned_type = self.symbol_table.get_variable_type(assigned_var_name)
-        else:
-            # the assigned value is a literal, get its value and type
-            # (they already exist in the structured assignment node)
-            assigned_value = assignment.value
-            assigned_type = assignment.value_type
+            assignment.value = self.symbol_table.get_variable_value(assigned_var_name)
+            assignment.value_type = self.symbol_table.get_variable_type(assigned_var_name)
 
+    def read_assignment(self, assignment_node):
+        assignment = assignment_node.children[0]
+        # if the read() argument is a variable, replace it with its literal value
+        if assignment.read_arg_type is DataTypes.var_name:
+            read_arg_var_name = assignment.read_arg
+            assignment.read_arg = self.symbol_table.get_variable_value(read_arg_var_name)
+            assignment.read_arg_type = self.symbol_table.get_variable_type(read_arg_var_name)
+
+    def __resolve_variables_in_term_and_type_lists(self, term_list, type_list):
+        """
+        an utility function for resolving variables in term lists
+        for each variable term in term_list, replace its value in term_list with its literal value, and
+        its DataTypes.var_name type in type_list with its real type
+        the changes to the lists are done in-place
+
+        Args:
+            term_list: a list of terms
+            type_list: the type of terms in term_list
+        """
+
+        # get the list of terms with resolved variable values
+        resolved_var_values_term_list = [
+            self.symbol_table.get_variable_value(term) if term_type is DataTypes.var_name
+            else term
+            for term, term_type in zip(term_list, type_list)]
+
+        # get the list of types with resolved variable types
+        resolved_var_types_type_list = [
+            self.symbol_table.get_variable_type(term) if term_type is DataTypes.var_name
+            else term_type
+            for term, term_type in zip(term_list, type_list)]
+
+        # replace the lists with the resolved lists. use slicing to do it in-place.
+        term_list[:] = resolved_var_values_term_list
+        type_list[:] = resolved_var_types_type_list
+
+    def query(self, query_node):
+        query = query_node.children[0]
+        self.__resolve_variables_in_term_and_type_lists(query.term_list, query.type_list)
+
+    def add_fact(self, fact_node):
+        fact = fact_node.children[0]
+        self.__resolve_variables_in_term_and_type_lists(fact.term_list, fact.type_list)
+
+    def remove_fact(self, fact_node):
+        fact = fact_node.children[0]
+        self.__resolve_variables_in_term_and_type_lists(fact.term_list, fact.type_list)
+
+    def rule(self, rule_node):
+        rule = rule_node.children[0]
+        # resolve the variables of each relation in the rule body relation list
+        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+            if relation_type == "relation":
+                self.__resolve_variables_in_term_and_type_lists(relation.term_list, relation.type_list)
+            elif relation_type == "ie_relation":
+                # ie relations have two term lists (input and output), resolve them both
+                self.__resolve_variables_in_term_and_type_lists(relation.input_term_list, relation.input_type_list)
+                self.__resolve_variables_in_term_and_type_lists(relation.output_term_list, relation.output_type_list)
+            else:
+                raise Exception(f'unexpected relation type: {relation_type}')
+
+
+class ExecuteAssignments(Interpreter):
+    """
+    a lark execution pass
+    executes assignments by saving variables' values and types in the symbol table
+    should be used only after variable references are resolved, meaning the assigned values and read() arguments
+    are guaranteed to be literals
+    """
+
+    def __init__(self, **kw):
+        super().__init__()
+        self.symbol_table = kw['symbol_table']
+
+    def assignment(self, assignment_node):
+        assignment = assignment_node.children[0]
         # perform the assignment by saving the variable attributes in the symbol table
-        self.symbol_table.set_variable_value_and_type(assignment.var_name, assigned_value, assigned_type)
+        self.symbol_table.set_variable_value_and_type(assignment.var_name, assignment.value, assignment.value_type)
 
     def read_assignment(self, assignment_node):
         assignment = assignment_node.children[0]
 
-        # get the argument for the read() function
-        if assignment.read_arg_type is DataTypes.var_name:
-            # the argument is a variable, get its literal value
-            read_arg_var_name = assignment.read_arg
-            read_arg = self.symbol_table.get_variable_value(read_arg_var_name)
-        else:
-            # the argument is a literal string, get it from the assignment node
-            read_arg = assignment.read_arg
-
         # try to read the file and get its content as a single string. this string is the assigned value.
         try:
-            file = open(read_arg, 'r')
+            file = open(assignment.read_arg, 'r')
             assigned_value = file.read()
             file.close()
         except Exception:
-            raise Exception(f'could not open file "{read_arg}"')
+            raise Exception(f'could not open file "{assignment.read_arg}"')
 
         # perform the assignment by saving the variable attributes in the symbol table
         # note that since this is a read assignment, the type of the variable will always be a string
         self.symbol_table.set_variable_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
-    def __get_term_list_with_resolved_var_values(self, term_list, type_list):
-        # TODO
-        resolved_var_values_term_list = [
-            self.symbol_table.get_variable_value(term) if term_type is DataTypes.var_name
-            else term
-            for term, term_type in zip(term_list, type_list)]
-        return resolved_var_values_term_list
 
-    def __get_type_list_with_resolved_var_types(self, term_list, type_list):
-        # TODO
-        resolved_var_types_type_list = [
-            self.symbol_table.get_variable_type(term) if term_type is DataTypes.var_name
-            else term_type
-            for term, term_type in zip(term_list, type_list)]
-        return resolved_var_types_type_list
-
-    def resolve_var_terms_in_relation(self, relation: Relation):
-        # TODO commenting
-
-        term_list = relation.term_list
-        type_list = relation.type_list
-
-        relation.term_list = self.__get_term_list_with_resolved_var_values(term_list, type_list)
-        relation.type_list = self.__get_type_list_with_resolved_var_types(term_list, type_list)
-
-    def resolve_var_terms_in_ie_relation(self, relation: IERelation):
-        # TODO commenting
-
-        input_term_list = relation.input_term_list
-        input_type_list = relation.input_type_list
-
-        relation.input_term_list = self.__get_term_list_with_resolved_var_values(input_term_list, input_type_list)
-        relation.input_type_list = self.__get_type_list_with_resolved_var_types(input_term_list, input_type_list)
-
-        output_term_list = relation.output_term_list
-        output_type_list = relation.output_type_list
-
-        relation.output_term_list = self.__get_term_list_with_resolved_var_values(output_term_list, output_type_list)
-        relation.output_type_list = self.__get_type_list_with_resolved_var_types(output_term_list, output_type_list)
-
-    def query(self, query_node):
-        query = query_node.children[0]
-        self.resolve_var_terms_in_relation(query)
-
-    def add_fact(self, fact_node):
-        fact = fact_node.children[0]
-        self.resolve_var_terms_in_relation(fact)
-
-    def remove_fact(self, fact_node):
-        fact = fact_node.children[0]
-        self.resolve_var_terms_in_relation(fact)
-
-    def rule(self, rule_node):
-        rule = rule_node.children[0]
-
-        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            if relation_type == "relation":
-                self.resolve_var_terms_in_relation(relation)
-            elif relation_type == "ie_relation":
-                self.resolve_var_terms_in_ie_relation(relation)
-            else:
-                raise Exception(f'unexpected relation type: {relation_type}')
-
-
-class AddStatementsToNetxTermGraphInterpreter(Interpreter):
+class AddStatementsToNetxTermGraph(Interpreter):
     """
     a lark execution pass.
     This pass adds each statement in the input parse tree to the term graph.
@@ -1232,9 +1260,10 @@ class AddStatementsToNetxTermGraphInterpreter(Interpreter):
     each statement in the term graph will have a type attribute that contains the statement's name in the
     rgxlog grammar.
 
-    some nodes in the term graph will contain a value attribute that would describe that statement.
-    e.g. a add_fact node would have a value which is a Relation instance that describes the
-    fact that will be added.
+    some nodes in the term graph will contain a value attribute that would contain a relation that describes
+    that statement.
+    e.g. a add_fact node would have a value which is a structured_nodes.AddFact instance
+    (which inherits from structured_nodes.Relation) that describes the fact that will be added.
 
     Some statements are more complex and will be described by more than a single node, e.g. a rule node.
     The reason for this is that we want a single netx node to not contain more than one Relation
@@ -1262,22 +1291,18 @@ class AddStatementsToNetxTermGraphInterpreter(Interpreter):
 
     def add_fact(self, fact_node):
         fact = fact_node.children[0]
-        # add the fact to the term graph
         self.__add_statement_to_term_graph("add_fact", fact)
 
     def remove_fact(self, fact_node):
         fact = fact_node.children[0]
-        # add the fact to the term graph
         self.__add_statement_to_term_graph("remove_fact", fact)
 
     def query(self, query_node):
         query = query_node.children[0]
-        # add the query to the term graph
         self.__add_statement_to_term_graph("query", query)
 
     def relation_declaration(self, relation_decl_node):
         relation_decl = relation_decl_node.children[0]
-        # add the relation declaration to the term graph
         self.__add_statement_to_term_graph("relation_declaration", relation_decl)
 
     def rule(self, rule_node):

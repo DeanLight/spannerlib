@@ -57,7 +57,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def set_relation_schema(self, relation_name, schema):
+    def add_relation_schema(self, relation_name, schema):
         """set the schema of a relation in the symbol table"""
         pass
 
@@ -145,7 +145,9 @@ class SymbolTable(SymbolTableBase):
     def contains_variable(self, var_name):
         return var_name in self._var_to_value or var_name in self._var_to_type
 
-    def set_relation_schema(self, relation_name, schema):
+    def add_relation_schema(self, relation_name, schema):
+        if relation_name in self._relation_to_schema:
+            raise Exception(f'relation "{relation_name}" already has a schema')
         self._relation_to_schema[relation_name] = schema
 
     def get_relation_schema(self, relation_name):
