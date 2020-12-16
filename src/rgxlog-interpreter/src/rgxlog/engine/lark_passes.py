@@ -34,8 +34,14 @@ from rgxlog.engine.datatypes import Span
 from typing import Union
 
 
-def structured_node_lark_method(func):
-    # TODO documentation if we decide to use this
+def unravel_lark_node(func):
+    """
+    even after converting a lark tree to use structured nodes, the methods in lark passes will still receive a lark
+    node as an input, and the child of said lark node will be the actual structured node that the method will work
+    with.
+
+    use this decorator to replace a method's lark node input with its child structured node
+    """
     def wrapped_method(visitor, lark_node):
         structured_node = lark_node.children[0]
         ret = func(visitor, structured_node)
@@ -474,32 +480,32 @@ class CheckDefinedReferencedVariables(Interpreter):
                 # found a variable, check if it is defined
                 self.__check_if_var_is_defined(term)
 
-    def assignment(self, assignment_node):
-        assignment = assignment_node.children[0]
+    @unravel_lark_node
+    def assignment(self, assignment: Assignment):
         if assignment.value_type is DataTypes.var_name:
             # the assigned expression is a variable, check if it is defined
             self.__check_if_var_is_defined(assignment.value)
 
-    def read_assignment(self, assignment_node):
-        assignment = assignment_node.children[0]
+    @unravel_lark_node
+    def read_assignment(self, assignment: ReadAssignment):
         if assignment.read_arg_type is DataTypes.var_name:
             # a variable is used as the argument for read(), check if it is defined
             self.__check_if_var_is_defined(assignment.read_arg)
 
-    def add_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def add_fact(self, fact: AddFact):
         self.__check_if_vars_in_list_are_defined(fact.term_list, fact.type_list)
 
-    def remove_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def remove_fact(self, fact: RemoveFact):
         self.__check_if_vars_in_list_are_defined(fact.term_list, fact.type_list)
 
-    def query(self, query_node):
-        query = query_node.children[0]
+    @unravel_lark_node
+    def query(self, query: Query):
         self.__check_if_vars_in_list_are_defined(query.term_list, query.type_list)
 
-    def rule(self, rule_node):
-        rule = rule_node.children[0]
+    @unravel_lark_node
+    def rule(self, rule: Rule):
 
         # for each relation in the rule body, check if its variable terms are defined
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
@@ -540,16 +546,16 @@ class CheckForRelationRedefinitions(Interpreter):
         if self.symbol_table.contains_relation(relation_name):
             raise Exception(f'relation "{relation_name}" is already defined. relation redefinitions are not allowed')
 
-    def relation_declaration(self, relation_decl_node):
-        relation_decl = relation_decl_node.children[0]
+    @unravel_lark_node
+    def relation_declaration(self, relation_decl: RelationDeclaration):
         self.__check_if_relation_is_already_defined(relation_decl.relation_name)
 
-    def rule(self, rule_node):
+    @unravel_lark_node
+    def rule(self, rule: Rule):
         """
         a rule is a definition of the relation that appears in the rule head.
         this function checks that the relation that appears in the rule head is not being redefined.
         """
-        rule = rule_node.children[0]
         self.__check_if_relation_is_already_defined(rule.head_relation.relation_name)
 
 
@@ -591,28 +597,29 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
             raise Exception(f'relation "{relation_name}" was referenced with an incorrect arity: {used_arity}. The'
                             f'correct arity is: {correct_arity}')
 
-    def query(self, query_node):
-        query = query_node.children[0]
+    @unravel_lark_node
+    def query(self, query: Query):
         # a query is defined by a relation reference, so we can simply use the utility function
         self.__check_relation_exists_and_correct_arity(query)
 
-    def add_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def add_fact(self, fact: AddFact):
         # a fact is defined by a relation reference, so we can simply use the utility function
         self.__check_relation_exists_and_correct_arity(fact)
 
-    def remove_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def remove_fact(self, fact: RemoveFact):
         # a fact is defined by a relation reference, so we can simply use the utility function
         self.__check_relation_exists_and_correct_arity(fact)
 
-    def rule(self, rule_node):
+    @unravel_lark_node
+    def rule(self, rule: Rule):
         """
         a rule is a definition of the relation in the rule head. Therefore the rule head reference does not
         need to be checked.
         The rule body references relations that should already exist. Those will be checked in this method.
         """
-        rule = rule_node.children[0]
+
         # check that each normal relation in the rule body exists and that the correct arity was used
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             if relation_type == "relation":
@@ -632,9 +639,8 @@ class CheckReferencedIERelationsExistenceAndArity(Visitor_Recursive):
     def __init__(self, **kw):
         super().__init__()
 
-    @staticmethod
-    def rule(rule_node):
-        rule = rule_node.children[0]
+    @unravel_lark_node
+    def rule(self, rule: Rule):
 
         # for each ie relation in the rule body, check its existence and arity
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
@@ -746,8 +752,8 @@ class CheckRuleSafety(Visitor_Recursive):
         else:
             raise Exception(f'unexpected relation type: {relation_type}')
 
-    def rule(self, rule_node):
-        rule = rule_node.children[0]
+    @unravel_lark_node
+    def rule(self, rule: Rule):
         head_relation = rule.head_relation
         body_relation_list = rule.body_relation_list
         body_relation_type_list = rule.body_relation_type_list
@@ -887,8 +893,8 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
         else:
             raise Exception(f'unexpected relation type: {relation_type}')
 
-    def rule(self, rule_node):
-        rule = rule_node.children[0]
+    @unravel_lark_node
+    def rule(self, rule: Rule):
 
         # in order to reorder the relations, we will use the same algorithm from the CheckRuleSafety pass.
         # when a safe relation is found, it will be inserted into a list. This way, an order in which each
@@ -958,8 +964,8 @@ class TypeCheckAssignments(Interpreter):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def read_assignment(self, assignment_node):
-        assignment = assignment_node.children[0]
+    @unravel_lark_node
+    def read_assignment(self, assignment: ReadAssignment):
 
         # get the type of the argument for the read() function
         if assignment.read_arg_type is DataTypes.var_name:
@@ -1028,28 +1034,28 @@ class TypeCheckRelationsAndSaveSchemas(Interpreter):
         # all variables are properly typed, the type check succeeded
         return True
 
-    def relation_declaration(self, relation_decl_node):
-        relation_decl = relation_decl_node.children[0]
+    @unravel_lark_node
+    def relation_declaration(self, relation_decl: RelationDeclaration):
         self.symbol_table.add_relation_schema(relation_decl.relation_name, relation_decl.type_list)
 
-    def add_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def add_fact(self, fact: AddFact):
         # get the schema of the referenced relation from the symbol table and perform a type check
         relation_schema = self.symbol_table.get_relation_schema(fact.relation_name)
         type_check_passed = self.__type_check_term_list(fact.term_list, fact.type_list, relation_schema)
         if not type_check_passed:
             raise Exception(f'type check failed for fact: "{fact}"')
 
-    def remove_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def remove_fact(self, fact: RemoveFact):
         # get the schema of the referenced relation from the symbol table and perform a type check
         relation_schema = self.symbol_table.get_relation_schema(fact.relation_name)
         type_check_passed = self.__type_check_term_list(fact.term_list, fact.type_list, relation_schema)
         if not type_check_passed:
             raise Exception(f'type check failed for fact: "{fact}"')
 
-    def query(self, query_node):
-        query = query_node.children[0]
+    @unravel_lark_node
+    def query(self, query: Query):
         # get the schema of the referenced relation from the symbol table and perform a type check
         relation_schema = self.symbol_table.get_relation_schema(query.relation_name)
         type_check_passed = self.__type_check_term_list(query.term_list, query.type_list, relation_schema)
@@ -1091,9 +1097,8 @@ class TypeCheckRelationsAndSaveSchemas(Interpreter):
                     # free var does not currently have a type, map it to the correct type
                     free_var_to_type[free_var] = correct_type
 
-    def rule(self, rule_node):
-        rule = rule_node.children[0]
-
+    @unravel_lark_node
+    def rule(self, rule: Rule):
         free_var_to_type = dict()
         conflicted_free_vars = set()
 
@@ -1161,16 +1166,16 @@ class ResolveVariablesReferences(Interpreter):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def assignment(self, assignment_node):
-        assignment = assignment_node.children[0]
+    @unravel_lark_node
+    def assignment(self, assignment: Assignment):
         # if the assigned value is a variable, replace it with its literal value
         if assignment.value_type is DataTypes.var_name:
             assigned_var_name = assignment.value
             assignment.value = self.symbol_table.get_variable_value(assigned_var_name)
             assignment.value_type = self.symbol_table.get_variable_type(assigned_var_name)
 
-    def read_assignment(self, assignment_node):
-        assignment = assignment_node.children[0]
+    @unravel_lark_node
+    def read_assignment(self, assignment: ReadAssignment):
         # if the read() argument is a variable, replace it with its literal value
         if assignment.read_arg_type is DataTypes.var_name:
             read_arg_var_name = assignment.read_arg
@@ -1205,20 +1210,20 @@ class ResolveVariablesReferences(Interpreter):
         term_list[:] = resolved_var_values_term_list
         type_list[:] = resolved_var_types_type_list
 
-    def query(self, query_node):
-        query = query_node.children[0]
+    @unravel_lark_node
+    def query(self, query: Query):
         self.__resolve_variables_in_term_and_type_lists(query.term_list, query.type_list)
 
-    def add_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def add_fact(self, fact: AddFact):
         self.__resolve_variables_in_term_and_type_lists(fact.term_list, fact.type_list)
 
-    def remove_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def remove_fact(self, fact: RemoveFact):
         self.__resolve_variables_in_term_and_type_lists(fact.term_list, fact.type_list)
 
-    def rule(self, rule_node):
-        rule = rule_node.children[0]
+    @unravel_lark_node
+    def rule(self, rule: Rule):
         # resolve the variables of each relation in the rule body relation list
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             if relation_type == "relation":
@@ -1243,13 +1248,13 @@ class ExecuteAssignments(Interpreter):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def assignment(self, assignment_node):
-        assignment = assignment_node.children[0]
+    @unravel_lark_node
+    def assignment(self, assignment: Assignment):
         # perform the assignment by saving the variable attributes in the symbol table
         self.symbol_table.set_variable_value_and_type(assignment.var_name, assignment.value, assignment.value_type)
 
-    def read_assignment(self, assignment_node):
-        assignment = assignment_node.children[0]
+    @unravel_lark_node
+    def read_assignment(self, assignment: ReadAssignment):
 
         # try to read the file and get its content as a single string. this string is the assigned value.
         try:
@@ -1305,24 +1310,24 @@ class AddStatementsToNetxTermGraph(Interpreter):
         new_statement_node = self.term_graph.add_term(type=statement_type, value=statement_value)
         self.term_graph.add_dependency_edge(self.term_graph.get_root_id(), new_statement_node)
 
-    def add_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def add_fact(self, fact: AddFact):
         self.__add_statement_to_term_graph("add_fact", fact)
 
-    def remove_fact(self, fact_node):
-        fact = fact_node.children[0]
+    @unravel_lark_node
+    def remove_fact(self, fact: RemoveFact):
         self.__add_statement_to_term_graph("remove_fact", fact)
 
-    def query(self, query_node):
-        query = query_node.children[0]
+    @unravel_lark_node
+    def query(self, query: Query):
         self.__add_statement_to_term_graph("query", query)
 
-    def relation_declaration(self, relation_decl_node):
-        relation_decl = relation_decl_node.children[0]
+    @unravel_lark_node
+    def relation_declaration(self, relation_decl: RelationDeclaration):
         self.__add_statement_to_term_graph("relation_declaration", relation_decl)
 
-    def rule(self, rule_node):
-        rule = rule_node.children[0]
+    @unravel_lark_node
+    def rule(self, rule: Rule):
 
         # create the root of the rule statement in the term graph. Note that this is an "empty" node (it does
         # not contain a value). This is because the rule statement will be defined by the children of this node.
