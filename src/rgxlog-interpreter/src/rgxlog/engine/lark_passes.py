@@ -26,12 +26,111 @@ A short tutorial on lark:
 https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
 
-from lark import Transformer, Tree
+from lark import Transformer
+from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive
 import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.structured_nodes import *
 from rgxlog.engine.datatypes import Span
 from typing import Union
+
+rgxlog_expected_children_names_lists = {
+
+    'assignment': [
+        ['var_name', 'string'],
+        ['var_name', 'int'],
+        ['var_name', 'span'],
+        ['var_name', 'var_name'],
+    ],
+
+    'read_assignment': [
+        ['var_name', 'string'],
+        ['var_name', 'var_name']
+    ],
+
+    'relation_declaration': [['relation_name', 'decl_term_list']],
+
+    'rule': [['rule_head', 'rule_body_relation_list']],
+
+    'rule_head': [['relation_name', 'free_var_name_list']],
+
+    'relation': [['relation_name', 'term_list']],
+
+    'ie_relation': [['relation_name', 'term_list', 'term_list']],
+
+    'query': [['relation_name', 'term_list']],
+
+    'add_fact': [['relation_name', 'const_term_list']],
+
+    'remove_fact': [['relation_name', 'const_term_list']],
+
+    'span': [
+        ['integer', 'integer'],
+        []  # allow empty list to support spans that were converted a datatypes.Span instance
+    ],
+
+    'integer': [[]],
+
+    'string': [[]],
+
+    'relation_name': [[]],
+
+    'var_name': [[]],
+
+    'free_var_name': [[]]
+}
+
+
+def assert_expected_node_structure_aux(lark_node):
+    """
+    checks whether a lark node has a structure that the lark passes expect
+
+    Args:
+        lark_node: the lark node to be checked
+    """
+
+    # check if lark_node is really a lark node. this is done because applying the check recursively might result in
+    # some children being literal values and not lark nodes
+    if isinstance(lark_node, LarkNode):
+        node_type = lark_node.data
+        if node_type in rgxlog_expected_children_names_lists:
+
+            # this lark node's structure can be checked, get its children and expected children lists
+            children_names = [child.data for child in lark_node.children if isinstance(child, LarkNode)]
+            expected_children_names_lists = rgxlog_expected_children_names_lists[node_type]
+
+            # check if the node's children names match one of the expected children names lists
+            if children_names not in expected_children_names_lists:
+                # the node has an unexpected structure, raise an exception
+                expected_children_list_strings = [str(children) for children in expected_children_names_lists]
+                expected_children_string = '\n'.join(expected_children_list_strings)
+                raise Exception(f'node of type "{node_type}" has unexpected children: {children_names}\n'
+                                f'expected one of the following children lists:\n'
+                                f'{expected_children_string}')
+
+        # recursively check the structure of the node's children
+        for child in lark_node.children:
+            assert_expected_node_structure_aux(child)
+
+
+def assert_expected_node_structure(func):
+    """
+    use this decorator to check whether a method's input lark node has a structure that is expected by the lark passes
+    the lark node and its children are checked recursively
+
+    note that this decorator should only be used on methods that expect lark nodes that weren't converted to
+    structured nodes
+
+    some lark nodes may have multiple structures (e.g. assignment). in this case this check will succeed if the lark
+    node has one of those structures
+    """
+
+    def wrapped_method(visitor, lark_node):
+        assert_expected_node_structure_aux(lark_node)
+        ret = func(visitor, lark_node)
+        return ret
+
+    return wrapped_method
 
 
 def unravel_lark_node(func):
@@ -42,41 +141,13 @@ def unravel_lark_node(func):
 
     use this decorator to replace a method's lark node input with its child structured node
     """
+
     def wrapped_method(visitor, lark_node):
         structured_node = lark_node.children[0]
         ret = func(visitor, structured_node)
         return ret
 
     return wrapped_method
-
-
-def assert_expected_node_structure(lark_node, node_name=None, num_children=None, children_names=None):
-    """
-    Asserts that a lark node has the structure that it is expected to have.
-
-    Args:
-        lark_node: a node of a lark tree that will be checked
-        node_name: the expected name of the node (that should be found in lark_node.data)
-        num_children: the expected number of children that the node has
-        children_names: a list of the expected children names, in the order that they should appear
-        in the lark_node.children list
-    """
-    if node_name is not None:
-        if lark_node.data != node_name:
-            raise Exception(f'bad node name: {node_name}\n'
-                            f'actual node name: {lark_node.data}')
-
-    if num_children is not None:
-        if len(lark_node.children) != num_children:
-            raise Exception(f'bad number of children: {str(num_children)}\n'
-                            f'actual number of children: {str(len(lark_node.children))}')
-
-    if children_names is not None:
-        actual_children_names = [child_node.data for child_node in lark_node.children]
-        for name, expected_name in zip(actual_children_names, children_names):
-            if name != expected_name:
-                raise Exception(f'bad children names: {children_names}\n'
-                                f'actual children names: {actual_children_names}')
 
 
 class RemoveTokens(Transformer):
@@ -122,9 +193,8 @@ class CheckReservedRelationNames(Interpreter):
     def __init__(self, **kw):
         super().__init__()
 
-    @staticmethod
-    def relation_name(relation_name_node):
-        assert_expected_node_structure(relation_name_node, node_name="relation_name", num_children=1)
+    @assert_expected_node_structure
+    def relation_name(self, relation_name_node: LarkNode):
         # get the name of the relation and check if it is not reserved (starts with '__rgxlog__')
         relation_name = relation_name_node.children[0]
         if relation_name.startswith("__rgxlog__"):
@@ -141,10 +211,8 @@ class FixStrings(Visitor_Recursive):
     def __init__(self, **kw):
         super().__init__()
 
-    @staticmethod
-    def string(string_node):
-        assert_expected_node_structure(string_node, node_name='string', num_children=1)
-
+    @assert_expected_node_structure
+    def string(self, string_node: LarkNode):
         # get and fix the string that is stored in the node
         cur_string_value = string_node.children[0]
         # remove line overflow escapes
@@ -165,11 +233,8 @@ class ConvertSpanNodesToSpanInstances(Visitor_Recursive):
     def __init__(self, **kw):
         super().__init__()
 
-    @staticmethod
-    def span(span_node):
-        assert_expected_node_structure(span_node, node_name="span", num_children=2,
-                                       children_names=["integer", "integer"])
-
+    @assert_expected_node_structure
+    def span(self, span_node: LarkNode):
         # get the span start and end
         span_start = span_node.children[0].children[0]
         span_end = span_node.children[1].children[0]
@@ -189,54 +254,123 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
     def __init__(self, **kw):
         super().__init__()
 
-    @staticmethod
-    def __assignment_aux(assignment_node: Tree):
-        """
-        an utility function that converts an assignment node to a structured assignment node
-
-        Args:
-            assignment_node: the lark assignment node to be converted to a structured assignment node.
-        """
-
-        # perform assertions to make sure we got the expected node structure
-        assert_expected_node_structure(assignment_node, num_children=2)
-        var_name_node = assignment_node.children[0]
-        value_node = assignment_node.children[1]
-        assert_expected_node_structure(assignment_node, children_names=["var_name", value_node.data])
-        assert_expected_node_structure(var_name_node, node_name="var_name", num_children=1)
-        assert_expected_node_structure(value_node, num_children=1)
+    @assert_expected_node_structure
+    def assignment(self, assignment_node: LarkNode):
 
         # get the attributes that defines this assignment: the variable name, the assigned value and the
         # assigned value type
+        var_name_node = assignment_node.children[0]
+        value_node = assignment_node.children[1]
         var_name = var_name_node.children[0]
         value = value_node.children[0]
         value_type = DataTypes.from_string(value_node.data)
 
-        # get a structured node that represents this assignment
-        assignment_type = assignment_node.data
-        if assignment_type == "assignment":
-            structured_assignment_node = Assignment(var_name, value, value_type)
-        elif assignment_type == "read_assignment":
-            # for a read_assignment statement the "value" is actually a read() function argument,
-            # but since both assignment types are structured the same way in the ast, we can use this method
-            # for read_assignment as well
-            structured_assignment_node = ReadAssignment(var_name, value, value_type)
-        else:
-            raise Exception(f'received unexpected assignment type: {assignment_type}')
-
-        # replace the current assignment representation with the structured node
+        # create the structured node and use it as a replacement for the current assignment representation
+        structured_assignment_node = Assignment(var_name, value, value_type)
         assignment_node.children = [structured_assignment_node]
 
-    def assignment(self, assignment_node):
-        assert_expected_node_structure(assignment_node, node_name="assignment", num_children=2)
-        self.__assignment_aux(assignment_node)
+    @assert_expected_node_structure
+    def read_assignment(self, assignment_node: LarkNode):
 
-    def read_assignment(self, assignment_node):
-        assert_expected_node_structure(assignment_node, node_name="read_assignment", num_children=2)
-        self.__assignment_aux(assignment_node)
+        # get the attributes that defines this read assignment: the variable name, the argument for the read function
+        # and its type
+        var_name_node = assignment_node.children[0]
+        read_arg_node = assignment_node.children[1]
+        var_name = var_name_node.children[0]
+        read_arg = read_arg_node.children[0]
+        read_arg_type = DataTypes.from_string(read_arg_node.data)
+
+        # create the structured node and use it as a replacement for the current assignment representation
+        structured_assignment_node = ReadAssignment(var_name, read_arg, read_arg_type)
+        assignment_node.children = [structured_assignment_node]
+
+    @assert_expected_node_structure
+    def add_fact(self, fact_node: LarkNode):
+
+        # a fact is defined by a relation, create that relation using the utility function
+        relation = self.__create_structured_relation_node(fact_node)
+
+        # create a structured node and use it to replace the current fact representation
+        structured_fact_node = AddFact(relation.relation_name, relation.term_list, relation.type_list)
+        fact_node.children = [structured_fact_node]
+
+    @assert_expected_node_structure
+    def remove_fact(self, fact_node: LarkNode):
+
+        # a fact is defined by a relation, create that relation using the utility function
+        relation = self.__create_structured_relation_node(fact_node)
+
+        # create a structured node and use it to replace the current fact representation
+        structured_fact_node = RemoveFact(relation.relation_name, relation.term_list, relation.type_list)
+        fact_node.children = [structured_fact_node]
+
+    @assert_expected_node_structure
+    def query(self, query_node: LarkNode):
+
+        # a query is defined by a relation, create that relation using the utility function
+        relation = self.__create_structured_relation_node(query_node)
+
+        # create a structured node and use it to replace the current query representation
+        structured_query_node = Query(relation.relation_name, relation.term_list, relation.type_list)
+        query_node.children = [structured_query_node]
+
+    @assert_expected_node_structure
+    def relation_declaration(self, relation_decl_node: LarkNode):
+        relation_name_node = relation_decl_node.children[0]
+        decl_term_list_node = relation_decl_node.children[1]
+
+        # get the attributes of the relation declaration: the declared relation name and the types of its terms
+        relation_name = relation_name_node.children[0]
+        type_list = []
+        for decl_term_node in decl_term_list_node.children:
+            decl_term_type = decl_term_node.data
+            if decl_term_type == "decl_string":
+                type_list.append(DataTypes.string)
+            elif decl_term_type == "decl_span":
+                type_list.append(DataTypes.span)
+            elif decl_term_type == "decl_int":
+                type_list.append(DataTypes.int)
+            else:
+                raise Exception(f'unexpected declaration term node type: {decl_term_type}')
+
+        # create a structured node and use it to replace the current relation declaration representation
+        relation_decl_struct_node = RelationDeclaration(relation_name, type_list)
+        relation_decl_node.children = [relation_decl_struct_node]
+
+    @assert_expected_node_structure
+    def rule(self, rule_node: LarkNode):
+        rule_head_node = rule_node.children[0]
+        rule_body_relation_nodes = rule_node.children[1]
+
+        # create the structured relation node that defines the head relation of the rule
+        structured_head_relation_node = self.__create_structured_relation_node(rule_head_node)
+
+        # for each rule body relation, create a matching structured relation node
+        structured_body_relation_list = []
+        for relation_node in rule_body_relation_nodes.children:
+
+            relation_type = relation_node.data
+            if relation_type == "relation":
+                structured_relation_node = self.__create_structured_relation_node(relation_node)
+            elif relation_type == "ie_relation":
+                structured_relation_node = self.__create_structured_ie_relation_node(relation_node)
+            else:
+                raise Exception(f'unexpected relation type: {relation_type}')
+
+            structured_body_relation_list.append(structured_relation_node)
+
+        # create a list of the types of the relations in the rule body
+        body_relation_type_list = [relation_node.data for relation_node in rule_body_relation_nodes.children]
+
+        # create a structured rule node
+        structured_rule_node = Rule(structured_head_relation_node, structured_body_relation_list,
+                                    body_relation_type_list)
+
+        # replace the current rule representation with the structured rule node
+        rule_node.children = [structured_rule_node]
 
     @staticmethod
-    def __create_structured_relation_node(relation_name_node: Tree, term_list_node: Tree) -> Relation:
+    def __create_structured_relation_node(relation_node: LarkNode) -> Relation:
         """
         an utility function that constructs a structured relation node.
         while a relation node isn't a statement in and of itself, it is useful for defining
@@ -245,16 +379,12 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         (as facts and queries are actions that are defined by a relation)
 
         Args:
-            relation_name_node: a lark node that contains the name of the relation
-            term_list_node: a lark node that contains the term list of the relation
+            relation_node: a lark node that is structured like a relation (e.g. relation, add_fact, query)
 
         Returns: a structured node that represents the relation (structured_nodes.Relation instance)
         """
-
-        # make sure that we got the expected nodes
-        assert_expected_node_structure(relation_name_node, node_name="relation_name", num_children=1)
-        if term_list_node.data not in ['const_term_list', 'term_list', 'free_var_name_list']:
-            raise Exception(f'unexpected term list node type: {term_list_node.data}')
+        relation_name_node = relation_node.children[0]
+        term_list_node = relation_node.children[1]
 
         # get the attributes that define a relation: its name, its terms, and the type of its terms
         relation_name = relation_name_node.children[0]
@@ -266,25 +396,20 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         return structured_relation_node
 
     @staticmethod
-    def __create_structured_ie_relation_node(relation_name_node: Tree, input_term_list_node: Tree,
-                                             output_term_list_node: Tree) -> IERelation:
+    def __create_structured_ie_relation_node(ie_relation_node: LarkNode) -> IERelation:
         """
         an utility function that constructs a structured ie relation node.
         while an ie relation node isn't a statement in and of itself, it is useful for defining
         a structured rule node (which is constructed from multiple relations which may include ie relations).
 
         Args:
-            relation_name_node: a lark node that contains the name of the relation
-            input_term_list_node: a lark node that contains the input term list of the relation
-            output_term_list_node: a lark node that contains the output term list of the relation
+            ie_relation_node: an ie_relation lark node
 
         Returns: a structured node that represents the ie relation (a structured_nodes.IERelation instance)
         """
-
-        # make sure that we got the expected nodes
-        assert_expected_node_structure(relation_name_node, node_name="relation_name", num_children=1)
-        assert_expected_node_structure(input_term_list_node, node_name="term_list")
-        assert_expected_node_structure(output_term_list_node, node_name="term_list")
+        relation_name_node = ie_relation_node.children[0]
+        input_term_list_node = ie_relation_node.children[1]
+        output_term_list_node = ie_relation_node.children[2]
 
         # get the name of the ie relation
         relation_name = relation_name_node.children[0]
@@ -301,148 +426,6 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         structured_ie_relation_node = IERelation(relation_name, input_term_list, input_type_list,
                                                  output_term_list, output_type_list)
         return structured_ie_relation_node
-
-    def __fact_aux(self, fact_node: Tree):
-        """
-        an utility function that converts a fact node to a structured fact node
-
-        Args:
-            fact_node: the lark fact node to be converted
-        """
-        assert_expected_node_structure(fact_node, num_children=2,
-                                       children_names=["relation_name", "const_term_list"])
-
-        # a fact is defined by a relation, create that relation using the utility function
-        relation_name_node = fact_node.children[0]
-        term_list_node = fact_node.children[1]
-        relation = self.__create_structured_relation_node(relation_name_node, term_list_node)
-
-        # create a structured node that represents this fact
-        fact_type = fact_node.data
-        if fact_type == "add_fact":
-            structured_fact_node = AddFact(relation.relation_name, relation.term_list,
-                                           relation.type_list)
-        elif fact_type == "remove_fact":
-            structured_fact_node = RemoveFact(relation.relation_name, relation.term_list,
-                                              relation.type_list)
-        else:
-            raise Exception(f'unexpected fact type: {fact_type}')
-
-        # replace the current fact representation with the structured fact node
-        fact_node.children = [structured_fact_node]
-
-    def add_fact(self, fact_node):
-        assert_expected_node_structure(fact_node, node_name="add_fact", num_children=2,
-                                       children_names=["relation_name", "const_term_list"])
-        self.__fact_aux(fact_node)
-
-    def remove_fact(self, fact_node):
-        assert_expected_node_structure(fact_node, node_name="remove_fact", num_children=2,
-                                       children_names=["relation_name", "const_term_list"])
-        self.__fact_aux(fact_node)
-
-    def query(self, query_node):
-        assert_expected_node_structure(query_node, node_name="query", num_children=2,
-                                       children_names=["relation_name", "term_list"])
-
-        # a query is defined by a relation, create that relation using the utility function
-        relation_name_node = query_node.children[0]
-        term_list_node = query_node.children[1]
-        relation = self.__create_structured_relation_node(relation_name_node, term_list_node)
-
-        # create a structured node for the query
-        structured_query_node = Query(relation.relation_name, relation.term_list,
-                                      relation.type_list)
-
-        # replace the current query representation with the structured query node
-        query_node.children = [structured_query_node]
-
-    @staticmethod
-    def relation_declaration(relation_decl_node):
-
-        # perform assertions to make sure we got the expected node structure
-        assert_expected_node_structure(relation_decl_node, node_name="relation_declaration", num_children=2,
-                                       children_names=["relation_name", "decl_term_list"])
-        relation_name_node = relation_decl_node.children[0]
-        decl_term_list_node = relation_decl_node.children[1]
-        assert_expected_node_structure(relation_name_node, node_name="relation_name", num_children=1)
-        assert_expected_node_structure(decl_term_list_node, node_name="decl_term_list")
-
-        # get the attributes of the relation declaration: the declared relation name and the types of its terms
-        relation_name = relation_name_node.children[0]
-        type_list = []
-        for decl_term_node in decl_term_list_node.children:
-            decl_term_node_type = decl_term_node.data
-            if decl_term_node_type == "decl_string":
-                type_list.append(DataTypes.string)
-            elif decl_term_node_type == "decl_span":
-                type_list.append(DataTypes.span)
-            elif decl_term_node_type == "decl_int":
-                type_list.append(DataTypes.int)
-            else:
-                raise Exception(f'unexpected declaration term node type: {decl_term_node_type}')
-
-        # create a structured node for the relation declaration
-        relation_decl_struct_node = RelationDeclaration(relation_name, type_list)
-
-        # replace the current relation declaration representation with the structured relation declaration node
-        relation_decl_node.children = [relation_decl_struct_node]
-
-    def rule(self, rule_node):
-
-        # perform assertions to make sure we got the expected node structure
-        assert_expected_node_structure(rule_node, node_name="rule", num_children=2,
-                                       children_names=["rule_head", "rule_body_relation_list"])
-        rule_head_node = rule_node.children[0]
-        rule_body_relation_nodes = rule_node.children[1]
-        assert_expected_node_structure(rule_head_node, node_name="rule_head", num_children=2,
-                                       children_names=["relation_name", "free_var_name_list"])
-        assert_expected_node_structure(rule_body_relation_nodes, node_name="rule_body_relation_list")
-
-        # create the structured relation node that defines the head of the rule
-        head_relation_name_node = rule_head_node.children[0]
-        head_relation_terms_node = rule_head_node.children[1]
-        structured_head_relation_node = self.__create_structured_relation_node(
-            head_relation_name_node, head_relation_terms_node)
-
-        # create a list of structured relation nodes that defines the body of the rule
-        structured_body_relation_list = []
-        for relation_node in rule_body_relation_nodes.children:
-            relation_type = relation_node.data
-
-            if relation_type == "relation":
-                # this is a normal relation, get it's name and terms and construct a structured relation node
-                assert_expected_node_structure(relation_node, node_name="relation", num_children=2,
-                                               children_names=["relation_name", "term_list"])
-                relation_name_node = relation_node.children[0]
-                term_list_node = relation_node.children[1]
-                structured_relation_node = self.__create_structured_relation_node(relation_name_node, term_list_node)
-
-            elif relation_type == "ie_relation":
-                # this is an ie relation, get it's name, input terms and output term and construct a structured ie
-                # relation node
-                assert_expected_node_structure(relation_node, node_name="ie_relation", num_children=3,
-                                               children_names=["relation_name", "term_list", "term_list"])
-                relation_name_node = relation_node.children[0]
-                input_term_list_node = relation_node.children[1]
-                output_term_list_node = relation_node.children[2]
-                structured_relation_node = self.__create_structured_ie_relation_node(
-                    relation_name_node, input_term_list_node, output_term_list_node)
-
-            else:
-                raise Exception(f'unexpected relation type: {relation_type}')
-
-            structured_body_relation_list.append(structured_relation_node)
-
-        # create a list of the types of the relations in the rule body
-        body_relation_type_list = [relation_node.data for relation_node in rule_body_relation_nodes.children]
-
-        # create a structured rule node
-        structured_rule_node = Rule(structured_head_relation_node, structured_body_relation_list,
-                                    body_relation_type_list)
-
-        # replace the current rule representation with the structured rule node
-        rule_node.children = [structured_rule_node]
 
 
 class CheckDefinedReferencedVariables(Interpreter):
@@ -1328,7 +1311,6 @@ class AddStatementsToNetxTermGraph(Interpreter):
 
     @unravel_lark_node
     def rule(self, rule: Rule):
-
         # create the root of the rule statement in the term graph. Note that this is an "empty" node (it does
         # not contain a value). This is because the rule statement will be defined by the children of this node.
         tg_rule_node = self.term_graph.add_term(type="rule")
