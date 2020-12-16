@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 import networkx as nx
-from rgxlog.engine.term_graph import EvalState
+from rgxlog.engine.term_graph import EvalState, TermGraphBase
 from pyDatalog import pyDatalog
 from rgxlog.engine.datatypes import DataTypes, Span
-from rgxlog.engine.symbol_table import SymbolTable
+from rgxlog.engine.symbol_table import SymbolTableBase
 import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.ie_functions import IEFunctionData
 from rgxlog.engine.structured_nodes import *
@@ -250,13 +250,11 @@ class ExecutionBase(ABC):
     Abstraction for a class that gets a term graph and execute it
     """
 
-    def __init__(self, datalog_engine, symbol_table):
+    def __init__(self):
         super().__init__()
-        self.datalog_engine = datalog_engine
-        self.symbol_table = symbol_table
 
     @abstractmethod
-    def transform(self, term_graph, root_name):
+    def execute(self, term_graph, symbol_table, datalog_engine):
         pass
 
 
@@ -265,98 +263,104 @@ class NetworkxExecution(ExecutionBase):
     Executes a networkx based term graph
     """
 
-    def __init__(self, datalog_engine: DatalogEngineBase, symbol_table: SymbolTable):
-        super().__init__(datalog_engine, symbol_table)
+    def __init__(self):
+        super().__init__()
 
-    def transform(self, term_graph: nx.OrderedDiGraph, root_name):
-        for node in nx.dfs_postorder_nodes(term_graph, source=root_name):
-            if 'state' not in term_graph.nodes[node] or term_graph.nodes[node]['state'] == EvalState.COMPUTED:
-                continue
-            successors = list(term_graph.successors(node))
-            node_type = term_graph.nodes[node]['type']
-            if node_type == "relation_declaration":
-                self.datalog_engine.declare_relation(term_graph.nodes[node]['value'])
-            if node_type == "add_fact":
-                self.datalog_engine.add_fact(term_graph.nodes[node]['value'])
-            elif node_type == "remove_fact":
-                self.datalog_engine.remove_fact(term_graph.nodes[node]['value'])
-            elif node_type == "query":
-                self.datalog_engine.query(term_graph.nodes[node]['value'])
-            if node_type == "rule":
-                """
-                This rule execution assumes that a previous pass reordered the rule body relations in a way that
-                each relation's input free variables (should they exist) are bounded by relations to the relation's
-                left. lark_passes.ReorderRuleBodyVisitor is an example for such a pass.
+    def __execute_rule_aux(self, rule_term_id, term_graph: TermGraphBase,
+                           symbol_table: SymbolTableBase, datalog_engine: DatalogEngineBase):
+        """
+        This rule execution assumes that a previous pass reordered the rule body relations in a way that
+        each relation's input free variables (should they exist) are bounded by relations to the relation's
+        left. lark_passes.ReorderRuleBodyVisitor is an example for such a pass.
 
-                this implementation computes each rule body relation from left to right, each time aggregating
-                all of the free variables (and their values) seen so far.
-                Once all of the rule body relations are computed, the aggregated relation is filtered into the
-                rule head relation.
-                See example at https://github.com/DeanLight/spanner_workbench/issues/23#issuecomment-721704745
+        this implementation computes each rule body relation from left to right, each time aggregating
+        all of the free variables (and their values) seen so far.
+        Once all of the rule body relations are computed, the aggregated relation is filtered into the
+        rule head relation.
+        See example at https://github.com/DeanLight/spanner_workbench/issues/23#issuecomment-721704745
+        """
+        """
+        TODO:
+        1. in a different pass, reorder the terms in a way that relations that contain free variables
+        that are not used in other relations are on the right side of the rule (so they are computed
+        at the very end of the rule)
 
-                TODO:
-                1. in a different pass, reorder the terms in a way that relations that contain free variables
-                that are not used in other relations are on the right side of the rule (so they are computed
-                at the very end of the rule)
+        For example for the rule
+        A(X,Y) <- B(K), C(X), D(X)->(Y)
+        we notice that B's free variable K is not used by the other relations, so we could optimize the
+        rule computations by reordering the rule like this:
+        A(X,Y) <- C(X), D(X)->(Y), B(K)
 
-                For example for the rule
-                A(X,Y) <- B(K), C(X), D(X)->(Y)
-                we notice that B's free variable K is not used by the other relations, so we could optimize the
-                rule computations by reordering the rule like this:
-                A(X,Y) <- C(X), D(X)->(Y), B(K)
+        2. An improvement of optimization 1: 
+        a. create a dependency graph of rule body relations 
+        (where an edge from relation e1 to relation e2 means that e2 depends on the results of e1)
+        b. using the dependency graph, compute relations in a way that you only aggregate results to a 
+        temporary relation when you have to.
 
-                2. An improvement of optimization 1: 
-                a. create a dependency graph of rule body relations 
-                (where an edge from relation e1 to relation e2 means that e2 depends on the results of e1)
-                b. using the dependency graph, compute relations in a way that you only aggregate results to a 
-                temporary relation when you have to.
+        for example for the rule A(Z) <- C(X),D(X,Y),B(Z),G(Z)->(Z),F(Y,Z)->(Y,Z):
+        a. the bounding graph is:
+            C -> D
+            B -> G
+            G -> F
+            D -> F
+        b. we could for example compute this rule in the following way:
+        * compute C, use it to compute D, aggregate the results to temp1
+        * compute B, use it to compute G, aggregate the results to temp2
+        * aggregate temp1 and temp2 to temp3
+        * use temp3 to compute F, aggregate the result and temp3 to temp4
+        * filter temp4 into the rule head relation A(Z)
+        """
+        rule_head_id, rule_body_id = term_graph.get_term_first_order_dependencies(rule_term_id)
 
-                for example for the rule A(Z) <- C(X),D(X,Y),B(Z),G(Z)->(Z),F(Y,Z)->(Y,Z):
-                a. the bounding graph is:
-                    C -> D
-                    B -> G
-                    G -> F
-                    D -> F
-                b. we could for example compute this rule in the following way:
-                * compute C, use it to compute D, aggregate the results to temp1
-                * compute B, use it to compute G, aggregate the results to temp2
-                * aggregate temp1 and temp2 to temp3
-                * use temp3 to compute F, aggregate the result and temp3 to temp4
-                * filter temp4 into the rule head relation A(Z)
-                """
-                rule_head_node = successors[0]
-                rule_body_node = successors[1]
-                assert term_graph.nodes[rule_head_node]['type'] == 'rule_head'
-                assert term_graph.nodes[rule_body_node]['type'] == 'rule_body'
-                rule_body_relation_nodes = list(term_graph.successors(rule_body_node))
-                temp_result = None
-                for relation_node in rule_body_relation_nodes:
-                    relation_value = term_graph.nodes[relation_node]['value']
-                    if term_graph.nodes[relation_node]['type'] == 'relation':
-                        term_graph.nodes[relation_node]['value'] = self.datalog_engine.compute_rule_body_relation(
-                            relation_value)
-                        term_graph.nodes[relation_node]['state'] = EvalState.COMPUTED
-                        if temp_result is None:
-                            temp_result = term_graph.nodes[relation_node]['value']
-                        else:
-                            temp_result = self.datalog_engine.aggregate_relations_to_temp_relation(
-                                [temp_result, term_graph.nodes[relation_node]['value']])
-                    elif term_graph.nodes[relation_node]['type'] == 'ie_relation':
-                        ie_func_data = getattr(ie_functions, relation_value.relation_name)
-                        term_graph.nodes[relation_node]['value'] = self.datalog_engine.compute_rule_body_ie_relation(
-                            relation_value, ie_func_data, temp_result)
-                        if temp_result is not None:
-                            temp_result = self.datalog_engine.aggregate_relations_to_temp_relation(
-                                [temp_result, term_graph.nodes[relation_node]['value']])
-                        else:
-                            temp_result = term_graph.nodes[relation_node]['value']
-                        term_graph.nodes[relation_node]['state'] = EvalState.COMPUTED
-                    else:
-                        assert 0
-                rule_head_value = term_graph.nodes[rule_head_node]['value']
-                rule_head_declaration = RelationDeclaration(rule_head_value.relation_name,
-                                                            self.symbol_table.get_relation_schema(
-                                                                rule_head_value.relation_name))
-                self.datalog_engine.declare_relation(rule_head_declaration)
-                self.datalog_engine.add_rule(rule_head_value, [temp_result])
-            term_graph.nodes[node]['state'] = EvalState.COMPUTED
+        body_relation_ids = term_graph.get_term_first_order_dependencies(rule_body_id)
+        temp_result = None
+        for relation_id in body_relation_ids:
+            relation = term_graph.get_term_value(relation_id)
+            relation_type = term_graph.get_term_type(relation_id)
+
+            if relation_type == 'relation':
+                result_relation = datalog_engine.compute_rule_body_relation(relation)
+            elif relation_type == 'ie_relation':
+                ie_func_data = getattr(ie_functions, relation.relation_name)
+                result_relation = datalog_engine.compute_rule_body_ie_relation(relation, ie_func_data, temp_result)
+            else:
+                raise Exception(f'unexpected relation type: {relation_type}')
+
+            term_graph.set_term_value(relation_id, result_relation)
+            term_graph.set_term_state(relation_id, EvalState.COMPUTED)
+            if temp_result is None:
+                temp_result = result_relation
+            else:
+                temp_result = datalog_engine.aggregate_relations_to_temp_relation([temp_result, result_relation])
+
+        rule_head_relation = term_graph.get_term_value(rule_head_id)
+        rule_head_declaration = RelationDeclaration(
+            rule_head_relation.relation_name, symbol_table.get_relation_schema(rule_head_relation.relation_name))
+        datalog_engine.declare_relation(rule_head_declaration)
+        datalog_engine.add_rule(rule_head_relation, [temp_result])
+
+    def execute(self, term_graph: TermGraphBase, symbol_table: SymbolTableBase, datalog_engine: DatalogEngineBase):
+        for term_id in term_graph.get_dfs_post_ordered_term_id_list():
+            if term_graph.get_term_state(term_id) != EvalState.COMPUTED:
+                term_type = term_graph.get_term_type(term_id)
+
+                if term_type == "relation_declaration":
+                    relation_decl = term_graph.get_term_value(term_id)
+                    datalog_engine.declare_relation(relation_decl)
+
+                elif term_type == "add_fact":
+                    fact = term_graph.get_term_value(term_id)
+                    datalog_engine.add_fact(fact)
+
+                elif term_type == "remove_fact":
+                    fact = term_graph.get_term_value(term_id)
+                    datalog_engine.remove_fact(fact)
+
+                elif term_type == "query":
+                    query = term_graph.get_term_value(term_id)
+                    datalog_engine.query(query)
+
+                elif term_type == "rule":
+                    self.__execute_rule_aux(term_id, term_graph, symbol_table, datalog_engine)
+
+                term_graph.set_term_state(term_id, EvalState.COMPUTED)
