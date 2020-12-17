@@ -150,6 +150,55 @@ def unravel_lark_node(func):
     return wrapped_method
 
 
+def get_set_of_free_var_names(term_list: list, type_list: list):
+    """
+    Args:
+        term_list: a list of terms
+        type_list: a list of the term types
+
+    Returns: a set of all the free variable names in term_list
+    """
+    free_var_names = set(term for term, term_type in zip(term_list, type_list)
+                         if term_type is DataTypes.free_var_name)
+    return free_var_names
+
+
+def get_set_of_input_free_var_names(relation: Union[Relation, IERelation], relation_type: str):
+    """
+    Args:
+        relation: a relation (either a normal relation or an ie relation)
+        relation_type: the type of the relation
+
+    Returns: a set of the free variable names used as input terms in the relation
+    """
+    if relation_type == "relation":
+        # normal relations don't have input terms, return an empty set
+        return set()
+    elif relation_type == "ie_relation":
+        # return a set of the free variables in the input term list
+        return get_set_of_free_var_names(relation.input_term_list, relation.input_type_list)
+    else:
+        raise Exception(f'unexpected relation type: {relation_type}')
+
+
+def get_set_of_output_free_var_names(relation: Union[Relation, IERelation], relation_type: str):
+    """
+    Args:
+        relation: a relation (either a normal relation or an ie relation)
+        relation_type: the type of the relation
+
+    Returns: a set of the free variable names used as output terms in the relation
+    """
+    if relation_type == "relation":
+        # the term list of a normal relation serves as the output term list, return its free variables
+        return get_set_of_free_var_names(relation.term_list, relation.type_list)
+    elif relation_type == "ie_relation":
+        # return a set of the free variables in the output term list
+        return get_set_of_free_var_names(relation.output_term_list, relation.output_type_list)
+    else:
+        raise Exception(f'unexpected relation type: {relation_type}')
+
+
 class RemoveTokens(Transformer):
     """
     a lark pass that should be used before the semantic checks
@@ -688,53 +737,6 @@ class CheckRuleSafety(Visitor_Recursive):
     def __init__(self, **kw):
         super().__init__()
 
-    @staticmethod
-    def __get_set_of_free_var_names(term_list, type_list):
-        """
-        Args:
-            term_list: a list of terms
-            type_list: a list of the term types
-
-        Returns: a set of all the free variable names in term_list
-        """
-        free_var_names = set(term for term, term_type in zip(term_list, type_list)
-                             if term_type is DataTypes.free_var_name)
-        return free_var_names
-
-    def __get_set_of_input_free_var_names(self, relation: Union[Relation, IERelation], relation_type: str):
-        """
-        Args:
-            relation: a relation (either a normal relation or an ie relation)
-            relation_type: the type of the relation
-
-        Returns: a set of the free variable names used as input terms in the relation
-        """
-        if relation_type == "relation":
-            # normal relations don't have input terms, return an empty set
-            return set()
-        elif relation_type == "ie_relation":
-            # return a set of the free variables in the input term list
-            return self.__get_set_of_free_var_names(relation.input_term_list, relation.input_type_list)
-        else:
-            raise Exception(f'unexpected relation type: {relation_type}')
-
-    def __get_set_of_output_free_var_names(self, relation: Union[Relation, IERelation], relation_type: str):
-        """
-        Args:
-            relation: a relation (either a normal relation or an ie relation)
-            relation_type: the type of the relation
-
-        Returns: a set of the free variable names used as output terms in the relation
-        """
-        if relation_type == "relation":
-            # the term list of a normal relation serves as the output term list, return its free variables
-            return self.__get_set_of_free_var_names(relation.term_list, relation.type_list)
-        elif relation_type == "ie_relation":
-            # return a set of the free variables in the output term list
-            return self.__get_set_of_free_var_names(relation.output_term_list, relation.output_type_list)
-        else:
-            raise Exception(f'unexpected relation type: {relation_type}')
-
     @unravel_lark_node
     def rule(self, rule: Rule):
         head_relation = rule.head_relation
@@ -745,10 +747,10 @@ class CheckRuleSafety(Visitor_Recursive):
         # every free variable in the head occurs at least once in the body as an output term of a relation.
 
         # get the free variables in the rule head
-        rule_head_free_vars = self.__get_set_of_free_var_names(head_relation.term_list, head_relation.type_list)
+        rule_head_free_vars = get_set_of_free_var_names(head_relation.term_list, head_relation.type_list)
 
         # get the free variables in the rule body that serve as output terms.
-        rule_body_output_free_var_sets = [self.__get_set_of_output_free_var_names(relation, relation_type)
+        rule_body_output_free_var_sets = [get_set_of_output_free_var_names(relation, relation_type)
                                           for relation, relation_type in
                                           zip(body_relation_list, body_relation_type_list)]
         rule_body_output_free_vars = set().union(*rule_body_output_free_var_sets)
@@ -789,13 +791,13 @@ class CheckRuleSafety(Visitor_Recursive):
                 if relation not in safe_relations:
                     # this relation was not marked as safe yet.
                     # check if all of its input free variable terms are bound
-                    input_free_vars = self.__get_set_of_input_free_var_names(relation, relation_type)
+                    input_free_vars = get_set_of_input_free_var_names(relation, relation_type)
                     unbound_input_free_vars = input_free_vars.difference(bound_free_vars)
                     if not unbound_input_free_vars:
                         # all input free variables are bound, mark the relation as safe
                         safe_relations.add(relation)
                         # mark the relation's output free variables as bound
-                        output_free_vars = self.__get_set_of_output_free_var_names(relation, relation_type)
+                        output_free_vars = get_set_of_output_free_var_names(relation, relation_type)
                         bound_free_vars = bound_free_vars.union(output_free_vars)
                         # make sure we iterate over the relations again if not all of them were found
                         # to be safe
@@ -805,7 +807,7 @@ class CheckRuleSafety(Visitor_Recursive):
 
         if not all_relations_are_safe:
             # condition 2 check failed, get all of the unbound free variables and pass them in an exception
-            rule_body_input_free_var_sets = [self.__get_set_of_input_free_var_names(relation, relation_type)
+            rule_body_input_free_var_sets = [get_set_of_input_free_var_names(relation, relation_type)
                                              for relation, relation_type in
                                              zip(body_relation_list, body_relation_type_list)]
             rule_body_input_free_vars = set().union(*rule_body_input_free_var_sets)
@@ -828,53 +830,6 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
 
     def __init__(self, **kw):
         super().__init__()
-
-    @staticmethod
-    def __get_set_of_free_var_names(term_list, type_list):
-        """
-        Args:
-            term_list: a list of terms
-            type_list: a list of the term types
-
-        Returns: a set of all the free variable names in term_list
-        """
-        free_var_names = set(term for term, term_type in zip(term_list, type_list)
-                             if term_type is DataTypes.free_var_name)
-        return free_var_names
-
-    def __get_set_of_input_free_var_names(self, relation: Union[Relation, IERelation], relation_type: str):
-        """
-        Args:
-            relation: a relation (either a normal relation or an ie relation)
-            relation_type: the type of the relation
-
-        Returns: a set of the free variable names used as input terms in the relation
-        """
-        if relation_type == "relation":
-            # normal relations don't have input terms, return an empty set
-            return set()
-        elif relation_type == "ie_relation":
-            # return a set of the free variables in the input term list
-            return self.__get_set_of_free_var_names(relation.input_term_list, relation.input_type_list)
-        else:
-            raise Exception(f'unexpected relation type: {relation_type}')
-
-    def __get_set_of_output_free_var_names(self, relation: Union[Relation, IERelation], relation_type: str):
-        """
-        Args:
-            relation: a relation (either a normal relation or an ie relation)
-            relation_type: the type of the relation
-
-        Returns: a set of the free variable names used as output terms in the relation
-        """
-        if relation_type == "relation":
-            # the term list of a normal relation serves as the output term list, return its free variables
-            return self.__get_set_of_free_var_names(relation.term_list, relation.type_list)
-        elif relation_type == "ie_relation":
-            # return a set of the free variables in the output term list
-            return self.__get_set_of_free_var_names(relation.output_term_list, relation.output_type_list)
-        else:
-            raise Exception(f'unexpected relation type: {relation_type}')
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -910,7 +865,7 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
                 if relation not in reordered_relations_list:
                     # this relation was not marked as safe yet.
                     # check if all of its input free variable terms are bound
-                    input_free_vars = self.__get_set_of_input_free_var_names(relation, relation_type)
+                    input_free_vars = get_set_of_input_free_var_names(relation, relation_type)
                     unbound_input_free_vars = input_free_vars.difference(bound_free_vars)
                     if not unbound_input_free_vars:
                         # all input free variables are bound, mark the relation as safe by adding it to the reordered
@@ -918,7 +873,7 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
                         reordered_relations_list.append(relation)
                         reordered_relations_type_list.append(relation_type)
                         # mark the relation's output free variables as bound
-                        output_free_vars = self.__get_set_of_output_free_var_names(relation, relation_type)
+                        output_free_vars = get_set_of_output_free_var_names(relation, relation_type)
                         bound_free_vars = bound_free_vars.union(output_free_vars)
                         # make sure we iterate over the relations again if not all of them were found
                         # to be safe
