@@ -27,176 +27,10 @@ https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
 
 from lark import Transformer
-from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive
-import rgxlog.engine.ie_functions as ie_functions
-from rgxlog.engine.structured_nodes import *
 from rgxlog.engine.datatypes import Span
-from typing import Union
-
-rgxlog_expected_children_names_lists = {
-
-    'assignment': [
-        ['var_name', 'string'],
-        ['var_name', 'int'],
-        ['var_name', 'span'],
-        ['var_name', 'var_name'],
-    ],
-
-    'read_assignment': [
-        ['var_name', 'string'],
-        ['var_name', 'var_name']
-    ],
-
-    'relation_declaration': [['relation_name', 'decl_term_list']],
-
-    'rule': [['rule_head', 'rule_body_relation_list']],
-
-    'rule_head': [['relation_name', 'free_var_name_list']],
-
-    'relation': [['relation_name', 'term_list']],
-
-    'ie_relation': [['relation_name', 'term_list', 'term_list']],
-
-    'query': [['relation_name', 'term_list']],
-
-    'add_fact': [['relation_name', 'const_term_list']],
-
-    'remove_fact': [['relation_name', 'const_term_list']],
-
-    'span': [
-        ['integer', 'integer'],
-        []  # allow empty list to support spans that were converted a datatypes.Span instance
-    ],
-
-    'integer': [[]],
-
-    'string': [[]],
-
-    'relation_name': [[]],
-
-    'var_name': [[]],
-
-    'free_var_name': [[]]
-}
-
-
-def assert_expected_node_structure_aux(lark_node):
-    """
-    checks whether a lark node has a structure that the lark passes expect
-
-    Args:
-        lark_node: the lark node to be checked
-    """
-
-    # check if lark_node is really a lark node. this is done because applying the check recursively might result in
-    # some children being literal values and not lark nodes
-    if isinstance(lark_node, LarkNode):
-        node_type = lark_node.data
-        if node_type in rgxlog_expected_children_names_lists:
-
-            # this lark node's structure can be checked, get its children and expected children lists
-            children_names = [child.data for child in lark_node.children if isinstance(child, LarkNode)]
-            expected_children_names_lists = rgxlog_expected_children_names_lists[node_type]
-
-            # check if the node's children names match one of the expected children names lists
-            if children_names not in expected_children_names_lists:
-                # the node has an unexpected structure, raise an exception
-                expected_children_list_strings = [str(children) for children in expected_children_names_lists]
-                expected_children_string = '\n'.join(expected_children_list_strings)
-                raise Exception(f'node of type "{node_type}" has unexpected children: {children_names}\n'
-                                f'expected one of the following children lists:\n'
-                                f'{expected_children_string}')
-
-        # recursively check the structure of the node's children
-        for child in lark_node.children:
-            assert_expected_node_structure_aux(child)
-
-
-def assert_expected_node_structure(func):
-    """
-    use this decorator to check whether a method's input lark node has a structure that is expected by the lark passes
-    the lark node and its children are checked recursively
-
-    note that this decorator should only be used on methods that expect lark nodes that weren't converted to
-    structured nodes
-
-    some lark nodes may have multiple structures (e.g. assignment). in this case this check will succeed if the lark
-    node has one of those structures
-    """
-
-    def wrapped_method(visitor, lark_node):
-        assert_expected_node_structure_aux(lark_node)
-        ret = func(visitor, lark_node)
-        return ret
-
-    return wrapped_method
-
-
-def unravel_lark_node(func):
-    """
-    even after converting a lark tree to use structured nodes, the methods in lark passes will still receive a lark
-    node as an input, and the child of said lark node will be the actual structured node that the method will work
-    with.
-
-    use this decorator to replace a method's lark node input with its child structured node
-    """
-
-    def wrapped_method(visitor, lark_node):
-        structured_node = lark_node.children[0]
-        ret = func(visitor, structured_node)
-        return ret
-
-    return wrapped_method
-
-
-def get_set_of_free_var_names(term_list: list, type_list: list):
-    """
-    Args:
-        term_list: a list of terms
-        type_list: a list of the term types
-
-    Returns: a set of all the free variable names in term_list
-    """
-    free_var_names = set(term for term, term_type in zip(term_list, type_list)
-                         if term_type is DataTypes.free_var_name)
-    return free_var_names
-
-
-def get_set_of_input_free_var_names(relation: Union[Relation, IERelation], relation_type: str):
-    """
-    Args:
-        relation: a relation (either a normal relation or an ie relation)
-        relation_type: the type of the relation
-
-    Returns: a set of the free variable names used as input terms in the relation
-    """
-    if relation_type == "relation":
-        # normal relations don't have input terms, return an empty set
-        return set()
-    elif relation_type == "ie_relation":
-        # return a set of the free variables in the input term list
-        return get_set_of_free_var_names(relation.input_term_list, relation.input_type_list)
-    else:
-        raise Exception(f'unexpected relation type: {relation_type}')
-
-
-def get_set_of_output_free_var_names(relation: Union[Relation, IERelation], relation_type: str):
-    """
-    Args:
-        relation: a relation (either a normal relation or an ie relation)
-        relation_type: the type of the relation
-
-    Returns: a set of the free variable names used as output terms in the relation
-    """
-    if relation_type == "relation":
-        # the term list of a normal relation serves as the output term list, return its free variables
-        return get_set_of_free_var_names(relation.term_list, relation.type_list)
-    elif relation_type == "ie_relation":
-        # return a set of the free variables in the output term list
-        return get_set_of_free_var_names(relation.output_term_list, relation.output_type_list)
-    else:
-        raise Exception(f'unexpected relation type: {relation_type}')
+from typing import Callable
+from rgxlog.engine.lark_passes_utils import *
 
 
 class RemoveTokens(Transformer):
@@ -378,7 +212,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
             elif decl_term_type == "decl_span":
                 type_list.append(DataTypes.span)
             elif decl_term_type == "decl_int":
-                type_list.append(DataTypes.int)
+                type_list.append(DataTypes.integer)
             else:
                 raise Exception(f'unexpected declaration term node type: {decl_term_type}')
 
@@ -737,6 +571,36 @@ class CheckRuleSafety(Visitor_Recursive):
     def __init__(self, **kw):
         super().__init__()
 
+    @staticmethod
+    def fixed_point_distance_function(bound_variables: set, step_ret_bound_variables: set):
+        return len(step_ret_bound_variables) - len(bound_variables)
+
+    @staticmethod
+    def fixed_point_step_function(bound_free_vars: set, context: Rule):
+        rule = context
+        body_relation_list = rule.body_relation_list
+        body_relation_type_list = rule.body_relation_type_list
+
+        for relation, relation_type in zip(body_relation_list, body_relation_type_list):
+            # check if all of its input free variable terms are bound
+            input_free_vars = get_set_of_input_free_var_names(relation, relation_type)
+            unbound_input_free_vars = input_free_vars.difference(bound_free_vars)
+            if not unbound_input_free_vars:
+                # all input free variables are bound mark the relation's output free variables as bound
+                output_free_vars = get_set_of_output_free_var_names(relation, relation_type)
+                bound_free_vars = bound_free_vars.union(output_free_vars)
+
+        return bound_free_vars
+
+    @staticmethod
+    def fixed_point(start, step: Callable, distance: Callable, thresh, context):
+        x = start
+        f = step
+        d = distance
+        while d(x, f(x, context)) > thresh:
+            x = f(x, context)
+        return x
+
     @unravel_lark_node
     def rule(self, rule: Rule):
         head_relation = rule.head_relation
@@ -776,42 +640,45 @@ class CheckRuleSafety(Visitor_Recursive):
         # or no new safe relations were found (failure condition).
 
         # initialize assuming every relation is unsafe and every free variable is unbound
-        safe_relations = set()
-        bound_free_vars = set()
-        found_new_safe_relation = False
-        all_relations_are_safe = False
-        first_pass = True
+        # safe_relations = set()
+        # bound_free_vars = set()
+        # found_new_safe_relation = False
+        # all_relations_are_safe = False
+        # first_pass = True
 
-        while first_pass or (found_new_safe_relation and not all_relations_are_safe):
-            first_pass = False
-            found_new_safe_relation = False
+        # while first_pass or (found_new_safe_relation and not all_relations_are_safe):
+        #     first_pass = False
+        #     found_new_safe_relation = False
+        #
+        #     # try to find new safe relations
+        #     for relation, relation_type in zip(body_relation_list, body_relation_type_list):
+        #         if relation not in safe_relations:
+        #             # this relation was not marked as safe yet.
+        #             # check if all of its input free variable terms are bound
+        #             input_free_vars = get_set_of_input_free_var_names(relation, relation_type)
+        #             unbound_input_free_vars = input_free_vars.difference(bound_free_vars)
+        #             if not unbound_input_free_vars:
+        #                 # all input free variables are bound, mark the relation as safe
+        #                 safe_relations.add(relation)
+        #                 # mark the relation's output free variables as bound
+        #                 output_free_vars = get_set_of_output_free_var_names(relation, relation_type)
+        #                 bound_free_vars = bound_free_vars.union(output_free_vars)
+        #                 # make sure we iterate over the relations again if not all of them were found
+        #                 # to be safe
+        #                 found_new_safe_relation = True
+        #     # the pass was completed, check if all of the relations were found to be safe
+        #     all_relations_are_safe = len(safe_relations) == len(body_relation_list)
 
-            # try to find new safe relations
-            for relation, relation_type in zip(body_relation_list, body_relation_type_list):
-                if relation not in safe_relations:
-                    # this relation was not marked as safe yet.
-                    # check if all of its input free variable terms are bound
-                    input_free_vars = get_set_of_input_free_var_names(relation, relation_type)
-                    unbound_input_free_vars = input_free_vars.difference(bound_free_vars)
-                    if not unbound_input_free_vars:
-                        # all input free variables are bound, mark the relation as safe
-                        safe_relations.add(relation)
-                        # mark the relation's output free variables as bound
-                        output_free_vars = get_set_of_output_free_var_names(relation, relation_type)
-                        bound_free_vars = bound_free_vars.union(output_free_vars)
-                        # make sure we iterate over the relations again if not all of them were found
-                        # to be safe
-                        found_new_safe_relation = True
-            # the pass was completed, check if all of the relations were found to be safe
-            all_relations_are_safe = len(safe_relations) == len(body_relation_list)
+        bound_free_vars = self.fixed_point(
+            set(), self.fixed_point_step_function, self.fixed_point_distance_function, 0, rule)
+        rule_body_input_free_var_sets = [get_set_of_input_free_var_names(relation, relation_type)
+                                         for relation, relation_type in
+                                         zip(body_relation_list, body_relation_type_list)]
+        rule_body_input_free_vars = set().union(*rule_body_input_free_var_sets)
+        unbound_free_vars = rule_body_input_free_vars.difference(bound_free_vars)
 
-        if not all_relations_are_safe:
+        if unbound_free_vars:
             # condition 2 check failed, get all of the unbound free variables and pass them in an exception
-            rule_body_input_free_var_sets = [get_set_of_input_free_var_names(relation, relation_type)
-                                             for relation, relation_type in
-                                             zip(body_relation_list, body_relation_type_list)]
-            rule_body_input_free_vars = set().union(*rule_body_input_free_var_sets)
-            unbound_free_vars = rule_body_input_free_vars.difference(bound_free_vars)
             raise Exception(f'The rule "{rule}" \n'
                             f'is not safe because the following free variables are not bound:\n'
                             f'{unbound_free_vars}')
@@ -918,7 +785,7 @@ class TypeCheckAssignments(Interpreter):
                             f'because the argument type for read() was {read_arg_type} (must be a string)')
 
 
-class TypeCheckRelationsAndSaveSchemas(Interpreter):
+class TypeCheckRelations(Interpreter):
     """
     A lark tree semantic check.
     This pass makes the following assumptions and might not work correctly if they are not met
@@ -935,159 +802,79 @@ class TypeCheckRelationsAndSaveSchemas(Interpreter):
     new A(str)
     new B(int)
     C(X) <- A(X), B(X) # error since X is expected to be both an int and a string
-
-    this pass also writes the relation schemas that it finds in relation declarations and rule heads to the
-    symbol table
     """
 
     def __init__(self, **kw):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def __type_check_term_list(self, term_list: list, type_list: list, correct_type_list: list):
-        """
-        check if the term list is properly typed.
-        the term list could include free variables, this method will assume their actual type is correct.
-        Args:
-            term_list: the term list to be type checked
-            type_list: the types of the terms in term_list
-            correct_type_list: a list of the types that the terms must have to pass the type check
+    @unravel_lark_node
+    def add_fact(self, fact: AddFact):
+        # a fact is defined by a relation, check if that relation is properly typed
+        type_check_passed = check_if_relation_is_properly_typed(fact, "relation", self.symbol_table)
+        if not type_check_passed:
+            raise Exception(f'type check failed for fact: "{fact}"')
 
-        Returns: True if the type check passed, else False
-        """
-        if len(term_list) != len(type_list) or len(term_list) != len(correct_type_list):
-            raise Exception("the length of term_list, type_list and correct_type_list should be the same")
+    @unravel_lark_node
+    def remove_fact(self, fact: RemoveFact):
+        # a fact is defined by a relation, check if that relation is properly typed
+        type_check_passed = check_if_relation_is_properly_typed(fact, "relation", self.symbol_table)
+        if not type_check_passed:
+            raise Exception(f'type check failed for fact: "{fact}"')
 
-        # perform the type check
-        for term, term_type, correct_type in zip(term_list, type_list, correct_type_list):
-            if term_type is DataTypes.var_name:
-                # current term is a variable, get its type from the symbol table and check if it is correct
-                var_type = self.symbol_table.get_variable_type(term)
-                if var_type != correct_type:
-                    # the variable is not properly typed, the type check failed
-                    return False
-            elif term_type is not DataTypes.free_var_name and term_type != correct_type:
-                # the term is a literal that is not properly typed, the type check failed
-                return False
-        # all variables are properly typed, the type check succeeded
-        return True
+    @unravel_lark_node
+    def query(self, query: Query):
+        # a query is defined by a relation, check if that relation is properly typed
+        type_check_passed = check_if_relation_is_properly_typed(query, "relation", self.symbol_table)
+        if not type_check_passed:
+            raise Exception(f'type check failed for query: "{query}"')
+
+    @unravel_lark_node
+    def rule(self, rule: Rule):
+
+        # for each relation in the rule body, check if it is properly typed, raise an exception if it isn't
+        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+            relation_is_properly_typed = check_if_relation_is_properly_typed(relation, relation_type, self.symbol_table)
+            if not relation_is_properly_typed:
+                raise Exception(f'type check failed for rule "{rule}"\n'
+                                f'because the relation "{relation}"\n'
+                                f'is not properly typed')
+
+        # check for free variables with conflicting type in the rule, raise an exception if there are any
+        _, conflicted_free_vars = type_check_rule_free_vars(rule, self.symbol_table)
+        if conflicted_free_vars:
+            raise Exception(f'type check failed for rule "{rule}"\n'
+                            f'because the following free variables have conflicting types:\n'
+                            f'{conflicted_free_vars}')
+
+
+class SaveDeclaredRelationsSchemas(Interpreter):
+    """
+    this pass writes the relation schemas that it finds in relation declarations and rule heads* to the
+    symbol table.
+    * note that a rule is a relation declaration of the rule head relation and a definition of its contents
+
+    this pass assumes that type checking was already performed on its input
+    """
+
+    def __init__(self, **kw):
+        super().__init__()
+        self.symbol_table = kw['symbol_table']
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
         self.symbol_table.add_relation_schema(relation_decl.relation_name, relation_decl.type_list)
 
     @unravel_lark_node
-    def add_fact(self, fact: AddFact):
-        # get the schema of the referenced relation from the symbol table and perform a type check
-        relation_schema = self.symbol_table.get_relation_schema(fact.relation_name)
-        type_check_passed = self.__type_check_term_list(fact.term_list, fact.type_list, relation_schema)
-        if not type_check_passed:
-            raise Exception(f'type check failed for fact: "{fact}"')
-
-    @unravel_lark_node
-    def remove_fact(self, fact: RemoveFact):
-        # get the schema of the referenced relation from the symbol table and perform a type check
-        relation_schema = self.symbol_table.get_relation_schema(fact.relation_name)
-        type_check_passed = self.__type_check_term_list(fact.term_list, fact.type_list, relation_schema)
-        if not type_check_passed:
-            raise Exception(f'type check failed for fact: "{fact}"')
-
-    @unravel_lark_node
-    def query(self, query: Query):
-        # get the schema of the referenced relation from the symbol table and perform a type check
-        relation_schema = self.symbol_table.get_relation_schema(query.relation_name)
-        type_check_passed = self.__type_check_term_list(query.term_list, query.type_list, relation_schema)
-        if not type_check_passed:
-            raise Exception(f'type check failed for query: "{query}"')
-
-    @staticmethod
-    def __rule_free_vars_type_check_aux(term_list: list, type_list: list, correct_type_list: list,
-                                        free_var_to_type: dict, conflicted_free_vars: set):
-        """
-        free variables in rules get their type from the relations in the rule body.
-        it is possible for a free variable to be expected to be more than one type.
-        for each free variable in term_list, this method will check for it's type, save it in
-        free_var_to_type (for future calls), and check if it is expected to be more than one type.
-
-        Args:
-            term_list: the term list of a rule body relation
-            type_list: the types of the terms in term_list
-            correct_type_list: a list of the types that the terms in the term list should have
-            free_var_to_type: a mapping of free variables to their type (those that are currently known)
-            this function updates this mapping if it finds new free variables in term_list
-            conflicted_free_vars: a set of the free variables that are found to have conflicting types
-            this function adds conflicting free variables that it finds to this set
-        """
-        if len(term_list) != len(type_list) or len(term_list) != len(correct_type_list):
-            raise Exception("the length of term_list, type_list and correct_type_list should be the same")
-
-        for term, term_type, correct_type in zip(term_list, type_list, correct_type_list):
-            if term_type is DataTypes.free_var_name:
-                # found a free variable, check for conflicting types
-                free_var = term
-                if free_var in free_var_to_type:
-                    # free var already has a type, make sure there's no conflict with the expected type.
-                    free_var_type = free_var_to_type[free_var]
-                    if free_var_type != correct_type:
-                        # found a conflicted free var, add it to the conflicted free vars set
-                        conflicted_free_vars.add(free_var)
-                else:
-                    # free var does not currently have a type, map it to the correct type
-                    free_var_to_type[free_var] = correct_type
-
-    @unravel_lark_node
     def rule(self, rule: Rule):
-        free_var_to_type = dict()
-        conflicted_free_vars = set()
 
-        # Look for conflicting free variables and improperly typed relations
-        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+        # a rule head relation only contains free variable terms, meaning its schema is defined exclusively by the
+        # types of said free variables. a free variable type in a rule can be found using the schemas of relations
+        # in the rule body
+        # get a mapping from a free variable in this rule to its type
+        free_var_to_type, _ = type_check_rule_free_vars(rule, self.symbol_table)
 
-            if relation_type == "relation":
-                # perform the type check
-                relation_schema = self.symbol_table.get_relation_schema(relation.relation_name)
-                type_check_passed = self.__type_check_term_list(
-                    relation.term_list, relation.type_list, relation_schema)
-                # check for conflicted free variables
-                self.__rule_free_vars_type_check_aux(
-                    relation.term_list, relation.type_list, relation_schema, free_var_to_type, conflicted_free_vars)
-
-            elif relation_type == "ie_relation":
-                # get the input and output schema of the ie function
-                ie_func_name = relation.relation_name
-                ie_func_data = getattr(ie_functions, ie_func_name)
-                input_schema = ie_func_data.get_input_types()
-                output_arity = len(relation.output_term_list)
-                output_schema = ie_func_data.get_output_types(output_arity)
-                # perform the type check
-                input_type_check_passed = self.__type_check_term_list(
-                    relation.input_term_list, relation.input_type_list, input_schema)
-                output_type_check_passed = self.__type_check_term_list(
-                    relation.output_term_list, relation.output_type_list, output_schema)
-                type_check_passed = input_type_check_passed and output_type_check_passed
-                # check for conflicting free variables
-                self.__rule_free_vars_type_check_aux(relation.input_term_list, relation.input_type_list,
-                                                     input_schema, free_var_to_type, conflicted_free_vars)
-                self.__rule_free_vars_type_check_aux(relation.output_term_list, relation.output_type_list,
-                                                     output_schema, free_var_to_type, conflicted_free_vars)
-
-            else:
-                raise Exception(f'unexpected relation type: {relation_type}')
-
-            # raise an exception if the type check failed
-            if not type_check_passed:
-                raise Exception(f'type check failed for rule "{rule}"\n'
-                                f'because the relation "{relation}"\n'
-                                f'is not properly typed')
-
-        # raise an exception if there are any free variables with conflicting types
-        if conflicted_free_vars:
-            raise Exception(f'type check failed for rule "{rule}"\n'
-                            f'because the following free variables have conflicting types:\n'
-                            f'{conflicted_free_vars}')
-
-        # no issues were found, get the relation's head schema using the free variable to type mapping
-        # and add it to the symbol table
+        # get the schema of the rule head relation and add it to the symbol table
         head_relation = rule.head_relation
         rule_head_schema = [free_var_to_type[term] for term in head_relation.term_list]
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema)
