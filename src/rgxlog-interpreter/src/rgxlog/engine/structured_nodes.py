@@ -49,22 +49,6 @@ class Relation:
         relation_string = f"{self.relation_name}({term_list_string})"
         return relation_string
 
-    def get_pydatalog_string(self):
-        """
-        the pyDatalog execution engine receives instructions via strings.
-        return a relation representation of a relation in pyDatalog.
-        quotes are added to string terms so pyDatalog will not be confused between strings and variables.
-        spans are represented as tuples of length 2 (see get_pydatalog_string() of the Span class)
-        """
-        pydatalog_string_terms = \
-            [f"\"{term}\"" if term_type is DataTypes.string
-             else term.get_pydatalog_string() if term_type is DataTypes.span
-            else str(term)
-             for term, term_type in zip(self.term_list, self.type_list)]
-        term_list_pydatalog_string = ', '.join(pydatalog_string_terms)
-        relation_pydatalog_string = f"{self.relation_name}({term_list_pydatalog_string})"
-        return relation_pydatalog_string
-
 
 class IERelation:
     """
@@ -108,8 +92,6 @@ class IERelation:
         ie_relation_string = f"{self.relation_name}({input_term_list_string}) -> ({output_term_list_string})"
         return ie_relation_string
 
-    # get_pydatalog_string() is not implemented for this class as pyDatalog cannot handle IE relations
-
 
 class RelationDeclaration:
     """a representation of a relation_declaration statement"""
@@ -137,10 +119,6 @@ class RelationDeclaration:
         type_list_string = ', '.join(type_strings)
         relation_declaration_string = f"{self.relation_name}({type_list_string})"
         return relation_declaration_string
-
-    # get_pydatalog_string() is not implemented for this class as relations are not declared in pyDatalog
-    # we use a different workaround in pydatalog which is adding and removing a made up tuple in order to create
-    # an empty relation.
 
 
 class AddFact(Relation):

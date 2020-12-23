@@ -46,12 +46,3 @@ class Span:
 
     def __str__(self):
         return f"[{self.span_start}, {self.span_end})"
-
-    def get_pydatalog_string(self):
-        """
-        the pyDatalog execution engine receives instructions via strings.
-        return a string representation of a span term in pyDatalog.
-        since there's no built in representation of a span in pyDatalog, and custom classes do not seem to work
-        as intended in pyDatalog, we represent a span using a tuple of length 2.
-        """
-        return f"({self.span_start}, {self.span_end})"

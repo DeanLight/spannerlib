@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
-import networkx as nx
+from typing import List
 from rgxlog.engine.term_graph import EvalState, TermGraphBase
 from pyDatalog import pyDatalog
-from rgxlog.engine.datatypes import DataTypes, Span
+from rgxlog.engine.datatypes import Span
 from rgxlog.engine.symbol_table import SymbolTableBase
 import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.ie_functions import IEFunctionData
 from rgxlog.engine.structured_nodes import *
+from rgxlog.engine.general_utils import get_output_free_var_names, get_input_free_var_names
+from itertools import chain
 
 
 class DatalogEngineBase(ABC):
@@ -18,7 +20,7 @@ class DatalogEngineBase(ABC):
         super().__init__()
 
     @abstractmethod
-    def declare_relation(self, declaration):
+    def declare_relation(self, relation_decl):
         pass
 
     @abstractmethod
@@ -27,6 +29,10 @@ class DatalogEngineBase(ABC):
 
     @abstractmethod
     def remove_fact(self, fact):
+        pass
+
+    @abstractmethod
+    def print_query(self, query):
         pass
 
     @abstractmethod
@@ -87,9 +93,56 @@ class PydatalogEngine(DatalogEngineBase):
             debug: print the commands that are loaded into pyDatalog
         """
         super().__init__()
-        self.temp_relations = dict()
-        self.new_temp_relation_idx = 0
+        self.next_temp_relation_idx = 0
         self.debug = debug
+
+    @staticmethod
+    def __get_span_string(span: Span):
+        """
+        TODO
+        the pyDatalog execution engine receives instructions via strings.
+        return a string representation of a span term in pyDatalog.
+        since there's no built in representation of a span in pyDatalog, and custom classes do not seem to work
+        as intended in pyDatalog, we represent a span using a tuple of length 2.
+        Args:
+            span:
+
+        Returns:
+
+        """
+        span_string = f'({span.span_start}, {span.span_end})'
+        return span_string
+
+    def __get_relation_string(self, relation: Relation):
+        """
+        TODO
+        the pyDatalog execution engine receives instructions via strings.
+        return a relation representation of a relation in pyDatalog.
+        quotes are added to string terms so pyDatalog will not be confused between strings and variables.
+        spans are represented as tuples of length 2 (see PydatalogEngine.__get_span_string())
+
+        Args:
+            relation: a relation
+
+        Returns: a pydatalog string representation of the relation
+
+        """
+        pydatalog_string_terms = \
+            [f"\"{term}\"" if term_type is DataTypes.string
+             else self.__get_span_string(term) if term_type is DataTypes.span
+            else str(term)
+             for term, term_type in zip(relation.term_list, relation.type_list)]
+        term_list_pydatalog_string = ', '.join(pydatalog_string_terms)
+        relation_pydatalog_string = f"{relation.relation_name}({term_list_pydatalog_string})"
+        return relation_pydatalog_string
+
+    def __query_all_relation_tuples(self, relation_name, relation_arity):
+        query_relation_name = relation_name
+        query_terms = [f'X{i}' for i in range(relation_arity)]
+        query_term_types = [DataTypes.free_var_name] * relation_arity
+        query = Query(query_relation_name, query_terms, query_term_types)
+        all_relation_tuples = self.query(query)
+        return all_relation_tuples
 
     def __create_new_temp_relation(self, arity):
         """
@@ -99,135 +152,162 @@ class PydatalogEngine(DatalogEngineBase):
 
         Returns: the new temporary relation's name
         """
-        temp_relation_name = "__rgxlog__" + str(self.new_temp_relation_idx)
-        self.new_temp_relation_idx += 1
+        temp_relation_name = f'__rgxlog__{self.next_temp_relation_idx}'
+        self.next_temp_relation_idx += 1
         # in pyDatalog there's no typechecking so we can put anything we want in the schema
         declaration = RelationDeclaration(temp_relation_name, [DataTypes.free_var_name] * arity)
         self.declare_relation(declaration)
         return temp_relation_name
 
-    def __extract_temp_relation(self, relations: list) -> Relation:
+    def __extract_temp_relation(self, relation_list: List[Relation]) -> Relation:
         """
         creates a new temp relation where each free variable that appears in relations, appears once in the new
         relation.
         for example: for input relation A(X,Y,X), B("b",3,W) we'll get some_temp(X,Y,W)
         """
-        temp_relation_terms = []
-        for relation in relations:
-            for idx, term in enumerate(relation.term_list):
-                if relation.type_list[idx] == DataTypes.free_var_name and term not in temp_relation_terms:
-                    # if the term is a free variable and is not in the temp relation terms already, add it as a term.
-                    temp_relation_terms.append(term)
-        temp_relation_types = [DataTypes.free_var_name] * len(temp_relation_terms)
-        temp_relation_name = self.__create_new_temp_relation(len(temp_relation_terms))
-        return Relation(temp_relation_name, temp_relation_terms, temp_relation_types)
+        free_var_sets = [get_output_free_var_names(relation, 'relation') for relation in relation_list]
+        free_vars = set().union(*free_var_sets)
+        temp_relation_terms = free_vars
 
-    def declare_relation(self, declaration: RelationDeclaration):
+        temp_relation_arity = len(temp_relation_terms)
+        temp_relation_types = [DataTypes.free_var_name] * temp_relation_arity
+        temp_relation_name = self.__create_new_temp_relation(temp_relation_arity)
+
+        temp_relation = Relation(temp_relation_name, temp_relation_terms, temp_relation_types)
+        return temp_relation
+
+    @staticmethod
+    def __assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation):
+        ie_output_term_types = []
+        for output_term in ie_output:
+            if isinstance(output_term, int):
+                output_type = DataTypes.integer
+            elif isinstance(output_term, str):
+                output_type = DataTypes.string
+            elif isinstance(output_term, tuple) and len(output_term) == 2:
+                output_type = DataTypes.span
+            else:
+                raise Exception(f'encountered unexpected output term: {output_term}')
+            ie_output_term_types.append(output_type)
+        ie_output_term_types = tuple(ie_output_term_types)  # TODO?
+
+        if ie_output_term_types != ie_output_schema:
+            raise Exception(f'executing ie relation {ie_relation}\n'
+                            f'failed because one of the outputs had unexpected term types\n'
+                            f'the output: {ie_output}\n'
+                            f'the output term types: {ie_output_term_types}\n'
+                            f'the expected types: {ie_output_schema}')
+
+    def declare_relation(self, relation_decl: RelationDeclaration):
         # add and remove a temporary fact to the relation that is declared, this creates an empty
         # relation in pyDatalog so it is allowed to be queried
-        relation_name = declaration.relation_name
-        schema_length = len(declaration.type_list)
-        temp_fact = relation_name + "("
-        for i in range(schema_length):
-            temp_fact += "None"
-            if i != schema_length - 1:
-                temp_fact += ", "
-        temp_fact += ")"
-        if self.debug:
-            print("+" + temp_fact)
-            print("-" + temp_fact)
-        pyDatalog.load("+" + temp_fact)
-        pyDatalog.load("-" + temp_fact)
 
-    def add_fact(self, fact: Relation):
-        if self.debug:
-            print("+" + fact.get_pydatalog_string())
-        pyDatalog.load("+" + fact.get_pydatalog_string())
+        relation_name = relation_decl.relation_name
+        relation_arity = len(relation_decl.type_list)
+        decl_terms = ['None'] * relation_arity
+        decl_terms_string = ', '.join(decl_terms)
 
-    def remove_fact(self, fact: Relation):
-        if self.debug:
-            print("-" + fact.get_pydatalog_string())
-        pyDatalog.load("-" + fact.get_pydatalog_string())
+        temp_fact_string = f'{relation_name}({decl_terms_string})'
 
-    def query(self, query: Relation):
-        if self.debug:
-            print("print(" + query.get_pydatalog_string() + ")")
-        pyDatalog.load("print(" + query.get_pydatalog_string() + ")")
+        relation_decl_string = f'+{temp_fact_string}\n' \
+                               f'-{temp_fact_string}'
 
-    def add_rule(self, rule_head: Relation, rule_body):
-        rule_string = rule_head.get_pydatalog_string() + " <= "
-        for idx, rule_body_relation in enumerate(rule_body):
-            rule_string += rule_body_relation.get_pydatalog_string()
-            if idx < len(rule_body) - 1:
-                rule_string += " & "
+        if self.debug:
+            print(relation_decl_string)
+
+        pyDatalog.load(relation_decl_string)
+
+    def add_fact(self, fact: AddFact):
+        relation_string = self.__get_relation_string(fact)
+        add_fact_string = f'+{relation_string}'
+        if self.debug:
+            print(add_fact_string)
+        pyDatalog.load(add_fact_string)
+
+    def remove_fact(self, fact: RemoveFact):
+        relation_string = self.__get_relation_string(fact)
+        remove_fact_string = f'-{relation_string}'
+        if self.debug:
+            print(remove_fact_string)
+        pyDatalog.load(remove_fact_string)
+
+    def print_query(self, query: Query):
+        relation_string = self.__get_relation_string(query)
+        query_string = f'print({relation_string})'
+        if self.debug:
+            print(query_string)
+        pyDatalog.load(query_string)
+
+    def query(self, query: Query):
+        query_string = self.__get_relation_string(query)
+        if self.debug:
+            print(f'non-print query: {query_string}')
+        query_results = pyDatalog.ask(query_string).answers
+        return query_results
+
+    def add_rule(self, rule_head: Relation, rule_body: List[Relation]):
+        rule_head_string = self.__get_relation_string(rule_head)
+        rule_body_relation_strings = [self.__get_relation_string(relation) for relation in rule_body]
+        rule_body_string = " & ".join(rule_body_relation_strings)
+        rule_string = f'{rule_head_string} <= {rule_body_string}'
         if self.debug:
             print(rule_string)
         pyDatalog.load(rule_string)
 
     def compute_rule_body_relation(self, relation: Relation):
         temp_relation = self.__extract_temp_relation([relation])
+
         if self.debug:
-            print(temp_relation.get_pydatalog_string() + " <= " + relation.get_pydatalog_string())
-        pyDatalog.load(temp_relation.get_pydatalog_string() + " <= " + relation.get_pydatalog_string())
+            print(self.__get_relation_string(temp_relation) + " <= " + self.__get_relation_string(relation))
+        pyDatalog.load(self.__get_relation_string(temp_relation) + " <= " + self.__get_relation_string(relation))
         return temp_relation
 
     def compute_rule_body_ie_relation(self, ie_relation: IERelation, ie_func_data: IEFunctionData,
                                       bounding_relation: Relation):
+
         input_relation_name = self.__create_new_temp_relation(len(ie_relation.input_term_list))
-        output_relation_name = self.__create_new_temp_relation(len(ie_relation.output_term_list))
         input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
+
+        output_relation_name = self.__create_new_temp_relation(len(ie_relation.output_term_list))
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
+
         if bounding_relation is None:
             # special case where the ie relation is the first rule body relation
-            for input_term_type in ie_relation.input_type_list:
-                # check if the relation is not bounded, should never happen
-                assert input_term_type != DataTypes.free_var_name
+            # assert that the relation is bound. in this case it is bound if and only if it has no free variable terms
+            input_free_vars = get_input_free_var_names(ie_relation, "ie_relation")
+            if input_free_vars:
+                raise Exception(f'encountered unbounded free variables:{input_free_vars}')
+
             self.add_fact(
-                Relation(input_relation.relation_name, ie_relation.input_term_list, ie_relation.input_type_list))
+                AddFact(input_relation.relation_name, ie_relation.input_term_list, ie_relation.input_type_list))
+
         else:
             # extract the input into an input relation.
             self.add_rule(input_relation, [bounding_relation])
+
         # get a list of input tuples. to get them we query pyDatalog using the input relation name, and all
-        # of the terms will be free variables (so we get the whole tuple)
-        query_str = input_relation.relation_name + "("
-        for i in range(len(input_relation.term_list)):
-            query_str += "X" + str(i)
-            if i < len(input_relation.term_list) - 1:
-                query_str += ","
-        query_str += ")"
-        ie_inputs = pyDatalog.ask(query_str).answers
+        # of the terms will be free variables (so we get whole tuples)
+        input_relation_arity = len(input_relation.term_list)
+        ie_inputs = self.__query_all_relation_tuples(input_relation_name, input_relation_arity)
+
         # get all the outputs
-        ie_outputs = []
-        for idx, ie_input in enumerate(ie_inputs):
-            output = ie_func_data.ie_function(*ie_input)
-            ie_outputs.extend(output)
-        ie_output_types = tuple(ie_func_data.get_output_types(len(ie_relation.output_term_list)))
-        # check output types
+        ie_output_lists = [ie_func_data.ie_function(*ie_input) for ie_input in ie_inputs]
+        ie_outputs = list(chain(*ie_output_lists))
+
+        ie_output_schema = tuple(ie_func_data.get_output_types(len(ie_relation.output_term_list)))
+
         for ie_output in ie_outputs:
-            actual_output_types = []
-            for value in ie_output:
-                if isinstance(value, int):
-                    actual_output_types.append(DataTypes.integer)
-                elif isinstance(value, str):
-                    actual_output_types.append(DataTypes.string)
-                elif isinstance(value, tuple) and len(value) == 2:
-                    actual_output_types.append(DataTypes.span)
-                else:
-                    raise Exception("invalid output type")
-            if tuple(actual_output_types) != ie_output_types:
-                raise Exception("invalid output types")
-        # convert spans to a Span type
-        for i in range(len(ie_outputs)):
-            ie_outputs[i] = list(ie_outputs[i])
-            for j in range(len(ie_output_types)):
-                if ie_output_types[j] == DataTypes.span:
-                    span_tuple = ie_outputs[i][j]
-                    assert len(span_tuple) == 2
-                    ie_outputs[i][j] = Span(span_tuple[0], span_tuple[1])
-        # add the outputs to the output relation
-        for ie_output in ie_outputs:
-            output_fact = Relation(output_relation.relation_name, ie_output, ie_output_types)
+            ie_output = list(ie_output)
+
+            self.__assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation)
+
+            ie_output = [Span(term[0], term[1]) if term_type is DataTypes.span
+                         else term
+                         for term, term_type in zip(ie_output, ie_output_schema)]
+
+            output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
             self.add_fact(output_fact)
+
         # return the result relation. it's a temp relation that is the inner join of the input and output relations
         return self.aggregate_relations_to_temp_relation([input_relation, output_relation])
 
@@ -266,7 +346,8 @@ class NetworkxExecution(ExecutionBase):
     def __init__(self):
         super().__init__()
 
-    def __execute_rule_aux(self, rule_term_id, term_graph: TermGraphBase,
+    @staticmethod
+    def __execute_rule_aux(rule_term_id, term_graph: TermGraphBase,
                            symbol_table: SymbolTableBase, datalog_engine: DatalogEngineBase):
         """
         This rule execution assumes that a previous pass reordered the rule body relations in a way that
@@ -358,7 +439,7 @@ class NetworkxExecution(ExecutionBase):
 
                 elif term_type == "query":
                     query = term_graph.get_term_value(term_id)
-                    datalog_engine.query(query)
+                    datalog_engine.print_query(query)
 
                 elif term_type == "rule":
                     self.__execute_rule_aux(term_id, term_graph, symbol_table, datalog_engine)
