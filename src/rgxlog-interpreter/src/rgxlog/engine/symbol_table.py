@@ -86,7 +86,7 @@ class SymbolTableBase(ABC):
 
         # create a string that represents the variable table
         var_table_headers = 'Variable\tType\tValue'
-        var_table_tuple_strings = [f'{name}\t{var_type.to_string()}\t{var_value}'
+        var_table_tuple_strings = [f'{name}\t{var_type}\t{var_value}'
                                    for name, var_type, var_value in self.get_all_variables()]
         var_table_content = "\n".join(var_table_tuple_strings)
         var_table_string = f"{var_table_headers}\n{var_table_content}"
@@ -95,7 +95,7 @@ class SymbolTableBase(ABC):
         relation_table_headers = 'Relation\tSchema'
         relation_table_tuple_strings = []
         for relation_name, type_list in self.get_all_relations():
-            type_strings = [term_type.to_string() for term_type in type_list]
+            type_strings = [str(term_type) for term_type in type_list]
             type_list_string = ", ".join(type_strings)
             cur_tuple_string = f"{relation_name}\t({type_list_string})"
             relation_table_tuple_strings.append(cur_tuple_string)

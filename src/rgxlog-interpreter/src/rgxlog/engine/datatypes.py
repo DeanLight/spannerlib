@@ -11,7 +11,7 @@ class DataTypes(Enum):
     free_var_name = 3
     var_name = 4
 
-    def to_string(self):
+    def __str__(self):
         """
         returns a string representation of a datatype.
         The string is also the same string used as a node type of said datatype in the grammar and passes
