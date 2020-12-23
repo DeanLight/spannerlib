@@ -79,7 +79,7 @@ def unravel_lark_node(func):
     return wrapped_method
 
 
-def get_set_of_free_var_names(term_list: list, type_list: list):
+def get_free_var_names(term_list: list, type_list: list) -> set:
     """
     Args:
         term_list: a list of terms
@@ -92,7 +92,7 @@ def get_set_of_free_var_names(term_list: list, type_list: list):
     return free_var_names
 
 
-def get_set_of_input_free_var_names(relation: Union[Relation, IERelation], relation_type: str):
+def get_input_free_var_names(relation: Union[Relation, IERelation], relation_type: str) -> set:
     """
     Args:
         relation: a relation (either a normal relation or an ie relation)
@@ -105,12 +105,12 @@ def get_set_of_input_free_var_names(relation: Union[Relation, IERelation], relat
         return set()
     elif relation_type == "ie_relation":
         # return a set of the free variables in the input term list
-        return get_set_of_free_var_names(relation.input_term_list, relation.input_type_list)
+        return get_free_var_names(relation.input_term_list, relation.input_type_list)
     else:
         raise Exception(f'unexpected relation type: {relation_type}')
 
 
-def get_set_of_output_free_var_names(relation: Union[Relation, IERelation], relation_type: str):
+def get_output_free_var_names(relation: Union[Relation, IERelation], relation_type: str) -> set:
     """
     Args:
         relation: a relation (either a normal relation or an ie relation)
@@ -120,16 +120,16 @@ def get_set_of_output_free_var_names(relation: Union[Relation, IERelation], rela
     """
     if relation_type == "relation":
         # the term list of a normal relation serves as the output term list, return its free variables
-        return get_set_of_free_var_names(relation.term_list, relation.type_list)
+        return get_free_var_names(relation.term_list, relation.type_list)
     elif relation_type == "ie_relation":
         # return a set of the free variables in the output term list
-        return get_set_of_free_var_names(relation.output_term_list, relation.output_type_list)
+        return get_free_var_names(relation.output_term_list, relation.output_type_list)
     else:
         raise Exception(f'unexpected relation type: {relation_type}')
 
 
-def check_if_term_list_is_properly_typed(term_list: list, type_list: list,
-                                         correct_type_list: list, symbol_table: SymbolTableBase):
+def check_properly_typed_term_list(term_list: list, type_list: list,
+                                   correct_type_list: list, symbol_table: SymbolTableBase):
     """
     check if the term list is properly typed.
     the term list could include free variables, this method will assume their actual type is correct.
@@ -159,8 +159,8 @@ def check_if_term_list_is_properly_typed(term_list: list, type_list: list,
     return True
 
 
-def check_if_relation_is_properly_typed(relation: Union[Relation, IERelation], relation_type: str,
-                                        symbol_table: SymbolTableBase):
+def check_properly_typed_relation(relation: Union[Relation, IERelation], relation_type: str,
+                                  symbol_table: SymbolTableBase):
     """
     checks if a relation is properly typed
     this check ignores free variables
@@ -177,7 +177,7 @@ def check_if_relation_is_properly_typed(relation: Union[Relation, IERelation], r
         # get the schema of the relation
         relation_schema = symbol_table.get_relation_schema(relation.relation_name)
         # check if the relation's term list is properly typed
-        relation_is_properly_typed = check_if_term_list_is_properly_typed(
+        relation_is_properly_typed = check_properly_typed_term_list(
             relation.term_list, relation.type_list, relation_schema, symbol_table)
 
     elif relation_type == "ie_relation":
@@ -191,9 +191,9 @@ def check_if_relation_is_properly_typed(relation: Union[Relation, IERelation], r
 
         # perform the type check on both the input and output term lists
         # both of them need to be properly typed for the check to pass
-        input_type_check_passed = check_if_term_list_is_properly_typed(
+        input_type_check_passed = check_properly_typed_term_list(
             relation.input_term_list, relation.input_type_list, input_schema, symbol_table)
-        output_type_check_passed = check_if_term_list_is_properly_typed(
+        output_type_check_passed = check_properly_typed_term_list(
             relation.output_term_list, relation.output_type_list, output_schema, symbol_table)
         relation_is_properly_typed = input_type_check_passed and output_type_check_passed
 
@@ -227,7 +227,7 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
             # get the schema for the relation
             relation_schema = symbol_table.get_relation_schema(relation.relation_name)
             # perform the free variable type checking
-            type_check_rule_body_relation_free_vars(
+            type_check_rule_free_vars_aux(
                 relation.term_list, relation.type_list, relation_schema, free_var_to_type, conflicted_free_vars)
 
         elif relation_type == "ie_relation":
@@ -240,10 +240,10 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
             output_schema = ie_func_data.get_output_types(output_arity)
 
             # perform the free variable type checking on both the input and output term lists of the ie relation
-            type_check_rule_body_relation_free_vars(relation.input_term_list, relation.input_type_list,
-                                                    input_schema, free_var_to_type, conflicted_free_vars)
-            type_check_rule_body_relation_free_vars(relation.output_term_list, relation.output_type_list,
-                                                    output_schema, free_var_to_type, conflicted_free_vars)
+            type_check_rule_free_vars_aux(relation.input_term_list, relation.input_type_list,
+                                          input_schema, free_var_to_type, conflicted_free_vars)
+            type_check_rule_free_vars_aux(relation.output_term_list, relation.output_type_list,
+                                          output_schema, free_var_to_type, conflicted_free_vars)
 
         else:
             raise Exception(f'unexpected relation type: {relation_type}')
@@ -251,8 +251,8 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
     return free_var_to_type, conflicted_free_vars
 
 
-def type_check_rule_body_relation_free_vars(term_list: list, type_list: list, correct_type_list: list,
-                                            free_var_to_type: dict, conflicted_free_vars: set):
+def type_check_rule_free_vars_aux(term_list: list, type_list: list, correct_type_list: list,
+                                  free_var_to_type: dict, conflicted_free_vars: set):
     """
     a helper function for the method "type_check_rule_free_vars"
     performs the free variables type checking on term_list

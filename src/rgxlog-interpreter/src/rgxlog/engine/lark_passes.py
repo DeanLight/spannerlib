@@ -321,7 +321,7 @@ class CheckDefinedReferencedVariables(Interpreter):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def __check_if_var_is_defined(self, var_name):
+    def __assert_var_defined(self, var_name):
         """
         an utility function that checks if a variable is a defined variable in the symbol table
         if not, raises an exception
@@ -332,7 +332,7 @@ class CheckDefinedReferencedVariables(Interpreter):
         if not self.symbol_table.contains_variable(var_name):
             raise Exception(f'variable "{var_name}" is not defined')
 
-    def __check_if_vars_in_list_are_defined(self, term_list, type_list):
+    def __assert_var_terms_defined(self, term_list, type_list):
         """
         an utility function that checks if the non free variables in a term list are defined
         if one of them is not defined, raises an exception
@@ -344,31 +344,31 @@ class CheckDefinedReferencedVariables(Interpreter):
         for term, term_type in zip(term_list, type_list):
             if term_type is DataTypes.var_name:
                 # found a variable, check if it is defined
-                self.__check_if_var_is_defined(term)
+                self.__assert_var_defined(term)
 
     @unravel_lark_node
     def assignment(self, assignment: Assignment):
         if assignment.value_type is DataTypes.var_name:
             # the assigned expression is a variable, check if it is defined
-            self.__check_if_var_is_defined(assignment.value)
+            self.__assert_var_defined(assignment.value)
 
     @unravel_lark_node
     def read_assignment(self, assignment: ReadAssignment):
         if assignment.read_arg_type is DataTypes.var_name:
             # a variable is used as the argument for read(), check if it is defined
-            self.__check_if_var_is_defined(assignment.read_arg)
+            self.__assert_var_defined(assignment.read_arg)
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
-        self.__check_if_vars_in_list_are_defined(fact.term_list, fact.type_list)
+        self.__assert_var_terms_defined(fact.term_list, fact.type_list)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
-        self.__check_if_vars_in_list_are_defined(fact.term_list, fact.type_list)
+        self.__assert_var_terms_defined(fact.term_list, fact.type_list)
 
     @unravel_lark_node
     def query(self, query: Query):
-        self.__check_if_vars_in_list_are_defined(query.term_list, query.type_list)
+        self.__assert_var_terms_defined(query.term_list, query.type_list)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -376,11 +376,11 @@ class CheckDefinedReferencedVariables(Interpreter):
         # for each relation in the rule body, check if its variable terms are defined
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             if relation_type == "relation":
-                self.__check_if_vars_in_list_are_defined(relation.term_list, relation.type_list)
+                self.__assert_var_terms_defined(relation.term_list, relation.type_list)
             elif relation_type == "ie_relation":
                 # ie relations have input terms and output terms, check them both
-                self.__check_if_vars_in_list_are_defined(relation.input_term_list, relation.input_type_list)
-                self.__check_if_vars_in_list_are_defined(relation.output_term_list, relation.output_type_list)
+                self.__assert_var_terms_defined(relation.input_term_list, relation.input_type_list)
+                self.__assert_var_terms_defined(relation.output_term_list, relation.output_type_list)
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
@@ -401,7 +401,7 @@ class CheckForRelationRedefinitions(Interpreter):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def __check_if_relation_is_already_defined(self, relation_name):
+    def __assert_relation_not_defined(self, relation_name):
         """
         an utility function that checks if a relation is already defined and raises an exception
         if it does.
@@ -414,7 +414,7 @@ class CheckForRelationRedefinitions(Interpreter):
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
-        self.__check_if_relation_is_already_defined(relation_decl.relation_name)
+        self.__assert_relation_not_defined(relation_decl.relation_name)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -422,7 +422,7 @@ class CheckForRelationRedefinitions(Interpreter):
         a rule is a definition of the relation that appears in the rule head.
         this function checks that the relation that appears in the rule head is not being redefined.
         """
-        self.__check_if_relation_is_already_defined(rule.head_relation.relation_name)
+        self.__assert_relation_not_defined(rule.head_relation.relation_name)
 
 
 class CheckReferencedRelationsExistenceAndArity(Interpreter):
@@ -436,7 +436,7 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def __check_relation_exists_and_correct_arity(self, relation: Relation):
+    def __assert_relation_exists_and_correct_arity(self, relation: Relation):
         """
         An utility function that checks if a relation exists in the symbol table
         and if the correct arity was used
@@ -466,17 +466,17 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
     @unravel_lark_node
     def query(self, query: Query):
         # a query is defined by a relation reference, so we can simply use the utility function
-        self.__check_relation_exists_and_correct_arity(query)
+        self.__assert_relation_exists_and_correct_arity(query)
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
         # a fact is defined by a relation reference, so we can simply use the utility function
-        self.__check_relation_exists_and_correct_arity(fact)
+        self.__assert_relation_exists_and_correct_arity(fact)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
         # a fact is defined by a relation reference, so we can simply use the utility function
-        self.__check_relation_exists_and_correct_arity(fact)
+        self.__assert_relation_exists_and_correct_arity(fact)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -489,7 +489,7 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
         # check that each normal relation in the rule body exists and that the correct arity was used
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             if relation_type == "relation":
-                self.__check_relation_exists_and_correct_arity(relation)
+                self.__assert_relation_exists_and_correct_arity(relation)
 
 
 class CheckReferencedIERelationsExistenceAndArity(Visitor_Recursive):
@@ -583,11 +583,11 @@ class CheckRuleSafety(Visitor_Recursive):
 
         for relation, relation_type in zip(body_relation_list, body_relation_type_list):
             # check if all of its input free variable terms are bound
-            input_free_vars = get_set_of_input_free_var_names(relation, relation_type)
+            input_free_vars = get_input_free_var_names(relation, relation_type)
             unbound_input_free_vars = input_free_vars.difference(bound_free_vars)
             if not unbound_input_free_vars:
                 # all input free variables are bound mark the relation's output free variables as bound
-                output_free_vars = get_set_of_output_free_var_names(relation, relation_type)
+                output_free_vars = get_output_free_var_names(relation, relation_type)
                 bound_free_vars = bound_free_vars.union(output_free_vars)
 
         return bound_free_vars
@@ -611,10 +611,10 @@ class CheckRuleSafety(Visitor_Recursive):
         # every free variable in the head occurs at least once in the body as an output term of a relation.
 
         # get the free variables in the rule head
-        rule_head_free_vars = get_set_of_free_var_names(head_relation.term_list, head_relation.type_list)
+        rule_head_free_vars = get_free_var_names(head_relation.term_list, head_relation.type_list)
 
         # get the free variables in the rule body that serve as output terms.
-        rule_body_output_free_var_sets = [get_set_of_output_free_var_names(relation, relation_type)
+        rule_body_output_free_var_sets = [get_output_free_var_names(relation, relation_type)
                                           for relation, relation_type in
                                           zip(body_relation_list, body_relation_type_list)]
         rule_body_output_free_vars = set().union(*rule_body_output_free_var_sets)
@@ -671,7 +671,7 @@ class CheckRuleSafety(Visitor_Recursive):
 
         bound_free_vars = self.fixed_point(
             set(), self.fixed_point_step_function, self.fixed_point_distance_function, 0, rule)
-        rule_body_input_free_var_sets = [get_set_of_input_free_var_names(relation, relation_type)
+        rule_body_input_free_var_sets = [get_input_free_var_names(relation, relation_type)
                                          for relation, relation_type in
                                          zip(body_relation_list, body_relation_type_list)]
         rule_body_input_free_vars = set().union(*rule_body_input_free_var_sets)
@@ -732,7 +732,7 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
                 if relation not in reordered_relations_list:
                     # this relation was not marked as safe yet.
                     # check if all of its input free variable terms are bound
-                    input_free_vars = get_set_of_input_free_var_names(relation, relation_type)
+                    input_free_vars = get_input_free_var_names(relation, relation_type)
                     unbound_input_free_vars = input_free_vars.difference(bound_free_vars)
                     if not unbound_input_free_vars:
                         # all input free variables are bound, mark the relation as safe by adding it to the reordered
@@ -740,7 +740,7 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
                         reordered_relations_list.append(relation)
                         reordered_relations_type_list.append(relation_type)
                         # mark the relation's output free variables as bound
-                        output_free_vars = get_set_of_output_free_var_names(relation, relation_type)
+                        output_free_vars = get_output_free_var_names(relation, relation_type)
                         bound_free_vars = bound_free_vars.union(output_free_vars)
                         # make sure we iterate over the relations again if not all of them were found
                         # to be safe
@@ -811,21 +811,21 @@ class TypeCheckRelations(Interpreter):
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
         # a fact is defined by a relation, check if that relation is properly typed
-        type_check_passed = check_if_relation_is_properly_typed(fact, "relation", self.symbol_table)
+        type_check_passed = check_properly_typed_relation(fact, "relation", self.symbol_table)
         if not type_check_passed:
             raise Exception(f'type check failed for fact: "{fact}"')
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
         # a fact is defined by a relation, check if that relation is properly typed
-        type_check_passed = check_if_relation_is_properly_typed(fact, "relation", self.symbol_table)
+        type_check_passed = check_properly_typed_relation(fact, "relation", self.symbol_table)
         if not type_check_passed:
             raise Exception(f'type check failed for fact: "{fact}"')
 
     @unravel_lark_node
     def query(self, query: Query):
         # a query is defined by a relation, check if that relation is properly typed
-        type_check_passed = check_if_relation_is_properly_typed(query, "relation", self.symbol_table)
+        type_check_passed = check_properly_typed_relation(query, "relation", self.symbol_table)
         if not type_check_passed:
             raise Exception(f'type check failed for query: "{query}"')
 
@@ -834,7 +834,7 @@ class TypeCheckRelations(Interpreter):
 
         # for each relation in the rule body, check if it is properly typed, raise an exception if it isn't
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            relation_is_properly_typed = check_if_relation_is_properly_typed(relation, relation_type, self.symbol_table)
+            relation_is_properly_typed = check_properly_typed_relation(relation, relation_type, self.symbol_table)
             if not relation_is_properly_typed:
                 raise Exception(f'type check failed for rule "{rule}"\n'
                                 f'because the relation "{relation}"\n'
@@ -907,7 +907,7 @@ class ResolveVariablesReferences(Interpreter):
             assignment.read_arg = self.symbol_table.get_variable_value(read_arg_var_name)
             assignment.read_arg_type = self.symbol_table.get_variable_type(read_arg_var_name)
 
-    def __resolve_variables_in_term_and_type_lists(self, term_list, type_list):
+    def __resolve_var_terms(self, term_list, type_list):
         """
         an utility function for resolving variables in term lists
         for each variable term in term_list, replace its value in term_list with its literal value, and
@@ -937,26 +937,26 @@ class ResolveVariablesReferences(Interpreter):
 
     @unravel_lark_node
     def query(self, query: Query):
-        self.__resolve_variables_in_term_and_type_lists(query.term_list, query.type_list)
+        self.__resolve_var_terms(query.term_list, query.type_list)
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
-        self.__resolve_variables_in_term_and_type_lists(fact.term_list, fact.type_list)
+        self.__resolve_var_terms(fact.term_list, fact.type_list)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
-        self.__resolve_variables_in_term_and_type_lists(fact.term_list, fact.type_list)
+        self.__resolve_var_terms(fact.term_list, fact.type_list)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
         # resolve the variables of each relation in the rule body relation list
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             if relation_type == "relation":
-                self.__resolve_variables_in_term_and_type_lists(relation.term_list, relation.type_list)
+                self.__resolve_var_terms(relation.term_list, relation.type_list)
             elif relation_type == "ie_relation":
                 # ie relations have two term lists (input and output), resolve them both
-                self.__resolve_variables_in_term_and_type_lists(relation.input_term_list, relation.input_type_list)
-                self.__resolve_variables_in_term_and_type_lists(relation.output_term_list, relation.output_type_list)
+                self.__resolve_var_terms(relation.input_term_list, relation.input_type_list)
+                self.__resolve_var_terms(relation.output_term_list, relation.output_type_list)
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
