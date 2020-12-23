@@ -8,6 +8,7 @@ from rgxlog.engine.structured_nodes import *
 from rgxlog.engine.symbol_table import SymbolTableBase
 from typing import Union
 from rgxlog.engine.expected_grammar import rgxlog_expected_children_names_lists
+from typing import Callable
 
 
 def assert_expected_node_structure_aux(lark_node):
@@ -282,3 +283,18 @@ def type_check_rule_free_vars_aux(term_list: list, type_list: list, correct_type
             else:
                 # free var does not currently have a type, map it to the correct type
                 free_var_to_type[free_var] = correct_type
+
+
+def fixed_point(start, step: Callable, distance: Callable, thresh):
+    """
+    implementation of a generic fixed point algorithm - an algorithm that takes a step function and runs it until
+    some distance is zero or below a threshold
+    """
+    x = start
+    f = step
+    d = distance
+    y = f(x)
+    while d(x, y) > thresh:
+        x = y
+        y = f(x)
+    return x
