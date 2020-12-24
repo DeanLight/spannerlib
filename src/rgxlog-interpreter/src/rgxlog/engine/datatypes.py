@@ -1,3 +1,10 @@
+"""
+this module contains the 'DataTypes' enum that is used to represents the types of variables or terms in the ast,
+term graph and symbol table
+
+this module also contains class representations of complex datatypes (e.g. Span which is represented by two numbers)
+"""
+
 from enum import Enum
 
 

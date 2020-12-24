@@ -1,10 +1,13 @@
+"""
+TODO doc after design decision
+"""
+
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 from rgxlog.engine.term_graph import EvalState, TermGraphBase
 from pyDatalog import pyDatalog
 from rgxlog.engine.datatypes import Span
 from rgxlog.engine.symbol_table import SymbolTableBase
-import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.ie_functions import IEFunctionData
 from rgxlog.engine.structured_nodes import *
 from rgxlog.engine.general_utils import get_output_free_var_names, get_input_free_var_names

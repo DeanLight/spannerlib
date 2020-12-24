@@ -1,3 +1,7 @@
+"""
+this module contains the implementations of symbol tables
+"""
+
 from abc import ABC, abstractmethod
 import rgxlog.engine.ie_functions as global_ie_functions
 

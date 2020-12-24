@@ -1,3 +1,7 @@
+"""
+this module contains the implementations of term graphs
+"""
+
 from abc import abstractmethod
 import networkx as nx
 from enum import Enum

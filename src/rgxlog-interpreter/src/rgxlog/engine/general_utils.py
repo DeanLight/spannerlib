@@ -2,7 +2,6 @@
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
 
-import rgxlog.engine.ie_functions as ie_functions
 from rgxlog.engine.structured_nodes import *
 from rgxlog.engine.symbol_table import SymbolTableBase
 from typing import Union

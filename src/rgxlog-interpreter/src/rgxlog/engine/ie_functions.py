@@ -1,3 +1,8 @@
+"""
+this module contains 'IEFunctionData' classes, i.e. classes that contains all the information needed to semantic
+check and execute an information extraction function
+"""
+
 import re
 from abc import abstractmethod, ABC
 from rgxlog.engine.datatypes import DataTypes
