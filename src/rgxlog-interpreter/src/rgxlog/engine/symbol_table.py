@@ -1,97 +1,131 @@
 from abc import ABC, abstractmethod
-
-"""TODO currently the rewrite is incomplete. we should decide first on whether we keep sending whole cells to 
-the pipeline or instead interpret cell by cell"""
-
 import rgxlog.engine.ie_functions as global_ie_functions
 
 
 class SymbolTableBase(ABC):
     """
     An abstraction for a symbol table.
-    The symbol table keeps track of the variables in the program, their types and their values.
-    It also keeps track of the relation names that were defined in the program and their schemas.
+    the symbol table keeps track of:
+    1. the variables that were defined in the program, their types and their values
+    2. the relations that were defined in the program and their schemas
+    3. the information extraction functions that were registered in the program and their data
     """
 
-    # TODO redesign with only set_variable_value_and_type method for manipulating variables
-
     @abstractmethod
-    def set_variable_value_and_type(self, var_name, var_value, var_type):
-        pass
+    def set_var_value_and_type(self, var_name, var_value, var_type):
+        """
+        set the type and value of a variable in the symbol table
 
-    @abstractmethod
-    def set_variable_type(self, var_name, var_type):
-        """set the type of a variable in the symbol table"""
+        Args:
+            var_name: the name of the variable
+            var_value: the value of the variable
+            var_type: the type of the variable
+        """
         pass
 
     @abstractmethod
     def get_variable_type(self, var_name):
-        """get the type of a variable in the symbol table"""
-        pass
+        """
+        Args:
+            var_name: a variable name
 
-    @abstractmethod
-    def set_variable_value(self, var_name, var_value):
-        """set the value of a variable in the symbol table"""
+        Returns: the variable's type
+        """
         pass
 
     @abstractmethod
     def get_variable_value(self, var_name):
-        """get the value of a variable in the symbol table"""
-        pass
-
-    @abstractmethod
-    def remove_variable(self, var_name):
         """
-        remove a variable from the symbol table. both its type and value will be removed
-        silently ignore calls with variable
+        Args:
+            var_name: a variable name
+
+        Returns: the variable's value
         """
         pass
 
     @abstractmethod
     def get_all_variables(self):
-        # TODO
+        """
+        Returns: an iterable that contains tuples of the format (variable name, variable type, variable value)
+        for each variable in the symbol table
+        """
         pass
 
     @abstractmethod
     def contains_variable(self, var_name):
-        # TODO
-        """returns true if a variable exists in the symbol table"""
+        """
+        Args:
+            var_name: a variable name
+
+        Returns: true if the variable is in the symbol table, else false
+        """
         pass
 
     @abstractmethod
     def add_relation_schema(self, relation_name, schema):
-        """set the schema of a relation in the symbol table"""
+        """
+        add a new relation schema to the symbol table
+        trying to add two schemas for the same relation will result in an exception as relation redefinitions
+        are not allowed
+
+        Args:
+            relation_name: the relation's name
+            schema: the relation's schema
+        """
         pass
 
     @abstractmethod
     def get_relation_schema(self, relation_name):
-        """get the schema of a relation in the symbol table"""
+        """
+        Args:
+            relation_name: a relation name
+
+        Returns: the relation's schema
+        """
         pass
 
     @abstractmethod
     def get_all_relations(self):
-        # TODO
+        """
+        Returns: an iterable that contains tuples of the format (relation name, relation schema)
+        for each relation in the symbol table
+        """
         pass
 
     @abstractmethod
     def contains_relation(self, relation_name):
-        pass
+        """
+        Args:
+            relation_name: a relation name
 
-    @abstractmethod
-    def remove_relation(self, relation_name):
+        Returns: true if the relation exists in the symbol table, else false
+        """
         pass
 
     @abstractmethod
     def contains_ie_function(self, ie_func_name):
+        """
+        Args:
+            ie_func_name: a name of an information extraction function
+
+        Returns: true if the ie function exists in the symbol table, else false
+        """
         pass
 
     @abstractmethod
     def get_ie_func_data(self, ie_func_name):
+        """
+        Args:
+            ie_func_name: a name of an information extraction function
+
+        Returns: the ie function's data (see ie_functions.IEFunctionData for more information on
+        ie function data instances)
+        """
         pass
 
     def __str__(self):
         """
-        returns a string representation of the symbol table for debugging purposes
+        Returns: a string representation of the symbol table for debugging purposes
         """
 
         # create a string that represents the variable table
@@ -123,37 +157,26 @@ class SymbolTable(SymbolTableBase):
         self._var_to_type = {}
         self._relation_to_schema = {}
 
-    def set_variable_value_and_type(self, var_name, var_value, var_type):
+    def set_var_value_and_type(self, var_name, var_value, var_type):
         self._var_to_value[var_name] = var_value
-        self._var_to_type[var_name] = var_type
-
-    def set_variable_type(self, var_name, var_type):
         self._var_to_type[var_name] = var_type
 
     def get_variable_type(self, var_name):
         return self._var_to_type[var_name]
 
-    def set_variable_value(self, var_name, var_value):
-        self._var_to_value[var_name] = var_value
-
     def get_variable_value(self, var_name):
         return self._var_to_value[var_name]
 
-    def remove_variable(self, var_name):
-        # using pop allows us to silently ignore the case where var_name is not in one of the dictionaries
-        self._var_to_type.pop(var_name, None)
-        self._var_to_value.pop(var_name, None)
-
     def get_all_variables(self):
-        ret = []
+        all_vars = []
         for var_name in self._var_to_type.keys():
             var_type = self._var_to_type[var_name]
             var_value = self._var_to_value[var_name]
-            ret.append((var_name, var_type, var_value))
-        return ret
+            all_vars.append((var_name, var_type, var_value))
+        return all_vars
 
     def contains_variable(self, var_name):
-        return var_name in self._var_to_value or var_name in self._var_to_type
+        return var_name in self._var_to_type
 
     def add_relation_schema(self, relation_name, schema):
         if relation_name in self._relation_to_schema:
@@ -168,9 +191,6 @@ class SymbolTable(SymbolTableBase):
 
     def contains_relation(self, relation_name):
         return relation_name in self._relation_to_schema
-
-    def remove_relation(self, relation_name):
-        del self._relation_to_schema[relation_name]
 
     def contains_ie_function(self, ie_func_name):
         # TODO check if the function is registered

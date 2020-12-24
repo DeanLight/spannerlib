@@ -969,7 +969,7 @@ class ExecuteAssignments(Interpreter):
     @unravel_lark_node
     def assignment(self, assignment: Assignment):
         # perform the assignment by saving the variable attributes in the symbol table
-        self.symbol_table.set_variable_value_and_type(assignment.var_name, assignment.value, assignment.value_type)
+        self.symbol_table.set_var_value_and_type(assignment.var_name, assignment.value, assignment.value_type)
 
     @unravel_lark_node
     def read_assignment(self, assignment: ReadAssignment):
@@ -984,7 +984,7 @@ class ExecuteAssignments(Interpreter):
 
         # perform the assignment by saving the variable attributes in the symbol table
         # note that since this is a read assignment, the type of the variable will always be a string
-        self.symbol_table.set_variable_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
+        self.symbol_table.set_var_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
 
 class AddStatementsToNetxTermGraph(Interpreter):
