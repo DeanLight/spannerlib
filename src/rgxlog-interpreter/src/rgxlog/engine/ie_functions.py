@@ -15,7 +15,16 @@ class IEFunctionData(ABC):
     @staticmethod
     @abstractmethod
     def ie_function(*args):
-        """The actual ie function that will be used"""
+        """
+        The actual information extraction function that will be used
+        the function must return a list of lists/tuples that represents the results, another option is to yield the
+        tuples.
+
+        currently the values inside the returned tuples can belong to three datatypes: string, integer and span
+        string should be returned as a str instance
+        an integer should be returned as an int instance
+        a span could be returned either as a tuple of length 2, or as a datatypes.Span instance
+        """
         pass
 
     @staticmethod
