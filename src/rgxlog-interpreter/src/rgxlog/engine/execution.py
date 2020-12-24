@@ -537,7 +537,7 @@ class NetworkxExecution(ExecutionBase):
             if relation_type == 'relation':
                 result_relation = datalog_engine.compute_rule_body_relation(relation)
             elif relation_type == 'ie_relation':
-                ie_func_data = getattr(ie_functions, relation.relation_name)
+                ie_func_data = symbol_table.get_ie_func_data(relation.relation_name)
                 result_relation = datalog_engine.compute_rule_body_ie_relation(relation, ie_func_data, temp_result)
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')

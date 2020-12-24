@@ -4,9 +4,11 @@ from enum import Enum
 
 
 class EvalState(Enum):
+    """
+    will be used to determine if a term is computed or not
+    """
     NOT_COMPUTED = 0
     COMPUTED = 1
-    DIRTY = 2
 
 
 class TermGraphBase:
@@ -136,14 +138,6 @@ class TermGraphBase:
         """
         pass
 
-    @abstractmethod
-    def transform_term_data(self, term_id, transformer):
-        pass
-
-    @abstractmethod
-    def transform_graph(self, transformer):
-        pass
-
     def __str__(self):
         pass
 
@@ -168,8 +162,11 @@ class NetxTermGraph(TermGraphBase):
         self._root_id = self._next_term_id
         self.add_term(type="root")
 
-    def add_term(self, **attr):  # attr[state / data]
-        # TODO limit to state, value/data, type?
+    def add_term(self, **attr):
+
+        if 'type' not in attr:
+            raise Exception("cannot add a term without a type")
+
         if 'state' not in attr:
             attr['state'] = EvalState.NOT_COMPUTED
 
@@ -188,8 +185,25 @@ class NetxTermGraph(TermGraphBase):
         self._graph.remove_node(term_id)
 
     def add_dependency_edge(self, dependent_term_id, dependency_term_id, **attr):
-        # TODO make the ancestor of a non computed term non computed
+
+        # assert that both terms are in the term graph
+        if dependent_term_id not in self._graph.nodes:
+            raise Exception(f'dependent term of id {dependent_term_id} is not in the term graph')
+        if dependency_term_id not in self._graph.nodes:
+            raise Exception(f'dependency term of id {dependency_term_id} is not in the term graph')
+
+        # add an edge that represents the dependency
         self._graph.add_edge(dependent_term_id, dependency_term_id, **attr)
+
+        # if the dependency term is not computed, mark all of its ancestor as not computed as well
+        dependency_term_state = self._graph.nodes[dependency_term_id]['state']
+        if dependency_term_state is EvalState.NOT_COMPUTED:
+            # get all of the ancestors by reversing the graph and using a dfs algorithm from the dependency term
+            dependent_ancestors_graph = nx.dfs_tree(self._graph.reverse(), source=dependency_term_id)
+            dependent_ancestors_ids = list(dependent_ancestors_graph.nodes)
+            # mark all of the ancestors as not computed
+            for node_id in dependent_ancestors_ids:
+                self._graph.nodes[node_id]['state'] = EvalState.NOT_COMPUTED
 
     def get_dfs_pre_ordered_term_id_list(self):
         return nx.dfs_preorder_nodes(self._graph, self._root_id)
@@ -218,12 +232,6 @@ class NetxTermGraph(TermGraphBase):
     def set_term_type(self, term_id, term_type):
         self._graph.nodes[term_id]['type'] = term_type
 
-    def transform_term_data(self, term_id, transformer):
-        return transformer(self._graph.nodes[term_id])
-
-    def transform_graph(self, transformer):
-        return transformer.execute(self._graph, self._root_id)
-
     def _get_node_string(self, node):
         assert node in self._graph.nodes
         assert 'type' in self._graph.nodes[node]
@@ -234,8 +242,6 @@ class NetxTermGraph(TermGraphBase):
                 ret += '(computed) '
             elif state == EvalState.NOT_COMPUTED:
                 ret += '(not computed) '
-            elif state == EvalState.DIRTY:
-                ret += '(dirty) '
             else:
                 assert 0
         ret += self._graph.nodes[node]['type']

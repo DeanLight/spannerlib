@@ -504,6 +504,7 @@ class CheckReferencedIERelationsExistenceAndArity(Visitor_Recursive):
 
     def __init__(self, **kw):
         super().__init__()
+        self.symbol_table = kw['symbol_table']
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -514,23 +515,24 @@ class CheckReferencedIERelationsExistenceAndArity(Visitor_Recursive):
 
                 # get the name of the ie function, it is the same as the name of the ie relation
                 ie_func_name = relation.relation_name
-                try:
-                    # get the data of the ie function
-                    ie_function_data = getattr(ie_functions, ie_func_name)
-                except Exception:
-                    # couldn't find the ie function, raise an exception
+
+                # assert that the ie function exists
+                if not self.symbol_table.contains_ie_function(ie_func_name):
                     raise Exception(f'the information extraction function "{ie_func_name}" does not exist')
 
-                # the ie function exists, check if the correct input arity was used
+                # the ie function exists, gets its data
+                ie_func_data = self.symbol_table.get_ie_func_data(ie_func_name)
+
+                # check if the correct input arity was used
                 used_input_arity = len(relation.input_term_list)
-                correct_input_arity = len(ie_function_data.get_input_types())
+                correct_input_arity = len(ie_func_data.get_input_types())
                 if used_input_arity != correct_input_arity:
                     raise Exception(f'used incorrect input arity for ie function "{ie_func_name}":'
                                     f' {used_input_arity} (should be {correct_input_arity})')
 
                 # check if the correct output arity was used
                 used_output_arity = len(relation.output_term_list)
-                correct_output_arity = len(ie_function_data.get_output_types(used_output_arity))
+                correct_output_arity = len(ie_func_data.get_output_types(used_output_arity))
                 if used_output_arity != correct_output_arity:
                     raise Exception(f'used incorrect output arity for ie function {ie_func_name}:'
                                     f' {used_output_arity} (should be {correct_output_arity})')

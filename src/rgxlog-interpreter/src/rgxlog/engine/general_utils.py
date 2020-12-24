@@ -129,7 +129,7 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation], relatio
 
         # get the input and output schemas of the ie function
         ie_func_name = relation.relation_name
-        ie_func_data = getattr(ie_functions, ie_func_name)
+        ie_func_data = symbol_table.get_ie_func_data(ie_func_name)
         input_schema = ie_func_data.get_input_types()
         output_arity = len(relation.output_term_list)
         output_schema = ie_func_data.get_output_types(output_arity)
@@ -179,7 +179,7 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
 
             # get the input and output schema of the ie function
             ie_func_name = relation.relation_name
-            ie_func_data = getattr(ie_functions, ie_func_name)
+            ie_func_data = symbol_table.get_ie_func_data(ie_func_name)
             input_schema = ie_func_data.get_input_types()
             output_arity = len(relation.output_term_list)
             output_schema = ie_func_data.get_output_types(output_arity)

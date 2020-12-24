@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 """TODO currently the rewrite is incomplete. we should decide first on whether we keep sending whole cells to 
 the pipeline or instead interpret cell by cell"""
 
+import rgxlog.engine.ie_functions as global_ie_functions
+
 
 class SymbolTableBase(ABC):
     """
@@ -77,6 +79,14 @@ class SymbolTableBase(ABC):
 
     @abstractmethod
     def remove_relation(self, relation_name):
+        pass
+
+    @abstractmethod
+    def contains_ie_function(self, ie_func_name):
+        pass
+
+    @abstractmethod
+    def get_ie_func_data(self, ie_func_name):
         pass
 
     def __str__(self):
@@ -161,3 +171,15 @@ class SymbolTable(SymbolTableBase):
 
     def remove_relation(self, relation_name):
         del self._relation_to_schema[relation_name]
+
+    def contains_ie_function(self, ie_func_name):
+        # TODO check if the function is registered
+        try:
+            self.get_ie_func_data(ie_func_name)
+        except Exception:
+            return False
+        return True
+
+    def get_ie_func_data(self, ie_func_name):
+        ie_func_data = getattr(global_ie_functions, ie_func_name)
+        return ie_func_data
