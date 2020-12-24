@@ -11,9 +11,9 @@ from rgxlog.engine.general_utils import get_output_free_var_names, get_input_fre
 from itertools import chain
 
 
-class DatalogEngineBase(ABC):
+class RgxlogEngineBase(ABC):
     """
-    An abstraction for a datalog execution engine
+    An abstraction for a rgxlog execution engine
     """
 
     def __init__(self):
@@ -22,7 +22,7 @@ class DatalogEngineBase(ABC):
     @abstractmethod
     def declare_relation(self, relation_decl):
         """
-        declares a relation in the datalog engine
+        declares a relation in the rgxlog engine
 
         Args:
             relation_decl: a relation declaration
@@ -32,7 +32,7 @@ class DatalogEngineBase(ABC):
     @abstractmethod
     def add_fact(self, fact):
         """
-        add a fact to the datalog engine
+        add a fact to the rgxlog engine
 
         Args:
             fact: the fact to be added
@@ -42,7 +42,7 @@ class DatalogEngineBase(ABC):
     @abstractmethod
     def remove_fact(self, fact):
         """
-        remove a fact from the datalog engine
+        remove a fact from the rgxlog engine
 
         Args:
             fact: the fact to be removed
@@ -52,7 +52,7 @@ class DatalogEngineBase(ABC):
     @abstractmethod
     def print_query(self, query):
         """
-        queries the datalog engine and prints the results
+        queries the rgxlog engine and prints the results
 
         Args:
             query: a query who's results will be printed
@@ -62,10 +62,10 @@ class DatalogEngineBase(ABC):
     @abstractmethod
     def query(self, query):
         """
-        queries the datalog engine
+        queries the rgxlog engine
 
         Args:
-            query: a query for the datalog engine
+            query: a query for the rgxlog engine
 
         Returns: a list of tuples that are the query's results
         """
@@ -110,9 +110,9 @@ class DatalogEngineBase(ABC):
         pass
 
 
-class PydatalogEngine(DatalogEngineBase):
+class PydatalogEngine(RgxlogEngineBase):
     """
-    implementation of a datalog engine using pyDatalog
+    implementation of a rgxlog engine using pyDatalog
     pyDatalog is an implementation of datalog in python
 
     the official documentation can be found at: https://sites.google.com/site/pydatalog/home
@@ -469,7 +469,7 @@ class ExecutionBase(ABC):
         super().__init__()
 
     @abstractmethod
-    def execute(self, term_graph, symbol_table, datalog_engine):
+    def execute(self, term_graph, symbol_table, rgxlog_engine):
         pass
 
 
@@ -483,7 +483,7 @@ class NetworkxExecution(ExecutionBase):
 
     @staticmethod
     def __execute_rule_aux(rule_term_id, term_graph: TermGraphBase,
-                           symbol_table: SymbolTableBase, datalog_engine: DatalogEngineBase):
+                           symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         """
         This rule execution assumes that a previous pass reordered the rule body relations in a way that
         each relation's input free variables (should they exist) are bounded by relations to the relation's
@@ -535,10 +535,10 @@ class NetworkxExecution(ExecutionBase):
             relation_type = term_graph.get_term_type(relation_id)
 
             if relation_type == 'relation':
-                result_relation = datalog_engine.compute_rule_body_relation(relation)
+                result_relation = rgxlog_engine.compute_rule_body_relation(relation)
             elif relation_type == 'ie_relation':
                 ie_func_data = symbol_table.get_ie_func_data(relation.relation_name)
-                result_relation = datalog_engine.compute_rule_body_ie_relation(relation, ie_func_data, temp_result)
+                result_relation = rgxlog_engine.compute_rule_body_ie_relation(relation, ie_func_data, temp_result)
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
@@ -547,36 +547,36 @@ class NetworkxExecution(ExecutionBase):
             if temp_result is None:
                 temp_result = result_relation
             else:
-                temp_result = datalog_engine.aggregate_relations_to_temp_relation([temp_result, result_relation])
+                temp_result = rgxlog_engine.aggregate_relations_to_temp_relation([temp_result, result_relation])
 
         rule_head_relation = term_graph.get_term_value(rule_head_id)
         rule_head_declaration = RelationDeclaration(
             rule_head_relation.relation_name, symbol_table.get_relation_schema(rule_head_relation.relation_name))
-        datalog_engine.declare_relation(rule_head_declaration)
-        datalog_engine.add_rule(rule_head_relation, [temp_result])
+        rgxlog_engine.declare_relation(rule_head_declaration)
+        rgxlog_engine.add_rule(rule_head_relation, [temp_result])
 
-    def execute(self, term_graph: TermGraphBase, symbol_table: SymbolTableBase, datalog_engine: DatalogEngineBase):
+    def execute(self, term_graph: TermGraphBase, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         for term_id in term_graph.get_dfs_post_ordered_term_id_list():
             if term_graph.get_term_state(term_id) != EvalState.COMPUTED:
                 term_type = term_graph.get_term_type(term_id)
 
                 if term_type == "relation_declaration":
                     relation_decl = term_graph.get_term_value(term_id)
-                    datalog_engine.declare_relation(relation_decl)
+                    rgxlog_engine.declare_relation(relation_decl)
 
                 elif term_type == "add_fact":
                     fact = term_graph.get_term_value(term_id)
-                    datalog_engine.add_fact(fact)
+                    rgxlog_engine.add_fact(fact)
 
                 elif term_type == "remove_fact":
                     fact = term_graph.get_term_value(term_id)
-                    datalog_engine.remove_fact(fact)
+                    rgxlog_engine.remove_fact(fact)
 
                 elif term_type == "query":
                     query = term_graph.get_term_value(term_id)
-                    datalog_engine.print_query(query)
+                    rgxlog_engine.print_query(query)
 
                 elif term_type == "rule":
-                    self.__execute_rule_aux(term_id, term_graph, symbol_table, datalog_engine)
+                    self.__execute_rule_aux(term_id, term_graph, symbol_table, rgxlog_engine)
 
                 term_graph.set_term_state(term_id, EvalState.COMPUTED)
