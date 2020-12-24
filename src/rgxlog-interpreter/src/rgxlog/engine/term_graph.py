@@ -144,7 +144,9 @@ class TermGraphBase:
 
 class NetxTermGraph(TermGraphBase):
     """
-    implementation of a term graph using a networkx tree
+    implementation of a term graph using a networkx graph
+    the official documentation for networkx can be found here: https://networkx.org/documentation/stable/index.html
+    a basic tutorial for networkx https://networkx.org/documentation/stable//reference/introduction.html
     """
 
     def __init__(self):
@@ -164,9 +166,11 @@ class NetxTermGraph(TermGraphBase):
 
     def add_term(self, **attr):
 
+        # assert the the term has a type
         if 'type' not in attr:
             raise Exception("cannot add a term without a type")
 
+        # if the term does not have a 'state' attribute, give it a default 'not computed' state
         if 'state' not in attr:
             attr['state'] = EvalState.NOT_COMPUTED
 
@@ -232,40 +236,69 @@ class NetxTermGraph(TermGraphBase):
     def set_term_type(self, term_id, term_type):
         self._graph.nodes[term_id]['type'] = term_type
 
-    def _get_node_string(self, node):
-        assert node in self._graph.nodes
-        assert 'type' in self._graph.nodes[node]
-        ret = '(' + str(node) + ') '
-        if 'state' in self._graph.nodes[node]:
-            state = self._graph.nodes[node]['state']
-            if state == EvalState.COMPUTED:
-                ret += '(computed) '
-            elif state == EvalState.NOT_COMPUTED:
-                ret += '(not computed) '
-            else:
-                assert 0
-        ret += self._graph.nodes[node]['type']
-        if 'value' in self._graph.nodes[node]:
-            ret += ': ' + str(self._graph.nodes[node]['value'])
+    def __get_term_string(self, term_id):
+        """
+        an utility function for pretty()
+        Args:
+            term_id: a term id
+
+        Returns: a string representation of the term
+        """
+
+        # get a string of the term state
+        term_state = self.get_term_state(term_id)
+        if term_state is EvalState.COMPUTED:
+            term_state_string = "computed"
+        else:
+            term_state_string = "not computed"
+
+        # get the term type string
+        term_type_string = self.get_term_type(term_id)
+
+        # get a string of the term's value (if it exists)
+        if 'value' in self._graph.nodes[term_id]:
+            term_value_string = f": {self._graph.nodes[term_id]['value']}"
+        else:
+            term_value_string = ''
+
+        # create a string representation of the term and return it
+        term_string = f'({term_id}) ({term_state_string}) {term_type_string}{term_value_string}'
+        return term_string
+
+    def __pretty_aux(self, term_id, level):
+        """
+        a helper function for pretty()
+
+        Args:
+            term_id: an id of a term in the term graph
+            level: the depth of the term in the tree (used for indentation)
+
+        Returns: a list of strings that represents the term and its children
+        """
+        indent_str = '  '
+        children_ids = list(self._graph.successors(term_id))
+
+        if len(children_ids) == 0:
+            # the term node has no children, return its representation
+            return [indent_str * level, self.__get_term_string(term_id), '\n']
+
+        # the term node has children, get its representation along with its children's representations
+        ret = [indent_str * level, self.__get_term_string(term_id), '\n']
+        for child_id in children_ids:
+            ret += self.__pretty_aux(child_id, level + 1)
+
         return ret
 
-    def _pretty(self, node, level, indent_str):
-        children = list(self._graph.successors(node))
-        if len(children) == 0:
-            return [indent_str * level, self._get_node_string(node), '\n']
-
-        ret = [indent_str * level, self._get_node_string(node), '\n']
-        for child_node in children:
-            ret += self._pretty(child_node, level + 1, indent_str)
-
-        return ret
-
-    def pretty(self, indent_str='  '):
+    def pretty(self):
         """
         prints a representation of the networkx tree.
         Works similarly to lark's pretty() function.
+
+        example:
+        for a computed query term of id 4 "?A(X)", this method will print
+        (4) (computed) query: A(X)
         """
-        return ''.join(self._pretty(self._root_id, 0, indent_str))
+        return ''.join(self.__pretty_aux(self._root_id, 0))
 
     def __str__(self):
         return self.pretty()
