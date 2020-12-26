@@ -549,17 +549,22 @@ class ExecutionBase(ABC):
     Abstraction for a class that gets a term graph and executes it
     """
 
-    def __init__(self):
-        super().__init__()
-
-    @abstractmethod
-    def execute(self, term_graph, symbol_table, rgxlog_engine):
+    def __init__(self, term_graph, symbol_table, rgxlog_engine):
         """
-        the execution method
         Args:
             term_graph: a term graph to execute
             symbol_table: a symbol table
             rgxlog_engine: a rgxlog engine that will be used to execute the term graph
+        """
+        super().__init__()
+        self.term_graph = term_graph
+        self.symbol_table = symbol_table
+        self.rgxlog_engine = rgxlog_engine
+
+    @abstractmethod
+    def execute(self):
+        """
+        executes the term graph
         """
         pass
 
@@ -575,10 +580,12 @@ class GenericExecution(ExecutionBase):
     GenericExecution.__execute_rule_aux()
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, term_graph, symbol_table, rgxlog_engine):
+        super().__init__(term_graph, symbol_table, rgxlog_engine)
 
-    def execute(self, term_graph: TermGraphBase, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
+    def execute(self):
+        term_graph = self.term_graph
+        rgxlog_engine = self.rgxlog_engine
 
         # get the term ids. note that the order of the ids does not actually matter as long as the statements
         # are ordered the same way as they were in the original program
@@ -606,14 +613,12 @@ class GenericExecution(ExecutionBase):
                     rgxlog_engine.print_query(query)
 
                 elif term_type == "rule":
-                    self.__execute_rule_aux(term_id, term_graph, symbol_table, rgxlog_engine)
+                    self.__execute_rule_aux(term_id)
 
                 # statement was executed, mark it as "computed"
                 term_graph.set_term_state(term_id, EvalState.COMPUTED)
 
-    @staticmethod
-    def __execute_rule_aux(rule_term_id, term_graph: TermGraphBase,
-                           symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
+    def __execute_rule_aux(self, rule_term_id):
         """
         This rule execution assumes that a previous pass reordered the rule body relations in a way that
         each relation's input free variables (should they exist) are bounded by relations to the relation's
@@ -680,6 +685,10 @@ class GenericExecution(ExecutionBase):
         * use temp3 to compute F, join the result and temp3 to temp4
         * filter temp4 into the rule head relation A(Z)
         """
+        term_graph = self.term_graph
+        rgxlog_engine = self.rgxlog_engine
+        symbol_table = self.symbol_table
+
         rule_head_id, rule_body_id = term_graph.get_first_order_dependencies(rule_term_id)
         body_relation_id_list = term_graph.get_first_order_dependencies(rule_body_id)
 
