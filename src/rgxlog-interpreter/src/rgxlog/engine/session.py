@@ -1,4 +1,6 @@
 import os
+import sys
+import io
 from abc import ABC
 
 import rgxlog
@@ -107,14 +109,19 @@ class Session(SessionBase):
         except Exception:
             return {'msg_type': Response.FAILURE, 'data': 'exception during parsing'}
 
+        orig_stdout = sys.stdout
+        temp_stdout = io.StringIO()
+        sys.stdout = temp_stdout
         try:
             statements = [statement for statement in parse_tree.children]
             for statement in statements:
                 run_passes(statement, passes)
         except Exception:
+            sys.stdout = orig_stdout
             return {'msg_type': Response.FAILURE, 'data': 'exception during semantic checks'}
 
-        return {'msg_type': Response.SUCCESS, 'data': parse_tree.pretty()}
+        sys.stdout = orig_stdout
+        return {'msg_type': Response.SUCCESS, 'data': temp_stdout.getvalue()}
 
     def _register_ie_function(self, data):
         raise NotImplementedError
