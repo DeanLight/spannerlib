@@ -106,19 +106,20 @@ class Session(SessionBase):
     def _run_query(self, query):
         try:
             parse_tree = self._parser.parse(query)
-        except Exception:
-            return {'msg_type': Response.FAILURE, 'data': 'exception during parsing'}
+        except Exception as e:
+            return {'msg_type': Response.FAILURE, 'data': f'exception during parsing {e}'}
 
+        # pydatalog printing workaround
         orig_stdout = sys.stdout
         temp_stdout = io.StringIO()
         sys.stdout = temp_stdout
         try:
             statements = [statement for statement in parse_tree.children]
             for statement in statements:
-                run_passes(statement, passes)
-        except Exception:
+                self._run_passes(statement, self._pass_stack)
+        except Exception as e:
             sys.stdout = orig_stdout
-            return {'msg_type': Response.FAILURE, 'data': 'exception during semantic checks'}
+            return {'msg_type': Response.FAILURE, 'data': f'exception during semantic checks: {e}'}
 
         sys.stdout = orig_stdout
         return {'msg_type': Response.SUCCESS, 'data': temp_stdout.getvalue()}
@@ -130,7 +131,7 @@ class Session(SessionBase):
         return {'msg_type': Response.SUCCESS, 'data': self._pass_stack}
 
     def _set_user_stack_as_pass_stack(self, data):
-        self._pass_stack = data
+        self._pass_stack = data  # TODO use eval
         return {'msg_type': Response.SUCCESS, 'data': self._get_pass_stack()}
 
     def _handle_grammar_change_request(self, data):
