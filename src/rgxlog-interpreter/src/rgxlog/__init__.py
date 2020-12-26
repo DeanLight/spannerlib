@@ -7,6 +7,7 @@ except NameError:
     pass
 else:
     import rgxlog.engine
+    import rgxlog.grammar
     from rgxlog.rgxlog_client import Client
 
     magic_client = Client()

@@ -13,7 +13,7 @@ from docopt import docopt
 from multiprocessing.queues import Queue
 from multiprocessing.connection import Listener
 
-from rgxlog.engine.pipeline import lark_pipeline
+from rgxlog.engine.session import Session
 from rgxlog.system_configuration import system_configuration
 
 
@@ -42,6 +42,7 @@ def start_listener(ip, port=None, taken_port: Queue = None):
 
     # look for an open port
     using_port = None
+    listener = None
     for port in port_range:
         try:
             listener = Listener((ip, port))
@@ -58,12 +59,13 @@ def start_listener(ip, port=None, taken_port: Queue = None):
     if using_port is None:
         logging.error(f'no suitable port in range [{min_port}, {max_port}] was found')
     else:
-        # noinspection PyUnboundLocalVariable
+        session = Session()
+
         with listener.accept() as connection:
             logging.info(f'listener accepted connection from {listener.last_accepted}')
 
             while task := connection.recv():  # 'None' closes the connection
-                result = lark_pipeline(task)
+                result = session.execute(task)
                 connection.send(result)
 
         listener.close()

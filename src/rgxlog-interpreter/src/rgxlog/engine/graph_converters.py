@@ -19,7 +19,7 @@ class Converter(ABC):
         pass
 
 
-class LarkTreeToNetxTreeConverter(Converter):
+class LarkTreeToNetxTree(Converter):
     """
     Converts a lark tree to a Networkx tree
     """

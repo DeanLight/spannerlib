@@ -6,6 +6,7 @@ from multiprocessing.connection import Client as Client_
 from multiprocessing.context import Process
 from time import sleep
 
+from rgxlog.engine.message_definitions import Request
 from rgxlog.server.remote_listener import start_listener
 from rgxlog.system_configuration import system_configuration
 
@@ -115,8 +116,82 @@ class Client:
         if not query:
             raise ValueError('empty query!')
 
+        query_message = {
+            'msg_type': Request.QUERY,
+            'data': query
+        }
+
         try:
-            self._connection.send(query)
+            # self._connection.send(QueryMessage(data=query))
+            self._connection.send(query_message)
+            reply = self._connection.recv()
+        except EOFError:
+            logging.error('client connection closed unexpectedly')
+            reply = None
+
+        return reply
+
+    def register(self, ie_function_name):
+        """
+        Register the ie name for future usage
+        :return: True for successful registration, false otherwise
+        """
+        if not self.connected:
+            raise ConnectionError
+        if not ie_function_name or type(ie_function_name) is not str:
+            raise ValueError('invalid ie function!')
+
+        registration_message = {
+            'message_type': 'ie_registration',
+            'data': ie_function_name
+        }
+
+        try:
+            self._connection.send(registration_message)
+            reply = self._connection.recv()
+        except EOFError:
+            logging.error('client connection closed unexpectedly')
+            reply = None
+
+        return reply
+
+    def get_pass_stack(self):
+        """
+        Fetches the current pass stack
+        :return: a list of passes
+        """
+        if not self.connected:
+            raise ConnectionError
+
+        request_stack_message = {
+            'message_type': Request.CURRENT_STACK,
+        }
+
+        try:
+            self._connection.send(request_stack_message)
+            reply = self._connection.recv()
+        except EOFError:
+            logging.error('client connection closed unexpectedly')
+            reply = None
+
+        return reply
+
+    def set_pass_stack(self, user_stack):
+        """
+        Sets the current pass stack
+        """
+        if not self.connected:
+            raise ConnectionError
+        if type(user_stack) is not list:
+            raise ValueError('user_stack should be a list')
+
+        request_set_stack_message = {
+            'message_type': Request.SET_STACK,
+            'data': user_stack
+        }
+
+        try:
+            self._connection.send(request_stack_message)
             reply = self._connection.recv()
         except EOFError:
             logging.error('client connection closed unexpectedly')
