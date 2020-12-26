@@ -122,14 +122,14 @@ class Client:
         }
 
         try:
-            # self._connection.send(QueryMessage(data=query))
             self._connection.send(query_message)
             reply = self._connection.recv()
         except EOFError:
             logging.error('client connection closed unexpectedly')
             reply = None
 
-        return reply
+        result = reply['data']
+        return result
 
     def register(self, ie_function_name):
         """

@@ -6,10 +6,9 @@ and an rgxlog engine.
 
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from rgxlog.engine.term_graph import EvalState, TermGraphBase
+from rgxlog.engine.term_graph import EvalState
 from pyDatalog import pyDatalog
 from rgxlog.engine.datatypes import Span
-from rgxlog.engine.symbol_table import SymbolTableBase
 from rgxlog.engine.ie_functions import IEFunctionData
 from rgxlog.engine.structured_nodes import *
 from rgxlog.engine.general_utils import get_output_free_var_names
@@ -229,7 +228,7 @@ class PydatalogEngine(RgxlogEngineBase):
         Args:
             fact: the fact to be added
         """
-        relation_string = self.__get_relation_string(fact)
+        relation_string = self._get_relation_string(fact)
         # the syntax for a 'add fact' statement in pyDatalog is '+some_relation(term_list)' create that statement
         add_fact_statement = f'+{relation_string}'
         if self.debug:
@@ -238,7 +237,7 @@ class PydatalogEngine(RgxlogEngineBase):
         pyDatalog.load(add_fact_statement)
 
     def remove_fact(self, fact: RemoveFact):
-        relation_string = self.__get_relation_string(fact)
+        relation_string = self._get_relation_string(fact)
         # the syntax for a 'remove fact' statement in pyDatalog is '-some_relation(term_list)' create that statement
         remove_fact_statement = f'-{relation_string}'
         if self.debug:
@@ -253,7 +252,7 @@ class PydatalogEngine(RgxlogEngineBase):
         Args:
             query: a query who's results will be printed
         """
-        relation_string = self.__get_relation_string(query)
+        relation_string = self._get_relation_string(query)
         # the syntax for printing a query in pyDatalog is 'print(some_relation(term_list))', create a query statement
         query_statement = f'print({relation_string})'
         if self.debug:
@@ -271,7 +270,7 @@ class PydatalogEngine(RgxlogEngineBase):
 
         # create the query. note that we don't use a question mark when we expect pyDatalog to return the query's
         # results instead of printing them. the syntax is 'some_relation(term_list)' (a normal relation representation)
-        query_statement = self.__get_relation_string(query)
+        query_statement = self._get_relation_string(query)
 
         if self.debug:
             print(f'non-print query: {query_statement}')
@@ -299,8 +298,8 @@ class PydatalogEngine(RgxlogEngineBase):
         """
 
         # get a string that represents the rule in pyDatalog
-        rule_head_string = self.__get_relation_string(rule_head)
-        rule_body_relation_strings = [self.__get_relation_string(relation) for relation in rule_body_relation_list]
+        rule_head_string = self._get_relation_string(rule_head)
+        rule_body_relation_strings = [self._get_relation_string(relation) for relation in rule_body_relation_list]
         rule_body_string = " & ".join(rule_body_relation_strings)
         rule_string = f'{rule_head_string} <= {rule_body_string}'
 
@@ -327,12 +326,12 @@ class PydatalogEngine(RgxlogEngineBase):
 
         # create the input relation for the ie function, and also declare it inside pyDatalog
         input_relation_arity = len(ie_relation.input_term_list)
-        input_relation_name = self.__create_new_temp_relation(input_relation_arity)
+        input_relation_name = self._create_new_temp_relation(input_relation_arity)
         input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
 
         # create the output relation for the ie function, and also declare it inside pyDatalog
         output_relation_arity = len(ie_relation.output_term_list)
-        output_relation_name = self.__create_new_temp_relation(output_relation_arity)
+        output_relation_name = self._create_new_temp_relation(output_relation_arity)
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         # define the ie input relation
@@ -347,7 +346,7 @@ class PydatalogEngine(RgxlogEngineBase):
             self.add_rule(input_relation, [bounding_relation])
 
         # get a list of inputs to the ie function.
-        ie_inputs = self.__get_all_relation_tuples(input_relation)
+        ie_inputs = self._get_all_relation_tuples(input_relation)
 
         # get all of the outputs of the ie function
         ie_output_lists = [ie_func_data.ie_function(*ie_input) for ie_input in ie_inputs]
@@ -361,7 +360,7 @@ class PydatalogEngine(RgxlogEngineBase):
             ie_output = list(ie_output)
 
             # assert the the ie output is properly typed
-            self.__assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation)
+            self._assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation)
 
             # the user is allowed to represent a span in an ie output as a tuple of length 2
             # convert said tuples to spans
@@ -402,7 +401,7 @@ class PydatalogEngine(RgxlogEngineBase):
         joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
 
         # declare the joined relation in pyDatalog and get its name
-        joined_relation_name = self.__create_new_temp_relation(joined_relation_arity)
+        joined_relation_name = self._create_new_temp_relation(joined_relation_arity)
 
         # created a structured node of the joined relation
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
@@ -413,7 +412,7 @@ class PydatalogEngine(RgxlogEngineBase):
         return joined_relation
 
     @staticmethod
-    def __get_span_string(span: Span):
+    def _get_span_string(span: Span):
         """
         the pyDatalog execution engine receives instructions via strings.
         return a string representation of a span term in pyDatalog.
@@ -427,7 +426,7 @@ class PydatalogEngine(RgxlogEngineBase):
         span_string = f'({span.span_start}, {span.span_end})'
         return span_string
 
-    def __get_relation_string(self, relation: Relation):
+    def _get_relation_string(self, relation: Relation):
         """
         the pyDatalog execution engine receives instructions via strings.
         return a relation string representation of a relation in pyDatalog.
@@ -443,7 +442,7 @@ class PydatalogEngine(RgxlogEngineBase):
         # create a string representation of the relation's term list in pyDatalog
         pydatalog_string_terms = \
             [f"\"{term}\"" if term_type is DataTypes.string
-             else self.__get_span_string(term) if term_type is DataTypes.span
+             else self._get_span_string(term) if term_type is DataTypes.span
              else str(term)
              for term, term_type in zip(relation.term_list, relation.type_list)]
         pydatalog_string_term_list = ', '.join(pydatalog_string_terms)
@@ -452,7 +451,7 @@ class PydatalogEngine(RgxlogEngineBase):
         pydatalog_string_relation = f"{relation.relation_name}({pydatalog_string_term_list})"
         return pydatalog_string_relation
 
-    def __get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
+    def _get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
         """
         Args:
             relation: a relation to be queried
@@ -474,7 +473,7 @@ class PydatalogEngine(RgxlogEngineBase):
         all_relation_tuples = self.query(query)
         return all_relation_tuples
 
-    def __create_new_temp_relation(self, arity):
+    def _create_new_temp_relation(self, arity):
         """
         declares a new temporary relation with the requested arity in pyDatalog
         note that the relation's schema is not needed as there's no typechecking in pyDatalog
@@ -500,7 +499,7 @@ class PydatalogEngine(RgxlogEngineBase):
         return temp_relation_name
 
     @staticmethod
-    def __assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation):
+    def _assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation):
         """
         even though rgxlog performs typechecking during the semantic checks phase, information extraction functions
         are written by the users and could yield results that are not properly typed.
@@ -549,17 +548,22 @@ class ExecutionBase(ABC):
     Abstraction for a class that gets a term graph and executes it
     """
 
-    def __init__(self):
-        super().__init__()
-
-    @abstractmethod
-    def execute(self, term_graph, symbol_table, rgxlog_engine):
+    def __init__(self, term_graph, symbol_table, rgxlog_engine):
         """
-        the execution method
         Args:
             term_graph: a term graph to execute
             symbol_table: a symbol table
             rgxlog_engine: a rgxlog engine that will be used to execute the term graph
+        """
+        super().__init__()
+        self.term_graph = term_graph
+        self.symbol_table = symbol_table
+        self.rgxlog_engine = rgxlog_engine
+
+    @abstractmethod
+    def execute(self):
+        """
+        executes the term graph
         """
         pass
 
@@ -575,10 +579,12 @@ class GenericExecution(ExecutionBase):
     GenericExecution.__execute_rule_aux()
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, term_graph, symbol_table, rgxlog_engine):
+        super().__init__(term_graph, symbol_table, rgxlog_engine)
 
-    def execute(self, term_graph: TermGraphBase, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
+    def execute(self):
+        term_graph = self.term_graph
+        rgxlog_engine = self.rgxlog_engine
 
         # get the term ids. note that the order of the ids does not actually matter as long as the statements
         # are ordered the same way as they were in the original program
@@ -606,14 +612,12 @@ class GenericExecution(ExecutionBase):
                     rgxlog_engine.print_query(query)
 
                 elif term_type == "rule":
-                    self.__execute_rule_aux(term_id, term_graph, symbol_table, rgxlog_engine)
+                    self._execute_rule_aux(term_id)
 
                 # statement was executed, mark it as "computed"
                 term_graph.set_term_state(term_id, EvalState.COMPUTED)
 
-    @staticmethod
-    def __execute_rule_aux(rule_term_id, term_graph: TermGraphBase,
-                           symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
+    def _execute_rule_aux(self, rule_term_id):
         """
         This rule execution assumes that a previous pass reordered the rule body relations in a way that
         each relation's input free variables (should they exist) are bounded by relations to the relation's
@@ -680,6 +684,10 @@ class GenericExecution(ExecutionBase):
         * use temp3 to compute F, join the result and temp3 to temp4
         * filter temp4 into the rule head relation A(Z)
         """
+        term_graph = self.term_graph
+        rgxlog_engine = self.rgxlog_engine
+        symbol_table = self.symbol_table
+
         rule_head_id, rule_body_id = term_graph.get_first_order_dependencies(rule_term_id)
         body_relation_id_list = term_graph.get_first_order_dependencies(rule_body_id)
 

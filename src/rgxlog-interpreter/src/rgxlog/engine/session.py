@@ -4,21 +4,49 @@ from abc import ABC
 import rgxlog
 from lark.lark import Lark
 from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
-from rgxlog.engine.graph_converters import Converter, LarkTreeToNetxTree
-from rgxlog.engine.lark_passes import RemoveTokens, String, CheckReferencedVariables, \
-    CheckReferencedRelations, CheckRuleSafety, TypeChecking
+from rgxlog.engine import execution
+from rgxlog.engine.execution import GenericExecution, ExecutionBase
+from rgxlog.engine.lark_passes import RemoveTokens, FixStrings, CheckReservedRelationNames, \
+    ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes, CheckDefinedReferencedVariables, \
+    CheckForRelationRedefinitions, CheckReferencedRelationsExistenceAndArity, \
+    CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety, TypeCheckAssignments, TypeCheckRelations, \
+    SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences, ExecuteAssignments, \
+    AddStatementsToNetxTermGraph
 from rgxlog.engine.message_definitions import Request, Response
 from rgxlog.engine.symbol_table import SymbolTable
-from rgxlog.engine.term_graph import NetxTermGraph as TermGraph
+from rgxlog.engine.term_graph import NetxTermGraph
 
 
 class SessionBase(ABC):
-    def __init__(self):
-        self._st = SymbolTable()
-        self._tg = TermGraph()
-        # TODO: self._ex = Execution()
+    pass  # TODO
 
-        self._pass_stack = []
+
+class Session(SessionBase):
+    def __init__(self):
+        self._symbol_table = SymbolTable()
+        self._term_graph = NetxTermGraph()
+        self._execution = execution.PydatalogEngine()
+
+        self._pass_stack = [
+            RemoveTokens,
+            FixStrings,
+            CheckReservedRelationNames,
+            ConvertSpanNodesToSpanInstances,
+            ConvertStatementsToStructuredNodes,
+            CheckDefinedReferencedVariables,
+            CheckForRelationRedefinitions,
+            CheckReferencedRelationsExistenceAndArity,
+            CheckReferencedIERelationsExistenceAndArity,
+            CheckRuleSafety,
+            TypeCheckAssignments,
+            TypeCheckRelations,
+            SaveDeclaredRelationsSchemas,
+            ReorderRuleBody,
+            ResolveVariablesReferences,
+            ExecuteAssignments,
+            AddStatementsToNetxTermGraph,
+            GenericExecution
+        ]
 
         grammar_file_path = os.path.dirname(rgxlog.grammar.__file__)
         grammar_file_name = 'grammar.lark'
@@ -27,44 +55,35 @@ class SessionBase(ABC):
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True, propagate_positions=True)
 
-    @staticmethod
-    def _run_passes(tree, pass_list):
+    def _run_passes(self, tree, pass_list):
+        """
+        Runs the passes in pass_list on tree, one after another.
+        """
         for cur_pass in pass_list:
-            if issubclass(cur_pass, Visitor) or issubclass(cur_pass, Visitor_Recursive) \
-                    or issubclass(cur_pass, Interpreter):
-                cur_pass().visit(tree)
+            if issubclass(cur_pass, Visitor) or issubclass(cur_pass, Visitor_Recursive) or \
+                    issubclass(cur_pass, Interpreter):
+                cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).visit(tree)
             elif issubclass(cur_pass, Transformer):
-                tree = cur_pass().transform(tree)
-            elif issubclass(cur_pass, Converter):
-                tree = cur_pass().convert(tree)
+                tree = cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).transform(tree)
+            elif issubclass(cur_pass, ExecutionBase):
+                cur_pass(
+                    term_graph=self._term_graph,
+                    symbol_table=self._symbol_table,
+                    rgxlog_engine=self._execution
+                ).execute()
             else:
-                assert 0
+                raise Exception(f'invalid pass: {cur_pass}')
         return tree
 
     def __repr__(self):
-        print(repr(self._st))
-        print(repr(self._tg))
+        print(repr(self._symbol_table))
+        print(repr(self._term_graph))
 
     def __str__(self):
         print('Symbol Table:')
-        print(str(self._st))
+        print(str(self._symbol_table))
         print('Term Graph:')
-        print(str(self._tg))
-
-
-class Session(SessionBase):
-    def __init__(self):
-        super().__init__()
-
-        self._pass_stack = [
-            RemoveTokens,
-            String,
-            CheckReferencedVariables,
-            CheckReferencedRelations,
-            CheckRuleSafety,
-            TypeChecking,
-            LarkTreeToNetxTree
-        ]
+        print(str(self._term_graph))
 
     def execute(self, task):
         msg_type = task['msg_type']
@@ -89,7 +108,9 @@ class Session(SessionBase):
             return {'msg_type': Response.FAILURE, 'data': 'exception during parsing'}
 
         try:
-            parse_tree = Session._run_passes(parse_tree, self._pass_stack)
+            statements = [statement for statement in parse_tree.children]
+            for statement in statements:
+                run_passes(statement, passes)
         except Exception:
             return {'msg_type': Response.FAILURE, 'data': 'exception during semantic checks'}
 

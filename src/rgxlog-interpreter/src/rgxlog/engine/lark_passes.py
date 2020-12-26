@@ -171,7 +171,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
     def add_fact(self, fact_node: LarkNode):
 
         # a fact is defined by a relation, create that relation using the utility function
-        relation = self.__create_structured_relation_node(fact_node)
+        relation = self._create_structured_relation_node(fact_node)
 
         # create a structured node and use it to replace the current fact representation
         structured_fact_node = AddFact(relation.relation_name, relation.term_list, relation.type_list)
@@ -181,7 +181,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
     def remove_fact(self, fact_node: LarkNode):
 
         # a fact is defined by a relation, create that relation using the utility function
-        relation = self.__create_structured_relation_node(fact_node)
+        relation = self._create_structured_relation_node(fact_node)
 
         # create a structured node and use it to replace the current fact representation
         structured_fact_node = RemoveFact(relation.relation_name, relation.term_list, relation.type_list)
@@ -191,7 +191,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
     def query(self, query_node: LarkNode):
 
         # a query is defined by a relation, create that relation using the utility function
-        relation = self.__create_structured_relation_node(query_node)
+        relation = self._create_structured_relation_node(query_node)
 
         # create a structured node and use it to replace the current query representation
         structured_query_node = Query(relation.relation_name, relation.term_list, relation.type_list)
@@ -226,7 +226,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         rule_body_relation_nodes = rule_node.children[1]
 
         # create the structured relation node that defines the head relation of the rule
-        structured_head_relation_node = self.__create_structured_relation_node(rule_head_node)
+        structured_head_relation_node = self._create_structured_relation_node(rule_head_node)
 
         # for each rule body relation, create a matching structured relation node
         structured_body_relation_list = []
@@ -234,9 +234,9 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
 
             relation_type = relation_node.data
             if relation_type == "relation":
-                structured_relation_node = self.__create_structured_relation_node(relation_node)
+                structured_relation_node = self._create_structured_relation_node(relation_node)
             elif relation_type == "ie_relation":
-                structured_relation_node = self.__create_structured_ie_relation_node(relation_node)
+                structured_relation_node = self._create_structured_ie_relation_node(relation_node)
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
@@ -253,7 +253,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         rule_node.children = [structured_rule_node]
 
     @staticmethod
-    def __create_structured_relation_node(relation_node: LarkNode) -> Relation:
+    def _create_structured_relation_node(relation_node: LarkNode) -> Relation:
         """
         an utility function that constructs a structured relation node.
         while a relation node isn't a statement in and of itself, it is useful for defining
@@ -279,7 +279,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         return structured_relation_node
 
     @staticmethod
-    def __create_structured_ie_relation_node(ie_relation_node: LarkNode) -> IERelation:
+    def _create_structured_ie_relation_node(ie_relation_node: LarkNode) -> IERelation:
         """
         an utility function that constructs a structured ie relation node.
         while an ie relation node isn't a statement in and of itself, it is useful for defining
@@ -344,31 +344,31 @@ class CheckDefinedReferencedVariables(Interpreter):
         for term, term_type in zip(term_list, type_list):
             if term_type is DataTypes.var_name:
                 # found a variable, check if it is defined
-                self.__assert_var_defined(term)
+                self._assert_var_defined(term)
 
     @unravel_lark_node
     def assignment(self, assignment: Assignment):
         if assignment.value_type is DataTypes.var_name:
             # the assigned expression is a variable, check if it is defined
-            self.__assert_var_defined(assignment.value)
+            self._assert_var_defined(assignment.value)
 
     @unravel_lark_node
     def read_assignment(self, assignment: ReadAssignment):
         if assignment.read_arg_type is DataTypes.var_name:
             # a variable is used as the argument for read(), check if it is defined
-            self.__assert_var_defined(assignment.read_arg)
+            self._assert_var_defined(assignment.read_arg)
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
-        self.__assert_var_terms_defined(fact.term_list, fact.type_list)
+        self._assert_var_terms_defined(fact.term_list, fact.type_list)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
-        self.__assert_var_terms_defined(fact.term_list, fact.type_list)
+        self._assert_var_terms_defined(fact.term_list, fact.type_list)
 
     @unravel_lark_node
     def query(self, query: Query):
-        self.__assert_var_terms_defined(query.term_list, query.type_list)
+        self._assert_var_terms_defined(query.term_list, query.type_list)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -376,11 +376,11 @@ class CheckDefinedReferencedVariables(Interpreter):
         # for each relation in the rule body, check if its variable terms are defined
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             if relation_type == "relation":
-                self.__assert_var_terms_defined(relation.term_list, relation.type_list)
+                self._assert_var_terms_defined(relation.term_list, relation.type_list)
             elif relation_type == "ie_relation":
                 # ie relations have input terms and output terms, check them both
-                self.__assert_var_terms_defined(relation.input_term_list, relation.input_type_list)
-                self.__assert_var_terms_defined(relation.output_term_list, relation.output_type_list)
+                self._assert_var_terms_defined(relation.input_term_list, relation.input_type_list)
+                self._assert_var_terms_defined(relation.output_term_list, relation.output_type_list)
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
@@ -414,7 +414,7 @@ class CheckForRelationRedefinitions(Interpreter):
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
-        self.__assert_relation_not_defined(relation_decl.relation_name)
+        self._assert_relation_not_defined(relation_decl.relation_name)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -422,7 +422,7 @@ class CheckForRelationRedefinitions(Interpreter):
         a rule is a definition of the relation that appears in the rule head.
         this function checks that the relation that appears in the rule head is not being redefined.
         """
-        self.__assert_relation_not_defined(rule.head_relation.relation_name)
+        self._assert_relation_not_defined(rule.head_relation.relation_name)
 
 
 class CheckReferencedRelationsExistenceAndArity(Interpreter):
@@ -436,7 +436,7 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def __assert_relation_exists_and_correct_arity(self, relation: Relation):
+    def _assert_relation_exists_and_correct_arity(self, relation: Relation):
         """
         An utility function that checks if a relation exists in the symbol table
         and if the correct arity was used
@@ -466,17 +466,17 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
     @unravel_lark_node
     def query(self, query: Query):
         # a query is defined by a relation reference, so we can simply use the utility function
-        self.__assert_relation_exists_and_correct_arity(query)
+        self._assert_relation_exists_and_correct_arity(query)
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
         # a fact is defined by a relation reference, so we can simply use the utility function
-        self.__assert_relation_exists_and_correct_arity(fact)
+        self._assert_relation_exists_and_correct_arity(fact)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
         # a fact is defined by a relation reference, so we can simply use the utility function
-        self.__assert_relation_exists_and_correct_arity(fact)
+        self._assert_relation_exists_and_correct_arity(fact)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -489,7 +489,7 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
         # check that each normal relation in the rule body exists and that the correct arity was used
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             if relation_type == "relation":
-                self.__assert_relation_exists_and_correct_arity(relation)
+                self._assert_relation_exists_and_correct_arity(relation)
 
 
 class CheckReferencedIERelationsExistenceAndArity(Visitor_Recursive):
@@ -900,7 +900,7 @@ class ResolveVariablesReferences(Interpreter):
             assignment.read_arg = self.symbol_table.get_variable_value(read_arg_var_name)
             assignment.read_arg_type = self.symbol_table.get_variable_type(read_arg_var_name)
 
-    def __resolve_var_terms(self, term_list, type_list):
+    def _resolve_var_terms(self, term_list, type_list):
         """
         an utility function for resolving variables in term lists
         for each variable term in term_list, replace its value in term_list with its literal value, and
@@ -930,26 +930,26 @@ class ResolveVariablesReferences(Interpreter):
 
     @unravel_lark_node
     def query(self, query: Query):
-        self.__resolve_var_terms(query.term_list, query.type_list)
+        self._resolve_var_terms(query.term_list, query.type_list)
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
-        self.__resolve_var_terms(fact.term_list, fact.type_list)
+        self._resolve_var_terms(fact.term_list, fact.type_list)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
-        self.__resolve_var_terms(fact.term_list, fact.type_list)
+        self._resolve_var_terms(fact.term_list, fact.type_list)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
         # resolve the variables of each relation in the rule body relation list
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             if relation_type == "relation":
-                self.__resolve_var_terms(relation.term_list, relation.type_list)
+                self._resolve_var_terms(relation.term_list, relation.type_list)
             elif relation_type == "ie_relation":
                 # ie relations have two term lists (input and output), resolve them both
-                self.__resolve_var_terms(relation.input_term_list, relation.input_type_list)
-                self.__resolve_var_terms(relation.output_term_list, relation.output_type_list)
+                self._resolve_var_terms(relation.input_term_list, relation.input_type_list)
+                self._resolve_var_terms(relation.output_term_list, relation.output_type_list)
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
@@ -1014,7 +1014,7 @@ class AddStatementsToNetxTermGraph(Interpreter):
         super().__init__()
         self.term_graph = kw['term_graph']
 
-    def __add_statement_to_term_graph(self, statement_type, statement_value):
+    def _add_statement_to_term_graph(self, statement_type, statement_value):
         """
         An utility function that adds a statement to the term graph, meaning it adds a node that
         represents the statement to the term graph, then attach the node to the term graph's root.
@@ -1030,19 +1030,19 @@ class AddStatementsToNetxTermGraph(Interpreter):
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
-        self.__add_statement_to_term_graph("add_fact", fact)
+        self._add_statement_to_term_graph("add_fact", fact)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
-        self.__add_statement_to_term_graph("remove_fact", fact)
+        self._add_statement_to_term_graph("remove_fact", fact)
 
     @unravel_lark_node
     def query(self, query: Query):
-        self.__add_statement_to_term_graph("query", query)
+        self._add_statement_to_term_graph("query", query)
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
-        self.__add_statement_to_term_graph("relation_declaration", relation_decl)
+        self._add_statement_to_term_graph("relation_declaration", relation_decl)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
