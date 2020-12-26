@@ -22,22 +22,20 @@ decl_term_list: decl_term ("," decl_term)*
           | "spn" -> decl_span
           | "int" -> decl_int
 
-rule: rule_head "<-" rule_body
+rule: rule_head "<-" rule_body_relation_list
 
 rule_head: relation_name "(" free_var_name_list ")"
-
-rule_body: rule_body_relation_list
 
 rule_body_relation_list: rule_body_relation ("," rule_body_relation)*
 
 ?rule_body_relation: relation
                    | ie_relation
 
+relation: relation_name "(" term_list ")"
+
 ie_relation: relation_name "(" term_list ")" "->" "(" term_list ")"
 
-query: "?" relation
-
-relation: relation_name "(" term_list ")"
+query: "?" relation_name "(" term_list ")"
 
 term_list: term ("," term)*
 

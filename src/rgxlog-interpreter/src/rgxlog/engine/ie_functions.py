@@ -1,3 +1,8 @@
+"""
+this module contains 'IEFunctionData' classes, i.e. classes that contains all the information needed to semantic
+check and execute an information extraction function
+"""
+
 import re
 from abc import abstractmethod, ABC
 from rgxlog.engine.datatypes import DataTypes
@@ -15,7 +20,16 @@ class IEFunctionData(ABC):
     @staticmethod
     @abstractmethod
     def ie_function(*args):
-        """The actual ie function that will be used"""
+        """
+        The actual information extraction function that will be used
+        the function must return a list of lists/tuples that represents the results, another option is to yield the
+        tuples.
+
+        currently the values inside the returned tuples can belong to three datatypes: string, integer and span
+        string should be returned as a str instance
+        an integer should be returned as an int instance
+        a span could be returned either as a tuple of length 2, or as a datatypes.Span instance
+        """
         pass
 
     @staticmethod
@@ -47,58 +61,72 @@ class IEFunctionData(ABC):
 
 
 class RGX(IEFunctionData):
+    """
+    Performs a regex information extraction.
+    Results are tuples of spans
+    """
 
     def __init__(self):
         super().__init__()
 
     @staticmethod
     def ie_function(text, regex_formula):
+        """
+        Args:
+            text: The input text for the regex operation
+            regex_formula: the formula of the regex operation
+
+        Returns: tuples of spans that represents the results
+        """
         compiled_rgx = re.compile(regex_formula)
         num_groups = compiled_rgx.groups
-        ret = []
         for match in re.finditer(compiled_rgx, text):
-            cur_tuple = []
             if num_groups == 0:
-                cur_tuple.append(match.span())
+                matched_spans = [match.span()]
             else:
-                for i in range(1, num_groups + 1):
-                    cur_tuple.append(match.span(i))
-            ret.append(cur_tuple)
-        return ret
+                matched_spans = [match.span(i) for i in range(1, num_groups + 1)]
+            yield matched_spans
 
     @staticmethod
     def get_input_types():
-        return DataTypes.STRING, DataTypes.STRING
+        return DataTypes.string, DataTypes.string
 
     @staticmethod
     def get_output_types(output_arity):
-        return tuple([DataTypes.SPAN] * output_arity)
+        return tuple([DataTypes.span] * output_arity)
 
 
 class RGXString(IEFunctionData):
+    """
+    Performs a regex information extraction.
+    Results are tuples of strings
+    """
 
     def __init__(self):
         super().__init__()
 
     @staticmethod
     def ie_function(text, regex_formula):
+        """
+        Args:
+            text: The input text for the regex operation
+            regex_formula: the formula of the regex operation
+
+        Returns: tuples of strings that represents the results
+        """
         compiled_rgx = re.compile(regex_formula)
         num_groups = compiled_rgx.groups
-        ret = []
         for match in re.finditer(compiled_rgx, text):
-            cur_tuple = []
             if num_groups == 0:
-                cur_tuple.append(match.group())
+                matched_strings = [match.group()]
             else:
-                for i in range(1, num_groups + 1):
-                    cur_tuple.append(match.group(i))
-            ret.append(cur_tuple)
-        return ret
+                matched_strings = [group for group in match.groups()]
+            yield matched_strings
 
     @staticmethod
     def get_input_types():
-        return DataTypes.STRING, DataTypes.STRING
+        return DataTypes.string, DataTypes.string
 
     @staticmethod
     def get_output_types(output_arity):
-        return tuple([DataTypes.STRING] * output_arity)
+        return tuple([DataTypes.string] * output_arity)
