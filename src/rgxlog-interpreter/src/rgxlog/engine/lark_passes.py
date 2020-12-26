@@ -659,7 +659,7 @@ class CheckRuleSafety(Visitor_Recursive):
                             f'{unbound_free_vars}')
 
 
-class ReorderRuleBodyVisitor(Visitor_Recursive):
+class ReorderRuleBody(Visitor_Recursive):
     """
     A lark tree optimization pass.
     Reorders each rule body relations list so that each relation in the list has its input free variables bound by
@@ -667,7 +667,7 @@ class ReorderRuleBodyVisitor(Visitor_Recursive):
     for example: the rule "B(Z) <- RGX(X,Y)->(Z), A(X), A(Y)"
            will change to "B(Z) <- A(X), A(Y), RGX(X,Y)->(Z)"
     This way it is possible to easily compute the rule body relations from the start of the list to its end.
-    for more details on the execution of rules see execution.NetworkxExecution
+    for more details on the execution of rules see execution.GenericExecution
     """
 
     def __init__(self, **kw):

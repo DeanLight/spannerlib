@@ -73,7 +73,7 @@ class TermGraphBase:
         pass
 
     @abstractmethod
-    def get_term_first_order_dependencies(self, term_id):
+    def get_first_order_dependencies(self, term_id):
         """
         Args:
             term_id: a term id
@@ -219,7 +219,7 @@ class NetxTermGraph(TermGraphBase):
     def get_dfs_post_ordered_term_id_list(self):
         return nx.dfs_postorder_nodes(self._graph, self._root_id)
 
-    def get_term_first_order_dependencies(self, term_id):
+    def get_first_order_dependencies(self, term_id):
         return self._graph.successors(term_id)
 
     def get_term_state(self, term_id):
