@@ -241,7 +241,8 @@ class Client:
 
 
 if __name__ == '__main__':
-    from rgxlog import magic_client
+    import rgxlog
+    magic_client = Client()
 
     result = magic_client.execute('parent("bob")')
     magic_client.disconnect()

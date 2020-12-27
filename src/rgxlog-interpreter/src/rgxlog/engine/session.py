@@ -78,14 +78,16 @@ class Session(SessionBase):
         return tree
 
     def __repr__(self):
-        print(repr(self._symbol_table))
-        print(repr(self._term_graph))
+        s = [repr(self._symbol_table)]
+        s.append(repr(self._term_graph))
+        return s
 
     def __str__(self):
-        print('Symbol Table:')
-        print(str(self._symbol_table))
-        print('Term Graph:')
-        print(str(self._term_graph))
+        s = ['Symbol Table:\n']
+        s.append(str(self._symbol_table))
+        s.append('Term Graph:\n')
+        s.append(str(self._term_graph))
+        return ''.join(s)
 
     def execute(self, task):
         msg_type = task['msg_type']
