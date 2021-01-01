@@ -18,7 +18,7 @@ from rgxlog.engine.symbol_table import SymbolTable
 from rgxlog.engine.term_graph import NetxTermGraph
 
 
-class Session(SessionBase):
+class Session:
     def __init__(self):
         self._symbol_table = SymbolTable()
         self._term_graph = NetxTermGraph()
