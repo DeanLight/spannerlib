@@ -40,7 +40,7 @@ rgxlog_expected_children_names_lists = {
 
     'assignment': [
         ['var_name', 'string'],
-        ['var_name', 'int'],
+        ['var_name', 'integer'],
         ['var_name', 'span'],
         ['var_name', 'var_name'],
     ],
