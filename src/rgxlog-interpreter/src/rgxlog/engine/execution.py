@@ -24,12 +24,24 @@ class RgxlogEngineBase(ABC):
 
     def __init__(self):
         super().__init__()
-        self.string_buffer = []
+        self.prints_buffer = []
 
-    @abstractmethod
-    def flush_buffer(self):
-        ret_string = ''.join(self.string_buffer)
-        self.string_buffer.clear()
+    def flush_prints_buffer(self) -> str:
+        """
+        some of the methods in this class should print their results, but since this project uses jupyter notebook's
+        magic system, printing inside the methods may cause the project to behave incorrectly (for example, the prints
+        may appear in the wrong cell).
+
+        so instead of printing, the methods of this class should append the strings they want to print to
+        self.prints_buffer, and the user of this class can get the string that he should print using this method
+
+        this method also clears the prints buffer
+
+        Returns: a single string that represents all of the prints buffer content. this string should be printed
+        by the caller
+        """
+        ret_string = '\n'.join(self.prints_buffer)
+        self.prints_buffer.clear()
         return ret_string
 
     @abstractmethod
@@ -65,10 +77,10 @@ class RgxlogEngineBase(ABC):
     @abstractmethod
     def print_query(self, query):
         """
-        queries the rgxlog engine and prints the results
+        queries rgxlog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
 
         Args:
-            query: a query who's results will be printed
+            query: a query for rgxlog
         """
         pass
 
@@ -241,7 +253,7 @@ class PydatalogEngine(RgxlogEngineBase):
         # the syntax for a 'add fact' statement in pyDatalog is '+some_relation(term_list)' create that statement
         add_fact_statement = f'+{relation_string}'
         if self.debug:
-            print(add_fact_statement)
+            self.prints_buffer.append(add_fact_statement)
         # add the fact in pyDatalog
         pyDatalog.load(add_fact_statement)
 
@@ -250,50 +262,58 @@ class PydatalogEngine(RgxlogEngineBase):
         # the syntax for a 'remove fact' statement in pyDatalog is '-some_relation(term_list)' create that statement
         remove_fact_statement = f'-{relation_string}'
         if self.debug:
-            print(remove_fact_statement)
+            self.prints_buffer.append(remove_fact_statement)
         # remove the fact in pyDatalog
         pyDatalog.load(remove_fact_statement)
 
-    def print_query(self, query: Query, max_term_len=50):
+    def print_query(self, query: Query):
         """
-        TODO
-        queries pyDatalog and prints the results
+        queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
+        the resulting string is a table that contains all of the resulting tuples of the query.
+        the headers of the table are the free variables used in the query.
+        above the table there will be a title that contains the query as it was written by the user
+
+        for example:
+
+        printing results for query 'lecturer_of(X, "abigail")':
+          X
+-       -------
+        linus
+        walter
+
+        there are two cases where a table cannot be printed:
+        1. the query returned no results. in this case '[]' will be printed
+        2. the query returned a single empty tuple, in this case '[()]' will be printed
 
         Args:
-            query: a query who's results will be printed
-            max_term_len: a limit to the length a term can have in the resulting table
+            query: a query for pyDatalog
         """
 
         # get the results of the query
         query_results = self.query(query)
 
-        # check for a special condition for which we can't print a table: no results were returned or a single
+        # check for the special conditions for which we can't print a table: no results were returned or a single
         # empty tuple was returned
         no_results = len(query_results) == 0
         result_is_single_empty_tuple = len(query_results) == 1 and len(query_results[0]) == 0
-        if no_results or result_is_single_empty_tuple:
-            # in this case the query results will be printed as is: '[]' for no results, [()] for a single tuple result
-            query_result_string = str(query_results)
+        if no_results:
+            query_result_string = '[]'
+        elif result_is_single_empty_tuple:
+            query_result_string = '[()]'
 
         else:
             # query results can be printed as a table
             # convert the resulting tuples to a more organized format
             formatted_results = []
             for result in query_results:
-                # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans
+
+                # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
+                # they will be printed as a span instead of a tuple
                 converted_span_result = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
                                          else term
                                          for term in result]
 
-                # convert each term to a string
-                string_terms_result = [str(term) for term in converted_span_result]
-
-                # shorten the string terms that are too long. add '...' to tell to the user that the string was cut
-                limited_len_terms_result = [term if len(term) < max_term_len
-                                            else f'{term[0:max_term_len]}...'
-                                            for term in string_terms_result]
-
-                formatted_results.append(limited_len_terms_result)
+                formatted_results.append(converted_span_result)
 
             # get the free variables of the query, they will be used as headers
             query_free_vars = [term for term, term_type in zip(query.term_list, query.type_list)
@@ -303,10 +323,11 @@ class PydatalogEngine(RgxlogEngineBase):
             query_result_string = tabulate(formatted_results, headers=query_free_vars, tablefmt='presto',
                                            stralign='center')
 
-        query_title = f'printing results for query "{query}"'
+        query_title = f"printing results for query '{query}':"
 
+        # combine the title and table to a single string and save it to the prints buffer
         final_result_string = f'{query_title}\n{query_result_string}\n'
-        return final_result_string
+        self.prints_buffer.append(final_result_string)
 
     def query(self, query: Query):
         """
@@ -321,7 +342,7 @@ class PydatalogEngine(RgxlogEngineBase):
         query_statement = self.__get_relation_string(query)
 
         if self.debug:
-            print(f'non-print query: {query_statement}')
+            self.prints_buffer.append(f'query: {query_statement}')
 
         # loading the query into pyDatalog this way returns an object that contains a list of the resulting tuples
         py_datalog_answer_object = pyDatalog.ask(query_statement)
@@ -352,7 +373,7 @@ class PydatalogEngine(RgxlogEngineBase):
         rule_string = f'{rule_head_string} <= {rule_body_string}'
 
         if self.debug:
-            print(rule_string)
+            self.prints_buffer.append(rule_string)
 
         # add the rule to pyDatalog
         pyDatalog.load(rule_string)
@@ -657,6 +678,7 @@ class GenericExecution(ExecutionBase):
 
                 elif term_type == "query":
                     query = term_graph.get_term_value(term_id)
+                    # currently only print queries are supported
                     rgxlog_engine.print_query(query)
 
                 elif term_type == "rule":
