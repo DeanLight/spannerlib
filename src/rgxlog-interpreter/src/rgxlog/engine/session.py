@@ -114,8 +114,8 @@ class Session:
             for statement in statements:
                 self._run_passes(statement, self._pass_stack)
         except Exception as e:
-            self._execution.flush_prints_buffer()
-            return {'msg_type': Response.FAILURE, 'data': f'exception during semantic checks: {e}'}
+            self._execution.flush_prints_buffer()  # clear the prints buffer as the execution failed
+            return {'msg_type': Response.FAILURE, 'data': f'exception during semantic checks or execution:\n {e}'}
 
         result = self._execution.flush_prints_buffer()
         return {'msg_type': Response.SUCCESS, 'data': result}
