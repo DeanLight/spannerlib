@@ -1,7 +1,6 @@
 import os
 import sys
 import io
-from abc import ABC
 
 import rgxlog
 from lark.lark import Lark
@@ -19,11 +18,7 @@ from rgxlog.engine.symbol_table import SymbolTable
 from rgxlog.engine.term_graph import NetxTermGraph
 
 
-class SessionBase(ABC):
-    pass  # TODO
-
-
-class Session(SessionBase):
+class Session:
     def __init__(self):
         self._symbol_table = SymbolTable()
         self._term_graph = NetxTermGraph()
@@ -78,18 +73,16 @@ class Session(SessionBase):
         return tree
 
     def __repr__(self):
-        s = [repr(self._symbol_table)]
-        s.append(repr(self._term_graph))
-        return s
+        return [repr(self._symbol_table), repr(self._term_graph)]
 
     def __str__(self):
-        s = ['Symbol Table:\n']
-        s.append(str(self._symbol_table))
-        s.append('Term Graph:\n')
-        s.append(str(self._term_graph))
+        s = ['Symbol Table:\n', str(self._symbol_table), 'Term Graph:\n', str(self._term_graph)]
         return ''.join(s)
 
     def execute(self, task):
+        """
+        executes the task received from the client
+        """
         msg_type = task['msg_type']
         data = task['data']
         if msg_type == Request.QUERY:
@@ -100,12 +93,17 @@ class Session(SessionBase):
             return self._get_pass_stack()
         elif msg_type == Request.SET_STACK:
             return self._set_user_stack_as_pass_stack(data)
-        elif msg_type == Request.GRAMMAR:
-            return self._handle_grammar_change_request(data)
-        else:
-            return self._unknown_task_type()
+        return self._unknown_task_type()
 
     def _run_query(self, query):
+        """
+        generates an AST and passes it through the pass stack
+        Args:
+            query: the query
+
+        Returns: the query result or an error if the query failed
+        """
+
         try:
             parse_tree = self._parser.parse(query)
         except Exception as e:
@@ -119,22 +117,43 @@ class Session(SessionBase):
             self._execution.flush_prints_buffer()
             return {'msg_type': Response.FAILURE, 'data': f'exception during semantic checks: {e}'}
 
-        return {'msg_type': Response.SUCCESS, 'data': self._execution.flush_prints_buffer()}
+        result = self._execution.flush_prints_buffer()
+        return {'msg_type': Response.SUCCESS, 'data': result}
 
-    def _register_ie_function(self, data):
-        raise NotImplementedError
+    def _register_ie_function(self, ie_function_name):
+        """
+        registers an ie function for future usage
+        Args:
+            ie_function_name: the function's name
+
+        Returns: success message if succeeded or an error if the ie function is not on the server
+        """
+        success = self._symbol_table.register_ie_function(ie_function_name)
+        if not success:
+            response = {'msg_type': Response.FAILURE, 'data': 'the ie function is not on the server'}
+        else:
+            response = {'msg_type': Response.SUCCESS, 'data': f'registered {ie_function_name}'}
+        return response
 
     def _get_pass_stack(self):
-        return {'msg_type': Response.SUCCESS, 'data': self._pass_stack}
+        """
+        Returns: the current pass stack
+        """
+        pass_stack = [pass_.__name__ for pass_ in self._pass_stack]
+        return {'msg_type': Response.SUCCESS, 'data': pass_stack}
 
-    def _set_user_stack_as_pass_stack(self, data):
-        self._pass_stack = data  # TODO use eval
+    def _set_user_stack_as_pass_stack(self, new_pass_stack):
+        """
+        sets a new pass stack instead of the current one
+        Args:
+            new_pass_stack: a user supplied pass stack
+
+        Returns: success message with the new pass stack
+        """
+        self._pass_stack = []
+        for pass_ in new_pass_stack:
+            self._pass_stack.append(eval(pass_))
         return {'msg_type': Response.SUCCESS, 'data': self._get_pass_stack()}
-
-    def _handle_grammar_change_request(self, data):
-        self._grammar = data
-        self._parser = Lark(self._grammar, parser='lalr', debug=True, propagate_positions=True)
-        return {'msg_type': Response.SUCCESS, 'data': None}
 
     @staticmethod
     def _unknown_task_type():

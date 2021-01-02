@@ -97,6 +97,18 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
+    def register_ie_function(self, ie_function_name):
+        """
+        add a new ie function to the symbol table
+
+        Args:
+            ie_function_name: the function's name
+
+        Returns: true if the function exists on the server, false otherwise
+        """
+        pass
+
+    @abstractmethod
     def contains_relation(self, relation_name):
         """
         Args:
@@ -160,6 +172,7 @@ class SymbolTable(SymbolTableBase):
         self._var_to_value = {}
         self._var_to_type = {}
         self._relation_to_schema = {}
+        self._registered_ie_functions = set()
 
     def set_var_value_and_type(self, var_name, var_value, var_type):
         self._var_to_value[var_name] = var_value
@@ -196,13 +209,17 @@ class SymbolTable(SymbolTableBase):
     def contains_relation(self, relation_name):
         return relation_name in self._relation_to_schema
 
-    def contains_ie_function(self, ie_func_name):
-        # TODO check if the function is registered
+    def register_ie_function(self, ie_function_name):
         try:
-            self.get_ie_func_data(ie_func_name)
-        except Exception:
+            self.get_ie_func_data(ie_function_name)
+        except AttributeError:  # ie function does not exist on the server
             return False
+
+        self._registered_ie_functions.add(ie_function_name)
         return True
+
+    def contains_ie_function(self, ie_func_name):
+        return ie_func_name in self._registered_ie_functions
 
     def get_ie_func_data(self, ie_func_name):
         ie_func_data = getattr(global_ie_functions, ie_func_name)

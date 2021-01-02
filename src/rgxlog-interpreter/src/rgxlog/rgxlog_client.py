@@ -126,10 +126,9 @@ class Client:
             reply = self._connection.recv()
         except EOFError:
             logging.error('client connection closed unexpectedly')
-            reply = None
+            reply = {'data': None}
 
-        result = reply['data']
-        return result
+        return reply['data']
 
     def register(self, ie_function_name):
         """
@@ -151,9 +150,9 @@ class Client:
             reply = self._connection.recv()
         except EOFError:
             logging.error('client connection closed unexpectedly')
-            reply = None
+            reply = {'data': None}
 
-        return reply
+        return reply['data']
 
     def get_pass_stack(self):
         """
@@ -172,9 +171,9 @@ class Client:
             reply = self._connection.recv()
         except EOFError:
             logging.error('client connection closed unexpectedly')
-            reply = None
+            reply = {'data': None}
 
-        return reply
+        return reply['data']
 
     def set_pass_stack(self, user_stack):
         """
@@ -183,7 +182,10 @@ class Client:
         if not self.connected:
             raise ConnectionError
         if type(user_stack) is not list:
-            raise ValueError('user_stack should be a list')
+            raise ValueError('user stack should be a list of pass names (strings)')
+        for pass_ in user_stack:
+            if type(pass_) is not str:
+                raise ValueError('user stack should be a list of pass names (strings)')
 
         request_set_stack_message = {
             'message_type': Request.SET_STACK,
@@ -191,13 +193,13 @@ class Client:
         }
 
         try:
-            self._connection.send(request_stack_message)
+            self._connection.send(request_set_stack_message)
             reply = self._connection.recv()
         except EOFError:
             logging.error('client connection closed unexpectedly')
-            reply = None
+            reply = {'data': None}
 
-        return reply
+        return reply['data']
 
     def _run_local_server(self):
         """
@@ -241,9 +243,7 @@ class Client:
 
 
 if __name__ == '__main__':
-    import rgxlog
     magic_client = Client()
-
     result = magic_client.execute('parent("bob")')
     magic_client.disconnect()
     print(result)
