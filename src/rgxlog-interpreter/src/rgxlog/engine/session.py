@@ -55,7 +55,7 @@ class Session(SessionBase):
         with open(f'{grammar_file_path}/{grammar_file_name}', 'r') as grammar_file:
             self._grammar = grammar_file.read()
 
-        self._parser = Lark(self._grammar, parser='lalr', debug=True, propagate_positions=True)
+        self._parser = Lark(self._grammar, parser='lalr', debug=True)
 
     def _run_passes(self, tree, pass_list):
         """
@@ -111,20 +111,15 @@ class Session(SessionBase):
         except Exception as e:
             return {'msg_type': Response.FAILURE, 'data': f'exception during parsing {e}'}
 
-        # pydatalog printing workaround
-        orig_stdout = sys.stdout
-        temp_stdout = io.StringIO()
-        sys.stdout = temp_stdout
         try:
             statements = [statement for statement in parse_tree.children]
             for statement in statements:
                 self._run_passes(statement, self._pass_stack)
         except Exception as e:
-            sys.stdout = orig_stdout
+            self._execution.flush_prints_buffer()
             return {'msg_type': Response.FAILURE, 'data': f'exception during semantic checks: {e}'}
 
-        sys.stdout = orig_stdout
-        return {'msg_type': Response.SUCCESS, 'data': temp_stdout.getvalue()}
+        return {'msg_type': Response.SUCCESS, 'data': self._execution.flush_prints_buffer()}
 
     def _register_ie_function(self, data):
         raise NotImplementedError
