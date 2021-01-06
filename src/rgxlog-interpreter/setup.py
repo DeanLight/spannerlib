@@ -32,6 +32,5 @@ setuptools.setup(
         'tabulate',
     ]
 )
-
-# python3 -m twine upload --repository testpypi dist/*
+# python3 setup.py sdist bdist_wheel
 # twine upload --repository testpypi dist/*
