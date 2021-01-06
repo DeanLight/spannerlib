@@ -7,7 +7,7 @@ from multiprocessing.context import Process
 from time import sleep
 
 from rgxlog.engine.message_definitions import Request
-from rgxlog.server.server import start_listener
+from rgxlog.server.server import start_server
 from rgxlog.system_configuration import system_configuration
 
 
@@ -85,7 +85,7 @@ class Client:
                     logging.info(f'client retrying connection')
 
         if self._connection is None:
-            logging.error('client could not connect to listener')
+            logging.error('client could not connect to server')
         else:
             logging.info(f'client connected to {self._remote_ip}:{self._remote_port}')
             self.connected = True
@@ -206,12 +206,12 @@ class Client:
         Starts the server locally
         """
         if self._remote_port:
-            listener_args = ('localhost', self._remote_port, self._taken_port)
+            server_args = ('localhost', self._remote_port, self._taken_port)
         else:
-            listener_args = ('localhost', None, self._taken_port)
+            server_args = ('localhost', None, self._taken_port)
 
-        self._listener_process = Process(target=start_listener, args=listener_args)
-        self._listener_process.start()
+        self._server_process = Process(target=start_server, args=server_args)
+        self._server_process.start()
         self._remote_port = self._taken_port.get()
 
         if self._remote_port is None:
@@ -221,7 +221,7 @@ class Client:
         """
         Stops the local server
         """
-        self._listener_process.join()
+        self._server_process.join()
 
     def _start_remote_debug_server(self):
         """

@@ -8,13 +8,13 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="my-pkg-coldfear-rgxlog-interpreter",
-    version="0.0.9",
+    version="0.0.11",
     author="Example Author",
     author_email="author@example.com",
     description="A small example package",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
+    url="https://github.com/DeanLight/spanner_workbench",
     packages=setuptools.find_packages('src'),
     package_dir={"": "src"},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
@@ -29,5 +29,9 @@ setuptools.setup(
         'lark-parser',
         'networkx',
         'docopt',
+        'tabulate',
     ]
 )
+
+# python3 -m twine upload --repository testpypi dist/*
+# twine upload --repository testpypi dist/*

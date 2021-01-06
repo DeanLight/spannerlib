@@ -17,10 +17,10 @@ from rgxlog.engine.session import Session
 from rgxlog.system_configuration import system_configuration
 
 
-def start_listener(ip, port=None, taken_port: Queue = None):
+def start_server(ip, port=None, taken_port: Queue = None):
     """
-    Starts a listener on the given ip and port (optional).
-    When no port is supplied, the listener will try to bind to an available
+    Starts a server on the given ip and port (optional).
+    When no port is supplied, the server will try to bind to an available
     port and if it succeeds in doing so it will place the taken port in
     taken_port.
 
@@ -74,4 +74,4 @@ def start_listener(ip, port=None, taken_port: Queue = None):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    start_listener(ip=args['--ip'], port=int(args['--port']))
+    start_server(ip=args['--ip'], port=int(args['--port']))
