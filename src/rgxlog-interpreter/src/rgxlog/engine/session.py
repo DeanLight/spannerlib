@@ -76,8 +76,7 @@ class Session:
         return [repr(self._symbol_table), repr(self._term_graph)]
 
     def __str__(self):
-        s = ['Symbol Table:\n', str(self._symbol_table), 'Term Graph:\n', str(self._term_graph)]
-        return ''.join(s)
+        return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
     def execute(self, task):
         """
