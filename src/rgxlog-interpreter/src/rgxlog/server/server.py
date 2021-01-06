@@ -1,7 +1,7 @@
 """
 Usage:
-  remote_listener.py [--ip=<ip>] [--port=<port>]
-  remote_listener.py (-h | --help)
+  server.py [--ip=<ip>] [--port=<port>]
+  server.py (-h | --help)
 
 Options:
   -h --help     Show this screen.

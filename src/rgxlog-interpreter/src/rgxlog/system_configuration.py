@@ -7,9 +7,4 @@ system_configuration = {
         'min_port': 2 ** 15,
         'max_port': 2 ** 16
     },
-
-    'default_remote_listener_config': {
-        'ip': 'localhost',
-        'port': 2 ** 15
-    },
 }

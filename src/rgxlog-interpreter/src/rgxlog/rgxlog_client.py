@@ -7,7 +7,7 @@ from multiprocessing.context import Process
 from time import sleep
 
 from rgxlog.engine.message_definitions import Request
-from rgxlog.server.remote_listener import start_listener
+from rgxlog.server.server import start_listener
 from rgxlog.system_configuration import system_configuration
 
 
