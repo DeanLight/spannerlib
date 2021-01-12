@@ -95,6 +95,15 @@ class SymbolTableBase(ABC):
         for each relation in the symbol table
         """
         pass
+    @abstractmethod
+    def contains_relation(self, relation_name):
+        """
+        Args:
+            relation_name: a relation name
+
+        Returns: true if the relation exists in the symbol table, else false
+        """
+        pass
 
     @abstractmethod
     def register_ie_function(self, ie_function_name):
@@ -108,15 +117,6 @@ class SymbolTableBase(ABC):
         """
         pass
 
-    @abstractmethod
-    def contains_relation(self, relation_name):
-        """
-        Args:
-            relation_name: a relation name
-
-        Returns: true if the relation exists in the symbol table, else false
-        """
-        pass
 
     @abstractmethod
     def contains_ie_function(self, ie_func_name):
