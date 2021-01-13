@@ -90,15 +90,15 @@ def check_properly_typed_term_list(term_list: list, type_list: list,
 
     # perform the type check
     for term, term_type, correct_type in zip(term_list, type_list, correct_type_list):
+
         if term_type is DataTypes.var_name:
-            # current term is a variable, get its type from the symbol table and check if it is correct
-            var_type = symbol_table.get_variable_type(term)
-            if var_type != correct_type:
-                # the variable is not properly typed, the type check failed
-                return False
-        elif term_type is not DataTypes.free_var_name and term_type != correct_type:
+            # current term is a variable, get its type from the symbol table
+            term_type = symbol_table.get_variable_type(term)
+
+        if term_type is not DataTypes.free_var_name and term_type != correct_type:
             # the term is a literal that is not properly typed, the type check failed
             return False
+
     # all variables are properly typed, the type check succeeded
     return True
 
