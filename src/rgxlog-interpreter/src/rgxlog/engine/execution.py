@@ -236,7 +236,7 @@ class PydatalogEngine(RgxlogEngineBase):
         temp_fact_string = f'{relation_name}({decl_terms_string})'
 
         # create the string that we will use to declare the relation (add and remove the same fact)
-        relation_decl_statement = f'+{temp_fact_string}\n' \
+        relation_decl_statement = f'+{temp_fact_string}\n' + \
                                   f'-{temp_fact_string}'
 
         # declare the relation in pyDatalog

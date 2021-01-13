@@ -141,7 +141,7 @@ class Client:
             raise ValueError('invalid ie function!')
 
         registration_message = {
-            'message_type': 'ie_registration',
+            'msg_type': Request.IE_REGISTRATION,
             'data': ie_function_name
         }
 
@@ -244,6 +244,6 @@ class Client:
 
 if __name__ == '__main__':
     magic_client = Client()
-    result = magic_client.execute('parent("bob")')
+    result = magic_client.execute(report)
     magic_client.disconnect()
     print(result)

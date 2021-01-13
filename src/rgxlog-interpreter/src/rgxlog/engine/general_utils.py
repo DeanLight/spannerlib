@@ -8,7 +8,7 @@ from typing import Union
 from typing import Callable
 
 
-def fixed_point(start, step: Callable, distance: Callable, thresh):
+def fixed_point(start, step: Callable, distance: Callable, thresh=0):
     """
     implementation of a generic fixed point algorithm - an algorithm that takes a step function and runs it until
     some distance is zero or below a threshold
