@@ -306,7 +306,6 @@ class PydatalogEngine(RgxlogEngineBase):
             # convert the resulting tuples to a more organized format
             formatted_results = []
             for result in query_results:
-
                 # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
                 # they will be printed as a span instead of a tuple
                 converted_span_result = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
@@ -417,29 +416,31 @@ class PydatalogEngine(RgxlogEngineBase):
         # get a list of inputs to the ie function.
         ie_inputs = self._get_all_relation_tuples(input_relation)
 
-        # get all of the outputs of the ie function
-        ie_output_lists = [ie_func_data.ie_function(*ie_input) for ie_input in ie_inputs]
-        ie_outputs = list(chain(*ie_output_lists))
-
         # get the schema for the ie outputs
         ie_output_schema = ie_func_data.get_output_types(output_relation_arity)
 
-        # process each ie output and add it to the output relation
-        for ie_output in ie_outputs:
-            ie_output = list(ie_output)
+        # run the ie function on each input and process the outputs
+        for ie_input in ie_inputs:
 
-            # assert the the ie output is properly typed
-            self._assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation)
+            # run the ie function on the input, resulting in a list of tuples
+            ie_outputs = ie_func_data.ie_function(*ie_input)
 
-            # the user is allowed to represent a span in an ie output as a tuple of length 2
-            # convert said tuples to spans
-            ie_output = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
-                         else term
-                         for term in ie_output]
+            # process each ie output and add it to the output relation
+            for ie_output in ie_outputs:
+                ie_output = list(ie_output)
 
-            # add the output as a fact to the output relation
-            output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
-            self.add_fact(output_fact)
+                # assert the the ie output is properly typed
+                self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)
+
+                # the user is allowed to represent a span in an ie output as a tuple of length 2
+                # convert said tuples to spans
+                ie_output = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
+                             else term
+                             for term in ie_output]
+
+                # add the output as a fact to the output relation
+                output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
+                self.add_fact(output_fact)
 
         # create and return the result relation. it's a relation that is the join of the input and output relations
         result_relation = self.join_relations([input_relation, output_relation])
@@ -480,6 +481,24 @@ class PydatalogEngine(RgxlogEngineBase):
 
         return joined_relation
 
+    def _get_term_string(self, term, term_type):
+        """
+        the pyDatalog execution engine receives instructions via strings.
+        return a string representation of a term in pyDatalog.
+        Args:
+            term: a term of any type
+            term_type: the type of the term
+
+        Returns: a string representation of the term in pyDatalog
+        """
+        if term_type is DataTypes.string:
+            # add quotes to strings to avoid pyDatalog thinking a string is a variable
+            return f"\"{term}\""
+        elif term_type is DataTypes.span:
+            return self._get_span_string(term)
+        else:
+            return str(term)
+
     @staticmethod
     def _get_span_string(span: Span):
         """
@@ -509,11 +528,8 @@ class PydatalogEngine(RgxlogEngineBase):
         """
 
         # create a string representation of the relation's term list in pyDatalog
-        pydatalog_string_terms = \
-            [f"\"{term}\"" if term_type is DataTypes.string
-             else self._get_span_string(term) if term_type is DataTypes.span
-             else str(term)
-             for term, term_type in zip(relation.term_list, relation.type_list)]
+        pydatalog_string_terms = [self._get_term_string(term, term_type)
+                                  for term, term_type in zip(relation.term_list, relation.type_list)]
         pydatalog_string_term_list = ', '.join(pydatalog_string_terms)
 
         # create a string representation of the relation in pydatalog and return it
@@ -568,14 +584,15 @@ class PydatalogEngine(RgxlogEngineBase):
         return temp_relation_name
 
     @staticmethod
-    def _assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation):
+    def _assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation):
         """
         even though rgxlog performs typechecking during the semantic checks phase, information extraction functions
         are written by the users and could yield results that are not properly typed.
         this method asserts an information extraction function's output is properly typed
 
         Args:
-            ie_output: an output of an ie function
+            ie_input: the input of the ie function (used in the exception when the type check fails)
+            ie_output: an output of the ie function
             ie_output_schema: the expected schema for ie_output
             ie_relation: the ie relation for which the output was computed (will be used to print an exception
             in case the output is not properly typed)
@@ -594,6 +611,7 @@ class PydatalogEngine(RgxlogEngineBase):
             else:
                 # encountered an output term of an unsupported type
                 raise Exception(f'executing ie relation {ie_relation}\n'
+                                f'with the input {ie_input}\n'
                                 f'failed because one of the outputs had an unsupported term type\n'
                                 f'the output: {ie_output}\n'
                                 f'the invalid term: {output_term}\n'
@@ -606,6 +624,7 @@ class PydatalogEngine(RgxlogEngineBase):
         ie_output_is_properly_typed = ie_output_term_types == list(ie_output_schema)
         if not ie_output_is_properly_typed:
             raise Exception(f'executing ie relation {ie_relation}\n'
+                            f'with the input {ie_input}\n'
                             f'failed because one of the outputs had unexpected term types\n'
                             f'the output: {ie_output}\n'
                             f'the output term types: {ie_output_term_types}\n'
@@ -661,34 +680,43 @@ class GenericExecution(ExecutionBase):
 
         # execute each non computed statement in the term graph
         for term_id in term_ids:
-            if term_graph.get_term_state(term_id) != EvalState.COMPUTED:
-                term_type = term_graph.get_term_type(term_id)
 
-                if term_type == "relation_declaration":
-                    relation_decl = term_graph.get_term_value(term_id)
-                    rgxlog_engine.declare_relation(relation_decl)
+            if term_graph.get_term_state(term_id) is EvalState.COMPUTED:
+                continue
 
-                elif term_type == "add_fact":
-                    fact = term_graph.get_term_value(term_id)
-                    rgxlog_engine.add_fact(fact)
+            # the term is not computed, get its type and compute it accordingly
+            term_type = term_graph.get_term_type(term_id)
 
-                elif term_type == "remove_fact":
-                    fact = term_graph.get_term_value(term_id)
-                    rgxlog_engine.remove_fact(fact)
+            if term_type == "relation_declaration":
+                relation_decl = term_graph.get_term_value(term_id)
+                rgxlog_engine.declare_relation(relation_decl)
 
-                elif term_type == "query":
-                    query = term_graph.get_term_value(term_id)
-                    # currently only print queries are supported
-                    rgxlog_engine.print_query(query)
+            elif term_type == "add_fact":
+                fact = term_graph.get_term_value(term_id)
+                rgxlog_engine.add_fact(fact)
 
-                elif term_type == "rule":
-                    self._execute_rule_aux(term_id)
+            elif term_type == "remove_fact":
+                fact = term_graph.get_term_value(term_id)
+                rgxlog_engine.remove_fact(fact)
 
-                # statement was executed, mark it as "computed"
-                term_graph.set_term_state(term_id, EvalState.COMPUTED)
+            elif term_type == "query":
+                query = term_graph.get_term_value(term_id)
+                # currently only print queries are supported
+                rgxlog_engine.print_query(query)
+
+            elif term_type == "rule":
+                self._execute_rule_aux(term_id)
+
+            # statement was executed, mark it as "computed"
+            term_graph.set_term_state(term_id, EvalState.COMPUTED)
 
     def _execute_rule_aux(self, rule_term_id):
         """
+        rule_term_id is expected to be a root of a subtree in the term graph that represents a single rule
+        the children of rule_term_id node should be:
+        1. a rule head relation node
+        2. a rule body relation list, who's children are all the body relations of the rule
+
         This rule execution assumes that a previous pass reordered the rule body relations in a way that
         each relation's input free variables (should they exist) are bounded by relations to the relation's
         left. lark_passes.ReorderRuleBody is an example for such a pass.
