@@ -634,7 +634,7 @@ class CheckRuleSafety(Visitor_Recursive):
                 # check if all of its input free variable terms of the relation are bound
                 input_free_vars = get_input_free_var_names(relation, relation_type)
                 unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
-                if not unbound_input_free_vars:
+                if len(unbound_input_free_vars) == 0:
                     # all input free variables are bound, mark the relation's output free variables as bound
                     output_free_vars = get_output_free_var_names(relation, relation_type)
                     known_bound_free_vars = known_bound_free_vars.union(output_free_vars)
@@ -725,7 +725,7 @@ class ReorderRuleBody(Visitor_Recursive):
                     # check if all of its input free variable terms are bound
                     input_free_vars = get_input_free_var_names(relation, relation_type)
                     unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
-                    if not unbound_input_free_vars:
+                    if len(unbound_input_free_vars) == 0:
                         # all input free variables are bound, mark the relation as safe by adding it to the
                         # reordered list. also save its type.
                         reordered_relations_list.append(relation)
