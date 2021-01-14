@@ -6,13 +6,13 @@ and an rgxlog engine.
 
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from rgxlog.engine.term_graph import EvalState, TermGraphBase
+from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
 from pyDatalog import pyDatalog
-from rgxlog.engine.datatypes import Span
-from rgxlog.engine.symbol_table import SymbolTableBase
-from rgxlog.engine.ie_functions import IEFunctionData
-from rgxlog.engine.structured_nodes import *
-from rgxlog.engine.general_utils import get_output_free_var_names
+from rgxlog.engine.datatypes.primitive_types import Span
+from rgxlog.engine.state.symbol_table import SymbolTableBase
+from rgxlog.engine.ie_functions.ie_function_base import IEFunctionData
+from rgxlog.engine.datatypes.ast_node_types import *
+from rgxlog.engine.utils.general_utils import get_output_free_var_names
 from tabulate import tabulate
 from itertools import count
 

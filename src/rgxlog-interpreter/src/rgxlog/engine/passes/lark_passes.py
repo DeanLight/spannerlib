@@ -28,9 +28,9 @@ https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 
 from lark import Transformer
 from lark.visitors import Interpreter, Visitor_Recursive
-from rgxlog.engine.datatypes import Span
-from rgxlog.engine.lark_passes_utils import *
-from rgxlog.engine.general_utils import *
+from rgxlog.engine.datatypes.primitive_types import Span
+from rgxlog.engine.utils.lark_passes_utils import *
+from rgxlog.engine.utils.general_utils import *
 
 
 class RemoveTokens(Transformer):

@@ -3,7 +3,7 @@ this module contains the implementations of symbol tables
 """
 
 from abc import ABC, abstractmethod
-import rgxlog.engine.ie_functions as global_ie_functions
+import rgxlog.engine.ie_functions.python_regexes as global_ie_functions
 
 
 class SymbolTableBase(ABC):
@@ -134,7 +134,7 @@ class SymbolTableBase(ABC):
         Args:
             ie_func_name: a name of an information extraction function
 
-        Returns: the ie function's data (see ie_functions.IEFunctionData for more information on
+        Returns: the ie function's data (see ie_function_base.IEFunctionData for more information on
         ie function data instances)
         """
         pass

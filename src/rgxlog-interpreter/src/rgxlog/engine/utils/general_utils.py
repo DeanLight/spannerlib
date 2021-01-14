@@ -2,8 +2,8 @@
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
 
-from rgxlog.engine.structured_nodes import *
-from rgxlog.engine.symbol_table import SymbolTableBase
+from rgxlog.engine.datatypes.ast_node_types import *
+from rgxlog.engine.state.symbol_table import SymbolTableBase
 from typing import Union
 from typing import Callable
 
