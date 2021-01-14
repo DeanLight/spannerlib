@@ -227,15 +227,12 @@ class NetxTermGraph(TermGraphBase):
         Returns: a list of strings that represents the term and its children
         """
         indent_str = '  '
-        children_ids = list(self._graph.successors(term_id))
 
-        if len(children_ids) == 0:
-            # the term node has no children, return its representation
-            return [indent_str * level, self._get_term_string(term_id), '\n']
-
-        # the term node has children, get its representation along with its children's representations
+        # get a representation of the term
         ret = [indent_str * level, self._get_term_string(term_id), '\n']
-        for child_id in children_ids:
+
+        # get a representation of the term's children
+        for child_id in self.get_children(term_id):
             ret += self._pretty_aux(child_id, level + 1)
 
         return ret
