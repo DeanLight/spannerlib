@@ -676,7 +676,7 @@ class GenericExecution(ExecutionBase):
 
         # get the term ids. note that the order of the ids does not actually matter as long as the statements
         # are ordered the same way as they were in the original program
-        term_ids = term_graph.get_dfs_post_ordered_term_id_list()
+        term_ids = term_graph.post_order_dfs()
 
         # execute each non computed statement in the term graph
         for term_id in term_ids:
@@ -786,8 +786,8 @@ class GenericExecution(ExecutionBase):
         rgxlog_engine = self.rgxlog_engine
         symbol_table = self.symbol_table
 
-        rule_head_id, rule_body_id = term_graph.get_first_order_dependencies(rule_term_id)
-        body_relation_id_list = term_graph.get_first_order_dependencies(rule_body_id)
+        rule_head_id, rule_body_id = term_graph.get_children(rule_term_id)
+        body_relation_id_list = term_graph.get_children(rule_body_id)
 
         # compute the rule body relations from left to right and save the intermediate results in
         # 'intermediate_relation'

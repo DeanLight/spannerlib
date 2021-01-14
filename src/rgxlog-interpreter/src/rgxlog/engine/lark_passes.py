@@ -1026,7 +1026,7 @@ class AddStatementsToNetxTermGraph(Interpreter):
             statement_value: will be set as the value attribute of the node.
         """
         new_statement_node = self.term_graph.add_term(type=statement_type, value=statement_value)
-        self.term_graph.add_dependency_edge(self.term_graph.get_root_id(), new_statement_node)
+        self.term_graph.add_edge(self.term_graph.get_root_id(), new_statement_node)
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
@@ -1050,13 +1050,13 @@ class AddStatementsToNetxTermGraph(Interpreter):
         # not contain a value). This is because the rule statement will be defined by the children of this node.
         tg_rule_node = self.term_graph.add_term(type="rule")
         # attach the rule node to the term graph root
-        self.term_graph.add_dependency_edge(self.term_graph.get_root_id(), tg_rule_node)
+        self.term_graph.add_edge(self.term_graph.get_root_id(), tg_rule_node)
 
         # create the rule head node for the term graph.
         # since a rule head is defined by a single relation, this node will contain a value which is that relation.
         tg_head_relation_node = self.term_graph.add_term(type="rule_head", value=rule.head_relation)
         # attach the rule head node to the rule statement node
-        self.term_graph.add_dependency_edge(tg_rule_node, tg_head_relation_node)
+        self.term_graph.add_edge(tg_rule_node, tg_head_relation_node)
 
         # create the rule body node. Unlike the rule head node, we can't define the rule body node
         # with a single value since a rule body can be defined by multiple relations.
@@ -1064,11 +1064,11 @@ class AddStatementsToNetxTermGraph(Interpreter):
         # that is a child of the rule body node.
         tg_rule_body_node = self.term_graph.add_term(type="rule_body")
         # attach the rule body node to the rule statement node
-        self.term_graph.add_dependency_edge(tg_rule_node, tg_rule_body_node)
+        self.term_graph.add_edge(tg_rule_node, tg_rule_body_node)
 
         # add each rule body relation to the graph as a child node of the rule body node.
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             # add the relation to the term graph
             tg_body_relation_node = self.term_graph.add_term(type=relation_type, value=relation)
             # attach the relation to the rule body
-            self.term_graph.add_dependency_edge(tg_rule_body_node, tg_body_relation_node)
+            self.term_graph.add_edge(tg_rule_body_node, tg_body_relation_node)
