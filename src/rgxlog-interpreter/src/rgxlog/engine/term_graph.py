@@ -91,62 +91,24 @@ class TermGraphBase:
         pass
 
     @abstractmethod
-    def get_term_state(self, term_id):
+    def set_term_attribute(self, term_id, attr_name, attr_value):
+        """
+        sets an attribute of a term
+
+        Args:
+            term_id: the id of the term
+            attr_name: the name of the attribute
+            attr_value: the value that will be set for the attribute
+        """
+        pass
+
+    @abstractmethod
+    def get_term_attributes(self, term_id) -> dict:
         """
         Args:
             term_id: a term id
 
-        Returns: the state attribute of the term
-        """
-        pass
-
-    @abstractmethod
-    def get_term_value(self, term_id):
-        """
-        Args:
-            term_id: a term id
-
-        Returns: the value attribute of the term
-        """
-        pass
-
-    @abstractmethod
-    def get_term_type(self, term_id):
-        """
-        Args:
-            term_id: a term id
-
-        Returns: the type attribute of the term
-        """
-        pass
-
-    @abstractmethod
-    def set_term_state(self, term_id, state):
-        """
-        sets the state attribute of the term
-        Args:
-            term_id: the term id
-            state: the state attribute to be set
-        """
-        pass
-
-    @abstractmethod
-    def set_term_value(self, term_id, value):
-        """
-        sets the value attribute of the term
-        Args:
-            term_id: the term id
-            value: the value attribute to be set
-        """
-        pass
-
-    @abstractmethod
-    def set_term_type(self, term_id, term_type):
-        """
-        sets the type attribute of the term
-        Args:
-            term_id: the term id
-            term_type: the type attribute to be set
+        Returns: a dict containing the attributes of the term
         """
         pass
 
@@ -244,6 +206,12 @@ class NetxTermGraph(TermGraphBase):
 
     def set_term_type(self, term_id, term_type):
         self._graph.nodes[term_id]['type'] = term_type
+
+    def set_term_attribute(self, term_id, attr_name, attr_value):
+        self._graph.nodes[term_id][attr_name] = attr_value
+
+    def get_term_attributes(self, term_id) -> dict:
+        return self._graph.nodes[term_id].copy()
 
     def _get_term_string(self, term_id):
         """

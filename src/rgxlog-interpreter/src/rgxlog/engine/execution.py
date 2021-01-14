@@ -681,26 +681,28 @@ class GenericExecution(ExecutionBase):
         # execute each non computed statement in the term graph
         for term_id in term_ids:
 
-            if term_graph.get_term_state(term_id) is EvalState.COMPUTED:
+            term_attrs = term_graph.get_term_attributes(term_id)
+
+            if term_attrs['state'] is EvalState.COMPUTED:
                 continue
 
             # the term is not computed, get its type and compute it accordingly
-            term_type = term_graph.get_term_type(term_id)
+            term_type = term_attrs['type']
 
             if term_type == "relation_declaration":
-                relation_decl = term_graph.get_term_value(term_id)
+                relation_decl = term_attrs['value']
                 rgxlog_engine.declare_relation(relation_decl)
 
             elif term_type == "add_fact":
-                fact = term_graph.get_term_value(term_id)
+                fact = term_attrs['value']
                 rgxlog_engine.add_fact(fact)
 
             elif term_type == "remove_fact":
-                fact = term_graph.get_term_value(term_id)
+                fact = term_attrs['value']
                 rgxlog_engine.remove_fact(fact)
 
             elif term_type == "query":
-                query = term_graph.get_term_value(term_id)
+                query = term_attrs['value']
                 # currently only print queries are supported
                 rgxlog_engine.print_query(query)
 
@@ -708,7 +710,7 @@ class GenericExecution(ExecutionBase):
                 self._execute_rule_aux(term_id)
 
             # statement was executed, mark it as "computed"
-            term_graph.set_term_state(term_id, EvalState.COMPUTED)
+            term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
 
     def _execute_rule_aux(self, rule_term_id):
         """
@@ -793,8 +795,11 @@ class GenericExecution(ExecutionBase):
         # 'intermediate_relation'
         intermediate_relation = None
         for relation_id in body_relation_id_list:
-            relation = term_graph.get_term_value(relation_id)
-            relation_type = term_graph.get_term_type(relation_id)
+
+            relation_term_attrs = term_graph.get_term_attributes(relation_id)
+
+            relation = relation_term_attrs['value']
+            relation_type = relation_term_attrs['type']
 
             # compute the relation in the engine if needed
             if relation_type == 'relation':
@@ -809,7 +814,7 @@ class GenericExecution(ExecutionBase):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
             # save the resulting relation in the term graph
-            term_graph.set_term_value(relation_id, result_relation)
+            term_graph.set_term_attribute(relation_id, 'value', result_relation)
 
             # join the resulting relation with the intermediate relation
             if intermediate_relation is None:
@@ -819,7 +824,8 @@ class GenericExecution(ExecutionBase):
                     [intermediate_relation, result_relation])
 
         # declare the rule head in the rgxlog engine
-        rule_head_relation = term_graph.get_term_value(rule_head_id)
+        rule_head_attrs = term_graph.get_term_attributes(rule_head_id)
+        rule_head_relation = rule_head_attrs['value']
         rule_head_declaration = RelationDeclaration(
             rule_head_relation.relation_name, symbol_table.get_relation_schema(rule_head_relation.relation_name))
         rgxlog_engine.declare_relation(rule_head_declaration)
