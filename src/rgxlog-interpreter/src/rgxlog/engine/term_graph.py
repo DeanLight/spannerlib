@@ -189,24 +189,6 @@ class NetxTermGraph(TermGraphBase):
     def get_children(self, term_id):
         return self._graph.successors(term_id)
 
-    def get_term_state(self, term_id):
-        return self._graph.nodes[term_id]['state']
-
-    def get_term_value(self, term_id):
-        return self._graph.nodes[term_id]['value']
-
-    def get_term_type(self, term_id):
-        return self._graph.nodes[term_id]['type']
-
-    def set_term_state(self, term_id, state):
-        self._graph.nodes[term_id]['state'] = state
-
-    def set_term_value(self, term_id, value):
-        self._graph.nodes[term_id]['value'] = value
-
-    def set_term_type(self, term_id, term_type):
-        self._graph.nodes[term_id]['type'] = term_type
-
     def set_term_attribute(self, term_id, attr_name, attr_value):
         self._graph.nodes[term_id][attr_name] = attr_value
 
@@ -222,20 +204,16 @@ class NetxTermGraph(TermGraphBase):
         Returns: a string representation of the term
         """
 
-        # get a string of the term state
-        term_state_string = str(self.get_term_state(term_id))
-
-        # get the term type string
-        term_type_string = self.get_term_type(term_id)
+        term_attrs = self.get_term_attributes(term_id)
 
         # get a string of the term's value (if it exists)
-        if 'value' in self._graph.nodes[term_id]:
-            term_value_string = f": {self._graph.nodes[term_id]['value']}"
+        if 'value' in term_attrs:
+            term_value_string = f": {term_attrs['value']}"
         else:
             term_value_string = ''
 
         # create a string representation of the term and return it
-        term_string = f'({term_id}) ({term_state_string}) {term_type_string}{term_value_string}'
+        term_string = f"({term_id}) ({term_attrs['state']}) {term_attrs['type']}{term_value_string}"
         return term_string
 
     def _pretty_aux(self, term_id, level):

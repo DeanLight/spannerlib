@@ -13,8 +13,8 @@ from rgxlog.engine.symbol_table import SymbolTableBase
 from rgxlog.engine.ie_functions import IEFunctionData
 from rgxlog.engine.structured_nodes import *
 from rgxlog.engine.general_utils import get_output_free_var_names
-from itertools import chain
 from tabulate import tabulate
+from itertools import count
 
 
 class RgxlogEngineBase(ABC):
@@ -161,7 +161,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def join_relations(self, relation_list):
+    def join_relations(self, relation_list, name=""):
         """
         perform a join between all of the relations in the relation list and saves the result to a new relation.
         the results of the join are filtered so they only include columns in the relations that were defined by
@@ -180,6 +180,7 @@ class RgxlogEngineBase(ABC):
 
         Args:
             relation_list: a list of normal relations
+            name: the name for the joined relation (to be used as a part of a temporary relation name)
 
         Returns: a new relation as described above
         """
@@ -208,7 +209,7 @@ class PydatalogEngine(RgxlogEngineBase):
             debug: print the commands that are loaded into pyDatalog
         """
         super().__init__()
-        self.next_temp_relation_idx = 0
+        self.temp_relation_id_counter = count()
         self.debug = debug
 
     def declare_relation(self, relation_decl: RelationDeclaration):
@@ -391,15 +392,16 @@ class PydatalogEngine(RgxlogEngineBase):
 
         Returns: a normal relation that contains all of the resulting tuples in the rgxlog engine
         """
+        ie_relation_name = ie_relation.relation_name
 
         # create the input relation for the ie function, and also declare it inside pyDatalog
         input_relation_arity = len(ie_relation.input_term_list)
-        input_relation_name = self._create_new_temp_relation(input_relation_arity)
+        input_relation_name = self._create_new_temp_relation(input_relation_arity, name=f'{ie_relation_name}_input')
         input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
 
         # create the output relation for the ie function, and also declare it inside pyDatalog
         output_relation_arity = len(ie_relation.output_term_list)
-        output_relation_name = self._create_new_temp_relation(output_relation_arity)
+        output_relation_name = self._create_new_temp_relation(output_relation_arity, name=f'{ie_relation_name}_output')
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         # define the ie input relation
@@ -443,10 +445,10 @@ class PydatalogEngine(RgxlogEngineBase):
                 self.add_fact(output_fact)
 
         # create and return the result relation. it's a relation that is the join of the input and output relations
-        result_relation = self.join_relations([input_relation, output_relation])
+        result_relation = self.join_relations([input_relation, output_relation], name=ie_relation_name)
         return result_relation
 
-    def join_relations(self, relation_list: List[Relation]):
+    def join_relations(self, relation_list: List[Relation], name=""):
         """
         perform a join between all of the relations in the relation list and saves the result to a new relation.
         the results of the join are filtered so they only include columns in the relations that were defined by
@@ -457,6 +459,7 @@ class PydatalogEngine(RgxlogEngineBase):
 
         Args:
             relation_list: a list of normal relations
+            name: a name for the joined relation (will be used as a part of a temporary relation name)
 
         Returns: a new relation as described above
         """
@@ -471,7 +474,7 @@ class PydatalogEngine(RgxlogEngineBase):
         joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
 
         # declare the joined relation in pyDatalog and get its name
-        joined_relation_name = self._create_new_temp_relation(joined_relation_arity)
+        joined_relation_name = self._create_new_temp_relation(joined_relation_arity, name=name)
 
         # created a structured node of the joined relation
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
@@ -558,20 +561,26 @@ class PydatalogEngine(RgxlogEngineBase):
         all_relation_tuples = self.query(query)
         return all_relation_tuples
 
-    def _create_new_temp_relation(self, arity):
+    def _create_new_temp_relation(self, arity, name=""):
         """
         declares a new temporary relation with the requested arity in pyDatalog
         note that the relation's schema is not needed as there's no typechecking in pyDatalog
 
         Args:
             arity: the temporary relation's arity (needed for declaring the new relation inside pyDatalog)
+            name: will be used as a part of the temporary relation's name. for example for the name 'RGX',
+            the temporary relation's name could be __rgxlog__RGX_0
 
         Returns: the new temporary relation's name
         """
 
+        if len(name) != 0:
+            # if the temporary relation should have a name, add an underscore to separate the name from the id
+            name = f'{name}_'
+
         # create the name of the new temporary relation
-        temp_relation_name = f'__rgxlog__{self.next_temp_relation_idx}'
-        self.next_temp_relation_idx += 1
+        temp_relation_id = next(self.temp_relation_id_counter)
+        temp_relation_name = f'__rgxlog__{name}{temp_relation_id}'
 
         # in pyDatalog there's no typechecking so we just need to make sure that the schema has the correct arity
         temp_relation_schema = [DataTypes.free_var_name] * arity
@@ -821,7 +830,7 @@ class GenericExecution(ExecutionBase):
                 intermediate_relation = result_relation
             else:
                 intermediate_relation = rgxlog_engine.join_relations(
-                    [intermediate_relation, result_relation])
+                    [intermediate_relation, result_relation], name="temp_join")
 
         # declare the rule head in the rgxlog engine
         rule_head_attrs = term_graph.get_term_attributes(rule_head_id)
