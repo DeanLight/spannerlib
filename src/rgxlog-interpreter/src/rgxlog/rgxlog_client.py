@@ -6,7 +6,8 @@ from multiprocessing.connection import Client as Client_
 from multiprocessing.context import Process
 from time import sleep
 
-from rgxlog.server.remote_listener import start_listener
+from rgxlog.engine.message_definitions import Request
+from rgxlog.server.server import start_server
 from rgxlog.system_configuration import system_configuration
 
 
@@ -84,7 +85,7 @@ class Client:
                     logging.info(f'client retrying connection')
 
         if self._connection is None:
-            logging.error('client could not connect to listener')
+            logging.error('client could not connect to server')
         else:
             logging.info(f'client connected to {self._remote_ip}:{self._remote_port}')
             self.connected = True
@@ -115,26 +116,102 @@ class Client:
         if not query:
             raise ValueError('empty query!')
 
+        query_message = {
+            'msg_type': Request.QUERY,
+            'data': query
+        }
+
         try:
-            self._connection.send(query)
+            self._connection.send(query_message)
             reply = self._connection.recv()
         except EOFError:
             logging.error('client connection closed unexpectedly')
-            reply = None
+            reply = {'data': None}
 
-        return reply
+        return reply['data']
+
+    def register(self, ie_function_name):
+        """
+        Register the ie name for future usage
+        :return: True for successful registration, false otherwise
+        """
+        if not self.connected:
+            raise ConnectionError
+        if not ie_function_name or type(ie_function_name) is not str:
+            raise ValueError('invalid ie function!')
+
+        registration_message = {
+            'msg_type': Request.IE_REGISTRATION,
+            'data': ie_function_name
+        }
+
+        try:
+            self._connection.send(registration_message)
+            reply = self._connection.recv()
+        except EOFError:
+            logging.error('client connection closed unexpectedly')
+            reply = {'data': None}
+
+        return reply['data']
+
+    def get_pass_stack(self):
+        """
+        Fetches the current pass stack
+        :return: a list of passes
+        """
+        if not self.connected:
+            raise ConnectionError
+
+        request_stack_message = {
+            'message_type': Request.CURRENT_STACK,
+        }
+
+        try:
+            self._connection.send(request_stack_message)
+            reply = self._connection.recv()
+        except EOFError:
+            logging.error('client connection closed unexpectedly')
+            reply = {'data': None}
+
+        return reply['data']
+
+    def set_pass_stack(self, user_stack):
+        """
+        Sets the current pass stack
+        """
+        if not self.connected:
+            raise ConnectionError
+        if type(user_stack) is not list:
+            raise ValueError('user stack should be a list of pass names (strings)')
+        for pass_ in user_stack:
+            if type(pass_) is not str:
+                raise ValueError('user stack should be a list of pass names (strings)')
+
+        request_set_stack_message = {
+            'message_type': Request.SET_STACK,
+            'data': user_stack
+        }
+
+        try:
+            self._connection.send(request_set_stack_message)
+            reply = self._connection.recv()
+        except EOFError:
+            logging.error('client connection closed unexpectedly')
+            reply = {'data': None}
+
+        return reply['data']
 
     def _run_local_server(self):
         """
         Starts the server locally
         """
         if self._remote_port:
-            listener_args = ('localhost', self._remote_port, self._taken_port)
+            server_args = ('localhost', self._remote_port, self._taken_port)
         else:
-            listener_args = ('localhost', None, self._taken_port)
+            server_args = ('localhost', None, self._taken_port)
 
-        self._listener_process = Process(target=start_listener, args=listener_args)
-        self._listener_process.start()
+        self._server_process = Process(target=start_server, args=server_args)
+        self._server_process.start()
         self._remote_port = self._taken_port.get()
 
         if self._remote_port is None:
@@ -144,7 +221,7 @@ class Client:
         """
         Stops the local server
         """
-        self._listener_process.join()
+        self._server_process.join()
 
     def _start_remote_debug_server(self):
         """
@@ -166,8 +243,7 @@ class Client:
 
 
 if __name__ == '__main__':
-    from rgxlog import magic_client
-
-    result = magic_client.execute('parent("bob")')
+    magic_client = Client()
+    result = magic_client.execute(report)
     magic_client.disconnect()
     print(result)
