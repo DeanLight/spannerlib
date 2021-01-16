@@ -1,3 +1,4 @@
+
 # Spanner Workbench
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
@@ -25,7 +26,8 @@
     - [regex evaluation](#regex-evaluation)
     - [garbage collection](#garbage-collection)
   - [Version 0.1](#version-01)
-  - [Engine Overview](#engine-overview)
+	  - [Session Overview](#session-overview)
+		  - [Lexing And Parsing](#lexing-and-parsing)
 
 <!-- /code_chunk_output -->
 
@@ -297,7 +299,28 @@ For 0.1 Lets start with something really simple
 * If a node has not been reachable for over `k` commands, delete it from the memory heap
 
 ## version 0.1
-test
+progress and overview of version 0.1 implementation will be shown here
 
-### engine overview
-test
+### session overview
+
+Let's begin with the communication diagram of the session when receiving a query:
+
+TODO add it here
+
+As the graph shows, the session:
+
+1. Gets a query as an input.
+2. Using lark's lexer and parser, performs the lexical analysis and parsing on the query.
+3. Separates the AST received from the previous stage into standalone statements.
+4. Runs the semantic checks, optimization and execution passes on each statement.
+5. Returns the results object. In the current implementation, the results object is a string that contains the results of the queries in the program.
+
+All of the relevant files to the session can be found at the rgxlog.engine folder. The session is implemented at session.py
+
+Below you can find more details about each step of the implementation of the session
+
+#### lexing and parsing
+
+The lexical analyses and parsing is done using lark's lexer and parser.
+The grammar file 
+
