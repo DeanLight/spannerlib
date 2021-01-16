@@ -87,7 +87,7 @@ class Session:
         if msg_type == Request.QUERY:
             return self._run_query(data)
         elif msg_type == Request.IE_REGISTRATION:
-            return self._register_ie_function(data)
+            return self.register_ie_function(data)
         elif msg_type == Request.CURRENT_STACK:
             return self._get_pass_stack()
         elif msg_type == Request.SET_STACK:
@@ -119,7 +119,7 @@ class Session:
         result = self._execution.flush_prints_buffer()
         return {'msg_type': Response.SUCCESS, 'data': result}
 
-    def _register_ie_function(self, ie_function_name):
+    def register_ie_function(self, ie_function_name):
         """
         registers an ie function for future usage
         Args:
