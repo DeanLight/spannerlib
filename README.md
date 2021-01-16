@@ -502,6 +502,17 @@ If you went through the lark passes implementations, you may have noticed the '@
 
 This is useful in case you want to change the grammar. See the proposed method for changing the grammar at TODO
 
+##### state
+
+files that are used to save the state of the engine can be found at the folder TODO
+
+###### term_graph.py
+implementations of the term graph
+###### symbol_table.py
+implementations of the symbol table   
+
+
+
 
 
 
