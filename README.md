@@ -24,6 +24,8 @@
         - [version considerations](#version-considerations-2)
     - [regex evaluation](#regex-evaluation)
     - [garbage collection](#garbage-collection)
+  - [Version 0.1](#version-01)
+  - [Engine Overview](#engine-overview)
 
 <!-- /code_chunk_output -->
 
@@ -293,3 +295,9 @@ For 0.0.5 lets just leave the garbage in.
 For 0.1 Lets start with something really simple
 * At the end of each interpretation iteration, see which items in the memory heap are not reachable from the set of nodes pointed to by the variables in the term tree.
 * If a node has not been reachable for over `k` commands, delete it from the memory heap
+
+## version 0.1
+test
+
+### engine overview
+test
