@@ -2,13 +2,13 @@
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
 
-from rgxlog.engine.structured_nodes import *
-from rgxlog.engine.symbol_table import SymbolTableBase
+from rgxlog.engine.datatypes.ast_node_types import *
+from rgxlog.engine.state.symbol_table import SymbolTableBase
 from typing import Union
 from typing import Callable
 
 
-def fixed_point(start, step: Callable, distance: Callable, thresh):
+def fixed_point(start, step: Callable, distance: Callable, thresh=0):
     """
     implementation of a generic fixed point algorithm - an algorithm that takes a step function and runs it until
     some distance is zero or below a threshold
@@ -90,15 +90,15 @@ def check_properly_typed_term_list(term_list: list, type_list: list,
 
     # perform the type check
     for term, term_type, correct_type in zip(term_list, type_list, correct_type_list):
+
         if term_type is DataTypes.var_name:
-            # current term is a variable, get its type from the symbol table and check if it is correct
-            var_type = symbol_table.get_variable_type(term)
-            if var_type != correct_type:
-                # the variable is not properly typed, the type check failed
-                return False
-        elif term_type is not DataTypes.free_var_name and term_type != correct_type:
+            # current term is a variable, get its type from the symbol table
+            term_type = symbol_table.get_variable_type(term)
+
+        if term_type is not DataTypes.free_var_name and term_type != correct_type:
             # the term is a literal that is not properly typed, the type check failed
             return False
+
     # all variables are properly typed, the type check succeeded
     return True
 

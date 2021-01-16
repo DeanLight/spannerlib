@@ -6,15 +6,15 @@ and an rgxlog engine.
 
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from rgxlog.engine.term_graph import EvalState, TermGraphBase
+from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
 from pyDatalog import pyDatalog
-from rgxlog.engine.datatypes import Span
-from rgxlog.engine.symbol_table import SymbolTableBase
-from rgxlog.engine.ie_functions import IEFunctionData
-from rgxlog.engine.structured_nodes import *
-from rgxlog.engine.general_utils import get_output_free_var_names
-from itertools import chain
+from rgxlog.engine.datatypes.primitive_types import Span
+from rgxlog.engine.state.symbol_table import SymbolTableBase
+from rgxlog.engine.ie_functions.ie_function_base import IEFunctionData
+from rgxlog.engine.datatypes.ast_node_types import *
+from rgxlog.engine.utils.general_utils import get_output_free_var_names
 from tabulate import tabulate
+from itertools import count
 
 
 class RgxlogEngineBase(ABC):
@@ -161,7 +161,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def join_relations(self, relation_list):
+    def join_relations(self, relation_list, name=""):
         """
         perform a join between all of the relations in the relation list and saves the result to a new relation.
         the results of the join are filtered so they only include columns in the relations that were defined by
@@ -180,6 +180,7 @@ class RgxlogEngineBase(ABC):
 
         Args:
             relation_list: a list of normal relations
+            name: the name for the joined relation (to be used as a part of a temporary relation name)
 
         Returns: a new relation as described above
         """
@@ -208,7 +209,7 @@ class PydatalogEngine(RgxlogEngineBase):
             debug: print the commands that are loaded into pyDatalog
         """
         super().__init__()
-        self.next_temp_relation_idx = 0
+        self.temp_relation_id_counter = count()
         self.debug = debug
 
     def declare_relation(self, relation_decl: RelationDeclaration):
@@ -236,7 +237,7 @@ class PydatalogEngine(RgxlogEngineBase):
         temp_fact_string = f'{relation_name}({decl_terms_string})'
 
         # create the string that we will use to declare the relation (add and remove the same fact)
-        relation_decl_statement = f'+{temp_fact_string}\n' \
+        relation_decl_statement = f'+{temp_fact_string}\n' + \
                                   f'-{temp_fact_string}'
 
         # declare the relation in pyDatalog
@@ -306,7 +307,6 @@ class PydatalogEngine(RgxlogEngineBase):
             # convert the resulting tuples to a more organized format
             formatted_results = []
             for result in query_results:
-
                 # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
                 # they will be printed as a span instead of a tuple
                 converted_span_result = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
@@ -392,15 +392,16 @@ class PydatalogEngine(RgxlogEngineBase):
 
         Returns: a normal relation that contains all of the resulting tuples in the rgxlog engine
         """
+        ie_relation_name = ie_relation.relation_name
 
         # create the input relation for the ie function, and also declare it inside pyDatalog
         input_relation_arity = len(ie_relation.input_term_list)
-        input_relation_name = self._create_new_temp_relation(input_relation_arity)
+        input_relation_name = self._create_new_temp_relation(input_relation_arity, name=f'{ie_relation_name}_input')
         input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
 
         # create the output relation for the ie function, and also declare it inside pyDatalog
         output_relation_arity = len(ie_relation.output_term_list)
-        output_relation_name = self._create_new_temp_relation(output_relation_arity)
+        output_relation_name = self._create_new_temp_relation(output_relation_arity, name=f'{ie_relation_name}_output')
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         # define the ie input relation
@@ -417,35 +418,37 @@ class PydatalogEngine(RgxlogEngineBase):
         # get a list of inputs to the ie function.
         ie_inputs = self._get_all_relation_tuples(input_relation)
 
-        # get all of the outputs of the ie function
-        ie_output_lists = [ie_func_data.ie_function(*ie_input) for ie_input in ie_inputs]
-        ie_outputs = list(chain(*ie_output_lists))
-
         # get the schema for the ie outputs
         ie_output_schema = ie_func_data.get_output_types(output_relation_arity)
 
-        # process each ie output and add it to the output relation
-        for ie_output in ie_outputs:
-            ie_output = list(ie_output)
+        # run the ie function on each input and process the outputs
+        for ie_input in ie_inputs:
 
-            # assert the the ie output is properly typed
-            self._assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation)
+            # run the ie function on the input, resulting in a list of tuples
+            ie_outputs = ie_func_data.ie_function(*ie_input)
 
-            # the user is allowed to represent a span in an ie output as a tuple of length 2
-            # convert said tuples to spans
-            ie_output = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
-                         else term
-                         for term in ie_output]
+            # process each ie output and add it to the output relation
+            for ie_output in ie_outputs:
+                ie_output = list(ie_output)
 
-            # add the output as a fact to the output relation
-            output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
-            self.add_fact(output_fact)
+                # assert the the ie output is properly typed
+                self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)
+
+                # the user is allowed to represent a span in an ie output as a tuple of length 2
+                # convert said tuples to spans
+                ie_output = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
+                             else term
+                             for term in ie_output]
+
+                # add the output as a fact to the output relation
+                output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
+                self.add_fact(output_fact)
 
         # create and return the result relation. it's a relation that is the join of the input and output relations
-        result_relation = self.join_relations([input_relation, output_relation])
+        result_relation = self.join_relations([input_relation, output_relation], name=ie_relation_name)
         return result_relation
 
-    def join_relations(self, relation_list: List[Relation]):
+    def join_relations(self, relation_list: List[Relation], name=""):
         """
         perform a join between all of the relations in the relation list and saves the result to a new relation.
         the results of the join are filtered so they only include columns in the relations that were defined by
@@ -456,6 +459,7 @@ class PydatalogEngine(RgxlogEngineBase):
 
         Args:
             relation_list: a list of normal relations
+            name: a name for the joined relation (will be used as a part of a temporary relation name)
 
         Returns: a new relation as described above
         """
@@ -470,7 +474,7 @@ class PydatalogEngine(RgxlogEngineBase):
         joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
 
         # declare the joined relation in pyDatalog and get its name
-        joined_relation_name = self._create_new_temp_relation(joined_relation_arity)
+        joined_relation_name = self._create_new_temp_relation(joined_relation_arity, name=name)
 
         # created a structured node of the joined relation
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
@@ -479,6 +483,24 @@ class PydatalogEngine(RgxlogEngineBase):
         self.add_rule(joined_relation, relation_list)
 
         return joined_relation
+
+    def _get_term_string(self, term, term_type):
+        """
+        the pyDatalog execution engine receives instructions via strings.
+        return a string representation of a term in pyDatalog.
+        Args:
+            term: a term of any type
+            term_type: the type of the term
+
+        Returns: a string representation of the term in pyDatalog
+        """
+        if term_type is DataTypes.string:
+            # add quotes to strings to avoid pyDatalog thinking a string is a variable
+            return f"\"{term}\""
+        elif term_type is DataTypes.span:
+            return self._get_span_string(term)
+        else:
+            return str(term)
 
     @staticmethod
     def _get_span_string(span: Span):
@@ -509,11 +531,8 @@ class PydatalogEngine(RgxlogEngineBase):
         """
 
         # create a string representation of the relation's term list in pyDatalog
-        pydatalog_string_terms = \
-            [f"\"{term}\"" if term_type is DataTypes.string
-             else self._get_span_string(term) if term_type is DataTypes.span
-             else str(term)
-             for term, term_type in zip(relation.term_list, relation.type_list)]
+        pydatalog_string_terms = [self._get_term_string(term, term_type)
+                                  for term, term_type in zip(relation.term_list, relation.type_list)]
         pydatalog_string_term_list = ', '.join(pydatalog_string_terms)
 
         # create a string representation of the relation in pydatalog and return it
@@ -542,20 +561,26 @@ class PydatalogEngine(RgxlogEngineBase):
         all_relation_tuples = self.query(query)
         return all_relation_tuples
 
-    def _create_new_temp_relation(self, arity):
+    def _create_new_temp_relation(self, arity, name=""):
         """
         declares a new temporary relation with the requested arity in pyDatalog
         note that the relation's schema is not needed as there's no typechecking in pyDatalog
 
         Args:
             arity: the temporary relation's arity (needed for declaring the new relation inside pyDatalog)
+            name: will be used as a part of the temporary relation's name. for example for the name 'RGX',
+            the temporary relation's name could be __rgxlog__RGX_0
 
         Returns: the new temporary relation's name
         """
 
+        if len(name) != 0:
+            # if the temporary relation should have a name, add an underscore to separate the name from the id
+            name = f'{name}_'
+
         # create the name of the new temporary relation
-        temp_relation_name = f'__rgxlog__{self.next_temp_relation_idx}'
-        self.next_temp_relation_idx += 1
+        temp_relation_id = next(self.temp_relation_id_counter)
+        temp_relation_name = f'__rgxlog__{name}{temp_relation_id}'
 
         # in pyDatalog there's no typechecking so we just need to make sure that the schema has the correct arity
         temp_relation_schema = [DataTypes.free_var_name] * arity
@@ -568,14 +593,15 @@ class PydatalogEngine(RgxlogEngineBase):
         return temp_relation_name
 
     @staticmethod
-    def _assert_ie_output_properly_typed(ie_output, ie_output_schema, ie_relation):
+    def _assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation):
         """
         even though rgxlog performs typechecking during the semantic checks phase, information extraction functions
         are written by the users and could yield results that are not properly typed.
         this method asserts an information extraction function's output is properly typed
 
         Args:
-            ie_output: an output of an ie function
+            ie_input: the input of the ie function (used in the exception when the type check fails)
+            ie_output: an output of the ie function
             ie_output_schema: the expected schema for ie_output
             ie_relation: the ie relation for which the output was computed (will be used to print an exception
             in case the output is not properly typed)
@@ -594,6 +620,7 @@ class PydatalogEngine(RgxlogEngineBase):
             else:
                 # encountered an output term of an unsupported type
                 raise Exception(f'executing ie relation {ie_relation}\n'
+                                f'with the input {ie_input}\n'
                                 f'failed because one of the outputs had an unsupported term type\n'
                                 f'the output: {ie_output}\n'
                                 f'the invalid term: {output_term}\n'
@@ -606,6 +633,7 @@ class PydatalogEngine(RgxlogEngineBase):
         ie_output_is_properly_typed = ie_output_term_types == list(ie_output_schema)
         if not ie_output_is_properly_typed:
             raise Exception(f'executing ie relation {ie_relation}\n'
+                            f'with the input {ie_input}\n'
                             f'failed because one of the outputs had unexpected term types\n'
                             f'the output: {ie_output}\n'
                             f'the output term types: {ie_output_term_types}\n'
@@ -657,38 +685,49 @@ class GenericExecution(ExecutionBase):
 
         # get the term ids. note that the order of the ids does not actually matter as long as the statements
         # are ordered the same way as they were in the original program
-        term_ids = term_graph.get_dfs_post_ordered_term_id_list()
+        term_ids = term_graph.post_order_dfs()
 
         # execute each non computed statement in the term graph
         for term_id in term_ids:
-            if term_graph.get_term_state(term_id) != EvalState.COMPUTED:
-                term_type = term_graph.get_term_type(term_id)
 
-                if term_type == "relation_declaration":
-                    relation_decl = term_graph.get_term_value(term_id)
-                    rgxlog_engine.declare_relation(relation_decl)
+            term_attrs = term_graph.get_term_attributes(term_id)
 
-                elif term_type == "add_fact":
-                    fact = term_graph.get_term_value(term_id)
-                    rgxlog_engine.add_fact(fact)
+            if term_attrs['state'] is EvalState.COMPUTED:
+                continue
 
-                elif term_type == "remove_fact":
-                    fact = term_graph.get_term_value(term_id)
-                    rgxlog_engine.remove_fact(fact)
+            # the term is not computed, get its type and compute it accordingly
+            term_type = term_attrs['type']
 
-                elif term_type == "query":
-                    query = term_graph.get_term_value(term_id)
-                    # currently only print queries are supported
-                    rgxlog_engine.print_query(query)
+            if term_type == "relation_declaration":
+                relation_decl = term_attrs['value']
+                rgxlog_engine.declare_relation(relation_decl)
 
-                elif term_type == "rule":
-                    self._execute_rule_aux(term_id)
+            elif term_type == "add_fact":
+                fact = term_attrs['value']
+                rgxlog_engine.add_fact(fact)
 
-                # statement was executed, mark it as "computed"
-                term_graph.set_term_state(term_id, EvalState.COMPUTED)
+            elif term_type == "remove_fact":
+                fact = term_attrs['value']
+                rgxlog_engine.remove_fact(fact)
+
+            elif term_type == "query":
+                query = term_attrs['value']
+                # currently only print queries are supported
+                rgxlog_engine.print_query(query)
+
+            elif term_type == "rule":
+                self._execute_rule_aux(term_id)
+
+            # statement was executed, mark it as "computed"
+            term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
 
     def _execute_rule_aux(self, rule_term_id):
         """
+        rule_term_id is expected to be a root of a subtree in the term graph that represents a single rule
+        the children of rule_term_id node should be:
+        1. a rule head relation node
+        2. a rule body relation list, who's children are all the body relations of the rule
+
         This rule execution assumes that a previous pass reordered the rule body relations in a way that
         each relation's input free variables (should they exist) are bounded by relations to the relation's
         left. lark_passes.ReorderRuleBody is an example for such a pass.
@@ -758,15 +797,18 @@ class GenericExecution(ExecutionBase):
         rgxlog_engine = self.rgxlog_engine
         symbol_table = self.symbol_table
 
-        rule_head_id, rule_body_id = term_graph.get_first_order_dependencies(rule_term_id)
-        body_relation_id_list = term_graph.get_first_order_dependencies(rule_body_id)
+        rule_head_id, rule_body_id = term_graph.get_children(rule_term_id)
+        body_relation_id_list = term_graph.get_children(rule_body_id)
 
         # compute the rule body relations from left to right and save the intermediate results in
         # 'intermediate_relation'
         intermediate_relation = None
         for relation_id in body_relation_id_list:
-            relation = term_graph.get_term_value(relation_id)
-            relation_type = term_graph.get_term_type(relation_id)
+
+            relation_term_attrs = term_graph.get_term_attributes(relation_id)
+
+            relation = relation_term_attrs['value']
+            relation_type = relation_term_attrs['type']
 
             # compute the relation in the engine if needed
             if relation_type == 'relation':
@@ -781,17 +823,18 @@ class GenericExecution(ExecutionBase):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
             # save the resulting relation in the term graph
-            term_graph.set_term_value(relation_id, result_relation)
+            term_graph.set_term_attribute(relation_id, 'value', result_relation)
 
             # join the resulting relation with the intermediate relation
             if intermediate_relation is None:
                 intermediate_relation = result_relation
             else:
                 intermediate_relation = rgxlog_engine.join_relations(
-                    [intermediate_relation, result_relation])
+                    [intermediate_relation, result_relation], name="temp_join")
 
         # declare the rule head in the rgxlog engine
-        rule_head_relation = term_graph.get_term_value(rule_head_id)
+        rule_head_attrs = term_graph.get_term_attributes(rule_head_id)
+        rule_head_relation = rule_head_attrs['value']
         rule_head_declaration = RelationDeclaration(
             rule_head_relation.relation_name, symbol_table.get_relation_schema(rule_head_relation.relation_name))
         rgxlog_engine.declare_relation(rule_head_declaration)

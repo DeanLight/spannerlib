@@ -1,21 +1,19 @@
 import os
-import sys
-import io
 
 import rgxlog
 from lark.lark import Lark
 from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
 from rgxlog.engine import execution
 from rgxlog.engine.execution import GenericExecution, ExecutionBase
-from rgxlog.engine.lark_passes import RemoveTokens, FixStrings, CheckReservedRelationNames, \
+from rgxlog.engine.passes.lark_passes import RemoveTokens, FixStrings, CheckReservedRelationNames, \
     ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes, CheckDefinedReferencedVariables, \
     CheckForRelationRedefinitions, CheckReferencedRelationsExistenceAndArity, \
     CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety, TypeCheckAssignments, TypeCheckRelations, \
     SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences, ExecuteAssignments, \
     AddStatementsToNetxTermGraph
 from rgxlog.engine.message_definitions import Request, Response
-from rgxlog.engine.symbol_table import SymbolTable
-from rgxlog.engine.term_graph import NetxTermGraph
+from rgxlog.engine.state.symbol_table import SymbolTable
+from rgxlog.engine.state.term_graph import NetxTermGraph
 
 
 class Session:

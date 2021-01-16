@@ -17,8 +17,9 @@ matches one of the lists for this type of node in this structure.
 note that some nodes in rgxlog can have varying lengths of children lists and therefore are not included in this
 structure (e.g. term_list).
 
-a proposed strategy for making changes to the rgxlog grammar:
-
+##############
+#a proposed strategy for making changes to the rgxlog grammar:
+##############
 1. in your code, wherever you expect to receive an ast rgxlog node that still retains its original structure, 
 assert that it has the correct structure using this dict.
 

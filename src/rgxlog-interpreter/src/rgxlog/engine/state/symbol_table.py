@@ -3,7 +3,7 @@ this module contains the implementations of symbol tables
 """
 
 from abc import ABC, abstractmethod
-import rgxlog.engine.ie_functions as global_ie_functions
+import rgxlog.engine.ie_functions.python_regexes as global_ie_functions
 
 
 class SymbolTableBase(ABC):
@@ -97,6 +97,16 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
+    def contains_relation(self, relation_name):
+        """
+        Args:
+            relation_name: a relation name
+
+        Returns: true if the relation exists in the symbol table, else false
+        """
+        pass
+
+    @abstractmethod
     def register_ie_function(self, ie_function_name):
         """
         add a new ie function to the symbol table
@@ -105,16 +115,6 @@ class SymbolTableBase(ABC):
             ie_function_name: the function's name
 
         Returns: true if the function exists on the server, false otherwise
-        """
-        pass
-
-    @abstractmethod
-    def contains_relation(self, relation_name):
-        """
-        Args:
-            relation_name: a relation name
-
-        Returns: true if the relation exists in the symbol table, else false
         """
         pass
 
@@ -134,8 +134,15 @@ class SymbolTableBase(ABC):
         Args:
             ie_func_name: a name of an information extraction function
 
-        Returns: the ie function's data (see ie_functions.IEFunctionData for more information on
+        Returns: the ie function's data (see ie_function_base.IEFunctionData for more information on
         ie function data instances)
+        """
+        pass
+
+    @abstractmethod
+    def get_all_registered_ie_funcs(self):
+        """
+        Returns: an iterable containing the names of all of the ie functions that are registered in the symbol table
         """
         pass
 
@@ -144,26 +151,31 @@ class SymbolTableBase(ABC):
         Returns: a string representation of the symbol table for debugging purposes
         """
 
-        # create a string that represents the variable table
-        var_table_headers = 'Variable\tType\tValue'
-        var_table_tuple_strings = [f'{name}\t{var_type}\t{var_value}'
-                                   for name, var_type, var_value in self.get_all_variables()]
-        var_table_content = "\n".join(var_table_tuple_strings)
-        var_table_string = f"{var_table_headers}\n{var_table_content}"
+        # we will build the string incrementally using the string buffer
+        string_buffer = list()
 
-        # create a string that represents the relation table
-        relation_table_headers = 'Relation\tSchema'
-        relation_table_tuple_strings = []
+        # add the header of the variables table
+        string_buffer.append('Variable\tType\tValue\n')
+        # add the tuples of the variables table
+        for name, var_type, var_value in self.get_all_variables():
+            string_buffer.append(f'{name}\t{var_type}\t{var_value}\n')
+
+        # add the header of the relation schemas table
+        string_buffer.append('\nRelation\tSchema\n')
+        # add the tuples of the relations schemas table
         for relation_name, type_list in self.get_all_relations():
             type_strings = [str(term_type) for term_type in type_list]
             type_list_string = ", ".join(type_strings)
-            cur_tuple_string = f"{relation_name}\t({type_list_string})"
-            relation_table_tuple_strings.append(cur_tuple_string)
-        relation_table_content = '\n'.join(relation_table_tuple_strings)
-        relation_table_string = f"{relation_table_headers}\n{relation_table_content}"
+            string_buffer.append(f"{relation_name}\t({type_list_string})\n")
+
+        # add the header of the ie functions list
+        string_buffer.append('\nregistered information extraction functions:\n')
+        # add the ie functions
+        for ie_func_name in self.get_all_registered_ie_funcs():
+            string_buffer.append(f'{ie_func_name}\n')
 
         # combine the resulting tables to one string and return them
-        symbol_table_string = f"\n{var_table_string}\n\n{relation_table_string}\n"
+        symbol_table_string = ''.join(string_buffer)
         return symbol_table_string
 
 
@@ -224,3 +236,6 @@ class SymbolTable(SymbolTableBase):
     def get_ie_func_data(self, ie_func_name):
         ie_func_data = getattr(global_ie_functions, ie_func_name)
         return ie_func_data
+
+    def get_all_registered_ie_funcs(self):
+        return self._registered_ie_functions.copy()

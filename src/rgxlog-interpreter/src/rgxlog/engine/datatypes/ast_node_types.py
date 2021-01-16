@@ -6,7 +6,7 @@ these classes are useful as they represent a statement with a single instance, i
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
 
-from rgxlog.engine.datatypes import DataTypes
+from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 
 def get_term_list_string(term_list, type_list):

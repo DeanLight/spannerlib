@@ -3,7 +3,7 @@ this module contains helper functions and function decorators that are used in l
 """
 
 from lark import Tree as LarkNode
-from rgxlog.engine.expected_grammar import rgxlog_expected_children_names_lists
+from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
 
 
 def assert_expected_node_structure_aux(lark_node):
