@@ -74,4 +74,10 @@ def start_server(ip, port=None, taken_port: Queue = None):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
+    session = Session()
+
+    # default ie functions are registered here
+    session.register_ie_function('RGXString')
+    session.register_ie_function('RGX')
+
     start_server(ip=args['--ip'], port=int(args['--port']))
