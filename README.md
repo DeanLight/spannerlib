@@ -348,6 +348,18 @@ Currently, the session will check and execute the statements one by one until th
 
 An error will not cause a reversion of the program state, meaning that even state updates from the passes that processed the faulty statement will be saved (this should be fixed in future versions when the pyDatalog engine is no longer used, more on that at TODO link here).
 
+#### semantic passes and optimizations
+
+All of the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at TODO
+
+Below are some relevant links that will allow you to learn about lark's transformers/visitors:
+  
+The previously mention cheat sheet:  
+https://cheatography.com/erezsh/cheat-sheets/lark/
+  
+the official documentation on transformers:  
+https://lark-parser.readthedocs.io/en/latest/visitors.html
+
 
 
 
