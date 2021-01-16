@@ -426,7 +426,7 @@ Each non rule statement is represented as a single node that contains a relation
 
 A rule statement is represented by a subtree, who's root is an empty node that has two children:
 1. a rule head relation node (contains the head relation of the rule).
-2. a rule body relation list node, who's children are nodes that each contain a single rule body relation.
+2. a rule body relations node, who's children are nodes that each contain a single rule body relation.
 
 Nodes in the term graph must have the following attributes:
 1. type: the node's type.
@@ -436,7 +436,79 @@ Most nodes have a value attribute, which contains a relation.
 
 You can think of the term graph as a 'graph of relations', where each node can contain at most one relation, and the node's type provides the action that needs to be performed using that relation.
 
-example: TODO
+example: 
+
+for the following code:
+
+```
+new parent(str, str)
+grandparent(X,Z) <- parent(X,Y), parent(Y,Z)
+```
+
+we'll get a term graph that will look like this: TODO
+
+#### term graph execution
+
+the term graph execution is done by the 'GenericExecution' pass, which can be found at TODO
+
+the 'GenericExecution' pass executes the term graph statement by statement. It skips statements that were already computed.
+
+the pass uses a pyDatalog engine which can also be found at TODO. The pyDatalog engine is a wrapper class for pyDatalog.
+
+The official pyDatalog documentation can be found here:
+https://sites.google.com/site/pydatalog/home
+
+That said, most of the documentation is irrelevant as we only a small part of pyDatalog. Should you need to alter the pyDatalog implementation, it is recommended to read this link: https://sites.google.com/site/pydatalog/advanced-topics, specifically the 'Dynamic datalog statements' section. Afterwards, read the comments and implementation of the pyDatalog wrapper class, as it will give you more details on the tricks we used to make pyDatalog work with our implementation of RGXlog.
+
+Note that operations done in pyDatalog cannot currently be reversed, which is why this engine will most likely be replaced in the future.
+
+GenericExecution's execution of non rule statements is fairly simple. It simply calls the relavent function in the pyDatalog wrapper engine.
+
+Executing rule statements is more complex, as rules are constructed from multiple relations. The following algorithm is used:
+  
+1. for each rule body relation (from left to right):  
+  
+	a. compute the relation.  
+  
+	b. if it is the leftmost relation in the rule body, save the relation from step 1 as an intermediate relation, else join the relation from step 1 with the intermediate relation, and save the result as the new intermediate relation.  
+  
+2. define the rule head relation by filtering the resulting intermediate relation from step 1 into it.
+
+The join operation done in each step ensures that irrelavent tuples are filtered from the final resulting relation.
+
+For more details and an example, GenericExecution._execute_rule_aux TODO
+
+#### additional information and files
+
+##### datatypes
+The TODO engine.datatypes folder contains the following files:
+
+###### ast_node_types.py
+contains classes that represent statements and relations.
+
+###### primitive_types.py
+contains classes that represent rgxlog's primitive types (those that are not already defined in python).
+Also contains an enum for primitive types that is used throughout the passes.
+
+
+##### utils
+The TODO engine.utils folder contains utility files that are used throughout the engine:
+###### general_utils.py
+General utilities that are not specific to any kind of pass, execution engine, etc...
+###### lark_passes_utils.py
+This module contains helper functions and function decorators that are used in lark passes
+######  expected_grammar.py
+If you went through the lark passes implementations, you may have noticed the '@assert_expected_node_structure_aux' decorator. This decorator makes sure that the AST subtree received in the decorated method has a structure matching the structure defined in this file. 
+
+This is useful in case you want to change the grammar. See the proposed method for changing the grammar at TODO
+
+
+
+
+
+
+
+
 
 
 
