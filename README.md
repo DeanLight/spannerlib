@@ -348,9 +348,11 @@ Currently, the session will check and execute the statements one by one until th
 
 An error will not cause a reversion of the program state, meaning that even state updates from the passes that processed the faulty statement will be saved (this should be fixed in future versions when the pyDatalog engine is no longer used, more on that at TODO link here).
 
-#### semantic passes and optimizations
+#### semantic checks, optimization, and execution passes
 
 All of the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at TODO
+
+The only exception is the term graph execution pass (GenericExecution), you can learn more about it in the next TODO section.
 
 Below are some relevant links that will allow you to learn about lark's transformers/visitors:
   
@@ -359,6 +361,57 @@ https://cheatography.com/erezsh/cheat-sheets/lark/
   
 the official documentation on transformers:  
 https://lark-parser.readthedocs.io/en/latest/visitors.html
+
+A few words on each pass:
+
+AST transformation passes:
+
+* RemoveTokens - Removes lark tokens from the ast.
+
+* FixStrings - Removes line overflow escapes from strings.
+
+* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at TODO.
+
+* ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at TODO. Note that passes that appear after this pass in the pass stack can only visit statment AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
+
+semantic checks passes:
+
+* CheckReservedRelationNames - Asserts that the program does not contain relations that start with "\_\_rgx\_\_". This name is used for temporary relations in the datalog execution engine.
+
+* CheckDefinedReferencedVariables - Asserts that referenced variables are defined.
+
+* CheckForRelationRedefinitions - Asserts that relations are not redefined both in rules and relation declarations.
+
+* CheckReferencedRelationsExistenceAndArity - Asserts that referenced relations exist and are used with their correct arity.
+
+* CheckReferencedIERelationsExistenceAndArity - Asserts that referenced ie relations exist (i.e. there's a registered ie function with the same name) and are used with their correct arity.
+
+* CheckRuleSafety - Asserts that a rule is safe, meaning:
+	1. Every free variable in the head occurs at least once in the body as an output term of a relation.
+	2. Every free variable is bound.
+
+* TypeCheckAssignments - type checks variable assignments.
+
+* TypeCheckRelations - type checks referenced relations and checks for free variables type conflicts in rules, that is, that a free variable in a rule is not expected to be more than one type.
+
+* SaveDeclaredRelationsSchemas - saves the schemas of declared relations to the symbol table.
+
+optimization passes:
+
+* ReorderRuleBody - Reorders each rule body relations list so that each relation in the list has its input free variables bound by previous relations in the list, or it has no input free variables terms. The term graph execution relies on this optimization.
+
+execution passes:
+
+
+* SaveDeclaredRelationsSchemas - saves the schemas of declared relations to the symbol table.
+
+* ResolveVariablesReferences - replaces variable references with their saved symbol table value.
+ 
+* ExecuteAssignments - saves variable assignments to the symbol table.
+
+* AddStatementsToNetxTermGraph - adds a statement to the term graph.
+
+* GenericExecution - executes the term graph.
 
 
 
