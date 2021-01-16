@@ -27,7 +27,7 @@
     - [garbage collection](#garbage-collection)
   - [Version 0.1](#version-01)
 	  - [Session Overview](#session-overview)
-		  - [Lexing And Parsing](#lexing-and-parsing)
+		  - [Lexing And Parsing](#lexer-and-parser)
 
 <!-- /code_chunk_output -->
 
@@ -301,6 +301,8 @@ For 0.1 Lets start with something really simple
 ## version 0.1
 progress and overview of version 0.1 implementation will be shown here
 
+TODO links to files
+
 ### session overview
 
 Let's begin with the communication diagram of the session when receiving a query:
@@ -319,8 +321,36 @@ All of the relevant files to the session can be found at the rgxlog.engine folde
 
 Below you can find more details about each step of the implementation of the session
 
-#### lexing and parsing
+#### lexer and parser
 
 The lexical analyses and parsing is done using lark's lexer and parser.
-The grammar file 
+lark's lexer and parser receive a grammar file as an input, which can be found at rgxlog.engine.grammar.lark
+
+A handy cheat sheet that will help you to read the grammar can be found at: https://cheatography.com/erezsh/cheat-sheets/lark/
+
+An official tutorial for lark's grammar can be found at:
+https://lark-parser.readthedocs.io/en/latest/json_tutorial.html#
+
+note that we also import token definitions from lark's common module, it can be found here:
+https://github.com/lark-parser/lark/blob/master/lark/grammars/common.lark
+
+TODO link
+RGXlog tutorial can help you understand the features that this grammar provides
+
+
+#### separation of the AST into standalone statements
+
+In the current implementation, while the session receive a whole RGXlog program (a jupyter notebook cell), it performs the semantic checks, optimizations, and execution on standalone statements.
+
+This greatly simplifies the implementation of the passes, as they don't have to keep track of previous statements. Instead, a pass can get the context it needs from the symbol table.
+
+Currently, the session will check and execute the statements one by one until the program ends, or an error is encountered in one of the statements.
+
+An error will not cause a reversion of the program state, meaning that even state updates from the passes that processed the faulty statement will be saved (this should be fixed in future versions when the pyDatalog engine is no longer used, more on that at TODO link here).
+
+
+
+
+
+
 
