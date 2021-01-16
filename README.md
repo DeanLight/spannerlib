@@ -364,7 +364,7 @@ https://lark-parser.readthedocs.io/en/latest/visitors.html
 
 A few words on each pass:
 
-AST transformation passes:
+##### AST transformation passes:
 
 * RemoveTokens - Removes lark tokens from the ast.
 
@@ -374,7 +374,7 @@ AST transformation passes:
 
 * ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at TODO. Note that passes that appear after this pass in the pass stack can only visit statment AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
 
-semantic checks passes:
+##### semantic checks passes:
 
 * CheckReservedRelationNames - Asserts that the program does not contain relations that start with "\_\_rgx\_\_". This name is used for temporary relations in the datalog execution engine.
 
@@ -396,11 +396,11 @@ semantic checks passes:
 
 * SaveDeclaredRelationsSchemas - saves the schemas of declared relations to the symbol table.
 
-optimization passes:
+##### optimization passes:
 
 * ReorderRuleBody - Reorders each rule body relations list so that each relation in the list has its input free variables bound by previous relations in the list, or it has no input free variables terms. The term graph execution relies on this optimization.
 
-execution passes:
+##### execution passes:
 
 
 * SaveDeclaredRelationsSchemas - saves the schemas of declared relations to the symbol table.
@@ -412,6 +412,36 @@ execution passes:
 * AddStatementsToNetxTermGraph - adds a statement to the term graph.
 
 * GenericExecution - executes the term graph.
+
+####  term graph
+
+The term graph implementation can be found at TODO.
+it is implemented using networkx.
+
+The term graph does not handle variable assignment statements. Those are handled in the 'ResolveVariablesReferences' and 'ExecuteAssignments' passes
+
+The term graph is initialized with a root node, and every statement that is added to the term graph is a child subtree of that node.
+
+Each non rule statement is represented as a single node that contains a relation.
+
+A rule statement is represented by a subtree, who's root is an empty node that has two children:
+1. a rule head relation node (contains the head relation of the rule).
+2. a rule body relation list node, who's children are nodes that each contain a single rule body relation.
+
+Nodes in the term graph must have the following attributes:
+1. type: the node's type.
+2.  state: whether the node is computed or not computed
+
+Most nodes have a value attribute, which contains a relation.
+
+You can think of the term graph as a 'graph of relations', where each node can contain at most one relation, and the node's type provides the action that needs to be performed using that relation.
+
+example: TODO
+
+
+
+
+
 
 
 
