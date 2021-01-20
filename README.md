@@ -30,6 +30,7 @@
 		  - [Lexer And Parser](#lexer-and-parser)
 		  - [separation of the AST into standalone statements](#separation-of-the-AST-into-standalone-statements)
 		  - [passes](#passes)
+		  - [term graph](#term-graph)
 		  - [execution](#execution)
 		  - [files structure](#files-structure)
 
