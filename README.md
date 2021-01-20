@@ -315,14 +315,14 @@ As the graph shows, the session:
 4. Runs the semantic checks, optimization and execution passes on each statement.
 5. Returns the results object. In the current implementation, the results object is a string that contains the results of the queries in the program.
 
-All of the relevant files to the session can be found at the ![engine](/src/rgxlog-interpreter/src/rgxlog/engine/) folder. The session is implemented at ![session.py](/src/rgxlog-interpreter/src/rgxlog/engine/session.py)
+All of the relevant files to the session can be found at the [engine](/src/rgxlog-interpreter/src/rgxlog/engine/) folder. The session is implemented at [session.py](/src/rgxlog-interpreter/src/rgxlog/engine/session.py)
 
 Below you can find more details about each step of the implementation of the session
 
 #### lexer and parser
 
 The lexical analyses and parsing is done using lark's lexer and parser.
-lark's lexer and parser receive a grammar file as an input, which can be found at rgxlog.engine.grammar.lark
+lark's lexer and parser receive a grammar file as an input, which can be found [here](/src/rgxlog-interpreter/src/rgxlog/grammar/grammar.lark)
 
 A handy cheat sheet that will help you to read the grammar can be found at: https://cheatography.com/erezsh/cheat-sheets/lark/
 
@@ -332,8 +332,7 @@ https://lark-parser.readthedocs.io/en/latest/json_tutorial.html#
 note that we also import token definitions from lark's common module, it can be found here:
 https://github.com/lark-parser/lark/blob/master/lark/grammars/common.lark
 
-TODO link
-RGXlog tutorial can help you understand the features that this grammar provides
+[the introductory RGXlog tutorial](/tutorials/introduction.ipynb) can help you understand the features that this grammar provides.
 
 
 #### separation of the AST into standalone statements
@@ -344,7 +343,11 @@ This greatly simplifies the implementation of the passes, as they don't have to 
 
 Currently, the session will check and execute the statements one by one until the program ends, or an error is encountered in one of the statements.
 
-An error will not cause a reversion of the program state, meaning that even state updates from the passes that processed the faulty statement will be saved (this should be fixed in future versions when the pyDatalog engine is no longer used, more on that at TODO link here).
+An error will not cause a reversion of the program state, meaning that even state updates from the passes that processed the faulty statement will be saved.
+
+In future version this will need to be fixed, meaning, should a statement in a jupyter notebook cell fail:
+1. the symbol table and term graph (the session's state) will be restored to their state before the execution of the cell. A naive solution for this would be to copy them before the cell execution, and perform the state updates on their copies. Only if the execution of the whole cell is successful, the copied symbol table and term graph would replace the original ones
+2. Reverse the state of the Datalog engine. There's no easy solution for this in version 0.1 as we use pyDatalog which does not provide a simple way to reverse the state. Therefore, in order to implement this feature, pyDatalog should first be replaced.
 
 #### semantic checks, optimization, and execution passes
 
