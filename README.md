@@ -456,8 +456,7 @@ the term graph execution is done by the 'GenericExecution' pass, which can be fo
 
 the 'GenericExecution' pass executes the term graph statement by statement. It skips statements that were already computed.
 
-the pass uses a pyDatalog engine which can also be found at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py). 
-The pyDatalog engine is a wrapper class for pyDatalog.
+the pass uses a pyDatalog engine which can also be found at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py). It is the PydatalogEngine who wraps pyDatalog.
 
 The official pyDatalog documentation can be found here:
 https://sites.google.com/site/pydatalog/home
