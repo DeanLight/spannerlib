@@ -480,57 +480,6 @@ For more details and an example, GenericExecution._execute_rule_aux TODO
 
 #### files structure
 
-##### === passes ===
-implementations of passes
-###### lark_passes.py
-implementations of lark passes
-##### === datatypes folder === 
-The TODO engine.datatypes folder contains the following files:
-
-###### ast_node_types.py
-contains classes that represent statements and relations.
-
-###### primitive_types.py
-contains classes that represent rgxlog's primitive types (those that are not already defined in python).
-Also contains an enum for primitive types that is used throughout the passes.
-
-
-##### === utils folder ===
-The TODO engine.utils folder contains utility files that are used throughout the engine:
-###### general_utils.py
-General utilities that are not specific to any kind of pass, execution engine, etc...
-###### lark_passes_utils.py
-This module contains helper functions and function decorators that are used in lark passes
-######  expected_grammar.py
-If you went through the lark passes implementations, you may have noticed the '@assert_expected_node_structure_aux' decorator. This decorator makes sure that the AST subtree received in the decorated method has a structure matching the structure defined in this file. 
-
-This is useful in case you want to change the grammar. See the proposed method for changing the grammar at TODO
-
-##### === state folder ===
-
-files that are used to save the state of the engine can be found at the folder TODO
-
-###### term_graph.py
-implementations of the term graph
-###### symbol_table.py
-implementations of the symbol table
-
-##### === ie_functions folder ===
-information function related files
-
-###### ie_function_base.py
-contains the abstract class for information extraction functions
-###### python_regexes.py
-contains implementation of regex information extraction functions that were implemented using python's 're' module
-
-##### === files that are not in any folder ===
-###### execution.py
-implementations of Datalog's execution engines and term graph execution engines
-###### message_definitons.py
-enums that the session uses to handle messages
-###### session.py
-the implementation of the session
-
 ```
 └───engine
     │
