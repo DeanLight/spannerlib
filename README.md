@@ -477,7 +477,7 @@ Executing rule statements is more complex, as rules are constructed from multipl
   
 2. define the rule head relation by filtering the resulting intermediate relation from step 1 into it.
 
-The join operation done in each step ensures that irrelavent tuples are filtered from the final resulting relation.
+The join operation done in each step ensures that irrelevant tuples are filtered from the final resulting relation.
 
 For more details and an example, see GenericExecution._execute_rule_aux() at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py)
 
