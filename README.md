@@ -371,7 +371,7 @@ A few words on each pass:
 
 * FixStrings - Removes line overflow escapes from strings.
 
-* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at ![primitve_types.py](/src/rgxlog/engine/datatypes/primitive_types.py).
+* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at ![primitve_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/primitive_types.py).
 
 * ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at ![ast_node_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/ast_node_types.py). Note that passes that appear after this pass in the pass stack can only visit statment AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
 
