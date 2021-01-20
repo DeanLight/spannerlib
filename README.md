@@ -567,7 +567,7 @@ the implementation of the session
     └───utils
 	
             expected_grammar.py - contains a structure that helps asserting that a pass received an expected ast node
-			structure
+	    structure
 			
             general_utils.py - General utilities that are not specific to any kind of pass, execution engine, etc...
 			
