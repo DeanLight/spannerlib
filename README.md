@@ -315,14 +315,14 @@ As the graph shows, the session:
 4. Runs the semantic checks, optimization and execution passes on each statement.
 5. Returns the results object. In the current implementation, the results object is a string that contains the results of the queries in the program.
 
-All of the relevant files to the session can be found at the [engine](/src/rgxlog-interpreter/src/rgxlog/engine/) folder. The session is implemented at [session.py](/src/rgxlog-interpreter/src/rgxlog/engine/session.py)
+All of the relevant files to the session can be found at the ![engine](/src/rgxlog-interpreter/src/rgxlog/engine/) folder. The session is implemented at ![session.py](/src/rgxlog-interpreter/src/rgxlog/engine/session.py)
 
 Below you can find more details about each step of the implementation of the session
 
 #### lexer and parser
 
 The lexical analyses and parsing is done using lark's lexer and parser.
-lark's lexer and parser receive a grammar file as an input, which can be found [here](/src/rgxlog-interpreter/src/rgxlog/grammar/grammar.lark)
+lark's lexer and parser receive a grammar file as an input, which can be found ![here](/src/rgxlog-interpreter/src/rgxlog/grammar/grammar.lark)
 
 A handy cheat sheet that will help you to read the grammar can be found at: https://cheatography.com/erezsh/cheat-sheets/lark/
 
@@ -332,7 +332,7 @@ https://lark-parser.readthedocs.io/en/latest/json_tutorial.html#
 note that we also import token definitions from lark's common module, it can be found here:
 https://github.com/lark-parser/lark/blob/master/lark/grammars/common.lark
 
-[the introductory RGXlog tutorial](/tutorials/introduction.ipynb) can help you understand the features that this grammar provides.
+![the introductory RGXlog tutorial](/tutorials/introduction.ipynb) can help you understand the features that this grammar provides.
 
 
 #### separation of the AST into standalone statements
@@ -351,9 +351,9 @@ In future version this will need to be fixed, meaning, should a statement in a j
 
 #### semantic checks, optimization, and execution passes
 
-All of the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at TODO
+All of the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at ![lark_passes.py](/src/rgxlog-interpreter/src/rgxlog/engine/passes/lark_passes.py)
 
-The only exception is the term graph execution pass (GenericExecution), you can learn more about it in the next TODO section.
+The only exception is the term graph execution pass (GenericExecution), you can learn more about it in the [execution passes](#execution-passes) section.
 
 Below are some relevant links that will allow you to learn about lark's transformers/visitors:
   
@@ -371,9 +371,9 @@ A few words on each pass:
 
 * FixStrings - Removes line overflow escapes from strings.
 
-* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at TODO.
+* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at ![primitve_types.py](/src/rgxlog/engine/datatypes/primitive_types.py).
 
-* ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at TODO. Note that passes that appear after this pass in the pass stack can only visit statment AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
+* ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at ![ast_node_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/ast_node_types.py). Note that passes that appear after this pass in the pass stack can only visit statment AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
 
 ##### semantic checks passes:
 
@@ -416,7 +416,7 @@ A few words on each pass:
 
 ####  term graph
 
-The term graph implementation can be found at TODO.
+The term graph implementation can be found at ![term_graph.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/term_graph.py).
 it is implemented using networkx.
 
 The term graph does not handle variable assignment statements. Those are handled in the 'ResolveVariablesReferences' and 'ExecuteAssignments' passes
@@ -452,11 +452,12 @@ we'll get a term graph that will look like this:
 
 #### term graph execution
 
-the term graph execution is done by the 'GenericExecution' pass, which can be found at TODO
+the term graph execution is done by the 'GenericExecution' pass, which can be found at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py).
 
 the 'GenericExecution' pass executes the term graph statement by statement. It skips statements that were already computed.
 
-the pass uses a pyDatalog engine which can also be found at TODO. The pyDatalog engine is a wrapper class for pyDatalog.
+the pass uses a pyDatalog engine which can also be found at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py). 
+The pyDatalog engine is a wrapper class for pyDatalog.
 
 The official pyDatalog documentation can be found here:
 https://sites.google.com/site/pydatalog/home
@@ -479,7 +480,7 @@ Executing rule statements is more complex, as rules are constructed from multipl
 
 The join operation done in each step ensures that irrelavent tuples are filtered from the final resulting relation.
 
-For more details and an example, GenericExecution._execute_rule_aux TODO
+For more details and an example, see GenericExecution._execute_rule_aux() at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py)
 
 #### files structure
 
