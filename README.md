@@ -301,8 +301,6 @@ For 0.1 Lets start with something really simple
 ## version 0.1
 progress and overview of version 0.1 implementation will be shown here
 
-TODO links to files
-
 ### session overview
 
 Let's begin with the communication diagram of the session when receiving a query:
@@ -317,7 +315,7 @@ As the graph shows, the session:
 4. Runs the semantic checks, optimization and execution passes on each statement.
 5. Returns the results object. In the current implementation, the results object is a string that contains the results of the queries in the program.
 
-All of the relevant files to the session can be found at the rgxlog.engine folder. The session is implemented at session.py
+All of the relevant files to the session can be found at the ![engine](/src/rgxlog-interpreter/src/rgxlog/engine/) folder. The session is implemented at ![session.py](/src/rgxlog-interpreter/src/rgxlog/engine/session.py)
 
 Below you can find more details about each step of the implementation of the session
 
