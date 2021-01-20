@@ -377,7 +377,7 @@ A few words on each pass:
 
 ##### semantic checks passes:
 
-* CheckReservedRelationNames - Asserts that the program does not contain relations that start with "\_\_rgx\_\_". This name is used for temporary relations in the datalog execution engine.
+* CheckReservedRelationNames - Asserts that the program does not contain relations that start with "\_\_rgxlog\_\_". This name is used for temporary relations in the datalog execution engine.
 
 * CheckDefinedReferencedVariables - Asserts that referenced variables are defined.
 
