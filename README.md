@@ -501,15 +501,16 @@ For more details and an example, see GenericExecution._execute_rule_aux() at ![e
     │	
     │       ast_node_types.py - contains classes that represent statements and relations.
     │	
-    │       primitive_types.py - contains classes that represent rgxlog's primitive types (those that are not already 
-    │       defined in python). Also contains an enum for primitive types that is used throughout the passes.
+    │       primitive_types.py - contains classes that represent rgxlog's primitive types
+    │       (those that are not already defined in python). 
+    │       Also contains an enum for primitive types that is used throughout the passes.
     │
     ├───ie_functions
     │	
     │       ie_function_base.py - contains the abstract class for information extraction functions
     │	
-    │       python_regexes.py - implementations of regex information extraction functions that were implemented 
-    │       using python's 're' module
+    │       python_regexes.py - implementations of regex information extraction functions that were
+    │       implemented using python's 're' module
     │
     ├───passes
     │	
@@ -523,10 +524,11 @@ For more details and an example, see GenericExecution._execute_rule_aux() at ![e
     │
     └───utils
 	
-            expected_grammar.py - contains a structure that helps asserting that a pass received an expected ast node
-	    structure
+            expected_grammar.py - contains a structure that helps asserting that a pass received an 
+	    expected ast node structure
 			
-            general_utils.py - General utilities that are not specific to any kind of pass, execution engine, etc...
+            general_utils.py - General utilities that are not specific to any kind of pass, 
+	    execution engine, etc...
 			
             lark_passes_utils.py - helper functions and function decorators that are used in lark 
 ```
