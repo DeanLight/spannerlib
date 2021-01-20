@@ -27,7 +27,11 @@
     - [garbage collection](#garbage-collection)
   - [Version 0.1](#version-01)
 	  - [Session Overview](#session-overview)
-		  - [Lexing And Parsing](#lexer-and-parser)
+		  - [Lexer And Parser](#lexer-and-parser)
+		  - [separation of the AST into standalone statements](#separation-of-the-AST-into-standalone-statements)
+		  - [passes](#passes)
+		  - [execution](#execution)
+		  - [files structure](#files-structure)
 
 <!-- /code_chunk_output -->
 
@@ -349,11 +353,11 @@ In future version this will need to be fixed, meaning, should a statement in a j
 1. the symbol table and term graph (the session's state) will be restored to their state before the execution of the cell. A naive solution for this would be to copy them before the cell execution, and perform the state updates on their copies. Only if the execution of the whole cell is successful, the copied symbol table and term graph would replace the original ones
 2. Reverse the state of the Datalog engine. There's no easy solution for this in version 0.1 as we use pyDatalog which does not provide a simple way to reverse the state. Therefore, in order to implement this feature, pyDatalog should first be replaced.
 
-#### semantic checks, optimization, and execution passes
+#### passes
 
 All of the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at ![lark_passes.py](/src/rgxlog-interpreter/src/rgxlog/engine/passes/lark_passes.py)
 
-The only exception is the term graph execution pass (GenericExecution), you can learn more about it in the [execution passes](#execution-passes) section.
+The only exception is the term graph execution pass (GenericExecution), you can learn more about it in the [execution](#execution) section.
 
 Below are some relevant links that will allow you to learn about lark's transformers/visitors:
   
@@ -450,7 +454,7 @@ we'll get a term graph that will look like this:
 
 ![term graph example](doc/term_graph.png)
 
-#### term graph execution
+#### execution
 
 the term graph execution is done by the 'GenericExecution' pass, which can be found at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py).
 
