@@ -307,7 +307,7 @@ TODO links to files
 
 Let's begin with the communication diagram of the session when receiving a query:
 
-TODO add it here
+![query communication diagram](doc/query_communication_diagram.png)
 
 As the graph shows, the session:
 
@@ -445,7 +445,9 @@ new parent(str, str)
 grandparent(X,Z) <- parent(X,Y), parent(Y,Z)
 ```
 
-we'll get a term graph that will look like this: TODO
+we'll get a term graph that will look like this:
+
+![term graph example](doc/term_graph.png)
 
 #### term graph execution
 
