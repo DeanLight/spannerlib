@@ -7,8 +7,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="my-pkg-coldfear-rgxlog-interpreter",
-    version="0.0.11",
+    name="test-rgxlog-interpreter",
+    version="0.0.22",
     author="Example Author",
     author_email="author@example.com",
     description="A small example package",

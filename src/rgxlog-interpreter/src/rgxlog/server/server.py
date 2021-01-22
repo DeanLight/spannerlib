@@ -16,8 +16,18 @@ from multiprocessing.connection import Listener
 from rgxlog.engine.session import Session
 from rgxlog.system_configuration import system_configuration
 
+session_ = Session()
 
-def start_server(ip, port=None, taken_port: Queue = None):
+# default ie functions are registered here
+default_ie = [
+    'RGXString',
+    'RGX'
+]
+
+for ie_func in default_ie:
+    session_.register_ie_function(ie_func)
+
+def start_server(ip, port=None, taken_port: Queue = None, session=session_):
     """
     Starts a server on the given ip and port (optional).
     When no port is supplied, the server will try to bind to an available
@@ -59,7 +69,8 @@ def start_server(ip, port=None, taken_port: Queue = None):
     if using_port is None:
         logging.error(f'no suitable port in range [{min_port}, {max_port}] was found')
     else:
-        session = Session()
+        if session is None:
+            session = Session()
 
         with listener.accept() as connection:
             logging.info(f'listener accepted connection from {listener.last_accepted}')
@@ -74,4 +85,4 @@ def start_server(ip, port=None, taken_port: Queue = None):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    start_server(ip=args['--ip'], port=int(args['--port']))
+    start_server(ip=args['--ip'], port=int(args['--port']), session=session_)

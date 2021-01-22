@@ -53,7 +53,7 @@ class Client:
 
         if self._running_remotely and self._remote_debug:
             self._start_remote_debug_server()
-        else:
+        elif not self._running_remotely:
             self._run_local_server()
 
         self.connect()
