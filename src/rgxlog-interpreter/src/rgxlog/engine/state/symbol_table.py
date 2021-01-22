@@ -4,6 +4,23 @@ this module contains the implementations of symbol tables
 
 from abc import ABC, abstractmethod
 import rgxlog.engine.ie_functions.python_regexes as global_ie_functions
+import rgxlog.user_ie_functions as user_ie_module
+
+import os
+import inspect
+
+user_ie_functions = dict()
+user_ie_directory = os.path.dirname(user_ie_module.__file__)
+
+for filename in os.listdir(user_ie_directory):
+    if filename.endswith('.py') and filename != '__init__.py':
+        filename = filename.split('.py')[0]
+        partial_module = __import__(f'{user_ie_module.__name__}.{filename}')
+        module_with_user_ies = getattr(partial_module, 'user_ie_functions')
+        ie_module = getattr(module_with_user_ies, filename)
+        ie_classes = inspect.getmembers(ie_module, inspect.isclass)
+        for ie_class in ie_classes:
+            user_ie_functions[ie_class[0]] = ie_class[1]
 
 
 class SymbolTableBase(ABC):
@@ -234,7 +251,12 @@ class SymbolTable(SymbolTableBase):
         return ie_func_name in self._registered_ie_functions
 
     def get_ie_func_data(self, ie_func_name):
-        ie_func_data = getattr(global_ie_functions, ie_func_name)
+        if hasattr(global_ie_functions, ie_func_name):
+            ie_func_data = getattr(global_ie_functions, ie_func_name)
+        elif ie_func_name in user_ie_functions:
+            ie_func_data = user_ie_functions[ie_func_name]
+        else:
+            raise AttributeError
         return ie_func_data
 
     def get_all_registered_ie_funcs(self):
