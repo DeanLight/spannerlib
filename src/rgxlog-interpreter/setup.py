@@ -1,7 +1,28 @@
 import setuptools
+from setuptools.command.develop import develop
+from setuptools.command.install import install
+
 from glob import glob
 from os.path import basename
 from os.path import splitext
+
+import sys
+from subprocess import check_output
+
+class PostDevelopCommand(develop):
+    """Post-installation for development mode."""
+    def run(self):
+        develop.run(self)
+        spacy_english_url="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.0/en_core_web_sm-2.2.0.tar.gz"
+        check_output(f"{sys.executable} -m pip install {spacy_english_url}",shell=True)
+
+class PostInstallCommand(install):
+    """Post-installation for installation mode."""
+    def run(self):
+        install.run(self)
+        spacy_english_url="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.0/en_core_web_sm-2.2.0.tar.gz"
+        check_output(f"{sys.executable} -m pip install {spacy_english_url}",shell=True)
+
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -24,13 +45,22 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
+    cmdclass={
+        'develop': PostDevelopCommand,
+        'install': PostInstallCommand,
+    },
     python_requires='>=3.8*',
     install_requires=[
         'lark-parser',
         'networkx',
         'docopt',
         'tabulate',
+        'pyDatalog',
+        'spacy'
+    ],
+    dependency_links=[
     ]
+
 )
 # python3 setup.py sdist bdist_wheel
 # twine upload --repository testpypi dist/*
