@@ -11,8 +11,20 @@
     - [relevant papers](#relevant-papers)
   - [version consideration](#version-consideration)
   - [The REPL of the interpreter](#the-repl-of-the-interpreter)
-  - [build of the interpreter](#build-of-the-interpreter)
-      - [Lexer and Parser](#lexer-and-parser)
+  - [version 0.1](#version-01)
+    - [session overview](#session-overview)
+    - [lexer and parser](#lexer-and-parser)
+      - [separation of the AST into standalone statements](#separation-of-the-ast-into-standalone-statements)
+    - [passes](#passes)
+        - [AST transformation passes:](#ast-transformation-passes)
+        - [semantic checks passes:](#semantic-checks-passes)
+        - [optimization passes:](#optimization-passes)
+        - [execution passes:](#execution-passes)
+    - [term graph](#term-graph)
+    - [execution](#execution)
+    - [files structure](#files-structure)
+  - [Initial thoughts about building the workbench (predates version 0.1)](#initial-thoughts-about-building-the-workbench-predates-version-01)
+      - [Lexer and Parser](#lexer-and-parser-1)
     - [The micro-passes in general](#the-micro-passes-in-general)
       - [design considerations](#design-considerations)
         - [version consideration](#version-consideration-1)
@@ -25,14 +37,6 @@
         - [version considerations](#version-considerations-2)
     - [regex evaluation](#regex-evaluation)
     - [garbage collection](#garbage-collection)
-  - [Version 0.1](#version-01)
-	  - [Session Overview](#session-overview)
-		  - [Lexer And Parser](#lexer-and-parser)
-		  - [separation of the AST into standalone statements](#separation-of-the-AST-into-standalone-statements)
-		  - [passes](#passes)
-		  - [term graph](#term-graph)
-		  - [execution](#execution)
-		  - [files structure](#files-structure)
 
 <!-- /code_chunk_output -->
 
@@ -70,13 +74,14 @@ Here is a [python implementation of a Datalog library](https://github.com/pcarbo
 * [Recursive RGXLog](papers/Recures_programs_for_document_spanners.pdf)
 
 ## version consideration
-* We are currently working on 0.0.5 which is the MVP of a working RGXlog REPL
+* We finished working on 0.0.5 which is the MVP of a working RGXlog REPL
   * No optimization of any kind,
   * Execution via delegation of all regexs to a regex library and all datalog fragments as is to pydatalog
 * version 0.1 will have naive yet more granular execution passes and will expose a pass stack 
+  
   * We make naive high granularity operations and allow adding optimization execution passes that target certain subtree patterns
-* 0.1.1 will add the execution via compilation to automata and added atomic spanners (ie NLP extractors)
-  * The production of the extractors and alg for 0.1.1 is orthogonal to the rest of the development and will be pursued independently for now.
+  
+  
 
 ## The REPL of the interpreter
 
@@ -100,7 +105,238 @@ Here is a list of resources and examples for building magic systems:
 * [Implementation of R magic system](https://bitbucket.org/rpy2/rpy2/src/default/rpy2/ipython/rmagic.py)
   * Note that this is overkill for us, its just so you can see how a mature cross language magic system can be implemented.
 
-## build of the interpreter
+## version 0.0.5
+
+progress and overview of version 0.0.5 implementation will be shown here
+
+### session overview
+
+Let's begin with the communication diagram of the session when receiving a query:
+
+![query communication diagram](doc/query_communication_diagram.png)
+
+As the graph shows, the session:
+
+1. Gets a query as an input.
+2. Using lark's lexer and parser, performs the lexical analysis and parsing on the query.
+3. Separates the AST received from the previous stage into standalone statements.
+4. Runs the semantic checks, optimization and execution passes on each statement.
+5. Returns the results object. In the current implementation, the results object is a string that contains the results of the queries in the program.
+
+All of the relevant files to the session can be found at the [engine](/src/rgxlog-interpreter/src/rgxlog/engine/) folder. The session is implemented at [session.py](/src/rgxlog-interpreter/src/rgxlog/engine/session.py)
+
+Below you can find more details about each step of the implementation of the session
+
+### lexer and parser
+
+The lexical analyses and parsing is done using lark's lexer and parser.
+* lark's lexer and parser receive a grammar file as an input, which can be found [here](/src/rgxlog-interpreter/src/rgxlog/grammar/grammar.lark)
+
+* A handy cheat sheet that will help you to read the grammar can be found at: https://cheatography.com/erezsh/cheat-sheets/lark/
+
+* An official tutorial for lark's grammar can be found at:
+https://lark-parser.readthedocs.io/en/latest/json_tutorial.html#
+
+* note that we also import token definitions from lark's common module, it can be found here:
+https://github.com/lark-parser/lark/blob/master/lark/grammars/common.lark
+
+* [the introductory RGXlog tutorial](/tutorials/introduction.ipynb) can help you understand the features that this grammar provides.
+
+
+#### separation of the AST into standalone statements
+
+In the current implementation, while the session receive a whole RGXlog program (a jupyter notebook cell), it performs the semantic checks, optimizations, and execution on standalone statements.
+
+This greatly simplifies the implementation of the passes, as they don't have to keep track of previous statements. Instead, a pass can get the context it needs from the symbol table.
+
+Currently, the session will check and execute the statements one by one until the program ends, or an error is encountered in one of the statements.
+
+An error will not cause a reversion of the program state, meaning that even state updates from the passes that processed the faulty statement will be saved.
+
+In future version this will need to be fixed, meaning, should a statement in a jupyter notebook cell fail:
+1. the symbol table and term graph (the session's state) will be restored to their state before the execution of the cell. A naive solution for this would be to copy them before the cell execution, and perform the state updates on their copies. Only if the execution of the whole cell is successful, the copied symbol table and term graph would replace the original ones
+2. Reverse the state of the Datalog engine. There's no easy solution for this in version 0.1 as we use pyDatalog which does not provide a simple way to reverse the state. Therefore, in order to implement this feature, pyDatalog should first be replaced.
+
+### passes
+
+All of the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at [lark_passes.py](/src/rgxlog-interpreter/src/rgxlog/engine/passes/lark_passes.py)
+
+The only exception is the term graph execution pass (GenericExecution), you can learn more about it in the [execution](#execution) section.
+
+Below are some relevant links that will allow you to learn about lark's transformers/visitors:
+
+* The previously mention cheat sheet:  
+https://cheatography.com/erezsh/cheat-sheets/lark/
+  
+* the official documentation on transformers:  
+https://lark-parser.readthedocs.io/en/latest/visitors.html
+
+A few words on each pass:
+
+##### AST transformation passes:
+
+* RemoveTokens - Removes lark tokens from the ast.
+
+* FixStrings - Removes line overflow escapes from strings.
+
+* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at ![primitve_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/primitive_types.py).
+
+* ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at ![ast_node_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/ast_node_types.py). Note that passes that appear after this pass in the pass stack can only visit statment AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
+
+##### semantic checks passes:
+
+* CheckReservedRelationNames - Asserts that the program does not contain relations that start with "\_\_rgxlog\_\_". This name is used for temporary relations in the datalog execution engine.
+
+* CheckDefinedReferencedVariables - Asserts that referenced variables are defined.
+
+* CheckForRelationRedefinitions - Asserts that relations are not redefined both in rules and relation declarations.
+
+* CheckReferencedRelationsExistenceAndArity - Asserts that referenced relations exist and are used with their correct arity.
+
+* CheckReferencedIERelationsExistenceAndArity - Asserts that referenced ie relations exist (i.e. there's a registered ie function with the same name) and are used with their correct arity.
+
+* CheckRuleSafety - Asserts that a rule is safe, meaning:
+	1. Every free variable in the head occurs at least once in the body as an output term of a relation.
+	2. Every free variable is bound.
+
+* TypeCheckAssignments - type checks variable assignments.
+
+* TypeCheckRelations - type checks referenced relations and checks for free variables type conflicts in rules, that is, that a free variable in a rule is not expected to be more than one type.
+
+* SaveDeclaredRelationsSchemas - saves the schemas of declared relations to the symbol table.
+
+##### optimization passes:
+
+* ReorderRuleBody - Reorders each rule body relations list so that each relation in the list has its input free variables bound by previous relations in the list, or it has no input free variables terms. The term graph execution relies on this optimization.
+
+##### execution passes:
+
+
+* SaveDeclaredRelationsSchemas - saves the schemas of declared relations to the symbol table.
+
+* ResolveVariablesReferences - replaces variable references with their saved symbol table value.
+
+* ExecuteAssignments - saves variable assignments to the symbol table.
+
+* AddStatementsToNetxTermGraph - adds a statement to the term graph.
+
+* GenericExecution - executes the term graph.
+
+###  term graph
+
+The term graph implementation can be found at [term_graph.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/term_graph.py).
+it is implemented using networkx.
+
+The term graph does not handle variable assignment statements. Those are handled in the 'ResolveVariablesReferences' and 'ExecuteAssignments' passes
+
+The term graph is initialized with a root node, and every statement that is added to the term graph is a child subtree of that node.
+
+Each non rule statement is represented as a single node that contains a relation.
+
+A rule statement is represented by a subtree, who's root is an empty node that has two children:
+1. a rule head relation node (contains the head relation of the rule).
+2. a rule body relations node, who's children are nodes that each contain a single rule body relation.
+
+Nodes in the term graph must have the following attributes:
+1. type: the node's type.
+2.  state: whether the node is computed or not computed
+
+Most nodes have a value attribute, which contains a relation.
+
+You can think of the term graph as a 'graph of relations', where each node can contain at most one relation, and the node's type provides the action that needs to be performed using that relation.
+
+example: 
+
+for the following code:
+
+```
+new parent(str, str)
+grandparent(X,Z) <- parent(X,Y), parent(Y,Z)
+```
+
+we'll get a term graph that will look like this:
+
+![term graph example](doc/term_graph.png)
+
+### execution
+
+the term graph execution is done by the 'GenericExecution' pass, which can be found at [execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py).
+
+the 'GenericExecution' pass executes the term graph statement by statement. It skips statements that were already computed.
+
+the pass uses a pyDatalog engine which can also be found at [execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py). It is the PydatalogEngine who wraps pyDatalog.
+
+The official pyDatalog documentation can be found here:
+https://sites.google.com/site/pydatalog/home
+
+That said, most of the documentation is irrelevant as we only a small part of pyDatalog. Should you need to alter the pyDatalog implementation, it is recommended to read this link: https://sites.google.com/site/pydatalog/advanced-topics, specifically the 'Dynamic datalog statements' section. Afterwards, read the comments and implementation of the pyDatalog wrapper class, as it will give you more details on the tricks we used to make pyDatalog work with our implementation of RGXlog.
+
+Note that operations done in pyDatalog cannot currently be reversed, which is why this engine will most likely be replaced in the future.
+
+GenericExecution's execution of non rule statements is fairly simple. It simply calls the relavent function in the pyDatalog wrapper engine.
+
+Executing rule statements is more complex, as rules are constructed from multiple relations. The following algorithm is used:
+
+1. for each rule body relation (from left to right):  
+  
+	a. compute the relation.  
+  
+	b. if it is the leftmost relation in the rule body, save the relation from step 1 as an intermediate relation, else join the relation from step 1 with the intermediate relation, and save the result as the new intermediate relation.  
+  
+2. define the rule head relation by filtering the resulting intermediate relation from step 1 into it.
+
+The join operation done in each step ensures that irrelevant tuples are filtered from the final resulting relation.
+
+For more details and an example, see GenericExecution._execute_rule_aux() at [execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py)
+
+### files structure
+
+```
+└───engine
+    │
+    │   execution.py - implementations of Datalog's execution engines and term graph execution engines
+    │	
+    │   message_definitions.py - enums that the session uses to handle messages
+    │	
+    │   session.py - the implementation of the session
+    │
+    ├───datatypes
+    │	
+    │       ast_node_types.py - contains classes that represent statements and relations.
+    │	
+    │       primitive_types.py - contains classes that represent rgxlog's primitive types
+    │       (those that are not already defined in python). 
+    │       Also contains an enum for primitive types that is used throughout the passes.
+    │
+    ├───ie_functions
+    │	
+    │       ie_function_base.py - contains the abstract class for information extraction functions
+    │	
+    │       python_regexes.py - implementations of regex information extraction functions that were
+    │       implemented using python's 're' module
+    │
+    ├───passes
+    │	
+    │       lark_passes.py - implementations of lark passes
+    │
+    ├───state
+    │	
+    │       symbol_table.py - implementations of the symbol table
+    │	
+    │       term_graph.py - implementations of the term graph
+    │
+    └───utils
+	
+            expected_grammar.py - contains a structure that helps asserting that a pass received an 
+	    expected ast node structure
+			
+            general_utils.py - General utilities that are not specific to any kind of pass, 
+	    execution engine, etc...
+			
+            lark_passes_utils.py - helper functions and function decorators that are used in lark 
+```
+
+## Initial thoughts about building the workbench (predates version 0.0.5)
 
 [Link to 0.1 language specification](doc/language_spec.pdf)
 
@@ -302,236 +538,6 @@ For 0.0.5 lets just leave the garbage in.
 For 0.1 Lets start with something really simple
 * At the end of each interpretation iteration, see which items in the memory heap are not reachable from the set of nodes pointed to by the variables in the term tree.
 * If a node has not been reachable for over `k` commands, delete it from the memory heap
-
-## version 0.1
-progress and overview of version 0.1 implementation will be shown here
-
-### session overview
-
-Let's begin with the communication diagram of the session when receiving a query:
-
-![query communication diagram](doc/query_communication_diagram.png)
-
-As the graph shows, the session:
-
-1. Gets a query as an input.
-2. Using lark's lexer and parser, performs the lexical analysis and parsing on the query.
-3. Separates the AST received from the previous stage into standalone statements.
-4. Runs the semantic checks, optimization and execution passes on each statement.
-5. Returns the results object. In the current implementation, the results object is a string that contains the results of the queries in the program.
-
-All of the relevant files to the session can be found at the ![engine](/src/rgxlog-interpreter/src/rgxlog/engine/) folder. The session is implemented at ![session.py](/src/rgxlog-interpreter/src/rgxlog/engine/session.py)
-
-Below you can find more details about each step of the implementation of the session
-
-#### lexer and parser
-
-The lexical analyses and parsing is done using lark's lexer and parser.
-lark's lexer and parser receive a grammar file as an input, which can be found ![here](/src/rgxlog-interpreter/src/rgxlog/grammar/grammar.lark)
-
-A handy cheat sheet that will help you to read the grammar can be found at: https://cheatography.com/erezsh/cheat-sheets/lark/
-
-An official tutorial for lark's grammar can be found at:
-https://lark-parser.readthedocs.io/en/latest/json_tutorial.html#
-
-note that we also import token definitions from lark's common module, it can be found here:
-https://github.com/lark-parser/lark/blob/master/lark/grammars/common.lark
-
-![the introductory RGXlog tutorial](/tutorials/introduction.ipynb) can help you understand the features that this grammar provides.
-
-
-#### separation of the AST into standalone statements
-
-In the current implementation, while the session receive a whole RGXlog program (a jupyter notebook cell), it performs the semantic checks, optimizations, and execution on standalone statements.
-
-This greatly simplifies the implementation of the passes, as they don't have to keep track of previous statements. Instead, a pass can get the context it needs from the symbol table.
-
-Currently, the session will check and execute the statements one by one until the program ends, or an error is encountered in one of the statements.
-
-An error will not cause a reversion of the program state, meaning that even state updates from the passes that processed the faulty statement will be saved.
-
-In future version this will need to be fixed, meaning, should a statement in a jupyter notebook cell fail:
-1. the symbol table and term graph (the session's state) will be restored to their state before the execution of the cell. A naive solution for this would be to copy them before the cell execution, and perform the state updates on their copies. Only if the execution of the whole cell is successful, the copied symbol table and term graph would replace the original ones
-2. Reverse the state of the Datalog engine. There's no easy solution for this in version 0.1 as we use pyDatalog which does not provide a simple way to reverse the state. Therefore, in order to implement this feature, pyDatalog should first be replaced.
-
-#### passes
-
-All of the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at ![lark_passes.py](/src/rgxlog-interpreter/src/rgxlog/engine/passes/lark_passes.py)
-
-The only exception is the term graph execution pass (GenericExecution), you can learn more about it in the [execution](#execution) section.
-
-Below are some relevant links that will allow you to learn about lark's transformers/visitors:
-  
-The previously mention cheat sheet:  
-https://cheatography.com/erezsh/cheat-sheets/lark/
-  
-the official documentation on transformers:  
-https://lark-parser.readthedocs.io/en/latest/visitors.html
-
-A few words on each pass:
-
-##### AST transformation passes:
-
-* RemoveTokens - Removes lark tokens from the ast.
-
-* FixStrings - Removes line overflow escapes from strings.
-
-* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at ![primitve_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/primitive_types.py).
-
-* ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at ![ast_node_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/ast_node_types.py). Note that passes that appear after this pass in the pass stack can only visit statment AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
-
-##### semantic checks passes:
-
-* CheckReservedRelationNames - Asserts that the program does not contain relations that start with "\_\_rgxlog\_\_". This name is used for temporary relations in the datalog execution engine.
-
-* CheckDefinedReferencedVariables - Asserts that referenced variables are defined.
-
-* CheckForRelationRedefinitions - Asserts that relations are not redefined both in rules and relation declarations.
-
-* CheckReferencedRelationsExistenceAndArity - Asserts that referenced relations exist and are used with their correct arity.
-
-* CheckReferencedIERelationsExistenceAndArity - Asserts that referenced ie relations exist (i.e. there's a registered ie function with the same name) and are used with their correct arity.
-
-* CheckRuleSafety - Asserts that a rule is safe, meaning:
-	1. Every free variable in the head occurs at least once in the body as an output term of a relation.
-	2. Every free variable is bound.
-
-* TypeCheckAssignments - type checks variable assignments.
-
-* TypeCheckRelations - type checks referenced relations and checks for free variables type conflicts in rules, that is, that a free variable in a rule is not expected to be more than one type.
-
-* SaveDeclaredRelationsSchemas - saves the schemas of declared relations to the symbol table.
-
-##### optimization passes:
-
-* ReorderRuleBody - Reorders each rule body relations list so that each relation in the list has its input free variables bound by previous relations in the list, or it has no input free variables terms. The term graph execution relies on this optimization.
-
-##### execution passes:
-
-
-* SaveDeclaredRelationsSchemas - saves the schemas of declared relations to the symbol table.
-
-* ResolveVariablesReferences - replaces variable references with their saved symbol table value.
- 
-* ExecuteAssignments - saves variable assignments to the symbol table.
-
-* AddStatementsToNetxTermGraph - adds a statement to the term graph.
-
-* GenericExecution - executes the term graph.
-
-####  term graph
-
-The term graph implementation can be found at ![term_graph.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/term_graph.py).
-it is implemented using networkx.
-
-The term graph does not handle variable assignment statements. Those are handled in the 'ResolveVariablesReferences' and 'ExecuteAssignments' passes
-
-The term graph is initialized with a root node, and every statement that is added to the term graph is a child subtree of that node.
-
-Each non rule statement is represented as a single node that contains a relation.
-
-A rule statement is represented by a subtree, who's root is an empty node that has two children:
-1. a rule head relation node (contains the head relation of the rule).
-2. a rule body relations node, who's children are nodes that each contain a single rule body relation.
-
-Nodes in the term graph must have the following attributes:
-1. type: the node's type.
-2.  state: whether the node is computed or not computed
-
-Most nodes have a value attribute, which contains a relation.
-
-You can think of the term graph as a 'graph of relations', where each node can contain at most one relation, and the node's type provides the action that needs to be performed using that relation.
-
-example: 
-
-for the following code:
-
-```
-new parent(str, str)
-grandparent(X,Z) <- parent(X,Y), parent(Y,Z)
-```
-
-we'll get a term graph that will look like this:
-
-![term graph example](doc/term_graph.png)
-
-#### execution
-
-the term graph execution is done by the 'GenericExecution' pass, which can be found at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py).
-
-the 'GenericExecution' pass executes the term graph statement by statement. It skips statements that were already computed.
-
-the pass uses a pyDatalog engine which can also be found at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py). It is the PydatalogEngine who wraps pyDatalog.
-
-The official pyDatalog documentation can be found here:
-https://sites.google.com/site/pydatalog/home
-
-That said, most of the documentation is irrelevant as we only a small part of pyDatalog. Should you need to alter the pyDatalog implementation, it is recommended to read this link: https://sites.google.com/site/pydatalog/advanced-topics, specifically the 'Dynamic datalog statements' section. Afterwards, read the comments and implementation of the pyDatalog wrapper class, as it will give you more details on the tricks we used to make pyDatalog work with our implementation of RGXlog.
-
-Note that operations done in pyDatalog cannot currently be reversed, which is why this engine will most likely be replaced in the future.
-
-GenericExecution's execution of non rule statements is fairly simple. It simply calls the relavent function in the pyDatalog wrapper engine.
-
-Executing rule statements is more complex, as rules are constructed from multiple relations. The following algorithm is used:
-  
-1. for each rule body relation (from left to right):  
-  
-	a. compute the relation.  
-  
-	b. if it is the leftmost relation in the rule body, save the relation from step 1 as an intermediate relation, else join the relation from step 1 with the intermediate relation, and save the result as the new intermediate relation.  
-  
-2. define the rule head relation by filtering the resulting intermediate relation from step 1 into it.
-
-The join operation done in each step ensures that irrelevant tuples are filtered from the final resulting relation.
-
-For more details and an example, see GenericExecution._execute_rule_aux() at ![execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py)
-
-#### files structure
-
-```
-└───engine
-    │
-    │   execution.py - implementations of Datalog's execution engines and term graph execution engines
-    │	
-    │   message_definitions.py - enums that the session uses to handle messages
-    │	
-    │   session.py - the implementation of the session
-    │
-    ├───datatypes
-    │	
-    │       ast_node_types.py - contains classes that represent statements and relations.
-    │	
-    │       primitive_types.py - contains classes that represent rgxlog's primitive types
-    │       (those that are not already defined in python). 
-    │       Also contains an enum for primitive types that is used throughout the passes.
-    │
-    ├───ie_functions
-    │	
-    │       ie_function_base.py - contains the abstract class for information extraction functions
-    │	
-    │       python_regexes.py - implementations of regex information extraction functions that were
-    │       implemented using python's 're' module
-    │
-    ├───passes
-    │	
-    │       lark_passes.py - implementations of lark passes
-    │
-    ├───state
-    │	
-    │       symbol_table.py - implementations of the symbol table
-    │	
-    │       term_graph.py - implementations of the term graph
-    │
-    └───utils
-	
-            expected_grammar.py - contains a structure that helps asserting that a pass received an 
-	    expected ast node structure
-			
-            general_utils.py - General utilities that are not specific to any kind of pass, 
-	    execution engine, etc...
-			
-            lark_passes_utils.py - helper functions and function decorators that are used in lark 
-```
 
 
 
