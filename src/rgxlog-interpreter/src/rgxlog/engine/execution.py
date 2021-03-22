@@ -431,7 +431,7 @@ class PydatalogEngine(RgxlogEngineBase):
             for ie_output in ie_outputs:
                 ie_output = list(ie_output)
 
-                # assert the the ie output is properly typed
+                # assert the ie output is properly typed
                 self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)
 
                 # the user is allowed to represent a span in an ie output as a tuple of length 2

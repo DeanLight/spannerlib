@@ -41,7 +41,7 @@
 <!-- /code_chunk_output -->
 
 The spanner workbench is an interpreter and a REPL system for spanner-like languages.
-Our goal in developing the spanner workbench are two fold
+Our goal in developing the spanner workbench is twofold:
 
 * First and foremost, to allow students learning about spanner languages an easy to use system to play around with the languages.
 * A later goal is to provide a easily modifiable framework that allows researchers to easily test and deploy new algorithms and optimizations to spanner languages.
@@ -89,8 +89,8 @@ Programming wise, the question of how to implement an interpreter is orthogonal 
 implement a Read Evaluate Print Loop (REPL) interface for the interpreter.
 You can think of it like the frontend and the backend of the app.
 
-The way we decided to implement the front end of the workbench if to use jupyter notebook's magic system. As seen bellow, it is a system that allows you to delegate running a piece of code to an external module. Specifically for our case, we can delegate
-running code that is written in our own syntax (RGXLog at the moment) to an instance of our interpreter.
+The way we decided to implement the front end of the workbench if to use jupyter notebook's magic system. As seen below, it is a system that allows you to delegate running a piece of code to an external module.
+Specifically for our case, we can delegate running code that is written in our own syntax (RGXLog at the moment) to an instance of our interpreter.
 
 Here is an example of language bash magic.
 ![bash_magic](doc/bash_magic_example.png)
@@ -129,7 +129,7 @@ Below you can find more details about each step of the implementation of the ses
 
 ### lexer and parser
 
-The lexical analyses and parsing is done using lark's lexer and parser.
+The lexical analyses and parsing are done using lark's lexer and parser.
 * lark's lexer and parser receive a grammar file as an input, which can be found [here](/src/rgxlog-interpreter/src/rgxlog/grammar/grammar.lark)
 
 * A handy cheat sheet that will help you to read the grammar can be found at: https://cheatography.com/erezsh/cheat-sheets/lark/
@@ -145,7 +145,7 @@ https://github.com/lark-parser/lark/blob/master/lark/grammars/common.lark
 
 #### separation of the AST into standalone statements
 
-In the current implementation, while the session receive a whole RGXlog program (a jupyter notebook cell), it performs the semantic checks, optimizations, and execution on standalone statements.
+In the current implementation, while the session receives a whole RGXlog program (a jupyter notebook cell), it performs the semantic checks, optimizations, and execution on standalone statements.
 
 This greatly simplifies the implementation of the passes, as they don't have to keep track of previous statements. Instead, a pass can get the context it needs from the symbol table.
 
@@ -153,7 +153,7 @@ Currently, the session will check and execute the statements one by one until th
 
 An error will not cause a reversion of the program state, meaning that even state updates from the passes that processed the faulty statement will be saved.
 
-In future version this will need to be fixed, meaning, should a statement in a jupyter notebook cell fail:
+In future versions this will need to be fixed, meaning, should a statement in a jupyter notebook cell fail:
 1. the symbol table and term graph (the session's state) will be restored to their state before the execution of the cell. A naive solution for this would be to copy them before the cell execution, and perform the state updates on their copies. Only if the execution of the whole cell is successful, the copied symbol table and term graph would replace the original ones
 2. Reverse the state of the Datalog engine. There's no easy solution for this in version 0.1 as we use pyDatalog which does not provide a simple way to reverse the state. Therefore, in order to implement this feature, pyDatalog should first be replaced.
 
@@ -179,9 +179,9 @@ A few words on each pass:
 
 * FixStrings - Removes line overflow escapes from strings.
 
-* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at ![primitve_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/primitive_types.py).
+* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at [primitve_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/primitive_types.py).
 
-* ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at ![ast_node_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/ast_node_types.py). Note that passes that appear after this pass in the pass stack can only visit statment AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
+* ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at [ast_node_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/ast_node_types.py). Note that passes that appear after this pass in the pass stack can only visit statement AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
 
 ##### semantic checks passes:
 
@@ -231,11 +231,11 @@ The term graph does not handle variable assignment statements. Those are handled
 
 The term graph is initialized with a root node, and every statement that is added to the term graph is a child subtree of that node.
 
-Each non rule statement is represented as a single node that contains a relation.
+Each non-rule statement is represented as a single node that contains a relation.
 
-A rule statement is represented by a subtree, who's root is an empty node that has two children:
+A rule statement is represented by a subtree, whose root is an empty node that has two children:
 1. a rule head relation node (contains the head relation of the rule).
-2. a rule body relations node, who's children are nodes that each contain a single rule body relation.
+2. a rule body relations node, whose children are nodes that each contain a single rule body relation.
 
 Nodes in the term graph must have the following attributes:
 1. type: the node's type.
@@ -269,11 +269,11 @@ the pass uses a pyDatalog engine which can also be found at [execution.py](/src/
 The official pyDatalog documentation can be found here:
 https://sites.google.com/site/pydatalog/home
 
-That said, most of the documentation is irrelevant as we only a small part of pyDatalog. Should you need to alter the pyDatalog implementation, it is recommended to read this link: https://sites.google.com/site/pydatalog/advanced-topics, specifically the 'Dynamic datalog statements' section. Afterwards, read the comments and implementation of the pyDatalog wrapper class, as it will give you more details on the tricks we used to make pyDatalog work with our implementation of RGXlog.
+That said, most of the documentation is irrelevant as we only use a small part of pyDatalog. Should you need to alter the pyDatalog implementation, it is recommended to read this link: https://sites.google.com/site/pydatalog/advanced-topics, specifically the 'Dynamic datalog statements' section. Afterwards, read the comments and implementation of the pyDatalog wrapper class, as it will give you more details on the tricks we used to make pyDatalog work with our implementation of RGXlog.
 
 Note that operations done in pyDatalog cannot currently be reversed, which is why this engine will most likely be replaced in the future.
 
-GenericExecution's execution of non rule statements is fairly simple. It simply calls the relavent function in the pyDatalog wrapper engine.
+GenericExecution's execution of non-rule statements is fairly simple. It simply calls the relevant function in the pyDatalog wrapper engine.
 
 Executing rule statements is more complex, as rules are constructed from multiple relations. The following algorithm is used:
 
@@ -340,7 +340,7 @@ For more details and an example, see GenericExecution._execute_rule_aux() at [ex
 
 [Link to 0.1 language specification](doc/language_spec.pdf)
 
-Here is a general schematic explanation of how our interpreter looks like. Bellow We go over the different components and implementation considerations.
+Here is a general schematic explanation of how our interpreter looks like. Below We go over the different components and implementation considerations.
 
 ![General structure of our interpreter](./doc/interpreter_flow.svg)
 
@@ -350,12 +350,11 @@ Interpreters come in two flavours:
 * Micro-pass (Multi Pass)
 
 Both generate the AST from the string containing the source code and then have the source code go through an entire interpreting process similar to what is
-shown above. While the former flavour does so in one giant pass, performing each step as soon as it can, the latter flavor defines many
-sequential passes on the entire AST, each one doing a very small task.
+shown above. While the former flavour does so in one giant pass, performing each step as soon as it can, the latter flavor defines many sequential passes on the entire AST, each one doing a very small task.
 
 We chose the micro-pass approach for this project as it is more modular and easier to understand for new developers. Moreover, by exposing the pass-stack in an accessible way to researchers, we can allow new algorithms/optimizations to be added to our platform with minimal effort. A researcher that wants to add his own improvement to our platform, can potentially write only a single pass and add it in the appropriate place in the pass-stack, easily leveraging the already written passes.
 
-Both different passes of the same command, and passes from different commands will need to save or look at the state of the entire session. We will refer to this state object as the engine and will talk about its make up down bellow.
+Both different passes of the same command, and passes from different commands will need to save or look at the state of the entire session. We will refer to this state object as the engine and will talk about its make up down below.
 
 #### Lexer and Parser
 
@@ -364,7 +363,7 @@ The lexer and parser are used to convert the string containing the source code i
 * Parser/Lexer as code
 * Parser/Lexer as definition files
 
-The former refers to writing code that parses/lexes our code directly. The problem with such parsers are that the grammar and syntax of those parsers is implicitly written within the code, with an external document explaining the syntax in general strokes. This makes changing/debugging the parser complicated, and also risks loss of knowledge as the parser and the external documentation drift further away as time goes on.
+The former refers to writing code that parses/lexes our code directly. The problem with such parsers is that the grammar and syntax of those parsers is implicitly written within the code, with an external document explaining the syntax in general strokes. This makes changing/debugging the parser complicated, and also risks loss of knowledge as the parser and the external documentation drift further away as time goes on.
 
 The latter approach is to have the documentation generate the code programmatically. In this case we will have a file that defines the grammar precisely in a declarative manner, and this file will be fed to a grammar-to-parser algorithm that will generate the parser automatically.
 
@@ -374,15 +373,14 @@ We chose the latter approach and will be using the [lark](https://lark-parser.re
 
 #### design considerations
 
-Given that the micro-pass architecture will allow us modular and incremental improvement of our interpreter, in our 0.1 release we want only essential passes that our language cant function without and we want these passes to be implemented in as a naive way as possible while retaining two important constraints:
+Given that the micro-pass architecture will allow us modular and incremental improvement of our interpreter, in our 0.1 release we want only essential passes that our language can't function without and we want these passes to be implemented in as a naive way as possible while retaining two important constraints:
 
 * Passes that should logically be kept separate should not be artificially merged even if that results in less code (or in code that is slightly easier to write).
-* When using black box implementations for execution, we should delegate only the most lower level constructs to the black boxes, and not task them with structural decomposition. 
+* When using black box implementations for execution, we should delegate only the lowest level constructs to the black boxes, and not task them with structural decomposition. 
 
 Let me give examples of these two constraints.
-For the first constraint: Lets say that checking that IE functions are defined and 
-checking that referenced variables are defined is very similar. It could be the case that 
-one could check both in one pass together with less code by checking a common identifier 
+For the first constraint: Let's say that checking that IE functions are defined is very similar to checking that referenced variables are defined.
+It could be the case that one could check both in one pass together with less code by checking a common identifier 
 pool. However, these should be written as different passes, even if their code ends up 
 being similar.
 
@@ -394,18 +392,19 @@ for 0.0.5 we waiver constraint 2 for the execution
 #### implementation
 
 Passes and their implementors differ in how involved they need or want to be in the overall structure of the tree and in how they want to address the tradeoff between independence and reliance on tools we provide for them.
-One pass implementor might just want to add some data to certain nodes tha can be derived from the nodes locally.
-Another pass implementor has specific low level C code that he wants to run on his own tree like data structure.
+One pass implementor might just want to add some data to certain nodes that can be derived from the nodes locally.
+Another pass implementor has specific low level C code that he wants to run on his own tree-like data structure.
 
-In addition to generating our Lexer and Parser, lark provides some utilities such as [iterators, visitors and transformers](https://lark-parser.readthedocs.io/en/latest/classes/)
+In addition to generating our Lexer and Parser, lark provides some utilities such as [iterators, visitors and transformers.](https://lark-parser.readthedocs.io/en/latest/classes/)
+
 We can use and expose them to implementers to make writing passes easier.
-However, since not all implementors will want to use those or use python at all we should make 3 (and make accessible) different ways of implementing passes.
+However, since not all implementors will want to use those or use python at all, we should have 3 (accessible) different ways of implementing passes:
 
 * Using visitors/transformers
 * Getting the AST tree itself and writing general python code on top of it
-* Getting a serialized version of the AST and other information and sending it to some other function(For example some C code)
+* Getting a serialized version of the AST and other information and sending it to some other function (For example some C code)
 
-The first two we get for free with lark. For the last one, we need to make sure that our ASTs and the state of our engine are easily serialize-able into a standard serialization protocol (such as JSON). And that we have utility functions that do the serialization and un-serialization.
+The first two we get for free with lark. For the last one, we need to make sure that our ASTs and the state of our engine are easily serializable into a standard serialization protocol (such as JSON). And for that we have utility functions that do the serialization and deserialization.
 
 ##### version considerations
 * the first two implementation will go to 0.0.5
@@ -418,7 +417,7 @@ I will list the passes that we have to implement to have a functioning RGXLog in
 Semantic passes
 
 * existence and correct arity of IE function.
-* existence of referenced variable
+* existence of referenced variables
 * existence of referenced relations
 * Safety of datalog rules
 * existence and access to external documents
@@ -430,11 +429,11 @@ Execution passes
 * Garbage collection
 
 
-I consider the semantic passes defined here as self explanatory. Bellow I define a naive implementation for the engine upon which I can discuss how to build the naive execution passes.
+I consider the semantic passes defined here as self explanatory. Below I define a naive implementation for the engine upon which I can discuss how to build the naive execution passes.
 
 ##### version considerations
 
-For semantic passes we need all of them for version 0.0.5,though we might be able to leverage pydatalog to check safety implicitly for example.
+For semantic passes we need all of them for version 0.0.5, though we might be able to leverage pydatalog to check safety implicitly for example.
 
 For execution passes
 * In 0.0.5 we can resolve RGX extractions and then send all everything else to pydatalog.
@@ -444,32 +443,32 @@ For execution passes
 
 ## The Engine
 
-Without going into an involved derivation of the structure of this engine, i can say that we need the following constructs in out engine.
+Without going into an involved derivation of the structure of this engine, i can say that we need the following constructs in our engine:
 
 * A memory heap
   * Contains pointers to all allocated data
   * This can be a python dictionary with a `new_unused_key` generator
 * A Term graph
   * This will contain all terms that exist in our engine and their dependencies on other terms. For example, the head of a conjunctive query needs to have the relations under conjunction as his children in the forest.
-  * Since we allow recursive queries this wont really be a forest, but it still will have several roots.
-  * This tree will need to save the evaluation state of each node (ie {computed,not-computed,dirty})
+  * Since we allow recursive queries this won't really be a forest, but it still will have several roots.
+  * This tree will need to save the evaluation state of each node (i.e. {computed,not-computed,dirty})
   * We can work with a networkX tree for now.
-  * In version 0.0.5 we do not need to merge terms with overlapping structures, see example bellow.
+  * In version 0.0.5 we do not need to merge terms with overlapping structures, see example below.
   * An example of such a tree can be seen in figure 1 [here](papers/Provenance_and_Probabilities_in_Relational_Databases.pdf) (note that in that case the logic is of abstract semi-rings over terms, but the idea is the same)
 * A variable table
   * A mapping between variables and the nodes they point to in the term forest
   * can be a python dict for now
 
 Here is an example regarding the overlapping structures in the term graph.
-Lets look at the following example
+Let's look at the following example:
 ```
 >>> D(X,Y) <- A(X),B(Y),C(X,Y,Z)
 >>> E(X,Y) <- A(X),C(X,Y,Z), F(Z)
->>> x= E(X,Y) OR D(X,Y)
+>>> x = E(X,Y) OR D(X,Y)
 >>> x
 ```
-Without merging  terms with overlapping structures,
-this would naively generate something that abstractly looks like this
+Without merging terms with overlapping structures,
+this would naively generate something that abstractly looks like this:
 <!--
  digraph G {
    D_and [label="and"]
@@ -486,7 +485,7 @@ this would naively generate something that abstractly looks like this
 
 The weakness with this approach is that `A AND C` is computed twice.
 
-A version of the term graph that takes care to merge terms with overlapping structures would look more like this
+A version of the term graph that takes care to merge terms with overlapping structures would look more like this:
 <!--
  digraph G {
    D_and [label="and"]
@@ -515,15 +514,15 @@ This would be the automatic equivalent of a smart programmer, refactoring the qu
 
 ### Datalog evaluation pass
 
-To implement this we can defer to [pyDatalog](https://github.com/pcarbonn/pyDatalog).
+To implement this, we can defer to [pyDatalog](https://github.com/pcarbonn/pyDatalog).
 
 * We can just keep an instance of pyDatalog session and call it to compute results.
-* We need to find a relational representation that pyDatalog can parse, maybe some SQLAlchemy data structure. We will find one that can export itself to a lot of standard formats and create the IE extractions using that data-structure. Once we have stabilized we can decide which interface our relational representation needs to take and use the abstract interface to enable polymorphism.
+* We need to find a relational representation that pyDatalog can parse, maybe some SQLAlchemy data structure. We will find one that can export itself to a lot of standard formats and create the IE extractions using that data-structure. Once we have stabilized, we can decide which interface our relational representation needs to take and use the abstract interface to enable polymorphism.
 
 ##### version considerations
 * For 0.0.5 Throw any subtree you can into pydatalog.
   * For results of extractions, you can insert fake new relations to the pydatalog engine
-* For 0.1 we make wrappers basic operation (conjunction,recursive resolution etc) that use pydatalog. We then call these when we reach datalog operations in the term graph
+* For 0.1 we make wrappers basic operation (conjunction, recursive resolution etc.) that use pydatalog. We then call these when we reach datalog operations in the term graph
   
 ### regex evaluation
 
@@ -533,9 +532,9 @@ To implement this we can defer to [pyDatalog](https://github.com/pcarbonn/pyData
 * python re does not resolve the overlap resolution problem (TODO find a link explaining it)
 
 ### garbage collection
-For 0.0.5 lets just leave the garbage in.
+For 0.0.5 let's just leave the garbage in.
 
-For 0.1 Lets start with something really simple
+For 0.1 Let's start with something really simple
 * At the end of each interpretation iteration, see which items in the memory heap are not reachable from the set of nodes pointed to by the variables in the term tree.
 * If a node has not been reachable for over `k` commands, delete it from the memory heap
 

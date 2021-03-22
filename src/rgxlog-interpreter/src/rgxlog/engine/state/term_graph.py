@@ -138,7 +138,7 @@ class NetxTermGraph(TermGraphBase):
 
     def add_term(self, **attr):
 
-        # assert the the term has a type
+        # assert the term has a type
         if 'type' not in attr:
             raise Exception("cannot add a term without a type")
 
