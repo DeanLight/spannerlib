@@ -58,7 +58,9 @@ setuptools.setup(
         'install': PostInstallCommand,
     },
     python_requires='>=3.8*',
+    # TODO test different versions of these packages to verify requirements
     install_requires=[
+
         'lark-parser',
         'networkx',
         'docopt',

@@ -17,10 +17,10 @@ from rgxlog.engine.state.term_graph import NetxTermGraph
 
 
 class Session:
-    def __init__(self):
+    def __init__(self, debug=False):
         self._symbol_table = SymbolTable()
         self._term_graph = NetxTermGraph()
-        self._execution = execution.PydatalogEngine()
+        self._execution = execution.PydatalogEngine(debug)
 
         self._pass_stack = [
             RemoveTokens,

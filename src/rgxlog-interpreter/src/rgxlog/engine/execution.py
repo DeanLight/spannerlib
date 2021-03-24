@@ -4,6 +4,7 @@ and also implementations of 'ExecutionBase' which serves as an abstraction for a
 and an rgxlog engine.
 """
 
+# TODO change all imports to relative imports (after installing rgxlog, we run from site-packages instead of this code)
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
@@ -297,6 +298,8 @@ class PydatalogEngine(RgxlogEngineBase):
         # empty tuple was returned
         no_results = len(query_results) == 0
         result_is_single_empty_tuple = len(query_results) == 1 and len(query_results[0]) == 0
+
+        # TODO refactor these clauses into function `format_query`
         if no_results:
             query_result_string = '[]'
         elif result_is_single_empty_tuple:

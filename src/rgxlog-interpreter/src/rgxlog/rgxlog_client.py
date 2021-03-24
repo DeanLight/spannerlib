@@ -6,6 +6,7 @@ from multiprocessing.connection import Client as Client_
 from multiprocessing.context import Process
 from time import sleep
 
+import pandas
 from rgxlog.engine.message_definitions import Request
 from rgxlog.server.server import start_server
 from rgxlog.system_configuration import system_configuration
@@ -130,6 +131,51 @@ class Client:
 
         return reply['data']
 
+    def execute_from_csv(self, csv_file_name):
+        # TODO
+        for line in csv_file_name:
+            split_line = line.split(",")
+            if len(split_line < 1):
+                logging.error("oops")
+
+            # parse line
+            mode = [split_line[0]]
+            args = split_line[1:]
+            if mode == "new":
+                command = "new " + ' '.join(args)
+            elif mode == "fact":
+                command = args[0] + "(" + ', '.join(args) + ')'
+            else:
+                logging.error("incorrect format in csv file")
+                return
+            self.execute(command)
+
+    def execute_from_df(self, df):
+        # TODO
+        # csv_file = df.to_csv("temp.csv")
+        # self.execute_from_csv(csv_file)
+        pass
+
+    def query_into_csv(self, query, csv_file_name):
+        # TODO - we should have access to the session after deleting the server file
+        # free_vars, rows = _extract_vars_and_values(self._session.query(query))
+        # if not rows:
+        #   rows = [free_vars]
+        # else:
+        #   rows.insert(0, free_vars)
+        #
+        # with open(csv_file_name,w) as f:
+        #   writer = csv.writer(f)
+        #   writer.writerows(rows)
+        pass
+
+    def query_into_df(self, query) -> pandas.DataFrame:
+        # TODO
+        # free_vars, rows = _extract_vars_and_values(self._session.query(query))
+        # df = pandas.DataFrame(rows, columns=free_vars)
+        df = pandas.DataFrame()
+        return df
+
     def register(self, ie_function_name):
         """
         Register the ie name for future usage
@@ -242,8 +288,15 @@ class Client:
         subprocess.Popen(shlex.split(command))
 
 
+# TODO: this main is used for debugging only - not for production
 if __name__ == '__main__':
-    magic_client = Client()
-    result = magic_client.execute(report)
-    magic_client.disconnect()
+    client = Client()
+    result = client.execute('''
+        new uncle(str, str)
+        uncle("bob", "greg")
+        ''')
+    print("result1:")
+    print(result)
+    result = client.execute('''?uncle("bob",Y)''')
+    print("result2:")
     print(result)
