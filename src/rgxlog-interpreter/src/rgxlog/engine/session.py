@@ -117,6 +117,10 @@ class Session:
         result = self._execution.flush_prints_buffer()
         return {'msg_type': Response.SUCCESS, 'data': result}
 
+    """
+        def register(self, ie_function : callable(), ie_function_name, in_rel, out_rel):
+            call symbol_table's register_ie_function function.
+    """
     def register_ie_function(self, ie_function_name):
         """
         registers an ie function for future usage

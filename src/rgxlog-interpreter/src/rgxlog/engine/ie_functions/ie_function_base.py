@@ -1,3 +1,19 @@
+
+"""
+Instead of creating a separate class for every user defined ie function we will adjust IEFunctionData class.
+Every abstract method will become a class member.
+It allows us to use this class for all ie functions by passing different parameters to the init method.
+"""
+
+"""
+    class IEFunctionData:
+        def __init__(self, ie_function : callable(), get_input_types : callable(), get_output_types : callable()):
+            pass
+"""
+
+
+
+
 """
 this module contains the 'IEFunctionData' class: an abstraction for classes that contain all the
 information needed to semantic check and execute an information extraction function

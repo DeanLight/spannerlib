@@ -201,6 +201,10 @@ class SymbolTable(SymbolTableBase):
         self._var_to_value = {}
         self._var_to_type = {}
         self._relation_to_schema = {}
+
+        """
+            _registered_ie_function will be a mapping between ie_function's name to ie_function class instance. 
+        """
         self._registered_ie_functions = set()
 
     def set_var_value_and_type(self, var_name, var_value, var_type):
@@ -238,6 +242,11 @@ class SymbolTable(SymbolTableBase):
     def contains_relation(self, relation_name):
         return relation_name in self._relation_to_schema
 
+    """
+        def register_ie_function(self, ie_function : callable(), ie_function_name, in_rel, out_rel):
+            initialize ie_function_data instance.
+            add a mapping between ie_function_name and ie_function_data instance.
+    """
     def register_ie_function(self, ie_function_name):
         try:
             self.get_ie_func_data(ie_function_name)
