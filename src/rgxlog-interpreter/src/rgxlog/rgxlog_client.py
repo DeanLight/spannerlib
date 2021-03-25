@@ -1,3 +1,4 @@
+import csv
 import logging
 import shlex
 import subprocess
@@ -131,34 +132,35 @@ class Client:
 
         return reply['data']
 
-    def execute_from_csv(self, csv_file_name):
-        # TODO
-        for line in csv_file_name:
-            split_line = line.split(",")
-            if len(split_line < 1):
-                logging.error("oops")
+    def import_relation_from_csv(self, csv_file_name, relation_name):
+        # TODO: this is pseudo-code only
 
-            # parse line
-            mode = [split_line[0]]
-            args = split_line[1:]
-            if mode == "new":
-                command = "new " + ' '.join(args)
-            elif mode == "fact":
-                command = args[0] + "(" + ', '.join(args) + ')'
-            else:
-                logging.error("incorrect format in csv file")
-                return
+        reader = csv.reader(csv_file_name, delimiter=",")
+        for row in reader:
+            # parse row
+            formatted_args = ", ".join(row)
+            command = f"{relation_name}({formatted_args})"
             self.execute(command)
 
-    def execute_from_df(self, df):
-        # TODO
+    def import_relation_from_df(self, df, relation_name):
+        # TODO: this is pseudo-code only
         # csv_file = df.to_csv("temp.csv")
         # self.execute_from_csv(csv_file)
         pass
 
+    def export_relation_to_csv(self, csv_file_name, relation_name):
+        # TODO
+        raise NotImplementedError
+
+    def export_relation_to_df(self, df, relation_name):
+        # TODO
+        raise NotImplementedError
+
     def query_into_csv(self, query, csv_file_name):
-        # TODO - we should have access to the session after deleting the server file
-        # free_vars, rows = _extract_vars_and_values(self._session.query(query))
+        # TODO: this is pseudo-code only
+        #  we should have access to the session after deleting the server file
+        #  (execution is imported from the engine)
+        # free_vars, rows = execution.get_query_results(self._session.query(query))
         # if not rows:
         #   rows = [free_vars]
         # else:
@@ -170,8 +172,8 @@ class Client:
         pass
 
     def query_into_df(self, query) -> pandas.DataFrame:
-        # TODO
-        # free_vars, rows = _extract_vars_and_values(self._session.query(query))
+        # TODO: this is pseudo-code only
+        # free_vars, rows = execution.get_query_results(self._session.query(query))
         # df = pandas.DataFrame(rows, columns=free_vars)
         df = pandas.DataFrame()
         return df
