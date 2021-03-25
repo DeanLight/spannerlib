@@ -19,6 +19,11 @@ class Client:
     and send queries for evaluation
     """
 
+    """
+       We can have an instance of a session as a Client member.
+       It allows as to get rid of the server. 
+    """
+
     def __init__(self,
                  remote_ip='localhost',
                  remote_port=None,
@@ -180,6 +185,10 @@ class Client:
         df = DataFrame()
         return df
 
+    """
+        def register(self, ie_function_callable, ie_function_name, in_rel, out_rel):
+            call session's register function.
+    """
     def register(self, ie_function_name):
         """
         Register the ie name for future usage
