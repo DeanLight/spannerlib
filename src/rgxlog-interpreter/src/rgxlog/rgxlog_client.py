@@ -7,7 +7,7 @@ from multiprocessing.connection import Client as Client_
 from multiprocessing.context import Process
 from time import sleep
 
-import pandas
+from pandas import DataFrame
 from rgxlog.engine.message_definitions import Request
 from rgxlog.server.server import start_server
 from rgxlog.system_configuration import system_configuration
@@ -142,11 +142,13 @@ class Client:
             command = f"{relation_name}({formatted_args})"
             self.execute(command)
 
-    def import_relation_from_df(self, df, relation_name):
+    def import_relation_from_df(self, df: DataFrame, relation_name):
         # TODO: this is pseudo-code only
-        # csv_file = df.to_csv("temp.csv")
-        # self.execute_from_csv(csv_file)
-        pass
+        for row in df.to_numpy().tolist():
+            # parse row
+            formatted_args = ", ".join(row)
+            command = f"{relation_name}({formatted_args})"
+            self.execute(command)
 
     def export_relation_to_csv(self, csv_file_name, relation_name):
         # TODO
@@ -171,11 +173,11 @@ class Client:
         #   writer.writerows(rows)
         pass
 
-    def query_into_df(self, query) -> pandas.DataFrame:
+    def query_into_df(self, query) -> DataFrame:
         # TODO: this is pseudo-code only
         # free_vars, rows = execution.get_query_results(self._session.query(query))
-        # df = pandas.DataFrame(rows, columns=free_vars)
-        df = pandas.DataFrame()
+        # df = DataFrame(rows, columns=free_vars)
+        df = DataFrame()
         return df
 
     def register(self, ie_function_name):
