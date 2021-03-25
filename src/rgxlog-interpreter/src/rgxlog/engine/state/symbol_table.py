@@ -9,6 +9,10 @@ import rgxlog.user_ie_functions as user_ie_module
 import os
 import inspect
 
+
+"""
+    This section will be deleted.
+"""
 user_ie_functions = dict()
 user_ie_directory = os.path.dirname(user_ie_module.__file__)
 
