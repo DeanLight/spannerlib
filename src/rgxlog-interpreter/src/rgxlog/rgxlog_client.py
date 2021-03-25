@@ -1,3 +1,4 @@
+import csv
 import logging
 import shlex
 import subprocess
@@ -6,6 +7,7 @@ from multiprocessing.connection import Client as Client_
 from multiprocessing.context import Process
 from time import sleep
 
+from pandas import DataFrame
 from rgxlog.engine.message_definitions import Request
 from rgxlog.server.server import start_server
 from rgxlog.system_configuration import system_configuration
@@ -135,6 +137,53 @@ class Client:
 
         return reply['data']
 
+    def import_relation_from_csv(self, csv_file_name, relation_name):
+        # TODO: this is pseudo-code only
+
+        reader = csv.reader(csv_file_name, delimiter=",")
+        for row in reader:
+            # parse row
+            formatted_args = ", ".join(row)
+            command = f"{relation_name}({formatted_args})"
+            self.execute(command)
+
+    def import_relation_from_df(self, df: DataFrame, relation_name):
+        # TODO: this is pseudo-code only
+        for row in df.to_numpy().tolist():
+            # parse row
+            formatted_args = ", ".join(row)
+            command = f"{relation_name}({formatted_args})"
+            self.execute(command)
+
+    def export_relation_to_csv(self, csv_file_name, relation_name):
+        # TODO
+        raise NotImplementedError
+
+    def export_relation_to_df(self, df, relation_name):
+        # TODO
+        raise NotImplementedError
+
+    def query_into_csv(self, query, csv_file_name):
+        # TODO: this is pseudo-code only
+        #  we should have access to the session after deleting the server file
+        #  (execution is imported from the engine)
+        # free_vars, rows = execution.get_query_results(self._session.query(query))
+        # if not rows:
+        #   rows = [free_vars]
+        # else:
+        #   rows.insert(0, free_vars)
+        #
+        # with open(csv_file_name,w) as f:
+        #   writer = csv.writer(f)
+        #   writer.writerows(rows)
+        pass
+
+    def query_into_df(self, query) -> DataFrame:
+        # TODO: this is pseudo-code only
+        # free_vars, rows = execution.get_query_results(self._session.query(query))
+        # df = DataFrame(rows, columns=free_vars)
+        df = DataFrame()
+        return df
 
     """
         def register(self, ie_function_callable, ie_function_name, in_rel, out_rel):
@@ -252,8 +301,15 @@ class Client:
         subprocess.Popen(shlex.split(command))
 
 
+# TODO: this main is used for debugging only - not for production
 if __name__ == '__main__':
-    magic_client = Client()
-    result = magic_client.execute()
-    magic_client.disconnect()
+    client = Client()
+    result = client.execute('''
+        new uncle(str, str)
+        uncle("bob", "greg")
+        ''')
+    print("result1:")
+    print(result)
+    result = client.execute('''?uncle("bob",Y)''')
+    print("result2:")
     print(result)
