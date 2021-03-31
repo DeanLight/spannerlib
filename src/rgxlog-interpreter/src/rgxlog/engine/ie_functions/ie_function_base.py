@@ -39,7 +39,7 @@ class IEFunction:
         """
         return self.in_types
 
-    def get_output_types(self, output_arity=None):
+    def get_output_types(self, output_arity):
         """
         given an expected output arity returns an iterable of the output types to the function.
         if the ie function cannot return an output of length output_arity, should return None.
@@ -47,12 +47,10 @@ class IEFunction:
         """
 
         if self.is_super_user:
-            if output_arity is None:
-                raise Exception("Missing output arity param.")
             return self.out_types(output_arity)
 
         # self.is_super_user = false;
-        if output_arity is not None:
-            raise Exception("Output arity is constant, no need for arity_output param.")
+        if not output_arity == len(self.out_types):
+            raise Exception("Output arity doesn't match the declared arity.")
         return self.out_types
 
