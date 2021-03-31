@@ -13,3 +13,12 @@ finally:
     from rgxlog.rgxlog_client import Client
     if run_client:
         magic_client = Client()
+
+"""
+from rgxlog.engine.session import Session
+import rgxlog.engine
+import rgxlog.grammar
+
+magic_client = Session()
+"""
+

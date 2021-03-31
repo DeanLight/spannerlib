@@ -76,6 +76,7 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
+    # TODO
     def execute(self, task):
         """
         executes the task received from the client
@@ -84,8 +85,8 @@ class Session:
         data = task['data']
         if msg_type == Request.QUERY:
             return self._run_query(data)
-        elif msg_type == Request.IE_REGISTRATION:
-            return self.register_ie_function(data)
+        # elif msg_type == Request.IE_REGISTRATION:
+        #     return self.register_ie_function(data)
         elif msg_type == Request.CURRENT_STACK:
             return self._get_pass_stack()
         elif msg_type == Request.SET_STACK:

@@ -1,3 +1,6 @@
+# TODO: delete this file
+
+
 import logging
 import shlex
 import subprocess
@@ -7,22 +10,15 @@ from multiprocessing.context import Process
 from time import sleep
 
 from rgxlog.engine.message_definitions import Request
-from rgxlog.server.server import start_server
 from rgxlog.system_configuration import system_configuration
+from rgxlog.engine.session import Session
 
 
 class Client:
-    """
-    Instances of this class serve as clients that connect to an rgxlog server
-    and send queries for evaluation
-    """
 
-    """
-       We can have an instance of a session as a Client member.
-       It allows as to get rid of the server. 
-    """
-
+    # TODO: delete unnecessary members.
     def __init__(self,
+                 session=Session(),
                  remote_ip='localhost',
                  remote_port=None,
                  remote_run_command=None,
@@ -135,12 +131,15 @@ class Client:
 
         return reply['data']
 
+    def register(self, ie_function, ie_function_name, in_rel, out_rel, is_super_user=False):
+        """
+        Register the ie name for future usage
+        :return: True for successful registration, false otherwise
+        """
+        self.session.register_ie_function(ie_function, ie_function_name, in_rel, out_rel, is_super_user)
+        # TODO: return value
 
-    """
-        def register(self, ie_function_callable, ie_function_name, in_rel, out_rel):
-            call session's register function.
-    """
-    def register(self, ie_function_name):
+    def old_register(self, ie_function_name):
         """
         Register the ie name for future usage
         :return: True for successful registration, false otherwise
