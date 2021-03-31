@@ -5,6 +5,7 @@ this module contains the implementations of symbol tables
 from abc import ABC, abstractmethod
 import rgxlog.engine.ie_functions.python_regexes as global_ie_functions
 import rgxlog.user_ie_functions as user_ie_module
+from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 
 import os
 import inspect
@@ -128,14 +129,14 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def register_ie_function(self, ie_function_name):
+    def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel, is_super_user):
         """
         add a new ie function to the symbol table
 
         Args:
-            ie_function_name: the function's name
+            explained in IEFunction class.
 
-        Returns: true if the function exists on the server, false otherwise
+        Returns: ?????
         """
         pass
 
@@ -209,7 +210,7 @@ class SymbolTable(SymbolTableBase):
         """
             _registered_ie_function will be a mapping between ie_function's name to ie_function class instance. 
         """
-        self._registered_ie_functions = set()
+        self._registered_ie_functions = {}
 
     def set_var_value_and_type(self, var_name, var_value, var_type):
         self._var_to_value[var_name] = var_value
@@ -246,12 +247,18 @@ class SymbolTable(SymbolTableBase):
     def contains_relation(self, relation_name):
         return relation_name in self._relation_to_schema
 
+    def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel, is_super_user):
+        # check if ie_function_name is available.
+        if ie_function_name in self._registered_ie_functions:
+            raise Exception(f"Already exists ie function named {ie_function_name}.")
+
+        # initialize ie_function_data instance.
+        # add a mapping between ie_function_name and ie_function_data instance.
+        self._registered_ie_functions[ie_function_name] = IEFunction(ie_function, in_rel, out_rel, is_super_user)
+        # TODD: return value
+
     """
-        def register_ie_function(self, ie_function : callable(), ie_function_name, in_rel, out_rel):
-            initialize ie_function_data instance.
-            add a mapping between ie_function_name and ie_function_data instance.
-    """
-    def register_ie_function(self, ie_function_name):
+    def old_register_ie_function(self, ie_function_name):
         try:
             self.get_ie_func_data(ie_function_name)
         except AttributeError:  # ie function does not exist on the server
@@ -259,6 +266,7 @@ class SymbolTable(SymbolTableBase):
 
         self._registered_ie_functions.add(ie_function_name)
         return True
+        """
 
     def contains_ie_function(self, ie_func_name):
         return ie_func_name in self._registered_ie_functions
