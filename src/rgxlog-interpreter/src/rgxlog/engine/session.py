@@ -76,24 +76,7 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
-    # TODO
-    def execute(self, task):
-        """
-        executes the task received from the client
-        """
-        msg_type = task['msg_type']
-        data = task['data']
-        if msg_type == Request.QUERY:
-            return self._run_query(data)
-        # elif msg_type == Request.IE_REGISTRATION:
-        #     return self.register_ie_function(data)
-        elif msg_type == Request.CURRENT_STACK:
-            return self._get_pass_stack()
-        elif msg_type == Request.SET_STACK:
-            return self._set_user_stack_as_pass_stack(data)
-        return self._unknown_task_type()
-
-    def _run_query(self, query):
+    def run_query(self, query):
         """
         generates an AST and passes it through the pass stack
         Args:
@@ -122,40 +105,32 @@ class Session:
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel, is_super_user)
         # TODO: return value
 
-    def old_register_ie_function(self, ie_function_name):
-        """
-        registers an ie function for future usage
-        Args:
-            ie_function_name: the function's name
-
-        Returns: success message if succeeded or an error if the ie function is not on the server
-        """
-        success = self._symbol_table.register_ie_function(ie_function_name)
-        if not success:
-            response = {'msg_type': Response.FAILURE, 'data': 'the ie function is not on the server'}
-        else:
-            response = {'msg_type': Response.SUCCESS, 'data': f'registered {ie_function_name}'}
-        return response
-
-    def _get_pass_stack(self):
+    def get_pass_stack(self):
         """
         Returns: the current pass stack
         """
         pass_stack = [pass_.__name__ for pass_ in self._pass_stack]
         return {'msg_type': Response.SUCCESS, 'data': pass_stack}
 
-    def _set_user_stack_as_pass_stack(self, new_pass_stack):
+    def set_pass_stack(self, user_stack):
         """
         sets a new pass stack instead of the current one
         Args:
-            new_pass_stack: a user supplied pass stack
+            user_stack: a user supplied pass stack
 
         Returns: success message with the new pass stack
         """
+
+        if type(user_stack) is not list:
+            raise ValueError('user stack should be a list of pass names (strings)')
+        for pass_ in user_stack:
+            if type(pass_) is not str:
+                raise ValueError('user stack should be a list of pass names (strings)')
+
         self._pass_stack = []
-        for pass_ in new_pass_stack:
+        for pass_ in user_stack:
             self._pass_stack.append(eval(pass_))
-        return {'msg_type': Response.SUCCESS, 'data': self._get_pass_stack()}
+        return self.get_pass_stack()
 
     @staticmethod
     def _unknown_task_type():

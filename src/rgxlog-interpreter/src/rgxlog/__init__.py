@@ -1,3 +1,4 @@
+"""
 try:
     import rgxlog.magic.rgxlog_magic
 except NameError:
@@ -20,5 +21,5 @@ import rgxlog.engine
 import rgxlog.grammar
 
 magic_client = Session()
-"""
+
 
