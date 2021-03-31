@@ -9,19 +9,27 @@ from os.path import splitext
 import sys
 from subprocess import check_output
 
+# TODO: understand why this script doesn't run when using pip normally
+
+
 class PostDevelopCommand(develop):
     """Post-installation for development mode."""
+
     def run(self):
         develop.run(self)
-        spacy_english_url="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.0/en_core_web_sm-2.2.0.tar.gz"
-        check_output(f"{sys.executable} -m pip install {spacy_english_url}",shell=True)
+        spacy_english_url = ("https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.0"
+                             "/en_core_web_sm-2.2.0.tar.gz")
+        check_output(f"{sys.executable} -m pip install {spacy_english_url}", shell=True)
+
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
+
     def run(self):
         install.run(self)
-        spacy_english_url="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.0/en_core_web_sm-2.2.0.tar.gz"
-        check_output(f"{sys.executable} -m pip install {spacy_english_url}",shell=True)
+        spacy_english_url = ("https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.0"
+                             "/en_core_web_sm-2.2.0.tar.gz")
+        check_output(f"{sys.executable} -m pip install {spacy_english_url}", shell=True)
 
 
 with open("README.md", "r") as fh:
@@ -50,7 +58,9 @@ setuptools.setup(
         'install': PostInstallCommand,
     },
     python_requires='>=3.8*',
+    # TODO test different versions of these packages to verify requirements
     install_requires=[
+
         'lark-parser',
         'networkx',
         'docopt',

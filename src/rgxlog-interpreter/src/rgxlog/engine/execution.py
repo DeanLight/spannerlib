@@ -4,6 +4,7 @@ and also implementations of 'ExecutionBase' which serves as an abstraction for a
 and an rgxlog engine.
 """
 
+# TODO change all imports to relative imports (after installing rgxlog, we run from site-packages instead of this code)
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
@@ -267,6 +268,9 @@ class PydatalogEngine(RgxlogEngineBase):
         # remove the fact in pyDatalog
         pyDatalog.load(remove_fact_statement)
 
+    # TODO: split this function into 2:
+    #  1. get_query_results(query) -> results, free_vars
+    #  2. print_query(query): same thing, but uses the results from `get_query_results`
     def print_query(self, query: Query):
         """
         queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
@@ -290,6 +294,7 @@ class PydatalogEngine(RgxlogEngineBase):
             query: a query for pyDatalog
         """
 
+        # TODO `get_query_results` starts here
         # get the results of the query
         query_results = self.query(query)
 
@@ -318,6 +323,8 @@ class PydatalogEngine(RgxlogEngineBase):
             # get the free variables of the query, they will be used as headers
             query_free_vars = [term for term, term_type in zip(query.term_list, query.type_list)
                                if term_type is DataTypes.free_var_name]
+
+            # TODO `get_query_results` ends here
 
             # get the query result as a table
             query_result_string = tabulate(formatted_results, headers=query_free_vars, tablefmt='presto',

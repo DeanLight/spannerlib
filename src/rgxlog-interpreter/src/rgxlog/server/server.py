@@ -16,6 +16,7 @@ from multiprocessing.connection import Listener
 from rgxlog.engine.session import Session
 from rgxlog.system_configuration import system_configuration
 
+# TODO after deleting this file, add debug option when starting the client
 session_ = Session()
 
 # default ie functions are registered here
