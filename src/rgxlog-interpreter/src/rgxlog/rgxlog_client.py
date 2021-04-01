@@ -187,30 +187,6 @@ class Client:
         df = DataFrame()
         return df
 
-    def old_register(self, ie_function_name):
-        """
-        Register the ie name for future usage
-        :return: True for successful registration, false otherwise
-        """
-        if not self.connected:
-            raise ConnectionError
-        if not ie_function_name or type(ie_function_name) is not str:
-            raise ValueError('invalid ie function!')
-
-        registration_message = {
-            'msg_type': Request.IE_REGISTRATION,
-            'data': ie_function_name
-        }
-
-        try:
-            self._connection.send(registration_message)
-            reply = self._connection.recv()
-        except EOFError:
-            logging.error('client connection closed unexpectedly')
-            reply = {'data': None}
-
-        return reply['data']
-
     def get_pass_stack(self):
         """
         Fetches the current pass stack

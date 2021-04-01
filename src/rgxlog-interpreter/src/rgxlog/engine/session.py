@@ -96,7 +96,7 @@ class Session:
                 self._run_passes(statement, self._pass_stack)
         except Exception as e:
             self._execution.flush_prints_buffer()  # clear the prints buffer as the execution failed
-            return Exception(f'exception during semantic checks or execution:\n {e}') # should it be exception or just a string?
+            raise  # Exception(f'exception during semantic checks or execution:\n {e}')
 
         return self._execution.flush_prints_buffer()
 
@@ -132,3 +132,16 @@ class Session:
     @staticmethod
     def _unknown_task_type():
         return 'unknown task type'
+
+
+if __name__ == '__main__':
+    session = Session()
+    result = session.run_query('''
+        new uncle(str, str)
+        uncle("bob", "greg")
+        ''')
+    print("result1:")
+    print(result)
+    result = session.run_query('''?uncle("bob",Y)''')
+    print("result2:")
+    print(result)

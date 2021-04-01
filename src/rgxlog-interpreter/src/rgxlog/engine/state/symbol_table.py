@@ -196,7 +196,7 @@ class SymbolTable(SymbolTableBase):
         self._var_to_type = {}
         self._relation_to_schema = {}
         self._registered_ie_functions = {}
-        self.register_predefined_ie_functions()
+        #self.register_predefined_ie_functions()
 
     def set_var_value_and_type(self, var_name, var_value, var_type):
         self._var_to_value[var_name] = var_value
@@ -256,10 +256,11 @@ class SymbolTable(SymbolTableBase):
         return self._registered_ie_functions.copy()
 
     def register_predefined_ie_functions(self):
-        ie_directory = os.path.dirname(predefined_ie_funcs.__file__)
-
-        for filename in os.listdir(ie_directory):
-            if filename.endswith('.py') and filename not in ['__init__.py', 'ie_function_base']:
-                for name, obj in inspect.getmembers(f'{ie_directory}/{filename}'):
-                    if inspect.isclass(obj):
-                        self._registered_ie_functions[name] = obj.__init__()  # is it possible?
+        # ie_directory = os.path.dirname(predefined_ie_funcs.__file__)
+        #
+        # for filename in os.listdir(ie_directory):
+        #     if filename.endswith('.py') and filename not in ['__init__.py', 'ie_function_base']:
+        #         for name, obj in inspect.getmembers(f'{ie_directory}/{filename}'):
+        #             if inspect.isclass(obj):
+        #                 self._registered_ie_functions[name] = obj.__init__()  # is it possible?
+        pass
