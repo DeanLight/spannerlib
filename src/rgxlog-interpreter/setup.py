@@ -9,19 +9,21 @@ from os.path import splitext
 import sys
 from subprocess import check_output
 
+
 class PostDevelopCommand(develop):
     """Post-installation for development mode."""
+
     def run(self):
         develop.run(self)
-        spacy_english_url="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.0/en_core_web_sm-2.2.0.tar.gz"
-        check_output(f"{sys.executable} -m pip install {spacy_english_url}",shell=True)
+        check_output(f"{sys.executable} -m spacy download en_core_web_sm", shell=True)
+
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
+
     def run(self):
         install.run(self)
-        spacy_english_url="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.0/en_core_web_sm-2.2.0.tar.gz"
-        check_output(f"{sys.executable} -m pip install {spacy_english_url}",shell=True)
+        check_output(f"{sys.executable} -m spacy download en_core_web_sm", shell=True)
 
 
 with open("README.md", "r") as fh:
@@ -49,7 +51,7 @@ setuptools.setup(
         'develop': PostDevelopCommand,
         'install': PostInstallCommand,
     },
-    python_requires='>=3.8*',
+    python_requires='==3.8*',
     install_requires=[
         'lark-parser',
         'networkx',
