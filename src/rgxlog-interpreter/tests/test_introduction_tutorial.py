@@ -1,6 +1,7 @@
 from ..src.rgxlog.rgxlog_client import Client
 
 
+# TODO add tests
 def test_introduction():
     client = Client()
     client.execute("new uncle(str, str)")
