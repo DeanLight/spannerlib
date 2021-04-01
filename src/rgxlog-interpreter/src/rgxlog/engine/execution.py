@@ -386,7 +386,7 @@ class PydatalogEngine(RgxlogEngineBase):
 
         Args:
             ie_relation: an ie relation that determines the input and output terms of the ie function
-            ie_func: the data for the ie function that will be used to compute the ie relation
+            ie_func: the ie function that will be used to compute the ie relation
             bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
             queried from it
 

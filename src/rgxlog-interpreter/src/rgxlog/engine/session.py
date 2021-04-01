@@ -96,21 +96,18 @@ class Session:
                 self._run_passes(statement, self._pass_stack)
         except Exception as e:
             self._execution.flush_prints_buffer()  # clear the prints buffer as the execution failed
-            return {'msg_type': Response.FAILURE, 'data': f'exception during semantic checks or execution:\n {e}'}
+            return Exception(f'exception during semantic checks or execution:\n {e}') # should it be exception or just a string?
 
-        result = self._execution.flush_prints_buffer()
-        return {'msg_type': Response.SUCCESS, 'data': result}
+        return self._execution.flush_prints_buffer()
 
-    def register(self, ie_function, ie_function_name, in_rel, out_rel, is_super_user):
-        self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel, is_super_user)
-        # TODO: return value
+    def register(self, ie_function, ie_function_name, in_rel, out_rel, is_output_const=False):
+        self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel, is_output_const)
 
     def get_pass_stack(self):
         """
         Returns: the current pass stack
         """
-        pass_stack = [pass_.__name__ for pass_ in self._pass_stack]
-        return {'msg_type': Response.SUCCESS, 'data': pass_stack}
+        return [pass_.__name__ for pass_ in self._pass_stack]
 
     def set_pass_stack(self, user_stack):
         """
@@ -122,10 +119,10 @@ class Session:
         """
 
         if type(user_stack) is not list:
-            raise ValueError('user stack should be a list of pass names (strings)')
+            raise TypeError('user stack should be a list of pass names (strings)')
         for pass_ in user_stack:
             if type(pass_) is not str:
-                raise ValueError('user stack should be a list of pass names (strings)')
+                raise TypeError('user stack should be a list of pass names (strings)')
 
         self._pass_stack = []
         for pass_ in user_stack:
@@ -134,4 +131,4 @@ class Session:
 
     @staticmethod
     def _unknown_task_type():
-        return {'msg_type': Response.FAILURE, 'data': 'unknown task type'}
+        return 'unknown task type'

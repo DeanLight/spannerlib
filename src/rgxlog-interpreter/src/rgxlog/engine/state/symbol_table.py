@@ -119,8 +119,6 @@ class SymbolTableBase(ABC):
 
         Args:
             explained in IEFunction class.
-
-        Returns: ?????
         """
         pass
 
@@ -252,7 +250,7 @@ class SymbolTable(SymbolTableBase):
         if self.contains_ie_function(ie_func_name):
             return self._registered_ie_functions[ie_func_name]
         else:
-            raise AttributeError
+            raise AttributeError(f"'{ie_func_name}' is not a registered function.")
 
     def get_all_registered_ie_funcs(self):
         return self._registered_ie_functions.copy()
