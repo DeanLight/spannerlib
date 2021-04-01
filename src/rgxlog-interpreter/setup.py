@@ -51,7 +51,7 @@ setuptools.setup(
         'develop': PostDevelopCommand,
         'install': PostInstallCommand,
     },
-    python_requires='==3.8*',
+    python_requires='==3.8.*',
     install_requires=[
         'lark-parser',
         'networkx',
