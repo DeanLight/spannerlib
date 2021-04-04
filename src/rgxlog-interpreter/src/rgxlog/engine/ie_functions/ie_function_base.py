@@ -1,3 +1,5 @@
+import collections
+
 class IEFunction:
     """
     A class that contains all the functions that provide data
@@ -30,7 +32,10 @@ class IEFunction:
         an integer should be returned as an int instance
         a span could be returned either as a tuple of length 2, or as a datatypes.Span instance
         """
-        return self.ie_function_def(*args)
+        output = self.ie_function_def(*args)
+        # if not isinstance(output, collections.Iterable):
+        #     return (output,)
+        return output
 
     def get_input_types(self):
         """

@@ -196,7 +196,7 @@ class SymbolTable(SymbolTableBase):
         self._var_to_type = {}
         self._relation_to_schema = {}
         self._registered_ie_functions = {}
-        #self.register_predefined_ie_functions()
+        self.register_predefined_ie_functions()
 
     def set_var_value_and_type(self, var_name, var_value, var_type):
         self._var_to_value[var_name] = var_value
@@ -263,4 +263,28 @@ class SymbolTable(SymbolTableBase):
         #         for name, obj in inspect.getmembers(f'{ie_directory}/{filename}'):
         #             if inspect.isclass(obj):
         #                 self._registered_ie_functions[name] = obj.__init__()  # is it possible?
-        pass
+        from rgxlog.engine.datatypes.primitive_types import DataTypes
+
+        def rgx_string(text, regex_formula):
+            import re
+            """
+            Args:
+                text: The input text for the regex operation
+                regex_formula: the formula of the regex operation
+
+            Returns: tuples of strings that represents the results
+            """
+            compiled_rgx = re.compile(regex_formula)
+            num_groups = compiled_rgx.groups
+            for match in re.finditer(compiled_rgx, text):
+                if num_groups == 0:
+                    matched_strings = [match.group()]
+                else:
+                    matched_strings = [group for group in match.groups()]
+                yield matched_strings
+
+        def rgx_string_out_types(output_arity):
+            return tuple([DataTypes.string] * output_arity)
+
+        rgx_string_in_type = [DataTypes.string, DataTypes.string]
+        self._registered_ie_functions['RGXString'] = IEFunction(rgx_string, rgx_string_in_type, rgx_string_out_types, False)
