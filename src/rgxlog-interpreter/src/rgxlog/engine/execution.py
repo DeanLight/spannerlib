@@ -11,7 +11,7 @@ from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
 from pyDatalog import pyDatalog
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.ie_functions.ie_function_base import IEFunctionData
+from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.utils.general_utils import get_output_free_var_names
 from tabulate import tabulate
@@ -385,7 +385,7 @@ class PydatalogEngine(RgxlogEngineBase):
         # add the rule to pyDatalog
         pyDatalog.load(rule_string)
 
-    def compute_ie_relation(self, ie_relation: IERelation, ie_func_data: IEFunctionData,
+    def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
                             bounding_relation: Relation):
         """
         computes an information extraction relation, returning the result as a normal relation.
@@ -393,7 +393,7 @@ class PydatalogEngine(RgxlogEngineBase):
 
         Args:
             ie_relation: an ie relation that determines the input and output terms of the ie function
-            ie_func_data: the data for the ie function that will be used to compute the ie relation
+            ie_func: the ie function that will be used to compute the ie relation
             bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
             queried from it
 
@@ -426,17 +426,22 @@ class PydatalogEngine(RgxlogEngineBase):
         ie_inputs = self._get_all_relation_tuples(input_relation)
 
         # get the schema for the ie outputs
-        ie_output_schema = ie_func_data.get_output_types(output_relation_arity)
+        ie_output_schema = ie_func.get_output_types(output_relation_arity)
 
         # run the ie function on each input and process the outputs
         for ie_input in ie_inputs:
 
             # run the ie function on the input, resulting in a list of tuples
-            ie_outputs = ie_func_data.ie_function(*ie_input)
-
+            ie_outputs = ie_func.ie_function(*ie_input)
             # process each ie output and add it to the output relation
             for ie_output in ie_outputs:
-                ie_output = list(ie_output)
+                # handle case in which ie output is not iterable.
+                if isinstance(ie_output, str) or isinstance(ie_output, int):
+                    ie_output = [ie_output]
+                else:
+                    # TODO : @tom understand why the output has to be iterable of iterables while the output type is
+                    #             known.
+                    ie_output = list(ie_output)
 
                 # assert the ie output is properly typed
                 self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)

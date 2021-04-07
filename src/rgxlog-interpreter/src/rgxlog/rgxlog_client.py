@@ -1,3 +1,4 @@
+# TODO: delete this file
 import csv
 import logging
 import shlex
@@ -9,22 +10,15 @@ from time import sleep
 
 from pandas import DataFrame
 from rgxlog.engine.message_definitions import Request
-from rgxlog.server.server import start_server
 from rgxlog.system_configuration import system_configuration
+from rgxlog.engine.session import Session
 
 
 class Client:
-    """
-    Instances of this class serve as clients that connect to an rgxlog server
-    and send queries for evaluation
-    """
 
-    """
-       We can have an instance of a session as a Client member.
-       It allows as to get rid of the server. 
-    """
-
+    # TODO: delete unnecessary members.
     def __init__(self,
+                 session=Session(),
                  remote_ip='localhost',
                  remote_port=None,
                  remote_run_command=None,
@@ -137,6 +131,14 @@ class Client:
 
         return reply['data']
 
+    def register(self, ie_function, ie_function_name, in_rel, out_rel, is_super_user=False):
+        """
+        Register the ie name for future usage
+        :return: True for successful registration, false otherwise
+        """
+        self.session.register_ie_function(ie_function, ie_function_name, in_rel, out_rel, is_super_user)
+        # TODO: return value
+
     def import_relation_from_csv(self, csv_file_name, relation_name):
         # TODO: this is pseudo-code only
 
@@ -210,34 +212,6 @@ class Client:
         df = DataFrame(rows, columns=free_vars)
         """
         raise NotImplementedError
-
-    """
-        def register(self, ie_function_callable, ie_function_name, in_rel, out_rel):
-            call session's register function.
-    """
-    def register(self, ie_function_name):
-        """
-        Register the ie name for future usage
-        :return: True for successful registration, false otherwise
-        """
-        if not self.connected:
-            raise ConnectionError
-        if not ie_function_name or type(ie_function_name) is not str:
-            raise ValueError('invalid ie function!')
-
-        registration_message = {
-            'msg_type': Request.IE_REGISTRATION,
-            'data': ie_function_name
-        }
-
-        try:
-            self._connection.send(registration_message)
-            reply = self._connection.recv()
-        except EOFError:
-            logging.error('client connection closed unexpectedly')
-            reply = {'data': None}
-
-        return reply['data']
 
     def get_pass_stack(self):
         """

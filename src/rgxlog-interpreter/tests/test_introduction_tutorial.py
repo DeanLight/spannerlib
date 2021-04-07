@@ -1,4 +1,4 @@
-from rgxlog.rgxlog_client import Client
+from rgxlog.engine.session import Session
 
 EXPECTED_RESULT_INTRO = """printing results for query 'uncle(X, Y)':
   X  |  Y
@@ -9,8 +9,10 @@ EXPECTED_RESULT_INTRO = """printing results for query 'uncle(X, Y)':
 
 # TODO add tests
 def test_introduction():
-    client = Client()
-    client.execute("new uncle(str, str)")
-    client.execute('uncle("bob", "greg")')
-    query_result = client.execute("?uncle(X,Y)")
-    assert query_result == EXPECTED_RESULT_INTRO, "output string changed"
+    session = Session()
+    session.run_query("new uncle(str, str)")
+    session.run_query('uncle("bob", "greg")')
+    query_result = session.run_query("?uncle(X,Y)")
+    assert query_result == EXPECTED_RESULT_INTRO,"fail"
+
+
