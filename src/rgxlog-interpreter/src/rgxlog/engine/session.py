@@ -1,5 +1,7 @@
 import os
 
+from pyDatalog import pyDatalog
+
 import rgxlog
 from lark.lark import Lark
 from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
@@ -14,6 +16,7 @@ from rgxlog.engine.passes.lark_passes import RemoveTokens, FixStrings, CheckRese
 from rgxlog.engine.message_definitions import Request, Response
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
+from rgxlog.engine.datatypes.primitive_types import DataTypes  # used for testing
 
 class Session:
     def __init__(self, debug=False):
@@ -104,8 +107,8 @@ class Session:
         #     raise Exception(f'{ie_function_name} is a reserved name.')
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel, is_output_const)
 
-    def delete_rule(self, rule_head : str):
-        pass
+    def delete_rule(self, rule_definition : str):
+        pyDatalog.load("- (" + rule_definition + ")")
 
 
 
@@ -142,14 +145,48 @@ class Session:
 
 if __name__ == '__main__':
     session = Session()
-    from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 
+    def rgx_string(text, regex_formula):
+        import re
+        '''
+        Args:
+            text: The input text for the regex operation
+            regex_formula: the formula of the regex operation
+
+        Returns: tuples of strings that represents the results
+        '''
+        compiled_rgx = re.compile(regex_formula)
+        num_groups = compiled_rgx.groups
+        for match in re.finditer(compiled_rgx, text):
+            if num_groups == 0:
+                matched_strings = [match.group()]
+            else:
+                matched_strings = [group for group in match.groups()]
+            yield matched_strings
+
+
+    def rgx_string_out_types(output_arity):
+        return tuple([DataTypes.string] * output_arity)
+
+
+    rgx_string_in_type = [DataTypes.string, DataTypes.string]
+
+    session.register(rgx_string, 'MYRGXString', rgx_string_in_type, rgx_string_out_types, False)
+
+    query = '''
+           new lecturer(str, str)
+           '''
+
+    query_result = session.run_query(query)
+    print(session.run_query(query))
+
+
+
+
+"""
     def getCharAndWordNum(text):
-        return len(text)
-
-
-        # return [(len(text), len(text.split(' '))), ]  # we should make this less ugly. perhaps we can pass flag wather the output is one tuple.
+        return [(len(text), len(text.split(' '))), ]  # we should make this less ugly. perhaps we can pass flag wather the output is one tuple.
 
 
     in_types = [DataTypes.string]
@@ -168,8 +205,7 @@ if __name__ == '__main__':
             ?info(CHARS_NUM, WORDS_NUM)
             '''
     print(session.run_query(query))
-
-
+"""
 
 # TODO: @tom make tests
 """

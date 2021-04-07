@@ -15,7 +15,7 @@ class Entities(IEFunctionData):
     @staticmethod
     def ie_function(text):
         entities = sp(text).ents
-        return ((entity.text, spacy.explain(entity.label_)) for entity in entities)
+        return (entity.text for entity in entities)
 
     @staticmethod
     def get_input_types():

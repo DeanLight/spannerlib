@@ -72,7 +72,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def add_relation_schema(self, relation_name, schema):
+    def add_relation_schema(self, relation_name, schema, is_rule: bool):
         """
         add a new relation schema to the symbol table
         trying to add two schemas for the same relation will result in an exception as relation redefinitions
@@ -81,6 +81,7 @@ class SymbolTableBase(ABC):
         Args:
             relation_name: the relation's name
             schema: the relation's schema
+            is_rule: false if relation true if rule
         """
         pass
 
@@ -220,14 +221,22 @@ class SymbolTable(SymbolTableBase):
         return var_name in self._var_to_type
 
     # TODO:
-    def add_relation_schema(self, relation_name, schema):
-        # if relation_name in self._relation_to_schema:
-        #     raise Exception(f'relation "{relation_name}" already has a schema')
-        if relation_name in self._relation_to_schema:
-            if not self._relation_to_schema[relation_name] == schema:
-                raise Exception(f'relation "{relation_name}" already has a different schema')
-        else:
+    def add_relation_schema(self, relation_name, schema, is_rule: bool):
+        import traceback
+        print("***************************")
+        print("here")
+        traceback.print_stack()
+        print("***************************")
+        if not is_rule:  # is relation
+            if relation_name in self._relation_to_schema:
+                raise Exception(f'relation "{relation_name}" already has a schema')
             self._relation_to_schema[relation_name] = schema
+        else:
+            if relation_name in self._relation_to_schema:
+                if not self._relation_to_schema[relation_name] == schema:
+                    raise Exception(f'relation "{relation_name}" already has a different schema')
+            else:
+                self._relation_to_schema[relation_name] = schema
 
     def get_relation_schema(self, relation_name):
         return self._relation_to_schema[relation_name]
