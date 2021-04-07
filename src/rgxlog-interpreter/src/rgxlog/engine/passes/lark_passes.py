@@ -856,7 +856,7 @@ class SaveDeclaredRelationsSchemas(Interpreter):
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
-        self.symbol_table.add_relation_schema(relation_decl.relation_name, relation_decl.type_list, False)
+        self.symbol_table.add_relation_schema(relation_decl.relation_name, relation_decl.type_list)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -870,7 +870,7 @@ class SaveDeclaredRelationsSchemas(Interpreter):
         # get the schema of the rule head relation and add it to the symbol table
         head_relation = rule.head_relation
         rule_head_schema = [free_var_to_type[term] for term in head_relation.term_list]
-        self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
+        self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema)
 
 
 class ResolveVariablesReferences(Interpreter):
