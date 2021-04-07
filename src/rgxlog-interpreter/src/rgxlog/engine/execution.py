@@ -86,6 +86,16 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
+    def get_query_results(self, query):
+        """
+        queries rgxlog and inspects the results, extracting the formatted string, values, and variables.
+        :param query: a query string
+        :return: formatted string, results list, and variable list
+        """
+
+        pass
+
+    @abstractmethod
     def query(self, query):
         """
         queries the rgxlog engine
@@ -268,9 +278,6 @@ class PydatalogEngine(RgxlogEngineBase):
         # remove the fact in pyDatalog
         pyDatalog.load(remove_fact_statement)
 
-    # TODO: split this function into 2:
-    #  1. get_query_results(query) -> results, free_vars
-    #  2. print_query(query): same thing, but uses the results from `get_query_results`
     def print_query(self, query: Query):
         """
         queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
@@ -294,23 +301,31 @@ class PydatalogEngine(RgxlogEngineBase):
             query: a query for pyDatalog
         """
 
-        # TODO `get_query_results` starts here
-        # get the results of the query
+        query_result_string, _, _ = self.get_query_results(query)
+        query_title = f"printing results for query '{query}':"
+
+        # combine the title and table to a single string and save it to the prints buffer
+        final_result_string = f'{query_title}\n{query_result_string}\n'
+        self.prints_buffer.append(final_result_string)
+
+    def get_query_results(self, query: Query):
         query_results = self.query(query)
 
         # check for the special conditions for which we can't print a table: no results were returned or a single
         # empty tuple was returned
         no_results = len(query_results) == 0
         result_is_single_empty_tuple = len(query_results) == 1 and len(query_results[0]) == 0
+        formatted_results = []
+        query_free_vars = []
+
         if no_results:
             query_result_string = '[]'
         elif result_is_single_empty_tuple:
             query_result_string = '[()]'
-
+            formatted_results.append(tuple())
         else:
             # query results can be printed as a table
             # convert the resulting tuples to a more organized format
-            formatted_results = []
             for result in query_results:
                 # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
                 # they will be printed as a span instead of a tuple
@@ -324,17 +339,11 @@ class PydatalogEngine(RgxlogEngineBase):
             query_free_vars = [term for term, term_type in zip(query.term_list, query.type_list)
                                if term_type is DataTypes.free_var_name]
 
-            # TODO `get_query_results` ends here
-
             # get the query result as a table
             query_result_string = tabulate(formatted_results, headers=query_free_vars, tablefmt='presto',
                                            stralign='center')
 
-        query_title = f"printing results for query '{query}':"
-
-        # combine the title and table to a single string and save it to the prints buffer
-        final_result_string = f'{query_title}\n{query_result_string}\n'
-        self.prints_buffer.append(final_result_string)
+        return query_result_string, formatted_results, query_free_vars
 
     def query(self, query: Query):
         """
@@ -724,6 +733,7 @@ class GenericExecution(ExecutionBase):
 
             elif term_type == "query":
                 query = term_attrs['value']
+                # TODO: change this - enable returning the pre-formatted query
                 # currently only print queries are supported
                 rgxlog_engine.print_query(query)
 

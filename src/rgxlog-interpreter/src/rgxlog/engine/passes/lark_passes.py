@@ -460,7 +460,7 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
 
         # check if that arity that was used is correct
         if used_arity != correct_arity:
-            raise Exception(f'relation "{relation_name}" was referenced with an incorrect arity: {used_arity}. The'
+            raise Exception(f'relation "{relation_name}" was referenced with an incorrect arity: {used_arity}. The '
                             f'correct arity is: {correct_arity}')
 
     @unravel_lark_node

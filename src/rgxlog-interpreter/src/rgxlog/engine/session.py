@@ -8,6 +8,7 @@ from lark.lark import Lark
 from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
 from pandas import DataFrame
 from rgxlog.engine import execution
+from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
@@ -22,8 +23,12 @@ from rgxlog.engine.message_definitions import Request, Response
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 
-SPAN_PATTERN = re.compile(r"^\[\d+;\d+\]$")
+SPAN_PATTERN = re.compile(r"^\[(\d+), ?(\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
+
+TITLE_LINE_NUM = 0
+VAR_LINE_NUM = 1
+VALUES_LINE_NUM = 3
 
 
 def _infer_relation_type(row: iter):
@@ -46,6 +51,40 @@ def _infer_relation_type(row: iter):
 def _verify_relation_types(row, expected_types):
     if _infer_relation_type(row) != expected_types:
         raise Exception(f"row:\n{str(row)}\ndoes not match the relation's types:\n{str(expected_types)}")
+
+
+def _extract_query_results(query_results):
+    """
+    extract vars and values from tabulated query
+    :param query_results:
+    :return:
+    """
+    values = []
+    split_results = query_results.splitlines()
+    if not split_results[TITLE_LINE_NUM].startswith("printing results"):
+        raise Exception("cannot extract results from query. Is debug mode activated?")
+
+    var_line = split_results[VAR_LINE_NUM]
+    free_vars = [var.strip() for var in var_line.split("|")]
+    for line in split_results[VALUES_LINE_NUM:]:
+        values.append([val.strip() for val in line.split("|")])
+    return values, free_vars
+
+
+def _add_types_to_data(line, relation_types):
+    # TODO find a better name for this function, like "typify" or something
+    transformed_line = []
+    for value, rel_type in zip(line, relation_types):
+        if rel_type == DataTypes.span:
+            start, end = [int(num) for num in re.findall(SPAN_PATTERN, value)[0]]
+            transformed_line.append(Span(span_start=start, span_end=end))
+        elif rel_type == DataTypes.integer:
+            transformed_line.append(int(value))
+        else:
+            assert rel_type == DataTypes.string, f"illegal type given: {rel_type}"
+            transformed_line.append(value)
+
+    return transformed_line
 
 
 class Session:
@@ -108,7 +147,7 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
-    def run_query(self, query):
+    def run_query(self, query: str):
         """
         generates an AST and passes it through the pass stack
         Args:
@@ -126,7 +165,7 @@ class Session:
             statements = [statement for statement in parse_tree.children]
             for statement in statements:
                 self._run_passes(statement, self._pass_stack)
-        except Exception as e:
+        except Exception:
             self._execution.flush_prints_buffer()  # clear the prints buffer as the execution failed
             raise
 
@@ -170,7 +209,7 @@ class Session:
     def _unknown_task_type():
         return 'unknown task type'
 
-    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=","):
+    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=";"):
         if not os.path.isfile(csv_file_name):
             raise IOError("csv file does not exist")
 
@@ -196,7 +235,8 @@ class Session:
             facts = []
             for line in reader:
                 _verify_relation_types(line, relation_types)
-                facts.append(AddFact(relation_name, line, relation_types))
+                typed_line = _add_types_to_data(line, relation_types)
+                facts.append(AddFact(relation_name, typed_line, relation_types))
 
             # declare relation if it does not exist
             if not symbol_table.contains_relation(relation_name):
@@ -234,7 +274,7 @@ class Session:
         for fact in facts:
             engine.add_fact(fact)
 
-    def export_relation_to_csv(self, csv_file_name, relation_name):
+    def export_relation_to_csv(self, csv_file_name, relation_name, delimiter=";"):
         # TODO
         """
         this will be implemented in a future version
@@ -248,43 +288,48 @@ class Session:
         """
         raise NotImplementedError
 
-    def query_into_csv(self, query, csv_file_name):
-        # TODO: this is pseudo-code only
-        #  we should have access to the session after deleting the server file
-        #  (execution is imported from the engine)
-
+    def query_into_csv(self, query: str, csv_file_name, delimiter=";"):
         # run a query normally and get formatted results:
-        free_vars, rows = execution.get_query_results(self._session.query(query))
-        if not rows:
-            rows = [free_vars]
-        else:
-            # add free_vars at start of csv
-            rows.insert(0, free_vars)
+        query_results = self.run_query(query)
 
-        with open(csv_file_name,w) as f:
-          writer = csv.writer(f)
-          writer.writerows(rows)
+        rows, free_vars = _extract_query_results(query_results)
 
-        raise NotImplementedError
+        # add free_vars at start of csv
+        rows.insert(0, free_vars)
 
-    def query_into_df(self, query) -> DataFrame:
-        # TODO: this is pseudo-code only
-        """
-        should be similar to query_into_csv:
-        free_vars, rows = execution.get_query_results(self._session.query(query))
-        df = DataFrame(rows, columns=free_vars)
-        """
-        raise NotImplementedError
+        with open(csv_file_name, "w", newline="") as f:
+            writer = csv.writer(f, delimiter=delimiter)
+            writer.writerows(rows)
+
+    def query_into_df(self, query: str) -> DataFrame:
+        # run a query normally and get formatted results:
+        query_results = self.run_query(query)
+
+        rows, free_vars = _extract_query_results(query_results)
+        # TODO: how do i store spans inside a df? use `Span` object?
+        query_df = DataFrame(rows, columns=free_vars)
+        return query_df
 
 
 if __name__ == '__main__':
-    session = Session()
+    session = Session(debug=False)
     # TODO: @niv make tests
-    # session.import_relation_from_csv(r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\example_relation_two.csv",
-    #                                  relation_name="rel")
+    session.import_relation_from_csv(r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\example_relation.csv",
+                                     relation_name="longrel")
+    session.import_relation_from_csv(
+        r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\example_relation_two.csv",
+        relation_name="rel")
     # df = DataFrame(["a", "b", "c"])
     # session.import_relation_from_df(df, "rel")
-    # q = session.run_query('?rel(X)')
+    # session.query_into_csv('?rel(X)',
+                           # r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\out.csv")
+    # session.query_into_csv("?longrel(X,Y,Z)",
+    # r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\out.csv")
+
+    d2 = session.query_into_df("?longrel(X,Y,Z)")
+    print(d2.to_string())
+
+    # q = session.run_query("?rel(X)")
     # print(q)
 
     # TODO: @tom make tests

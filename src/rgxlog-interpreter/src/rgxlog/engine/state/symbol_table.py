@@ -219,7 +219,6 @@ class SymbolTable(SymbolTableBase):
     def contains_variable(self, var_name):
         return var_name in self._var_to_type
 
-    # TODO:
     def add_relation_schema(self, relation_name, schema):
         # if relation_name in self._relation_to_schema:
         #     raise Exception(f'relation "{relation_name}" already has a schema')
