@@ -435,9 +435,12 @@ class PydatalogEngine(RgxlogEngineBase):
             ie_outputs = ie_func.ie_function(*ie_input)
             # process each ie output and add it to the output relation
             for ie_output in ie_outputs:
+                # handle case in which ie output is not iterable.
                 if isinstance(ie_output, str) or isinstance(ie_output, int):
                     ie_output = [ie_output]
                 else:
+                    # TODO : @tom understand why the output has to be iterable of iterables while the output type is
+                    #             known.
                     ie_output = list(ie_output)
 
                 # assert the ie output is properly typed

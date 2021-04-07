@@ -95,7 +95,7 @@ class Session:
                 self._run_passes(statement, self._pass_stack)
         except Exception as e:
             self._execution.flush_prints_buffer()  # clear the prints buffer as the execution failed
-            raise Exception(f'exception during semantic checks or execution:\n {e}')
+            raise
 
         return self._execution.flush_prints_buffer()
 
@@ -144,6 +144,35 @@ if __name__ == '__main__':
     session = Session()
     from rgxlog.engine.datatypes.primitive_types import DataTypes
 
+
+    def getCharAndWordNum(text):
+        return len(text)
+
+
+        # return [(len(text), len(text.split(' '))), ]  # we should make this less ugly. perhaps we can pass flag wather the output is one tuple.
+
+
+    in_types = [DataTypes.string]
+
+    out_types = [DataTypes.integer, DataTypes.integer]
+
+    session.register(getCharAndWordNum, "GetCharAndWordNum", in_types, out_types)
+
+    query = '''
+            new sentence(str)
+            sentence("One day there was a boy named Tony wandering around in the woods.")
+            sentence("The boy was wearing his red hat.")
+            sentence("He loved this hat so much he would protect it with his life.")
+
+            info(X, Y) <- GetCharAndWordNum(Z)->(X ,Y), sentence(Z)
+            ?info(CHARS_NUM, WORDS_NUM)
+            '''
+    print(session.run_query(query))
+
+
+
+# TODO: @tom make tests
+"""
     query = '''
     new parent(str, str)
     parent("a", "b")
@@ -165,6 +194,12 @@ if __name__ == '__main__':
         '''
     result = session.run_query(query)
     print(result)
+"""
+
+"""
+********************************************************************************************
+"""
+
 
 """
     def getCharAndWordNum(text):
@@ -189,6 +224,11 @@ if __name__ == '__main__':
     print(session.run_query(query))
 
 """
+
+"""
+********************************************************************************************
+"""
+
 
 """
 

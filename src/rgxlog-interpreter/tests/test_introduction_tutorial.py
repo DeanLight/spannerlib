@@ -13,4 +13,6 @@ def test_introduction():
     session.run_query("new uncle(str, str)")
     session.run_query('uncle("bob", "greg")')
     query_result = session.run_query("?uncle(X,Y)")
+    assert query_result == EXPECTED_RESULT_INTRO,"fail"
+
 
