@@ -4,7 +4,7 @@ this module contains implementation of regex ie functions using python's 're' mo
 
 import spacy
 sp = spacy.load('en_core_web_sm')
-
+# TODO @niv delete
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.ie_functions.ie_function_base import IEFunctionData
 

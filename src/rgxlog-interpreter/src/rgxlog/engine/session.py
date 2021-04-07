@@ -1,19 +1,52 @@
+import csv
 import os
+import re
+from pathlib import Path
 
 import rgxlog
 from lark.lark import Lark
 from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
+from pandas import DataFrame
 from rgxlog.engine import execution
-from rgxlog.engine.execution import GenericExecution, ExecutionBase
-from rgxlog.engine.passes.lark_passes import RemoveTokens, FixStrings, CheckReservedRelationNames, \
-    ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes, CheckDefinedReferencedVariables, \
-    CheckForRelationRedefinitions, CheckReferencedRelationsExistenceAndArity, \
-    CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety, TypeCheckAssignments, TypeCheckRelations, \
-    SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences, ExecuteAssignments, \
-    AddStatementsToNetxTermGraph
+from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration
+from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
+                                              ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
+                                              CheckDefinedReferencedVariables,
+                                              CheckForRelationRedefinitions, CheckReferencedRelationsExistenceAndArity,
+                                              CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
+                                              TypeCheckAssignments, TypeCheckRelations,
+                                              SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences,
+                                              ExecuteAssignments,
+                                              AddStatementsToNetxTermGraph)
 from rgxlog.engine.message_definitions import Request, Response
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
+
+SPAN_PATTERN = re.compile(r"^\[\d+;\d+\]$")
+STRING_PATTERN = re.compile(r"^[^\r\n]+$")
+
+
+def _infer_relation_type(row: iter):
+    # TODO: does not support tuples
+    relation_types = []
+    for cell in row:
+        if cell.isdigit():
+            relation_types.append(DataTypes.integer)
+        elif re.match(SPAN_PATTERN, cell):
+            relation_types.append(DataTypes.span)
+        elif re.match(STRING_PATTERN, cell):
+            # TODO: is this pattern correct?
+            relation_types.append(DataTypes.string)
+        else:
+            raise Exception(f"illegal type in csv: {cell}")
+
+    return relation_types
+
+
+def _verify_relation_types(row, expected_types):
+    if _infer_relation_type(row) != expected_types:
+        raise Exception(f"row:\n{str(row)}\ndoes not match the relation's types:\n{str(expected_types)}")
+
 
 class Session:
     def __init__(self, debug=False):
@@ -28,7 +61,7 @@ class Session:
             ConvertSpanNodesToSpanInstances,
             ConvertStatementsToStructuredNodes,
             CheckDefinedReferencedVariables,
-            #CheckForRelationRedefinitions,
+            # CheckForRelationRedefinitions,
             CheckReferencedRelationsExistenceAndArity,
             CheckReferencedIERelationsExistenceAndArity,
             CheckRuleSafety,
@@ -104,10 +137,8 @@ class Session:
         #     raise Exception(f'{ie_function_name} is a reserved name.')
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel, is_output_const)
 
-    def delete_rule(self, rule_head : str):
+    def delete_rule(self, rule_head: str):
         pass
-
-
 
     def get_pass_stack(self):
         """
@@ -139,39 +170,150 @@ class Session:
     def _unknown_task_type():
         return 'unknown task type'
 
+    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=","):
+        if not os.path.isfile(csv_file_name):
+            raise IOError("csv file does not exist")
+
+        if os.stat(csv_file_name).st_size == 0:
+            raise IOError("csv file is empty")
+
+        # the relation_name is either an argument or the file's name
+        if relation_name is None:
+            relation_name = Path(csv_file_name).stem
+
+        symbol_table = self._symbol_table
+        engine = session._execution
+
+        with open(csv_file_name) as fh:
+            reader = csv.reader(fh, delimiter=delimiter)
+
+            # read first line and go back to start of file
+            relation_types = _infer_relation_type(next(reader))
+            fh.seek(0)
+
+            # first make sure the types are legal, then add them to the engine (to make sure
+            #  we don't add them in case of error)
+            facts = []
+            for line in reader:
+                _verify_relation_types(line, relation_types)
+                facts.append(AddFact(relation_name, line, relation_types))
+
+            # declare relation if it does not exist
+            if not symbol_table.contains_relation(relation_name):
+                engine.declare_relation(RelationDeclaration(relation_name, relation_types))
+                symbol_table.add_relation_schema(relation_name, relation_types)
+
+            for fact in facts:
+                engine.add_fact(fact)
+
+    def import_relation_from_df(self, relation_df: DataFrame, relation_name):
+        symbol_table = self._symbol_table
+        engine = session._execution
+
+        data = relation_df.values.tolist()
+
+        if not isinstance(data, list):
+            raise Exception("dataframe could not be converted to list")
+
+        if len(data) < 1:
+            raise Exception("dataframe is empty")
+
+        relation_types = _infer_relation_type(data[0])
+        # first make sure the types are legal, then add them to the engine (to make sure
+        #  we don't add them in case of error)
+        facts = []
+        for line in data:
+            _verify_relation_types(line, relation_types)
+            facts.append(AddFact(relation_name, line, relation_types))
+
+        # declare relation if it does not exist
+        if not symbol_table.contains_relation(relation_name):
+            engine.declare_relation(RelationDeclaration(relation_name, relation_types))
+            symbol_table.add_relation_schema(relation_name, relation_types)
+
+        for fact in facts:
+            engine.add_fact(fact)
+
+    def export_relation_to_csv(self, csv_file_name, relation_name):
+        # TODO
+        """
+        this will be implemented in a future version
+        """
+        raise NotImplementedError
+
+    def export_relation_to_df(self, df, relation_name):
+        # TODO
+        """
+        this will be implemented in a future version
+        """
+        raise NotImplementedError
+
+    def query_into_csv(self, query, csv_file_name):
+        # TODO: this is pseudo-code only
+        #  we should have access to the session after deleting the server file
+        #  (execution is imported from the engine)
+
+        # run a query normally and get formatted results:
+        free_vars, rows = execution.get_query_results(self._session.query(query))
+        if not rows:
+            rows = [free_vars]
+        else:
+            # add free_vars at start of csv
+            rows.insert(0, free_vars)
+
+        with open(csv_file_name,w) as f:
+          writer = csv.writer(f)
+          writer.writerows(rows)
+
+        raise NotImplementedError
+
+    def query_into_df(self, query) -> DataFrame:
+        # TODO: this is pseudo-code only
+        """
+        should be similar to query_into_csv:
+        free_vars, rows = execution.get_query_results(self._session.query(query))
+        df = DataFrame(rows, columns=free_vars)
+        """
+        raise NotImplementedError
+
 
 if __name__ == '__main__':
     session = Session()
-    from rgxlog.engine.datatypes.primitive_types import DataTypes
+    # TODO: @niv make tests
+    # session.import_relation_from_csv(r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\example_relation_two.csv",
+    #                                  relation_name="rel")
+    # df = DataFrame(["a", "b", "c"])
+    # session.import_relation_from_df(df, "rel")
+    # q = session.run_query('?rel(X)')
+    # print(q)
 
+    # TODO: @tom make tests
+    # from rgxlog.engine.datatypes.primitive_types import DataTypes
+    #
+    #
+    # def getCharAndWordNum(text):
+    #     return len(text)
+    #
+    #     # return [(len(text), len(text.split(' '))), ]  # we should make this less ugly. perhaps we can pass flag wather the output is one tuple.
+    #
+    #
+    # in_types = [DataTypes.string]
+    #
+    # out_types = [DataTypes.integer, DataTypes.integer]
+    #
+    # session.register(getCharAndWordNum, "GetCharAndWordNum", in_types, out_types)
+    #
+    # query = '''
+    #         new sentence(str)
+    #         sentence("One day there was a boy named Tony wandering around in the woods.")
+    #         sentence("The boy was wearing his red hat.")
+    #         sentence("He loved this hat so much he would protect it with his life.")
+    #
+    #         info(X, Y) <- GetCharAndWordNum(Z)->(X ,Y), sentence(Z)
+    #         ?info(CHARS_NUM, WORDS_NUM)
+    #         '''
+    # print(session.run_query(query))
 
-    def getCharAndWordNum(text):
-        return len(text)
-
-
-        # return [(len(text), len(text.split(' '))), ]  # we should make this less ugly. perhaps we can pass flag wather the output is one tuple.
-
-
-    in_types = [DataTypes.string]
-
-    out_types = [DataTypes.integer, DataTypes.integer]
-
-    session.register(getCharAndWordNum, "GetCharAndWordNum", in_types, out_types)
-
-    query = '''
-            new sentence(str)
-            sentence("One day there was a boy named Tony wandering around in the woods.")
-            sentence("The boy was wearing his red hat.")
-            sentence("He loved this hat so much he would protect it with his life.")
-
-            info(X, Y) <- GetCharAndWordNum(Z)->(X ,Y), sentence(Z)
-            ?info(CHARS_NUM, WORDS_NUM)
-            '''
-    print(session.run_query(query))
-
-
-
-# TODO: @tom make tests
 """
     query = '''
     new parent(str, str)
@@ -199,7 +341,6 @@ if __name__ == '__main__':
 """
 ********************************************************************************************
 """
-
 
 """
     def getCharAndWordNum(text):
@@ -229,7 +370,6 @@ if __name__ == '__main__':
 ********************************************************************************************
 """
 
-
 """
 
     def length(text):
@@ -252,11 +392,9 @@ if __name__ == '__main__':
     print(session.run_query(query))
 """
 
-
 """
 ********************************************************************************************
 """
-
 
 """
 def copy(text):
@@ -299,7 +437,6 @@ print(session.run_query(query))
 """
 ********************************************************************************************
 """
-
 
 """
 import spacy
@@ -410,8 +547,3 @@ result = session.run_query('''?uncle("bob",Y)''')
 print("result2:")
 print(result)
 """
-
-
-
-
-
