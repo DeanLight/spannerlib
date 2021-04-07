@@ -13,3 +13,4 @@ def test_introduction():
     session.run_query("new uncle(str, str)")
     session.run_query('uncle("bob", "greg")')
     query_result = session.execute("?uncle(X,Y)")
+
