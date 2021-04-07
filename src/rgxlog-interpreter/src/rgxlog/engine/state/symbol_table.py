@@ -219,10 +219,15 @@ class SymbolTable(SymbolTableBase):
     def contains_variable(self, var_name):
         return var_name in self._var_to_type
 
+    # TODO:
     def add_relation_schema(self, relation_name, schema):
+        # if relation_name in self._relation_to_schema:
+        #     raise Exception(f'relation "{relation_name}" already has a schema')
         if relation_name in self._relation_to_schema:
-            raise Exception(f'relation "{relation_name}" already has a schema')
-        self._relation_to_schema[relation_name] = schema
+            if not self._relation_to_schema[relation_name] == schema:
+                raise Exception(f'relation "{relation_name}" already has a different schema')
+        else:
+            self._relation_to_schema[relation_name] = schema
 
     def get_relation_schema(self, relation_name):
         return self._relation_to_schema[relation_name]
@@ -256,35 +261,4 @@ class SymbolTable(SymbolTableBase):
         return self._registered_ie_functions.copy()
 
     def register_predefined_ie_functions(self):
-        # ie_directory = os.path.dirname(predefined_ie_funcs.__file__)
-        #
-        # for filename in os.listdir(ie_directory):
-        #     if filename.endswith('.py') and filename not in ['__init__.py', 'ie_function_base']:
-        #         for name, obj in inspect.getmembers(f'{ie_directory}/{filename}'):
-        #             if inspect.isclass(obj):
-        #                 self._registered_ie_functions[name] = obj.__init__()  # is it possible?
-        from rgxlog.engine.datatypes.primitive_types import DataTypes
-
-        def rgx_string(text, regex_formula):
-            import re
-            """
-            Args:
-                text: The input text for the regex operation
-                regex_formula: the formula of the regex operation
-
-            Returns: tuples of strings that represents the results
-            """
-            compiled_rgx = re.compile(regex_formula)
-            num_groups = compiled_rgx.groups
-            for match in re.finditer(compiled_rgx, text):
-                if num_groups == 0:
-                    matched_strings = [match.group()]
-                else:
-                    matched_strings = [group for group in match.groups()]
-                yield matched_strings
-
-        def rgx_string_out_types(output_arity):
-            return tuple([DataTypes.string] * output_arity)
-
-        rgx_string_in_type = [DataTypes.string, DataTypes.string]
-        self._registered_ie_functions['RGXString'] = IEFunction(rgx_string, rgx_string_in_type, rgx_string_out_types, False)
+        pass

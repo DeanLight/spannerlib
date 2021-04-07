@@ -15,7 +15,6 @@ from rgxlog.engine.message_definitions import Request, Response
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 
-
 class Session:
     def __init__(self, debug=False):
         self._symbol_table = SymbolTable()
@@ -29,7 +28,7 @@ class Session:
             ConvertSpanNodesToSpanInstances,
             ConvertStatementsToStructuredNodes,
             CheckDefinedReferencedVariables,
-            CheckForRelationRedefinitions,
+            #CheckForRelationRedefinitions,
             CheckReferencedRelationsExistenceAndArity,
             CheckReferencedIERelationsExistenceAndArity,
             CheckRuleSafety,
@@ -105,6 +104,11 @@ class Session:
         #     raise Exception(f'{ie_function_name} is a reserved name.')
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel, is_output_const)
 
+    def delete_rule(self, rule_head : str):
+        pass
+
+
+
     def get_pass_stack(self):
         """
         Returns: the current pass stack
@@ -138,11 +142,31 @@ class Session:
 
 if __name__ == '__main__':
     session = Session()
-
     from rgxlog.engine.datatypes.primitive_types import DataTypes
-    import re
 
+    query = '''
+    new parent(str, str)
+    parent("a", "b")
+    parent("d", "c")
+    parent("d", "e")
+    parent("b", "d")
+    parent("a", "f")
+    ancestor(X,Y) <- parent(X,Y)
+    ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
 
+    ?ancestor("b", X)
+    '''
+    result = session.run_query(query)
+    print(result)
+
+    query = '''
+        new rel(str, str, str)
+        ancestor(X,Y, Z) <- rel(X,Y, Z)
+        '''
+    result = session.run_query(query)
+    print(result)
+
+"""
     def getCharAndWordNum(text):
         return [(len(text), len(text.split(' '))),]  # we should make this less ugly. perhaps we can pass flag wather the output is one tuple.
 
@@ -163,6 +187,8 @@ if __name__ == '__main__':
             ?info(CHARS_NUM, WORDS_NUM)
             '''
     print(session.run_query(query))
+
+"""
 
 """
 
