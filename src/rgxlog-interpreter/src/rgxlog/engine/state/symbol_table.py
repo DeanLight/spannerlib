@@ -3,13 +3,8 @@ this module contains the implementations of symbol tables
 """
 
 from abc import ABC, abstractmethod
-import rgxlog.engine.ie_functions.python_regexes as global_ie_functions
-import rgxlog.user_ie_functions as user_ie_module
-from rgxlog.engine.ie_functions.ie_function_base import IEFunction
-import rgxlog.engine.ie_functions as predefined_ie_funcs
 
-import os
-import inspect
+from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 
 
 class SymbolTableBase(ABC):

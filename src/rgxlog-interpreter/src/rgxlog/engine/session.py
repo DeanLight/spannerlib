@@ -2,6 +2,7 @@ import csv
 import os
 import re
 from pathlib import Path
+from typing import Tuple, List
 
 import rgxlog
 from lark.lark import Lark
@@ -9,19 +10,19 @@ from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
 from pandas import DataFrame
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration
+from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration, Query
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
-                                              CheckForRelationRedefinitions, CheckReferencedRelationsExistenceAndArity,
+                                              CheckReferencedRelationsExistenceAndArity,
                                               CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences,
                                               ExecuteAssignments,
                                               AddStatementsToNetxTermGraph)
-from rgxlog.engine.message_definitions import Request, Response
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
+from tabulate import tabulate
 
 SPAN_PATTERN = re.compile(r"^\[(\d+), ?(\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
@@ -87,6 +88,74 @@ def _add_types_to_data(line, relation_types):
     return transformed_line
 
 
+def _format_query_results(query: Query, query_results: list):
+    # check for the special conditions for which we can't print a table: no results were returned or a single
+    # empty tuple was returned
+    no_results = len(query_results) == 0
+    result_is_single_empty_tuple = len(query_results) == 1 and len(query_results[0]) == 0
+    formatted_results = []
+    query_free_vars = []
+
+    if no_results:
+        tabulated_result_string = '[]'
+    elif result_is_single_empty_tuple:
+        tabulated_result_string = '[()]'
+        formatted_results.append(tuple())
+    else:
+        # query results can be printed as a table
+        # convert the resulting tuples to a more organized format
+        for result in query_results:
+            # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
+            # they will be printed as a span instead of a tuple
+            converted_span_result = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
+                                     else term
+                                     for term in result]
+
+            formatted_results.append(converted_span_result)
+
+        # get the free variables of the query, they will be used as headers
+        query_free_vars = [term for term, term_type in zip(query.term_list, query.type_list)
+                           if term_type is DataTypes.free_var_name]
+
+        # get the query result as a table
+        tabulated_result_string = tabulate(formatted_results, headers=query_free_vars, tablefmt='presto',
+                                           stralign='center')
+
+    return tabulated_result_string, formatted_results, query_free_vars
+
+
+def _print_query(query: Query, results):
+    """
+    queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
+    the resulting string is a table that contains all of the resulting tuples of the query.
+    the headers of the table are the free variables used in the query.
+    above the table there will be a title that contains the query as it was written by the user
+
+    for example:
+
+    printing results for query 'lecturer_of(X, "abigail")':
+      X
+-       -------
+    linus
+    walter
+
+    there are two cases where a table cannot be printed:
+    1. the query returned no results. in this case '[]' will be printed
+    2. the query returned a single empty tuple, in this case '[()]' will be printed
+
+
+    :param query: the Query object used in execution
+    :param results: the execution's results (from PyDatalog)
+    """
+
+    query_result_string, _, _ = _format_query_results(query, results)
+    query_title = f"printing results for query '{query}':"
+
+    # combine the title and table to a single string and save it to the prints buffer
+    final_result_string = f'{query_title}\n{query_result_string}\n'
+    print(final_result_string)
+
+
 class Session:
     def __init__(self, debug=False):
         self._symbol_table = SymbolTable()
@@ -121,10 +190,12 @@ class Session:
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
 
-    def _run_passes(self, tree, pass_list):
+    def _run_passes(self, tree, pass_list) -> Tuple[Query, List]:
         """
         Runs the passes in pass_list on tree, one after another.
         """
+        exec_result = None
+
         for cur_pass in pass_list:
             if issubclass(cur_pass, Visitor) or issubclass(cur_pass, Visitor_Recursive) or \
                     issubclass(cur_pass, Interpreter):
@@ -132,14 +203,15 @@ class Session:
             elif issubclass(cur_pass, Transformer):
                 tree = cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).transform(tree)
             elif issubclass(cur_pass, ExecutionBase):
-                cur_pass(
+                # TODO: @dean, is the execution always the last pass? is there always only one execution per statement?
+                exec_result = cur_pass(
                     term_graph=self._term_graph,
                     symbol_table=self._symbol_table,
                     rgxlog_engine=self._execution
                 ).execute()
             else:
                 raise Exception(f'invalid pass: {cur_pass}')
-        return tree
+        return exec_result
 
     def __repr__(self):
         return [repr(self._symbol_table), repr(self._term_graph)]
@@ -147,29 +219,25 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
-    def run_query(self, query: str):
+    def run_query(self, query: str, print_results: bool = True) -> Tuple[Query, List]:
         """
         generates an AST and passes it through the pass stack
-        Args:
-            query: the query
 
-        Returns: the query result or an error if the query failed
+        :param query: the user's input
+        :param print_results: whether to print the results to stdout or not
+        :return the last query's results
         """
+        # TODO: @dean is it necessary to return all results (multiple statements)?
+        exec_result = None
+        parse_tree = self._parser.parse(query)
 
-        try:
-            parse_tree = self._parser.parse(query)
-        except Exception as e:
-            return f'exception during parsing {e}'
+        for statement in parse_tree.children:
+            exec_result = self._run_passes(statement, self._pass_stack)
+            if print_results:
+                _print_query(*exec_result)
 
-        try:
-            statements = [statement for statement in parse_tree.children]
-            for statement in statements:
-                self._run_passes(statement, self._pass_stack)
-        except Exception:
-            self._execution.flush_prints_buffer()  # clear the prints buffer as the execution failed
-            raise
-
-        return self._execution.flush_prints_buffer()
+        # TODO: make sure prints work fine without flushing (test in jupyter)
+        return exec_result
 
     def register(self, ie_function, ie_function_name, in_rel, out_rel, is_output_const=True):
         # if ie_function_name.startswith("__"):
@@ -259,6 +327,7 @@ class Session:
             raise Exception("dataframe is empty")
 
         relation_types = _infer_relation_type(data[0])
+
         # first make sure the types are legal, then add them to the engine (to make sure
         #  we don't add them in case of error)
         facts = []
@@ -290,9 +359,9 @@ class Session:
 
     def query_into_csv(self, query: str, csv_file_name, delimiter=";"):
         # run a query normally and get formatted results:
-        query_results = self.run_query(query)
+        query_results = self.run_query(query, print_results=False)
 
-        rows, free_vars = _extract_query_results(query_results)
+        _, rows, free_vars = _format_query_results(*query_results)
 
         # add free_vars at start of csv
         rows.insert(0, free_vars)
@@ -303,9 +372,9 @@ class Session:
 
     def query_into_df(self, query: str) -> DataFrame:
         # run a query normally and get formatted results:
-        query_results = self.run_query(query)
+        query_results = self.run_query(query, print_results=False)
 
-        rows, free_vars = _extract_query_results(query_results)
+        _, rows, free_vars = _format_query_results(*query_results)
         # TODO: how do i store spans inside a df? use `Span` object?
         query_df = DataFrame(rows, columns=free_vars)
         return query_df
@@ -314,19 +383,20 @@ class Session:
 if __name__ == '__main__':
     session = Session(debug=False)
     # TODO: @niv make tests
-    session.import_relation_from_csv(r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\example_relation.csv",
-                                     relation_name="longrel")
+    session.import_relation_from_csv(
+        r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\example_relation.csv",
+        relation_name="longrel")
     session.import_relation_from_csv(
         r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\example_relation_two.csv",
         relation_name="rel")
     # df = DataFrame(["a", "b", "c"])
     # session.import_relation_from_df(df, "rel")
     # session.query_into_csv('?rel(X)',
-                           # r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\out.csv")
+    # r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\out.csv")
     # session.query_into_csv("?longrel(X,Y,Z)",
     # r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\out.csv")
 
-    d2 = session.query_into_df("?longrel(X,Y,Z)")
+    d2 = session.query_into_df("?longrel(X,Y,Z)\n?longrel(A,B,C)")
     print(d2.to_string())
 
     # q = session.run_query("?rel(X)")
