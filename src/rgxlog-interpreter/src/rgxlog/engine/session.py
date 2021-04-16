@@ -233,7 +233,7 @@ class Session:
 
         for statement in parse_tree.children:
             exec_result = self._run_passes(statement, self._pass_stack)
-            if print_results:
+            if print_results and exec_result:
                 _print_query(*exec_result)
 
         # TODO: make sure prints work fine without flushing (test in jupyter)
