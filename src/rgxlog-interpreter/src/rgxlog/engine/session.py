@@ -124,7 +124,9 @@ def _format_query_results(query: Query, query_results: list):
     return tabulated_result_string, formatted_results, query_free_vars
 
 
-def _print_query(query: Query, results):
+def query_to_string(query: Query, results):
+    # TODO: this doesn't execute a query anymore, edit this docstring
+    # TODO: if we combined Query+List into a `Result` object, we could turn it into a __str__ method
     """
     queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
     the resulting string is a table that contains all of the resulting tuples of the query.
@@ -135,7 +137,7 @@ def _print_query(query: Query, results):
 
     printing results for query 'lecturer_of(X, "abigail")':
       X
--       -------
+    --------
     linus
     walter
 
@@ -153,7 +155,7 @@ def _print_query(query: Query, results):
 
     # combine the title and table to a single string and save it to the prints buffer
     final_result_string = f'{query_title}\n{query_result_string}\n'
-    print(final_result_string)
+    return final_result_string
 
 
 class Session:
@@ -228,13 +230,15 @@ class Session:
         :return the last query's results
         """
         # TODO: @dean is it necessary to return all results (multiple statements)?
+        #   right now i'm returning the last one only
         exec_result = None
         parse_tree = self._parser.parse(query)
 
         for statement in parse_tree.children:
             exec_result = self._run_passes(statement, self._pass_stack)
             if print_results and exec_result:
-                _print_query(*exec_result)
+                # TODO: @dean maybe we should create a Results object to handle this more easily?
+                print(query_to_string(*exec_result))
 
         # TODO: make sure prints work fine without flushing (test in jupyter)
         return exec_result
@@ -289,7 +293,7 @@ class Session:
             relation_name = Path(csv_file_name).stem
 
         symbol_table = self._symbol_table
-        engine = session._execution
+        engine = self._execution
 
         with open(csv_file_name) as fh:
             reader = csv.reader(fh, delimiter=delimiter)
@@ -316,7 +320,7 @@ class Session:
 
     def import_relation_from_df(self, relation_df: DataFrame, relation_name):
         symbol_table = self._symbol_table
-        engine = session._execution
+        engine = self._execution
 
         data = relation_df.values.tolist()
 
@@ -381,26 +385,7 @@ class Session:
 
 
 if __name__ == '__main__':
-    session = Session(debug=False)
-    # TODO: @niv make tests
-    session.import_relation_from_csv(
-        r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\example_relation.csv",
-        relation_name="longrel")
-    session.import_relation_from_csv(
-        r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\example_relation_two.csv",
-        relation_name="rel")
-    # df = DataFrame(["a", "b", "c"])
-    # session.import_relation_from_df(df, "rel")
-    # session.query_into_csv('?rel(X)',
-    # r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\out.csv")
-    # session.query_into_csv("?longrel(X,Y,Z)",
-    # r"C:\Users\niviman\code\python\spanner_workbench\src\rgxlog-interpreter\tests\out.csv")
-
-    d2 = session.query_into_df("?longrel(X,Y,Z)\n?longrel(A,B,C)")
-    print(d2.to_string())
-
-    # q = session.run_query("?rel(X)")
-    # print(q)
+    pass
 
     # TODO: @tom make tests
     # from rgxlog.engine.datatypes.primitive_types import DataTypes
