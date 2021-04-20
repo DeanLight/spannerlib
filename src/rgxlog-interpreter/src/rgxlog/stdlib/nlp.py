@@ -9,10 +9,6 @@ MY_FILE_PATH = 'C:/Users/tomfe/OneDrive/Desktop/Project/stanford-corenlp-4.1.0'
 SERVER_URL = 'http://corenlp.run'
 PORT = 80
 
-if __name__ == '__main__':
-    with StanfordCoreNLP(SERVER_URL, port=PORT) as nlp:
-        # print(nlp.tokensregex("Donald is painter", "([ner: PERSON]+) /was|is/ /an?/ []{0,3} /painter|artist/"))
-
 " ******************************************************************************************************************** "
 
 
@@ -157,6 +153,7 @@ CleanXML = dict(ie_function=cleanxml_wrapper,
 
 " ******************************************************************************************************************** "
 
+
 def parse_wrapper(sentence):
     with StanfordCoreNLP(SERVER_URL, port=PORT) as nlp:
         for res in nlp.parse(sentence):
@@ -290,6 +287,7 @@ TrueCase = dict(ie_function=truecase_wrapper,
 
 " ******************************************************************************************************************** "
 
+
 # I don't understand the schema (list of dicts with values of list)
 def udfeats_wrapper(sentence: str):
     with StanfordCoreNLP(SERVER_URL, port=PORT) as nlp:
@@ -298,11 +296,10 @@ def udfeats_wrapper(sentence: str):
 
 
 UDFeats = dict(ie_function=udfeats_wrapper,
-                ie_function_name='UDFeats',
-                in_rel=[DataTypes.string],
-                out_rel=None,
-                )
-
+               ie_function_name='UDFeats',
+               in_rel=[DataTypes.string],
+               out_rel=None,
+               )
 
 " ******************************************************************************************************************** "
 
