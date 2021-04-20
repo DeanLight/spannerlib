@@ -1,5 +1,3 @@
-import collections
-
 class IEFunction:
     """
     A class that contains all the functions that provide data
@@ -9,17 +7,14 @@ class IEFunction:
     """
     Members: 
         ie_function_def : callable() - the user defined ie function implementation. 
-        in_types        : iter()     - iterable of the input types to the function. 
-        is_output_const : bool       - false if output arity is constant otherwise true. 
-        out_types       :            - if is_super_user then it's a function that gets output arity and 
-                                       returns iterable of the output types. 
-                                       else, it's iterable of the output types.
+        in_types        : iter()     - iterable of the input types to the function.  
+        out_types       :            - either a function (int->iterable) or an iterable
     """
-    def __init__(self, ie_function_def, in_types, out_types, is_output_const: bool):
-        self.ie_function_def   = ie_function_def
-        self.in_types          = in_types
-        self.is_output_const = is_output_const
-        self.out_types         = out_types
+
+    def __init__(self, ie_function_def, in_types, out_types):
+        self.ie_function_def = ie_function_def
+        self.in_types = in_types
+        self.out_types = out_types
 
     def ie_function(self, *args):
         """
@@ -51,11 +46,10 @@ class IEFunction:
         This function must be defined as it is used for type checking in semantic passes and execution.
         """
 
-        if not self.is_output_const:
+        if callable(self.out_types):
             return self.out_types(output_arity)
 
         # output is constant
         if not output_arity == len(self.out_types):
             raise Exception("Output arity doesn't match the declared arity.")
         return self.out_types
-

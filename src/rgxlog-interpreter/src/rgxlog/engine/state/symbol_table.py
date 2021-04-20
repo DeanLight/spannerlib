@@ -108,7 +108,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel, is_super_user):
+    def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel):
         """
         add a new ie function to the symbol table
 
@@ -232,15 +232,23 @@ class SymbolTable(SymbolTableBase):
     def contains_relation(self, relation_name):
         return relation_name in self._relation_to_schema
 
-    def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel, is_super_user):
+    def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel):
         # check if ie_function_name is available.
         if self.contains_ie_function(ie_function_name):
             raise Exception(f"Already exists ie function named {ie_function_name}.")
 
         # initialize ie_function_data instance.
         # add a mapping between ie_function_name and ie_function_data instance.
-        self._registered_ie_functions[ie_function_name] = IEFunction(ie_function, in_rel, out_rel, is_super_user)
-        return True
+        self._registered_ie_functions[ie_function_name] = IEFunction(ie_function, in_rel, out_rel)
+
+    def register_ie_function_object(self, ie_function_object : IEFunction, ie_function_name):
+        # check if ie_function_name is available.
+        if self.contains_ie_function(ie_function_name):
+            raise Exception(f"Already exists ie function named {ie_function_name}.")
+
+        # initialize ie_function_data instance.
+        # add a mapping between ie_function_name and ie_function_data instance.
+        self._registered_ie_functions[ie_function_name] = ie_function_object
 
     def contains_ie_function(self, ie_func_name):
         return ie_func_name in self._registered_ie_functions
