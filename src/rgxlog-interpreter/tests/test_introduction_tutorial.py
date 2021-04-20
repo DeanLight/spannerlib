@@ -17,7 +17,7 @@ def test_introduction():
     assert query_result == EXPECTED_RESULT_INTRO, "fail"
 
 
-def test_basic_queries(run_rgx_string=True)
+def test_basic_queries(run_rgx_string=True):
 
     EXPECTED_RESULT = """printing results for query 'enrolled_in_chemistry("jordan")':
     [()]
