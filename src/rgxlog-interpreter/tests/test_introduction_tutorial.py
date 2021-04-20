@@ -1,5 +1,9 @@
+from rgxlog.engine.datatypes.ast_node_types import Query
+from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.session import Session
 from rgxlog.engine.datatypes.primitive_types import DataTypes
+from typing import Tuple
+
 
 def compare_relations(actual: list, output:list) -> bool:
     if len(actual) != len(output):
@@ -10,7 +14,7 @@ def compare_relations(actual: list, output:list) -> bool:
 
     return True
 
-def str_relation_to_list(table: str, start: int) -> tuple[list, int]:
+def str_relation_to_list(table: str, start: int) -> Tuple[list, int]:
     offset_cnt = 0
     relations = list()
     for rel in table[start:]:
@@ -43,20 +47,21 @@ def compare_strings(actual: str, test_output: str) -> bool:
         i += offset
 
     return True
+  
 
-
+# TODO add tests
 def test_introduction():
-    EXPECTED_RESULT_INTRO = """printing results for query 'uncle(X, Y)':
-  X  |  Y
------+------
- bob | greg
-"""
+    # note - there's 2 ways to compare test output - using actual objects (like this), or using strings (easier)
+    expected_result = (Query("uncle", ['X', 'Y'],
+                             [DataTypes.free_var_name, DataTypes.free_var_name]),
+                       [('bob', 'greg')])
+
 
     session = Session()
     session.run_query("new uncle(str, str)")
     session.run_query('uncle("bob", "greg")')
-    query_result = session.run_query("?uncle(X,Y)")
-    assert compare_strings(EXPECTED_RESULT_INTRO, query_result), "fail"
+    query_result = session.run_query("?uncle(X,Y)", print_results=False)
+    assert query_result == expected_result
 
 
 def test_basic_queries():

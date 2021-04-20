@@ -6,16 +6,16 @@ and an rgxlog engine.
 
 # TODO change all imports to relative imports (after installing rgxlog, we run from site-packages instead of this code)
 from abc import ABC, abstractmethod
-from typing import List, Tuple
-from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
-from pyDatalog import pyDatalog
-from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.ie_functions.ie_function_base import IEFunction
-from rgxlog.engine.datatypes.ast_node_types import *
-from rgxlog.engine.utils.general_utils import get_output_free_var_names
-from tabulate import tabulate
 from itertools import count
+from typing import List, Tuple
+
+from pyDatalog import pyDatalog
+from rgxlog.engine.datatypes.ast_node_types import *
+from rgxlog.engine.datatypes.primitive_types import Span
+from rgxlog.engine.ie_functions.ie_function_base import IEFunction
+from rgxlog.engine.state.symbol_table import SymbolTableBase
+from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
+from rgxlog.engine.utils.general_utils import get_output_free_var_names
 
 
 class RgxlogEngineBase(ABC):
@@ -681,7 +681,7 @@ class ExecutionBase(ABC):
         self.rgxlog_engine = rgxlog_engine
 
     @abstractmethod
-    def execute(self):
+    def execute(self) -> Tuple[Query, List]:
         """
         executes the term graph
         """
@@ -702,9 +702,10 @@ class GenericExecution(ExecutionBase):
     def __init__(self, term_graph: TermGraphBase, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         super().__init__(term_graph, symbol_table, rgxlog_engine)
 
-    def execute(self):
+    def execute(self) -> Tuple[Query, List]:
         term_graph = self.term_graph
         rgxlog_engine = self.rgxlog_engine
+        exec_result = None
 
         # get the term ids. note that the order of the ids does not actually matter as long as the statements
         # are ordered the same way as they were in the original program
@@ -735,14 +736,17 @@ class GenericExecution(ExecutionBase):
 
             elif term_type == "query":
                 query = term_attrs['value']
+                # TODO: change this - enable returning the pre-formatted query
                 # currently only print queries are supported
-                rgxlog_engine.print_query(query)
+                exec_result = (query, rgxlog_engine.query(query))
 
             elif term_type == "rule":
                 self._execute_rule_aux(term_id)
 
             # statement was executed, mark it as "computed"
             term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
+
+        return exec_result
 
     def _execute_rule_aux(self, rule_term_id):
         """

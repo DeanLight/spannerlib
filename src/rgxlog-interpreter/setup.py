@@ -59,7 +59,8 @@ setuptools.setup(
         'docopt',
         'tabulate',
         'pyDatalog',
-        'spacy'
+        'spacy',
+        'pandas'
     ],
     dependency_links=[
     ]
