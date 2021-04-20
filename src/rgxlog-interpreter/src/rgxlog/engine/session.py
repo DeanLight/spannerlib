@@ -166,6 +166,7 @@ def query_to_string(query: Query, results):
     return final_result_string
 
 
+
 class Session:
     def __init__(self, debug=False):
         self._symbol_table = SymbolTable()
@@ -288,6 +289,17 @@ class Session:
         for pass_ in user_stack:
             self._pass_stack.append(eval(pass_))
         return self.get_pass_stack()
+
+    # Note that PyDatalog doesn't support retraction of recursive rule!
+    # e.g, we can't delete a rule such as: ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
+    def remove_rule(self, rule: str):
+        """
+        remove a rule from the rgxlog engine
+
+        Args:
+            rule: the rule to be removed
+        """
+        self._execution.remove_rule(rule)
 
     @staticmethod
     def _unknown_task_type():
@@ -667,3 +679,4 @@ result = session.run_query('''?uncle("bob",Y)''')
 print("result2:")
 print(result)
 """
+

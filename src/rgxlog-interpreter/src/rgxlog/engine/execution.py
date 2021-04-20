@@ -76,6 +76,25 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
+    def remove_rule(self, rule: str):
+        """
+        remove a rule from the rgxlog engine
+
+        Args:
+            rule: the rule to be removed
+        """
+
+    @abstractmethod
+    def print_query(self, query):
+        """
+        queries rgxlog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
+
+        Args:
+            query: a query for rgxlog
+        """
+        pass
+
+    @abstractmethod
     def query(self, query):
         """
         queries the rgxlog engine
@@ -258,6 +277,82 @@ class PydatalogEngine(RgxlogEngineBase):
         # remove the fact in pyDatalog
         pyDatalog.load(remove_fact_statement)
 
+    def remove_rule(self, rule: str):
+        # the syntax for a 'remove rule' statement in pyDatalog is '-rule_definition' create that statement
+        remove_rule_statement = f'-({rule.replace("-", "=")})'
+        if self.debug:
+            self.prints_buffer.append(remove_rule_statement)
+        # remove the rule in pyDatalog
+        pyDatalog.load(remove_rule_statement)
+
+    # TODO: split this function into 2:
+    #  1. get_query_results(query) -> results, free_vars
+    #  2. print_query(query): same thing, but uses the results from `get_query_results`
+    def print_query(self, query: Query):
+        """
+        queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
+        the resulting string is a table that contains all of the resulting tuples of the query.
+        the headers of the table are the free variables used in the query.
+        above the table there will be a title that contains the query as it was written by the user
+
+        for example:
+
+        printing results for query 'lecturer_of(X, "abigail")':
+          X
+-       -------
+        linus
+        walter
+
+        there are two cases where a table cannot be printed:
+        1. the query returned no results. in this case '[]' will be printed
+        2. the query returned a single empty tuple, in this case '[()]' will be printed
+
+        Args:
+            query: a query for pyDatalog
+        """
+
+        # TODO `get_query_results` starts here
+        # get the results of the query
+        query_results = self.query(query)
+
+        # check for the special conditions for which we can't print a table: no results were returned or a single
+        # empty tuple was returned
+        no_results = len(query_results) == 0
+        result_is_single_empty_tuple = len(query_results) == 1 and len(query_results[0]) == 0
+        if no_results:
+            query_result_string = '[]'
+        elif result_is_single_empty_tuple:
+            query_result_string = '[()]'
+
+        else:
+            # query results can be printed as a table
+            # convert the resulting tuples to a more organized format
+            formatted_results = []
+            for result in query_results:
+                # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
+                # they will be printed as a span instead of a tuple
+                converted_span_result = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
+                                         else term
+                                         for term in result]
+
+                formatted_results.append(converted_span_result)
+
+            # get the free variables of the query, they will be used as headers
+            query_free_vars = [term for term, term_type in zip(query.term_list, query.type_list)
+                               if term_type is DataTypes.free_var_name]
+
+            # TODO `get_query_results` ends here
+
+            # get the query result as a table
+            query_result_string = tabulate(formatted_results, headers=query_free_vars, tablefmt='presto',
+                                           stralign='center')
+
+        query_title = f"printing results for query '{query}':"
+
+        # combine the title and table to a single string and save it to the prints buffer
+        final_result_string = f'{query_title}\n{query_result_string}\n'
+        self.prints_buffer.append(final_result_string)
+
     def query(self, query: Query):
         """
         Args:
@@ -357,13 +452,7 @@ class PydatalogEngine(RgxlogEngineBase):
             ie_outputs = ie_func.ie_function(*ie_input)
             # process each ie output and add it to the output relation
             for ie_output in ie_outputs:
-                # handle case in which ie output is not iterable.
-                if isinstance(ie_output, str) or isinstance(ie_output, int):
-                    ie_output = [ie_output]
-                else:
-                    # TODO : @tom understand why the output has to be iterable of iterables while the output type is
-                    #             known.
-                    ie_output = list(ie_output)
+                ie_output = list(ie_output)
 
                 # assert the ie output is properly typed
                 self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)
