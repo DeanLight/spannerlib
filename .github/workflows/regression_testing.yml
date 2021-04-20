@@ -19,8 +19,8 @@ jobs:
         python-version: 3.8
     - name: setup rust and cargo
       uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+      with:
+        toolchain: stable
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
