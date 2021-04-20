@@ -35,6 +35,7 @@ VALUES_LINE_NUM = 3
 FUNC_DICT_NAME = "ie_function_name"
 FUNC_DICT_OBJ = "ie_function_object"
 
+# TODO: @niv add rust_rgx_*_from_file (ask dean)
 DEFAULT_FUNCTIONS = [{FUNC_DICT_NAME: "rust_rgx_string", FUNC_DICT_OBJ: RustRGXString()},
                      {FUNC_DICT_NAME: "rust_rgx_span", FUNC_DICT_OBJ: RustRGXSpan()}]
 
@@ -401,7 +402,10 @@ class Session:
 
 if __name__ == '__main__':
     s = Session()
-    s.run_query("""simple_1(X) <- rust_rgx_string("aa","aa") -> (X)""")
+    s.run_query("""string_rel(X) <- rust_rgx_string("aa","aa") -> (X)""", print_results=True)
+    s.run_query("""?string_rel(X)""", print_results=True)
+    s.run_query("""span_rel(X) <- rust_rgx_span("aa","aa") -> (X)""", print_results=True)
+    s.run_query("""?span_rel(X)""", print_results=True)
 
     # TODO: @tom make tests
     # from rgxlog.engine.datatypes.primitive_types import DataTypes

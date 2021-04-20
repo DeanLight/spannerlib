@@ -70,9 +70,11 @@ def _format_spanner_output(output: bytes):
     output_jsons = [x.decode("utf-8").strip(">") for x in output.splitlines() if x]
     for out in output_jsons:
         dict_out = json.loads(out)
-        ret.append(dict_out)
+        if dict_out["span"][0] > -1:
+            ret.append(dict_out)
 
     return ret
+
 
 def rgx(text, regex_pattern, out_type):
     if platform == WINDOWS_OS:
@@ -88,12 +90,15 @@ def rgx(text, regex_pattern, out_type):
 
     try:
         rust_regex_args = [REGEX_EXE_PATH, regex_pattern, temp_file_path, "--compare"]
-        regex_output = _format_spanner_output(check_output(rust_regex_args))
-        if out_type == "string":
-            print([x["match"] for x in regex_output])
-            yield [x["match"] for x in regex_output]
-        else:
-            yield [x["span"] for x in regex_output]
+        regex_output = _format_spanner_output(check_output(rust_regex_args, stderr=PIPE))
+
+        for out in regex_output:
+            if out_type == "string":
+                yield out["match"]
+            elif out_type == "span":
+                yield tuple(out["span"])
+            else:
+                assert False, "illegal out_type"
 
     finally:
         os.remove(temp_file_path)
@@ -107,7 +112,7 @@ def rgx_span(text, regex_pattern):
 
     Returns: tuples of spans that represents the results
     """
-    rgx(text,regex_pattern, "span")
+    yield rgx(text, regex_pattern, "span")
 
 
 def rgx_string(text, regex_pattern):
@@ -118,7 +123,7 @@ def rgx_string(text, regex_pattern):
 
     Returns: tuples of strings that represents the results
     """
-    rgx(text, regex_pattern, "string")
+    yield rgx(text, regex_pattern, "string")
 
 
 class RustRGXSpan(IEFunction):
