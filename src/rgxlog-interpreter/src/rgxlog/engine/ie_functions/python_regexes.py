@@ -10,8 +10,12 @@ from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 PYTHON_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
 
 
-def rgx_out_type(output_arity):
+def rgx_span_out_type(output_arity):
     return tuple([DataTypes.span] * output_arity)
+
+
+def rgx_string_out_type(output_arity):
+    return tuple([DataTypes.string] * output_arity)
 
 
 def rgx_span(text, regex_pattern):
@@ -57,7 +61,7 @@ class PyRGXSpan(IEFunction):
     """
 
     def __init__(self):
-        super().__init__(rgx_span, PYTHON_RGX_IN_TYPES, rgx_out_type)
+        super().__init__(rgx_span, PYTHON_RGX_IN_TYPES, rgx_span_out_type)
 
 
 class PyRGXString(IEFunction):
@@ -67,4 +71,4 @@ class PyRGXString(IEFunction):
     """
 
     def __init__(self):
-        super().__init__(rgx_string, PYTHON_RGX_IN_TYPES, rgx_out_type)
+        super().__init__(rgx_string, PYTHON_RGX_IN_TYPES, rgx_string_out_type)

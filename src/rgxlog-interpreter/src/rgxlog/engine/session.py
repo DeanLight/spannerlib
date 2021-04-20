@@ -11,7 +11,7 @@ from pandas import DataFrame
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration, Query
-from rgxlog.engine.ie_functions.python_regexes import PyRGXSpan
+from rgxlog.engine.ie_functions.rust_spanner_regex import RustRGXString, RustRGXSpan
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
@@ -35,7 +35,8 @@ VALUES_LINE_NUM = 3
 FUNC_DICT_NAME = "ie_function_name"
 FUNC_DICT_OBJ = "ie_function_object"
 
-DEFAULT_FUNCTIONS = [{FUNC_DICT_NAME: "py_rgx_string", FUNC_DICT_OBJ: PyRGXSpan()}]
+DEFAULT_FUNCTIONS = [{FUNC_DICT_NAME: "rust_rgx_string", FUNC_DICT_OBJ: RustRGXString()},
+                     {FUNC_DICT_NAME: "rust_rgx_span", FUNC_DICT_OBJ: RustRGXSpan()}]
 
 
 def _infer_relation_type(row: iter):
@@ -399,7 +400,8 @@ class Session:
 
 
 if __name__ == '__main__':
-    pass
+    s = Session()
+    s.run_query("""simple_1(X) <- rust_rgx_string("aa","aa") -> (X)""")
 
     # TODO: @tom make tests
     # from rgxlog.engine.datatypes.primitive_types import DataTypes
