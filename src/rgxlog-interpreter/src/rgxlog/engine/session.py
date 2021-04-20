@@ -135,6 +135,17 @@ class Session:
             self._pass_stack.append(eval(pass_))
         return self.get_pass_stack()
 
+    # Note that PyDatalog doesn't support retraction of recursive rule!
+    # e.g, we can't delete a rule such as: ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
+    def remove_rule(self, rule: str):
+        """
+        remove a rule from the rgxlog engine
+
+        Args:
+            rule: the rule to be removed
+        """
+        self._execution.remove_rule(rule)
+
     @staticmethod
     def _unknown_task_type():
         return 'unknown task type'
@@ -143,19 +154,31 @@ class Session:
 if __name__ == '__main__':
     # from rgxlog.stdlib.nlp import CleanXML
     #
-    # session = Session()
-    # session.register(**CleanXML)
-    #
-    # query = """sentence = "<xml><to>Tove</to>\
-    #    <from>Jani</Ffrom>\
-    #    <heading>Reminder</heading>\
-    #    <body>Don't forget me this weekend!</body></xml>"
-    #        clean_xml(X, Y, Z, W, U) <- CleanXML(sentence) -> (X, Y, Z, W, U)
-    #        ?clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)"""
-    # result = session.run_query(query)
-    # print(result)
+    session = Session()
+    query = """
+            new parent(str, str)
+            new grandparent(str, str)
+            parent("Liam", "Noah")
+            parent("Noah", "Oliver")
+            parent("James", "Lucas")
+            parent("Noah", "Benjamin")
+            parent("Benjamin", "Mason")
+            grandparent("Tom", "Avi")
+            ancestor(X,Y) <- parent(X,Y)
+            ancestor(X,Y) <- grandparent(X,Y)
+            ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
 
+            tmp(X, Y) <- ancestor(X,Y)
+            tmp(X, Y) <- parent(X,Y)
+            """
+    session.run_query(query)
 
+    session.remove_rule("ancestor(X,Y) <- parent(X,Y)")
+    query_result = session.run_query("""
+                        ?ancestor(X, Y)
+                        ?tmp(X, Y)
+                        """)
+    print(query_result)
 
 
 

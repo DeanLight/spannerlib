@@ -11,7 +11,7 @@ def json_path(json_ds: str, json_query: str):
         if type(json_result) != str:
             json_result = json.dumps(json_result).replace("\"", "'")
 
-        yield [json_result]                        # each json result is a relation
+        yield json_result,                       # each json result is a relation
 
 
 json_path = dict(ie_function=json_path,

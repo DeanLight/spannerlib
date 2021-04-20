@@ -546,3 +546,46 @@ def test_clean_xml():
     query_result = session.run_query(query)
     assert query_result == EXPECTED_RESULT, "fail"
 
+
+def test_remove_rule():
+    EXPECTED_RESULT = """printing results for query 'ancestor(X, Y)':
+  X  |  Y
+-----+-----
+ Tom | Avi
+
+printing results for query 'tmp(X, Y)':
+    X     |    Y
+----------+----------
+ Benjamin |  Mason
+   Noah   | Benjamin
+  James   |  Lucas
+   Noah   |  Oliver
+   Liam   |   Noah
+   Tom    |   Avi
+    """
+    session = Session()
+    query = """
+        new parent(str, str)
+        new grandparent(str, str)
+        parent("Liam", "Noah")
+        parent("Noah", "Oliver")
+        parent("James", "Lucas")
+        parent("Noah", "Benjamin")
+        parent("Benjamin", "Mason")
+        grandparent("Tom", "Avi")
+        ancestor(X,Y) <- parent(X,Y)
+        ancestor(X,Y) <- grandparent(X,Y)
+        ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
+
+        tmp(X, Y) <- ancestor(X,Y)
+        tmp(X, Y) <- parent(X,Y)
+        """
+    session.run_query(query)
+
+
+    session.remove_rule("ancestor(X,Y) <- parent(X,Y)")
+    query_result = session.run_query("""
+                    ?ancestor(X, Y)
+                    ?tmp(X, Y)
+                    """)
+    assert query_result == EXPECTED_RESULT, "fail"

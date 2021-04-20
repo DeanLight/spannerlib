@@ -76,6 +76,15 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
+    def remove_rule(self, rule: str):
+        """
+        remove a rule from the rgxlog engine
+
+        Args:
+            rule: the rule to be removed
+        """
+
+    @abstractmethod
     def print_query(self, query):
         """
         queries rgxlog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
@@ -267,6 +276,14 @@ class PydatalogEngine(RgxlogEngineBase):
             self.prints_buffer.append(remove_fact_statement)
         # remove the fact in pyDatalog
         pyDatalog.load(remove_fact_statement)
+
+    def remove_rule(self, rule: str):
+        # the syntax for a 'remove rule' statement in pyDatalog is '-rule_definition' create that statement
+        remove_rule_statement = f'-({rule.replace("-", "=")})'
+        if self.debug:
+            self.prints_buffer.append(remove_rule_statement)
+        # remove the rule in pyDatalog
+        pyDatalog.load(remove_rule_statement)
 
     # TODO: split this function into 2:
     #  1. get_query_results(query) -> results, free_vars
