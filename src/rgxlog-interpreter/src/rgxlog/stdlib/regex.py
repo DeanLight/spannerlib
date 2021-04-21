@@ -30,7 +30,6 @@ RGXString = dict(ie_function=rgx_string,
                  ie_function_name='RGXString',
                  in_rel=[DataTypes.string, DataTypes.string],
                  out_rel=rgx_string_out_types,
-                 is_output_const=False
                  )
 
 " ******************************************************************************************************************** "
@@ -62,7 +61,6 @@ RGX = dict(ie_function=rgx,
            ie_function_name='RGX',
            in_rel=[DataTypes.string, DataTypes.string],
            out_rel=rgx_out_type,
-           is_output_const=False
            )
 
 " ******************************************************************************************************************** "

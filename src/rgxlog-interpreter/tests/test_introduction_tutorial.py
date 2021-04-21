@@ -1,11 +1,11 @@
+from typing import Tuple
+
 from rgxlog.engine.datatypes.ast_node_types import Query
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.session import Session
-from rgxlog.engine.datatypes.primitive_types import DataTypes
-from typing import Tuple
 
 
-def compare_relations(actual: list, output:list) -> bool:
+def compare_relations(actual: list, output: list) -> bool:
     if len(actual) != len(output):
         return False
     for rel in actual:
@@ -13,6 +13,7 @@ def compare_relations(actual: list, output:list) -> bool:
             return False
 
     return True
+
 
 def str_relation_to_list(table: str, start: int) -> Tuple[list, int]:
     offset_cnt = 0
@@ -47,7 +48,7 @@ def compare_strings(actual: str, test_output: str) -> bool:
         i += offset
 
     return True
-  
+
 
 # TODO add tests
 def test_introduction():
@@ -55,7 +56,6 @@ def test_introduction():
     expected_result = (Query("uncle", ['X', 'Y'],
                              [DataTypes.free_var_name, DataTypes.free_var_name]),
                        [('bob', 'greg')])
-
 
     session = Session()
     session.run_query("new uncle(str, str)")
@@ -640,3 +640,6 @@ printing results for query 'tmp(X, Y)':
                     ?tmp(X, Y)
                     """)
     assert compare_strings(EXPECTED_RESULT, query_result), "fail"
+
+
+test_basic_queries()
