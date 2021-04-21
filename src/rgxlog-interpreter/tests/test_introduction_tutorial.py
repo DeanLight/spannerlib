@@ -25,8 +25,11 @@ def str_relation_to_list(table: str, start: int) -> tuple[list, int]:
 def compare_strings(actual: str, test_output: str) -> bool:
     actual_lines = actual.splitlines(True)
     output_lines = test_output.splitlines(True)
+    actual_lines = [line.strip() for line in actual_lines if len(line.strip()) > 0]
+    output_lines = [line.strip() for line in output_lines if len(line.strip()) > 0]
     if len(actual_lines) != len(output_lines):
         return False
+
     i = 0
     while i < len(actual_lines):
         rng = 3
@@ -564,7 +567,7 @@ def test_truecase():
 def test_clean_xml():
     from rgxlog.stdlib.nlp import CleanXML
 
-    EXPECTED_RESULT = """"printing results for query 'clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)':
+    EXPECTED_RESULT = """printing results for query 'clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)':
    Index |   Word   |  OriginalText  |   CharacterOffsetBegin |   CharacterOffsetEnd
 ---------+----------+----------------+------------------------+----------------------
       -1 |    !     |       !        |                    118 |                  119
@@ -635,3 +638,5 @@ printing results for query 'tmp(X, Y)':
                     ?tmp(X, Y)
                     """)
     assert compare_strings(EXPECTED_RESULT, query_result), "fail"
+
+
