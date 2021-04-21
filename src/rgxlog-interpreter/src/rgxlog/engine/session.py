@@ -132,7 +132,7 @@ def _format_query_results(query: Query, query_results: list):
     return tabulated_result_string, formatted_results, query_free_vars
 
 
-def query_to_string(query: Query, results):
+def query_to_string(query_results: List[Tuple[Query, List]]):
     # TODO: this doesn't execute a query anymore, edit this docstring
     # TODO: if we combined Query+List into a `Result` object, we could turn it into a __str__ method
     """
@@ -158,13 +158,16 @@ def query_to_string(query: Query, results):
     :param results: the execution's results (from PyDatalog)
     """
 
-    query_result_string, _, _ = _format_query_results(query, results)
-    query_title = f"printing results for query '{query}':"
+    all_result_strings = []
+    query_results = list(filter(None, query_results))  # remove Nones
+    for query, results in query_results:
+        query_result_string, _, _ = _format_query_results(query, results)
+        query_title = f"printing results for query '{query}':"
 
-    # combine the title and table to a single string and save it to the prints buffer
-    final_result_string = f'{query_title}\n{query_result_string}\n'
-    return final_result_string
-
+        # combine the title and table to a single string and save it to the prints buffer
+        titled_result_string = f'{query_title}\n{query_result_string}\n'
+        all_result_strings.append(titled_result_string)
+    return "\n".join(all_result_strings)
 
 
 class Session:
@@ -231,7 +234,7 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
-    def run_query(self, query: str, print_results: bool = True) -> Tuple[Query, List]:
+    def run_query(self, query: str, print_results: bool = True) -> List[Tuple[Query, List]]:
         """
         generates an AST and passes it through the pass stack
 
@@ -240,18 +243,19 @@ class Session:
         :return the last query's results
         """
         # TODO: @dean is it necessary to return all results (multiple statements)?
-        #   right now i'm returning the last one only
-        exec_result = None
+        #   right now i'm returning the last one only - yes
+        exec_results = []
         parse_tree = self._parser.parse(query)
 
         for statement in parse_tree.children:
             exec_result = self._run_passes(statement, self._pass_stack)
+            exec_results.append(exec_result)
             if print_results and exec_result:
                 # TODO: @dean maybe we should create a Results object to handle this more easily?
-                print(query_to_string(*exec_result))
+                print(query_to_string([exec_result]))
 
         # TODO: make sure prints work fine without flushing (test in jupyter)
-        return exec_result
+        return exec_results
 
     def register(self, ie_function, ie_function_name, in_rel, out_rel):
         # if ie_function_name.startswith("__"):
@@ -337,7 +341,7 @@ class Session:
             # declare relation if it does not exist
             if not symbol_table.contains_relation(relation_name):
                 engine.declare_relation(RelationDeclaration(relation_name, relation_types))
-                symbol_table.add_relation_schema(relation_name, relation_types)
+                symbol_table.add_relation_schema(relation_name, relation_types, False)
 
             for fact in facts:
                 engine.add_fact(fact)
@@ -366,7 +370,7 @@ class Session:
         # declare relation if it does not exist
         if not symbol_table.contains_relation(relation_name):
             engine.declare_relation(RelationDeclaration(relation_name, relation_types))
-            symbol_table.add_relation_schema(relation_name, relation_types)
+            symbol_table.add_relation_schema(relation_name, relation_types, False)
 
         for fact in facts:
             engine.add_fact(fact)
@@ -388,8 +392,10 @@ class Session:
     def query_into_csv(self, query: str, csv_file_name, delimiter=";"):
         # run a query normally and get formatted results:
         query_results = self.run_query(query, print_results=False)
+        if len(query_results) != 1:
+            raise Exception("the query must have exactly one output")
 
-        _, rows, free_vars = _format_query_results(*query_results)
+        _, rows, free_vars = _format_query_results(*query_results[0])
 
         # add free_vars at start of csv
         rows.insert(0, free_vars)
@@ -401,8 +407,10 @@ class Session:
     def query_into_df(self, query: str) -> DataFrame:
         # run a query normally and get formatted results:
         query_results = self.run_query(query, print_results=False)
+        if len(query_results) != 1:
+            raise Exception("the query must have exactly one output")
 
-        _, rows, free_vars = _format_query_results(*query_results)
+        _, rows, free_vars = _format_query_results(*query_results[0])
         # TODO: how do i store spans inside a df? use `Span` object?
         query_df = DataFrame(rows, columns=free_vars)
         return query_df
@@ -679,4 +687,3 @@ result = session.run_query('''?uncle("bob",Y)''')
 print("result2:")
 print(result)
 """
-

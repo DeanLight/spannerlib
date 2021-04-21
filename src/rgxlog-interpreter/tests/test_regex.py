@@ -15,9 +15,10 @@ def test_rust_regex():
                             [((0, 2),)])
 
     s.run_query("""string_rel(X) <- rust_rgx_string("aa","aa") -> (X)""")
-    query_result_string = s.run_query("""?string_rel(X)""", print_results=True)
-    assert expected_result_string == query_result_string
+    query_result_string = s.run_query("""?string_rel(X)""", print_results=False)
+
+    assert expected_result_string == query_result_string[0]
 
     s.run_query("""span_rel(X) <- rust_rgx_span("aa","aa") -> (X)""")
-    query_result_span = s.run_query("""?span_rel(X)""", print_results=True)
-    assert expected_result_span == query_result_span
+    query_result_span = s.run_query("""?span_rel(X)""", print_results=False)
+    assert expected_result_span == query_result_span[0]

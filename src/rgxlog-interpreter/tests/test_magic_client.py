@@ -12,4 +12,4 @@ def test_magic_client_basic():
     session.run_query("new uncle(str, str)")
     session.run_query('uncle("bob", "greg")')
     query_result = session.run_query("?uncle(X,Y)", print_results=False)
-    assert query_result == expected_result
+    assert query_result[0] == expected_result

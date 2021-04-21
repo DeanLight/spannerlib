@@ -36,7 +36,7 @@ def test_import_csv1(im_ex_session: Session):
 """
 
     query_result = im_ex_session.run_query("?csv_rel(X,Y,Z)", print_results=False)
-    query_result_string = query_to_string(*query_result)
+    query_result_string = query_to_string(query_result)
     assert query_result_string == expected_result_string
 
 
@@ -54,7 +54,7 @@ def test_import_csv2(im_ex_session: Session):
 """
 
     query_result = im_ex_session.run_query("?csv_rel2(X)", print_results=False)
-    query_result_string = query_to_string(*query_result)
+    query_result_string = query_to_string(query_result)
     assert query_result_string == expected_result_string
 
 
@@ -71,7 +71,7 @@ def test_import_df(im_ex_session: Session):
 
     im_ex_session.import_relation_from_df(df, "df_rel")
     query_result = im_ex_session.run_query("?df_rel(X)", print_results=False)
-    query_result_string = query_to_string(*query_result)
+    query_result_string = query_to_string(query_result)
     assert query_result_string == expected_result_string
 
 
