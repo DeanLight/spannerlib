@@ -22,10 +22,20 @@ DOWNLOAD_RUST_URL = "https://rustup.rs/"
 PACKAGE_GIT_URL = "https://github.com/PoDMR/enum-spanner-rs/"
 PACKAGE_NAME = "enum-spanner-rs"
 REGEX_FOLDER_NAME = "enum_spanner"
+
+# installation paths
 REGEX_FOLDER_PATH = path.join(path.dirname(__file__), REGEX_FOLDER_NAME)
-REGEX_EXE_PATH = path.join(REGEX_FOLDER_PATH, "bin", PACKAGE_NAME)
+REGEX_EXE_PATH_POSIX = path.join(REGEX_FOLDER_PATH, "bin", PACKAGE_NAME)
+REGEX_EXE_PATH_WIN = path.join(REGEX_FOLDER_PATH, "bin", PACKAGE_NAME + ".exe")
 REGEX_TEMP_PATH = path.join(REGEX_FOLDER_PATH, "temp{}.txt")
-CARGO_CMD_ARGS = ["cargo", "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
+
+# commands
+RUSTUP_TOOLCHAIN = "1.34"
+CARGO_CMD_ARGS = ["cargo", "+1.34", "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
+RUSTUP_CMD_ARGS = ["rustup", "toolchain", "install", RUSTUP_TOOLCHAIN]
+CARGO_TIMEOUT = 180
+RUSTUP_TIMEOUT = 180
+TIMEOUT_MINUTES = (CARGO_TIMEOUT + RUSTUP_TIMEOUT) // 60
 
 # etc
 TIME_FORMAT = "%Y_%m_%d_%H_%M_%S"
@@ -36,16 +46,19 @@ def _download_and_install_rust_and_regex():
     with Popen(["cargo"], stdout=PIPE, stderr=PIPE) as cargo:
         errcode = cargo.wait(5)
 
+    with Popen(["rustup", "-V"], stdout=PIPE, stderr=PIPE) as rustup:
+        errcode = errcode or rustup.wait(5)
+
     if errcode:
-        raise IOError(f"cargo was not installed. please install rust: {DOWNLOAD_RUST_URL}")
+        raise IOError(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
 
     logging.info(f"{PACKAGE_NAME} was not found on your system")
-    logging.info("installing package. this might take a couple minutes...")
-    with Popen(CARGO_CMD_ARGS, stdout=PIPE) as cargo:
-        line = True
-        while line:
-            line = cargo.stdout.readline()
-            print(line.strip())
+    logging.info(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
+    with Popen(RUSTUP_CMD_ARGS) as rustup:
+        rustup.wait(180)
+
+    with Popen(CARGO_CMD_ARGS) as cargo:
+        cargo.wait(180)
 
     if not _is_installed_package():
         raise Exception("installation failed")
@@ -54,7 +67,10 @@ def _download_and_install_rust_and_regex():
 
 
 def _is_installed_package():
-    return path.isfile(REGEX_EXE_PATH)
+    if platform == WINDOWS_OS:
+        return path.isfile(REGEX_EXE_PATH_WIN)
+    else:
+        return path.isfile(REGEX_EXE_PATH_POSIX)
 
 
 def rgx_span_out_type(output_arity):
@@ -77,9 +93,6 @@ def _format_spanner_output(output: bytes):
 
 
 def rgx(text, regex_pattern, out_type):
-    if platform == WINDOWS_OS:
-        raise Exception("not supported on windows")
-
     if not _is_installed_package():
         _download_and_install_rust_and_regex()
 
@@ -88,8 +101,13 @@ def rgx(text, regex_pattern, out_type):
     with open(temp_file_path, "w+") as f:
         f.write(text)
 
+    if platform == WINDOWS_OS:
+        regex_cross_platform_path = REGEX_EXE_PATH_WIN
+    else:
+        regex_cross_platform_path = REGEX_EXE_PATH_POSIX
+
     try:
-        rust_regex_args = [REGEX_EXE_PATH, regex_pattern, temp_file_path, "--compare"]
+        rust_regex_args = [regex_cross_platform_path, regex_pattern, temp_file_path, "--compare"]
         regex_output = _format_spanner_output(check_output(rust_regex_args, stderr=PIPE))
 
         for out in regex_output:
