@@ -2,6 +2,7 @@ from typing import List, Tuple
 from rgxlog.engine.session import Session
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
+
 def compare_relations(actual: list, output:list) -> bool:
     if len(actual) != len(output):
         return False
@@ -10,6 +11,7 @@ def compare_relations(actual: list, output:list) -> bool:
             return False
 
     return True
+
 
 def str_relation_to_list(table: List[str], start: int) -> Tuple[list, int]:
     offset_cnt = 0
