@@ -1,3 +1,4 @@
+from typing import List, Tuple
 from rgxlog.engine.session import Session
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
@@ -10,7 +11,7 @@ def compare_relations(actual: list, output:list) -> bool:
 
     return True
 
-def str_relation_to_list(table: str, start: int) -> tuple[list, int]:
+def str_relation_to_list(table: List[str], start: int) -> Tuple[list, int]:
     offset_cnt = 0
     relations = list()
     for rel in table[start:]:
@@ -23,10 +24,8 @@ def str_relation_to_list(table: str, start: int) -> tuple[list, int]:
 
 
 def compare_strings(actual: str, test_output: str) -> bool:
-    actual_lines = actual.splitlines(True)
-    output_lines = test_output.splitlines(True)
-    actual_lines = [line.strip() for line in actual_lines if len(line.strip()) > 0]
-    output_lines = [line.strip() for line in output_lines if len(line.strip()) > 0]
+    actual_lines = [line.strip() for line in actual.splitlines(True) if len(line.strip()) > 0]
+    output_lines = [line.strip() for line in test_output.splitlines(True) if len(line.strip()) > 0]
     if len(actual_lines) != len(output_lines):
         return False
 
