@@ -465,7 +465,6 @@ def compare_strings(actual: str, test_output: str) -> bool:
 
 if __name__ == '__main__':
     pass
-
     # s = Session()
     # s.run_query("""string_rel(X) <- rust_rgx_string("aa","aa") -> (X)""", print_results=True)
     # s.run_query("""?string_rel(X)""", print_results=True)
