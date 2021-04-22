@@ -52,10 +52,10 @@ class Relation:
         relation_string = f"{self.relation_name}({term_list_string})"
         return relation_string
 
-    def __eq__(self, other:"Relation"):
-        return (self.term_list == other.term_list and
-                self.relation_name == other.relation_name and
-                self.type_list == other.type_list)
+    # def __eq__(self, other:"Relation"):
+    #     return (self.term_list == other.term_list and
+    #             self.relation_name == other.relation_name and
+    #             self.type_list == other.type_list)
 
 
 class IERelation:
