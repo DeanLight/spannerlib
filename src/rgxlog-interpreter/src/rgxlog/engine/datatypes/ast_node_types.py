@@ -5,6 +5,7 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
+import dataclasses
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
@@ -27,6 +28,8 @@ def get_term_list_string(term_list, type_list):
     return term_list_string
 
 
+# TODO: understand why this causes a bug (rule safety something)
+# @dataclasses.dataclass(init=False)
 class Relation:
     """a representation of a normal relation"""
 
@@ -48,6 +51,11 @@ class Relation:
         term_list_string = get_term_list_string(self.term_list, self.type_list)
         relation_string = f"{self.relation_name}({term_list_string})"
         return relation_string
+
+    def __eq__(self, other:"Relation"):
+        return (self.term_list == other.term_list and
+                self.relation_name == other.relation_name and
+                self.type_list == other.type_list)
 
 
 class IERelation:

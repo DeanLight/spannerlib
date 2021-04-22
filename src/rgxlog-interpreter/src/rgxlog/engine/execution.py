@@ -6,16 +6,16 @@ and an rgxlog engine.
 
 # TODO change all imports to relative imports (after installing rgxlog, we run from site-packages instead of this code)
 from abc import ABC, abstractmethod
-from typing import List, Tuple
-from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
-from pyDatalog import pyDatalog
-from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.ie_functions.ie_function_base import IEFunction
-from rgxlog.engine.datatypes.ast_node_types import *
-from rgxlog.engine.utils.general_utils import get_output_free_var_names
-from tabulate import tabulate
 from itertools import count
+from typing import List, Tuple
+
+from pyDatalog import pyDatalog
+from rgxlog.engine.datatypes.ast_node_types import *
+from rgxlog.engine.datatypes.primitive_types import Span
+from rgxlog.engine.ie_functions.ie_function_base import IEFunction
+from rgxlog.engine.state.symbol_table import SymbolTableBase
+from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
+from rgxlog.engine.utils.general_utils import get_output_free_var_names
 
 
 class RgxlogEngineBase(ABC):
@@ -83,16 +83,6 @@ class RgxlogEngineBase(ABC):
         Args:
             rule: the rule to be removed
         """
-
-    @abstractmethod
-    def print_query(self, query):
-        """
-        queries rgxlog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
-
-        Args:
-            query: a query for rgxlog
-        """
-        pass
 
     @abstractmethod
     def query(self, query):
@@ -285,9 +275,7 @@ class PydatalogEngine(RgxlogEngineBase):
         # remove the rule in pyDatalog
         pyDatalog.load(remove_rule_statement)
 
-    # TODO: split this function into 2:
-    #  1. get_query_results(query) -> results, free_vars
-    #  2. print_query(query): same thing, but uses the results from `get_query_results`
+    # TODO: remove this, put the docstring in run_query somehow
     def print_query(self, query: Query):
         """
         queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
@@ -310,48 +298,48 @@ class PydatalogEngine(RgxlogEngineBase):
         Args:
             query: a query for pyDatalog
         """
-
-        # TODO `get_query_results` starts here
-        # get the results of the query
-        query_results = self.query(query)
-
-        # check for the special conditions for which we can't print a table: no results were returned or a single
-        # empty tuple was returned
-        no_results = len(query_results) == 0
-        result_is_single_empty_tuple = len(query_results) == 1 and len(query_results[0]) == 0
-        if no_results:
-            query_result_string = '[]'
-        elif result_is_single_empty_tuple:
-            query_result_string = '[()]'
-
-        else:
-            # query results can be printed as a table
-            # convert the resulting tuples to a more organized format
-            formatted_results = []
-            for result in query_results:
-                # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
-                # they will be printed as a span instead of a tuple
-                converted_span_result = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
-                                         else term
-                                         for term in result]
-
-                formatted_results.append(converted_span_result)
-
-            # get the free variables of the query, they will be used as headers
-            query_free_vars = [term for term, term_type in zip(query.term_list, query.type_list)
-                               if term_type is DataTypes.free_var_name]
-
-            # TODO `get_query_results` ends here
-
-            # get the query result as a table
-            query_result_string = tabulate(formatted_results, headers=query_free_vars, tablefmt='presto',
-                                           stralign='center')
-
-        query_title = f"printing results for query '{query}':"
-
-        # combine the title and table to a single string and save it to the prints buffer
-        final_result_string = f'{query_title}\n{query_result_string}\n'
-        self.prints_buffer.append(final_result_string)
+        raise NotImplementedError
+        # # TODO `get_query_results` starts here
+        # # get the results of the query
+        # query_results = self.query(query)
+        #
+        # # check for the special conditions for which we can't print a table: no results were returned or a single
+        # # empty tuple was returned
+        # no_results = len(query_results) == 0
+        # result_is_single_empty_tuple = len(query_results) == 1 and len(query_results[0]) == 0
+        # if no_results:
+        #     query_result_string = '[]'
+        # elif result_is_single_empty_tuple:
+        #     query_result_string = '[()]'
+        #
+        # else:
+        #     # query results can be printed as a table
+        #     # convert the resulting tuples to a more organized format
+        #     formatted_results = []
+        #     for result in query_results:
+        #         # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
+        #         # they will be printed as a span instead of a tuple
+        #         converted_span_result = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
+        #                                  else term
+        #                                  for term in result]
+        #
+        #         formatted_results.append(converted_span_result)
+        #
+        #     # get the free variables of the query, they will be used as headers
+        #     query_free_vars = [term for term, term_type in zip(query.term_list, query.type_list)
+        #                        if term_type is DataTypes.free_var_name]
+        #
+        #     # TODO `get_query_results` ends here
+        #
+        #     # get the query result as a table
+        #     query_result_string = tabulate(formatted_results, headers=query_free_vars, tablefmt='presto',
+        #                                    stralign='center')
+        #
+        # query_title = f"printing results for query '{query}':"
+        #
+        # # combine the title and table to a single string and save it to the prints buffer
+        # final_result_string = f'{query_title}\n{query_result_string}\n'
+        # self.prints_buffer.append(final_result_string)
 
     def query(self, query: Query):
         """
@@ -681,7 +669,7 @@ class ExecutionBase(ABC):
         self.rgxlog_engine = rgxlog_engine
 
     @abstractmethod
-    def execute(self):
+    def execute(self) -> Tuple[Query, List]:
         """
         executes the term graph
         """
@@ -702,9 +690,10 @@ class GenericExecution(ExecutionBase):
     def __init__(self, term_graph: TermGraphBase, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         super().__init__(term_graph, symbol_table, rgxlog_engine)
 
-    def execute(self):
+    def execute(self) -> Tuple[Query, List]:
         term_graph = self.term_graph
         rgxlog_engine = self.rgxlog_engine
+        exec_result = None
 
         # get the term ids. note that the order of the ids does not actually matter as long as the statements
         # are ordered the same way as they were in the original program
@@ -735,14 +724,17 @@ class GenericExecution(ExecutionBase):
 
             elif term_type == "query":
                 query = term_attrs['value']
+                # TODO: change this - enable returning the pre-formatted query
                 # currently only print queries are supported
-                rgxlog_engine.print_query(query)
+                exec_result = (query, rgxlog_engine.query(query))
 
             elif term_type == "rule":
                 self._execute_rule_aux(term_id)
 
             # statement was executed, mark it as "computed"
             term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
+
+        return exec_result
 
     def _execute_rule_aux(self, rule_term_id):
         """

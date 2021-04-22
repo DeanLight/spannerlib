@@ -105,3 +105,9 @@ venv.bak/
 
 # pycharm
 .idea/
+
+# annoying enum spanner
+*automaton.dot*
+**/bin/enum-spanner-rs
+**/bin/enum-spanner-rs.exe
+*.crates.toml
