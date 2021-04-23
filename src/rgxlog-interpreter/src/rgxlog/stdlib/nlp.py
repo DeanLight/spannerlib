@@ -1,4 +1,3 @@
-from StanfordCoreNLP import StanfordCoreNLP
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 import json
 import spacy
@@ -76,27 +75,33 @@ def _is_installed_java():
 
 def _run_installation():
     if not _is_installed_nlp():
-        print("installing zip folder")
+        # print("installing zip folder")
         _install_nlp()
         assert _is_installed_nlp()
     if not _is_installed_java():
-        print("installing java")
+        # print("installing java")
         call(['pip', 'install', JAVA_DOWNLOADER])
         jdk.install('8', jre=True)
         assert _is_installed_java()
-    if not _is_module_installed():
-        print("cloning repo from github")
-        _install_module()
+    # if not _is_module_installed():
+    #     print("cloning repo from github")
+    #     _install_module()
 
 
 if __name__ == '__main__':
-    _run_installation()
+    pass
     # res = os.popen("java -version 2>&1 | grep 'version' 2>&1 | awk -F\\\" '{ split($2,a,\".\"); print a[1]\".\"a[2]}'").read()
     # print(len(res))
     # print(system("python -m site --user-site"))
 
 " ******************************************************************************************************************** "
 
+try:
+    from StanfordCoreNLP import StanfordCoreNLP
+except:
+    print("installing module")
+    _install_module()
+    from StanfordCoreNLP import StanfordCoreNLP
 
 def tokenize_wrapper(sentence: str):
     _run_installation()
