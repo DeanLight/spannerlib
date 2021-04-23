@@ -8,7 +8,10 @@ def _install_module():
     if find_spec('jsonpath_ng') is None:
         call(['pip', 'install', 'jsonpath-ng'])
 
+_install_module()
 from jsonpath_ng import parse
+
+
 
 def json_path(json_ds: str, json_query: str):
     json_ds = json.loads(json_ds.replace("'", "\""))                  # covert string to actual json
