@@ -6,7 +6,6 @@ from importlib.util import find_spec
 from zipfile import ZipFile
 from urllib.request import urlopen
 from io import BytesIO
-import jdk
 from pathlib import Path
 import site
 import shutil
@@ -81,6 +80,7 @@ def _run_installation():
     if not _is_installed_java():
         # print("installing java")
         call(['pip', 'install', JAVA_DOWNLOADER])
+        import jdk
         jdk.install('8', jre=True)
         assert _is_installed_java()
     # if not _is_module_installed():
@@ -99,7 +99,7 @@ if __name__ == '__main__':
 try:
     from StanfordCoreNLP import StanfordCoreNLP
 except:
-    print("installing module")
+    # print("installing module")
     _install_module()
     from StanfordCoreNLP import StanfordCoreNLP
 
