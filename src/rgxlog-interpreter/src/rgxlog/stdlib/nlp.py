@@ -28,13 +28,15 @@ NLP_DIR_PATH = f"{CURR_DIR}/{NLP_DIR_NAME}"
 
 MODULE = 'StanfordCoreNLP'
 
-def _is_module_installed():
-    return find_spec(MODULE) is not None
+def _is_module_installed(module: str):
+    return find_spec(module) is not None
 
 
 def _install_module():
-    if not _is_module_installed():
-        call(['pip', 'install', 'psutil'])
+    if not _is_module_installed(MODULE):
+        req = 'psutil'
+        if not _is_module_installed(req):
+            call(['pip', 'install', req])
         p = Path(os.__file__)
         SITE_PACKAGES_DIR = p.parent.absolute()
         MODULE_URL = 'https://github.com/DeanLight/spanner_NLP.git'
@@ -263,7 +265,7 @@ def parse_wrapper(sentence):
     _run_installation()
     with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
         for res in nlp.parse(sentence):
-            yield res.replace("\r\n", "<nl>"),  # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
+            yield res.replace("\n", "<nl>").replace("\r", ""),  # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
 
 
 Parse = dict(ie_function=parse_wrapper,

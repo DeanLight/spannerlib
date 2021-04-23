@@ -1,7 +1,14 @@
-from jsonpath_ng import parse
+
 import json
 from rgxlog.engine.datatypes.primitive_types import DataTypes
+from importlib.util import find_spec
+from subprocess import call
 
+def _install_module():
+    if find_spec('jsonpath_ng') is None:
+        call(['pip', 'install', 'jsonpath-ng'])
+
+from jsonpath_ng import parse
 
 def json_path(json_ds: str, json_query: str):
     json_ds = json.loads(json_ds.replace("'", "\""))                  # covert string to actual json
