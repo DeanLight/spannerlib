@@ -7,7 +7,6 @@ from zipfile import ZipFile
 from urllib.request import urlopen
 from io import BytesIO
 from pathlib import Path
-import site
 import shutil
 import os
 import stat
@@ -27,23 +26,37 @@ NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
 CURR_DIR = path.dirname(__file__)
 NLP_DIR_PATH = f"{CURR_DIR}/{NLP_DIR_NAME}"
 
-
-def _get_site_folder_path():
-    locations = site.getsitepackages()
-    for p in locations:
-        if "site-packages" in p:
-            return p
-
-
-SITE_PACKAGES_DIR = _get_site_folder_path()
-
 MODULE = 'StanfordCoreNLP'
-MODULE_URL = 'https://github.com/DeanLight/spanner_NLP.git'
-MODULE_DIR_NAME = "spanner_NLP"
-CLONE_COMMAND = f"git clone {MODULE_URL}"
-MODULE_DIR_PATH = f"{SITE_PACKAGES_DIR}/{MODULE_DIR_NAME}"
-MODULE_FILE_PATH_SRC = f"{MODULE_DIR_PATH}/{MODULE}.py"
-MODULE_FILE_PATH_DST = f"{SITE_PACKAGES_DIR}/{MODULE}.py"
+
+def _is_module_installed():
+    return find_spec(MODULE) is not None
+
+
+def _install_module():
+    if not _is_module_installed():
+        call(['pip', 'install', 'psutil'])
+        p = Path(os.__file__)
+        SITE_PACKAGES_DIR = p.parent.absolute()
+        MODULE_URL = 'https://github.com/DeanLight/spanner_NLP.git'
+        MODULE_DIR_NAME = "spanner_NLP"
+        CLONE_COMMAND = f"git clone {MODULE_URL}"
+        MODULE_DIR_PATH = f"{SITE_PACKAGES_DIR}/{MODULE_DIR_NAME}"
+        MODULE_FILE_PATH_SRC = f"{MODULE_DIR_PATH}/{MODULE}.py"
+        MODULE_FILE_PATH_DST = f"{SITE_PACKAGES_DIR}/{MODULE}.py"
+
+        os.chdir(SITE_PACKAGES_DIR)
+        os.system(CLONE_COMMAND)
+        Path(MODULE_FILE_PATH_SRC).rename(MODULE_FILE_PATH_DST)
+        for root, dirs, files in os.walk(MODULE_DIR_PATH):
+            for dir in dirs:
+                os.chmod(path.join(root, dir), stat.S_IRWXU)
+            for file in files:
+                os.chmod(path.join(root, file), stat.S_IRWXU)
+        shutil.rmtree(MODULE_DIR_PATH)
+
+
+_install_module()
+from StanfordCoreNLP import StanfordCoreNLP
 
 JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = path.expanduser("~")
@@ -52,22 +65,6 @@ ISTALLATION_PATH = f"{_USER_DIR}/.jre"
 
 def _is_installed_nlp():
     return path.isdir(NLP_DIR_PATH)
-
-
-def _is_module_installed():
-    return find_spec(MODULE) is not None
-
-
-def _install_module():
-    os.chdir(SITE_PACKAGES_DIR)
-    os.system(CLONE_COMMAND)
-    Path(MODULE_FILE_PATH_SRC).rename(MODULE_FILE_PATH_DST)
-    for root, dirs, files in os.walk(MODULE_DIR_PATH):
-        for dir in dirs:
-            os.chmod(path.join(root, dir), stat.S_IRWXU)
-        for file in files:
-            os.chmod(path.join(root, file), stat.S_IRWXU)
-    shutil.rmtree(MODULE_DIR_PATH)
 
 
 def _install_nlp():
@@ -103,19 +100,12 @@ def _run_installation():
 
 
 if __name__ == '__main__':
-    print(SITE_PACKAGES_DIR)
+    pass
     # res = os.popen("java -version 2>&1 | grep 'version' 2>&1 | awk -F\\\" '{ split($2,a,\".\"); print a[1]\".\"a[2]}'").read()
     # print(len(res))
     # print(system("python -m site --user-site"))
 
 " ******************************************************************************************************************** "
-
-try:
-    from StanfordCoreNLP import StanfordCoreNLP
-except:
-    # print("installing module")
-    _install_module()
-    from StanfordCoreNLP import StanfordCoreNLP
 
 
 def tokenize_wrapper(sentence: str):
