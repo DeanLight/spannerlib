@@ -1,5 +1,5 @@
 from rgxlog.engine.session import Session, query_to_string
-from utils import compare_strings
+from tests.utils import compare_strings
 
 
 def test_rust_regex():

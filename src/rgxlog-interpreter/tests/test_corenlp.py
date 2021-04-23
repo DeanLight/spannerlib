@@ -1,5 +1,5 @@
 from rgxlog.engine.session import Session, query_to_string
-from utils import compare_strings
+from tests.utils import compare_strings
 
 
 def test_entities():
@@ -187,9 +187,9 @@ def test_entity_mentions():
 def test_parse():
     from rgxlog.stdlib.nlp import Parse
     expected_result = """printing results for query 'parse(X)':
-                                                                                  X
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
- (ROOT<nl>)  (S<nl>)    (NP (DT the) (JJ quick) (JJ brown) (NN fox))<nl>)    (VP (VBZ jumps)<nl>)      (PP (IN over)<nl>)        (NP (DT the) (JJ lazy) (NN dog))))))
+                                                                                X
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (ROOT<nl>  (S<nl>    (NP (DT the) (JJ quick) (JJ brown) (NN fox))<nl>    (VP (VBZ jumps)<nl>      (PP (IN over)<nl>        (NP (DT the) (JJ lazy) (NN dog))))))
 """
 
     query = """sentence = "the quick brown fox jumps over the lazy dog"

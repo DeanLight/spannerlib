@@ -1,6 +1,7 @@
 from rgxlog import magic_client
 from rgxlog.engine.session import query_to_string
-from utils import compare_strings
+from tests.utils import compare_strings
+
 
 def test_magic_client_basic():
     session = magic_client

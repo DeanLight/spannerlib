@@ -1,5 +1,5 @@
 from rgxlog.engine.session import Session, query_to_string
-from utils import compare_strings
+from tests.utils import compare_strings
 
 
 def test_introduction():
@@ -83,7 +83,7 @@ printing results for query 'lecturer_of(X, "abigail")':
 
     session.register(**RGXString)
 
-    query = """gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
+    query = r"""gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
             gpa_of_chemistry_students(Student, Grade) <- RGXString(gpa_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemistry(Student)
             ?gpa_of_chemistry_students(X, "100")"""
 

@@ -1,12 +1,11 @@
 import os
 from os.path import dirname, abspath
-
 import pytest
 from pandas import DataFrame
-from rgxlog import Session
-# csv filenames
-from rgxlog.engine.session import query_to_string
+from rgxlog.engine.session import Session, query_to_string
 
+
+# csv filenames
 TESTS_DIR = dirname(abspath(__file__))
 LONGREL_CSV = os.path.join(TESTS_DIR, "query_longrel.csv")
 REL_CSV = os.path.join(TESTS_DIR, "query_rel.csv")
