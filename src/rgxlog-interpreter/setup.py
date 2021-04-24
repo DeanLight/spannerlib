@@ -30,7 +30,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="test-rgxlog-interpreter",
+    name="spanner-rgxlog-interpreter",
     version="0.0.22",
     author="Example Author",
     author_email="author@example.com",
@@ -51,7 +51,7 @@ setuptools.setup(
         'develop': PostDevelopCommand,
         'install': PostInstallCommand,
     },
-    python_requires='==3.8.*',
+    python_requires='>=3.8',
     install_requires=[
 
         'lark-parser',
@@ -60,7 +60,10 @@ setuptools.setup(
         'tabulate',
         'pyDatalog',
         'spacy',
-        'pandas'
+        'pandas',
+        'jsonpath-ng',
+        'psutil',
+        'install-jdk'
     ],
     dependency_links=[
     ]

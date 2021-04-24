@@ -215,7 +215,6 @@ class SymbolTable(SymbolTableBase):
     def contains_variable(self, var_name):
         return var_name in self._var_to_type
 
-    # TODO:
     def add_relation_schema(self, relation_name, schema, is_rule: bool):
         if not is_rule:
             if relation_name in self._relation_to_schema:

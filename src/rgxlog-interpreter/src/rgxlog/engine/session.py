@@ -11,7 +11,6 @@ from pandas import DataFrame
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration, Query
-from rgxlog.engine.ie_functions.rust_spanner_regex import RustRGXString, RustRGXSpan
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
@@ -19,8 +18,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences,
-                                              ExecuteAssignments,
-                                              AddStatementsToNetxTermGraph)
+                                              ExecuteAssignments, AddStatementsToNetxTermGraph)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 from tabulate import tabulate
@@ -35,10 +33,8 @@ VALUES_LINE_NUM = 3
 FUNC_DICT_NAME = "ie_function_name"
 FUNC_DICT_OBJ = "ie_function_object"
 
-# TODO: @niv add rust_rgx_*_from_file (ask dean)
-DEFAULT_FUNCTIONS = [{FUNC_DICT_NAME: "rust_rgx_string", FUNC_DICT_OBJ: RustRGXString()},
-                     {FUNC_DICT_NAME: "rust_rgx_span", FUNC_DICT_OBJ: RustRGXSpan()}]
 
+# TODO: @niv add rust_rgx_*_from_file (ask dean)
 
 def _infer_relation_type(row: iter):
     # TODO: does not support tuples
@@ -183,7 +179,6 @@ class Session:
             ConvertSpanNodesToSpanInstances,
             ConvertStatementsToStructuredNodes,
             CheckDefinedReferencedVariables,
-            # CheckForRelationRedefinitions,
             CheckReferencedRelationsExistenceAndArity,
             CheckReferencedIERelationsExistenceAndArity,
             CheckRuleSafety,
@@ -203,7 +198,7 @@ class Session:
             self._grammar = grammar_file.read()
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
-        self._register_default_functions()
+        # self._register_default_functions()
 
     def _run_passes(self, tree, pass_list) -> Tuple[Query, List]:
         """
@@ -258,15 +253,10 @@ class Session:
         return exec_results
 
     def register(self, ie_function, ie_function_name, in_rel, out_rel):
-        # if ie_function_name.startswith("__"):
-        #     raise Exception(f'{ie_function_name} is a reserved name.')
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    def register_class(self, ie_function_object, ie_function_name):
-        self._symbol_table.register_ie_function_object(ie_function_object, ie_function_name)
-
-    def delete_rule(self, rule_head: str):
-        pass
+    # def register_class(self, ie_function_object, ie_function_name):
+    #     self._symbol_table.register_ie_function_object(ie_function_object, ie_function_name)
 
     def get_pass_stack(self):
         """
@@ -415,275 +405,10 @@ class Session:
         query_df = DataFrame(rows, columns=free_vars)
         return query_df
 
-    def _register_default_functions(self):
-        for func_dict in DEFAULT_FUNCTIONS:
-            self.register_class(**func_dict)
+    # def _register_default_functions(self):
+    #     for func_dict in DEFAULT_FUNCTIONS:
+    #         self.register_class(**func_dict)
 
 
 if __name__ == '__main__':
-    s = Session()
-    s.run_query("""string_rel(X) <- rust_rgx_string("aa","aa") -> (X)""", print_results=True)
-    s.run_query("""?string_rel(X)""", print_results=True)
-    s.run_query("""span_rel(X) <- rust_rgx_span("aa","aa") -> (X)""", print_results=True)
-    s.run_query("""?span_rel(X)""", print_results=True)
-
-    # TODO: @tom make tests
-    # from rgxlog.engine.datatypes.primitive_types import DataTypes
-    #
-    #
-    # def getCharAndWordNum(text):
-    #     return len(text)
-    #
-    #     # return [(len(text), len(text.split(' '))), ]  # we should make this less ugly. perhaps we can pass flag wather the output is one tuple.
-    #
-    #
-    # in_types = [DataTypes.string]
-    #
-    # out_types = [DataTypes.integer, DataTypes.integer]
-    #
-    # session.register(getCharAndWordNum, "GetCharAndWordNum", in_types, out_types)
-    #
-    # query = '''
-    #         new sentence(str)
-    #         sentence("One day there was a boy named Tony wandering around in the woods.")
-    #         sentence("The boy was wearing his red hat.")
-    #         sentence("He loved this hat so much he would protect it with his life.")
-    #
-    #         info(X, Y) <- GetCharAndWordNum(Z)->(X ,Y), sentence(Z)
-    #         ?info(CHARS_NUM, WORDS_NUM)
-    #         '''
-    # print(session.run_query(query))
-
-"""
-    query = '''
-    new parent(str, str)
-    parent("a", "b")
-    parent("d", "c")
-    parent("d", "e")
-    parent("b", "d")
-    parent("a", "f")
-    ancestor(X,Y) <- parent(X,Y)
-    ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
-
-    ?ancestor("b", X)
-    '''
-    result = session.run_query(query)
-    print(result)
-
-    query = '''
-        new rel(str, str, str)
-        ancestor(X,Y, Z) <- rel(X,Y, Z)
-        '''
-    result = session.run_query(query)
-    print(result)
-"""
-
-"""
-********************************************************************************************
-"""
-
-"""
-    def getCharAndWordNum(text):
-        return [(len(text), len(text.split(' '))),]  # we should make this less ugly. perhaps we can pass flag wather the output is one tuple.
-
-
-    in_types = [DataTypes.string]
-
-    out_types = [DataTypes.integer, DataTypes.integer]
-
-    session.register(getCharAndWordNum, "GetCharAndWordNum", in_types, out_types)
-
-    query = '''
-            new sentence(str)
-            sentence("One day there was a boy named Tony wandering around in the woods.")
-            sentence("The boy was wearing his red hat.")
-            sentence("He loved this hat so much he would protect it with his life.")
-            
-            info(X, Y) <- GetCharAndWordNum(Z)->(X ,Y), sentence(Z)
-            ?info(CHARS_NUM, WORDS_NUM)
-            '''
-    print(session.run_query(query))
-
-"""
-
-"""
-********************************************************************************************
-"""
-
-"""
-
-    def length(text):
-        return [len(text)]
-
-    in_types = [DataTypes.string]
-
-    out_types = [DataTypes.integer]
-
-    session.register(length, "__Length", in_types, out_types)
-
-    query = '''
-        new name(str)
-        name("walter")
-        name("linus")
-        name("rick")
-        size(X) <- __Length(Y)->(X), name(Y)
-        ?size(X)
-        '''
-    print(session.run_query(query))
-"""
-
-"""
-********************************************************************************************
-"""
-
-"""
-def copy(text):
-    return [text]
-
-in_types = [DataTypes.string]
-
-out_types = [DataTypes.string]
-
-session.register(copy, "Copy", in_types, out_types)
-
-query = '''
-    text = "ABCDEFG"
-    copy(X) <- Copy(text)->(X)
-    ?copy(X)
-    '''
-print(session.run_query(query))
-"""
-
-"""
-    def split(text):
-        return [str(c) for c in text]
-
-    in_types = [DataTypes.string]
-
-    out_types = [DataTypes.string]
-
-    session.register(split, "Split", in_types, out_types)
-
-    # should duplicates be deleted?
-    query = '''
-        text = "ABCDEFG"
-        chars(X) <- Split(text)->(X)
-        ?chars(X)
-        '''
-    print(session.run_query(query))
-
-"""
-
-"""
-********************************************************************************************
-"""
-
-"""
-import spacy
-    sp = spacy.load('en_core_web_sm')
-
-    def entities(text):
-        ent = sp(text).ents
-        return ((entity.text, spacy.explain(entity.label_)) for entity in ent)
-
-    in_types = [DataTypes.string]
-
-    def output_types(output_arity):
-        return tuple([DataTypes.string] * output_arity)
-
-
-    session.register(entities, "Entities", in_types, output_types, False)
-
-    query = '''
-    text = "You've been living in a dream world, Neo.\
-            As in Baudrillard's vision, your whole life has been spent inside the map, not the territory.\
-            This is the world as it exists today.\
-            Welcome to the desert of the real."
-    entities(Entity, Classification) <- Entities(text)->(Entity, Classification)
-    ?entities(Entity, Classification)
-    '''
-    print(session.run_query(query))
-"""
-
-"""
-********************************************************************************************
-"""
-
-"""
-    def rgx_string(text, regex_formula):
-        import re
-        '''
-        Args:
-            text: The input text for the regex operation
-            regex_formula: the formula of the regex operation
-
-        Returns: tuples of strings that represents the results
-        '''
-        compiled_rgx = re.compile(regex_formula)
-        num_groups = compiled_rgx.groups
-        for match in re.finditer(compiled_rgx, text):
-            if num_groups == 0:
-                matched_strings = [match.group()]
-            else:
-                matched_strings = [group for group in match.groups()]
-            yield matched_strings
-
-
-    def rgx_string_out_types(output_arity):
-        return tuple([DataTypes.string] * output_arity)
-
-
-    rgx_string_in_type = [DataTypes.string, DataTypes.string]
-    session.register(rgx_string, 'MYRGXString', rgx_string_in_type, rgx_string_out_types, False)
-    query = '''
-    new lecturer(str, str)
-    lecturer("walter", "chemistry")
-    lecturer("linus", "operation systems")
-    lecturer("rick", "physics")
-
-    new enrolled(str, str)
-    enrolled("abigail", "chemistry")
-    enrolled("abigail", "operation systems")
-    enrolled("jordan", "chemistry")
-    enrolled("gale", "operation systems")
-    enrolled("howard", "chemistry")
-    enrolled("howard", "physics")
-
-    enrolled_in_chemistry(X) <- enrolled(X, "chemistry")
-    ?enrolled_in_chemistry("jordan")
-    ?enrolled_in_chemistry("gale")
-    ?enrolled_in_chemistry(X)
-
-    enrolled_in_physics_and_chemistry(X) <- enrolled(X, "chemistry"), enrolled(X, "physics")
-    ?enrolled_in_physics_and_chemistry(X)
-
-    lecturer_of(X, Z) <- lecturer(X, Y), enrolled(Z, Y)
-    ?lecturer_of(X, "abigail")
-    '''
-    result = session.run_query(query)
-    print(result)
-
-    result2 = session.run_query('''
-    gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
-    gpa_of_chemistry_students(Student, Grade) <- MYRGXString(gpa_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemistry(Student)
-    ?gpa_of_chemistry_students(X, "100")''')
-    print(result2)
-"""
-
-"""
-********************************************************************************************
-"""
-
-"""
-result = session.run_query('''
-        new uncle(str, str)
-        uncle("bob", "greg")
-        ''')
-
-
-print("result1:")
-print(result)
-result = session.run_query('''?uncle("bob",Y)''')
-print("result2:")
-print(result)
-"""
+    pass

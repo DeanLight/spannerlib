@@ -1,135 +1,7 @@
-from typing import Tuple
+from rgxlog.engine.session import Session, query_to_string
+from tests.utils import compare_strings
 
-from rgxlog.engine.session import query_to_string, Session
-
-
-def compare_relations(actual: list, output: list) -> bool:
-    if len(actual) != len(output):
-        return False
-    for rel in actual:
-        if output.count(rel) == 0:
-            return False
-
-    return True
-
-
-def str_relation_to_list(table: str, start: int) -> Tuple[list, int]:
-    offset_cnt = 0
-    relations = list()
-    for rel in table[start:]:
-        offset_cnt += 1
-        relations.append(rel)
-        if rel == "\n":
-            break
-
-    return relations, offset_cnt
-
-
-def compare_strings(actual: str, test_output: str) -> bool:
-    # TODO: this method only works for strings created from a single query, refactor it
-    actual_lines = [line.strip() for line in actual.splitlines(True) if line.strip()]
-    output_lines = [line.strip() for line in test_output.splitlines(True) if line.strip()]
-    if len(actual_lines) != len(output_lines):
-        return False
-    i = 0
-    while i < len(actual_lines):
-        rng = 3
-        if actual_lines[i + 1] in ["[()]\n", "[]\n"]:
-            rng = 2
-        for j in range(rng):
-            if actual_lines[i + j] != output_lines[i + j]:
-                return False
-        i += rng
-        # TODO: @tom fix the types here
-        actual_rel, offset = str_relation_to_list(actual_lines, i)
-        output_rel, _ = str_relation_to_list(output_lines, i)
-        if not compare_relations(actual_rel, output_rel):
-            return False
-        i += offset
-
-    return True
-
-
-
-
-
-def test_basic_queries():
-    # TODO: skipping this test for now, multiple queries are not supported by `compare_strings`
-    return
-    from rgxlog.stdlib.regex import RGXString
-    expected_result = """printing results for query 'enrolled_in_chemistry("jordan")':
-[()]
-
-printing results for query 'enrolled_in_chemistry("gale")':
-[]
-
-printing results for query 'enrolled_in_chemistry(X)':
-    X
----------
- howard
- jordan
- abigail
-
-printing results for query 'enrolled_in_physics_and_chemistry(X)':
-   X
---------
- howard
-
-printing results for query 'lecturer_of(X, "abigail")':
-   X
---------
- linus
- walter
-"""
-
-    query = '''
-                new lecturer(str, str)
-                lecturer("walter", "chemistry")
-                lecturer("linus", "operation systems")
-                lecturer("rick", "physics")
-
-                new enrolled(str, str)
-                enrolled("abigail", "chemistry")
-                enrolled("abigail", "operation systems")
-                enrolled("jordan", "chemistry")
-                enrolled("gale", "operation systems")
-                enrolled("howard", "chemistry")
-                enrolled("howard", "physics")
-
-                enrolled_in_chemistry(X) <- enrolled(X, "chemistry")
-                ?enrolled_in_chemistry("jordan")
-                ?enrolled_in_chemistry("gale")
-                ?enrolled_in_chemistry(X)
-
-                enrolled_in_physics_and_chemistry(X) <- enrolled(X, "chemistry"), enrolled(X, "physics")
-                ?enrolled_in_physics_and_chemistry(X)
-
-                lecturer_of(X, Z) <- lecturer(X, Y), enrolled(Z, Y)
-                ?lecturer_of(X, "abigail")
-                '''
-
-    session = Session()
-    query_result = session.run_query(query)
-    query_result_string = query_to_string(query_result)
-    assert compare_strings(expected_result, query_result_string), "fail"
-
-    expected_result_2 = """printing results for query 'gpa_of_chemistry_students(X, "100")':
-    X
----------
- abigail
-"""
-
-    session.register(**RGXString)
-
-    query = """gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
-            gpa_of_chemistry_students(Student, Grade) <- RGXString(gpa_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemistry(Student)
-            ?gpa_of_chemistry_students(X, "100")"""
-
-
-    query_result_string = query_to_string(query_result)
-    assert compare_strings(expected_result_2, query_result_string), "fail"
-
-
+# TODO: Why this test fail in github? (missing Baudrillard)
 def test_entities():
     from rgxlog.stdlib.nlp import Entities
 
@@ -152,96 +24,9 @@ def test_entities():
 
     session = Session()
     session.register(**Entities)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
-    assert compare_strings(expected_result, query_result_string), "fail"
-
-
-def test_recursive():
-    expected_result = """printing results for query 'ancestor("Liam", X)':
-    X
-----------
-  Mason
-  Oliver
- Benjamin
-   Noah
-
-printing results for query 'ancestor(X, "Mason")':
-    X
-----------
-   Noah
-   Liam
- Benjamin
-
-printing results for query 'ancestor("Mason", X)':
-[]
-"""
-
-    query = '''
-             new parent(str, str)
-             parent("Liam", "Noah")
-             parent("Noah", "Oliver")
-             parent("James", "Lucas")
-             parent("Noah", "Benjamin")
-             parent("Benjamin", "Mason")
-             ancestor(X,Y) <- parent(X,Y)
-             ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
-
-             ?ancestor("Liam", X)
-             ?ancestor(X, "Mason")
-             ?ancestor("Mason", X)
-             '''
-
-    session = Session()
-    query_result = session.run_query(query)
-    query_result_string = query_to_string(query_result)
-    assert compare_strings(expected_result, query_result_string), "fail"
-
-
-def test_json_path():
-    from rgxlog.stdlib.json_path import json_path
-
-    expected_result = """printing results for query 'simple_1(X)':
-   X
------
-   2
-   1
-
-printing results for query 'simple_2(X)':
-     X
-------------
- number two
- number one
-
-printing results for query 'advanced(X)':
-                 X
------------------------------------
- {'foo': [{'baz': 1}, {'baz': 2}]}
-                 1
-"""
-
-    query = """
-            jsonpath_simple_1 = "foo[*].baz"
-            json_ds_simple_1  = "{'foo': [{'baz': 1}, {'baz': 2}]}"
-            simple_1(X) <- JsonPath(json_ds_simple_1, jsonpath_simple_1) -> (X)
-            ?simple_1(X)
-
-            jsonpath_simple_2 = "a.*.b.`parent`.c"
-            json_ds_simple_2 = "{'a': {'x': {'b': 1, 'c': 'number one'}, 'y': {'b': 2, 'c': 'number two'}}}"
-
-            simple_2(X) <- JsonPath(json_ds_simple_2, jsonpath_simple_2) -> (X)
-            ?simple_2(X)
-
-            json_ds_advanced  = "{'foo': [{'baz': 1}, {'baz': {'foo': [{'baz': 1}, {'baz': 2}]}}]}"
-            advanced(X) <- JsonPath(json_ds_advanced, jsonpath_simple_1) -> (X)
-            ?advanced(X)
-        """
-
-    session = Session()
-    session.register(**json_path)
-
-    query_result = session.run_query(query)
-    query_result_string = query_to_string(query_result)
+    print(f"\nExpected\n{expected_result}\n**************************\nOutput\n{query_result_string}")
     assert compare_strings(expected_result, query_result_string), "fail"
 
 
@@ -269,7 +54,7 @@ def test_tokenize():
     session = Session()
     session.register(**Tokenize)
 
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -291,7 +76,7 @@ def test_ssplit():
 
     session = Session()
     session.register(**SSplit)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -317,7 +102,7 @@ def test_pos():
 
     session = Session()
     session.register(**POS)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -348,7 +133,7 @@ def test_lemma():
              """
     session = Session()
     session.register(**Lemma)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -374,7 +159,7 @@ def test_ner():
 
     session = Session()
     session.register(**NER)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -395,7 +180,7 @@ def test_entity_mentions():
 
     session = Session()
     session.register(**EntityMentions)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -403,9 +188,9 @@ def test_entity_mentions():
 def test_parse():
     from rgxlog.stdlib.nlp import Parse
     expected_result = """printing results for query 'parse(X)':
-                                                                                  X
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
- (ROOT<nl>)  (S<nl>)    (NP (DT the) (JJ quick) (JJ brown) (NN fox))<nl>)    (VP (VBZ jumps)<nl>)      (PP (IN over)<nl>)        (NP (DT the) (JJ lazy) (NN dog))))))
+                                                                                X
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (ROOT<nl>  (S<nl>    (NP (DT the) (JJ quick) (JJ brown) (NN fox))<nl>    (VP (VBZ jumps)<nl>      (PP (IN over)<nl>        (NP (DT the) (JJ lazy) (NN dog))))))
 """
 
     query = """sentence = "the quick brown fox jumps over the lazy dog"
@@ -414,7 +199,7 @@ def test_parse():
 
     session = Session()
     session.register(**Parse)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -442,7 +227,7 @@ def test_depparse():
 
     session = Session()
     session.register(**DepParse)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -465,7 +250,7 @@ def test_coref():
 
     session = Session()
     session.register(**Coref)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -491,7 +276,7 @@ def test_openie():
 
     session = Session()
     session.register(**OpenIE)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -510,7 +295,7 @@ def test_kbp():
 
     session = Session()
     session.register(**KBP)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -540,7 +325,7 @@ def test_sentiment():
 
     session = Session()
     session.register(**Sentiment)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
@@ -570,16 +355,15 @@ def test_truecase():
 
     session = Session()
     session.register(**TrueCase)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
 
 
 def test_clean_xml():
-    return # TODO: also skipping this for now
     from rgxlog.stdlib.nlp import CleanXML
 
-    expected_result = """"printing results for query 'clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)':
+    expected_result = """printing results for query 'clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)':
    Index |   Word   |  OriginalText  |   CharacterOffsetBegin |   CharacterOffsetEnd
 ---------+----------+----------------+------------------------+----------------------
       -1 |    !     |       !        |                    118 |                  119
@@ -603,54 +387,7 @@ def test_clean_xml():
 
     session = Session()
     session.register(**CleanXML)
-    query_result = session.run_query(query)
+    query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
-
-
-def test_remove_rule():
-    expected_result = """printing results for query 'ancestor(X, Y)':
-  X  |  Y
------+-----
- Tom | Avi
-
-printing results for query 'tmp(X, Y)':
-    X     |    Y
-----------+----------
- Benjamin |  Mason
-   Noah   | Benjamin
-  James   |  Lucas
-   Noah   |  Oliver
-   Liam   |   Noah
-   Tom    |   Avi
-"""
-
-    query = """
-        new parent(str, str)
-        new grandparent(str, str)
-        parent("Liam", "Noah")
-        parent("Noah", "Oliver")
-        parent("James", "Lucas")
-        parent("Noah", "Benjamin")
-        parent("Benjamin", "Mason")
-        grandparent("Tom", "Avi")
-        ancestor(X,Y) <- parent(X,Y)
-        ancestor(X,Y) <- grandparent(X,Y)
-        ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
-
-        tmp(X, Y) <- ancestor(X,Y)
-        tmp(X, Y) <- parent(X,Y)
-        """
-
-    session = Session()
-    session.run_query(query)
-
-    session.remove_rule("ancestor(X,Y) <- parent(X,Y)")
-    query_result = session.run_query("""
-                    ?ancestor(X, Y)
-                    ?tmp(X, Y)
-                    """)
-    query_result_string = query_to_string(query_result)
-    assert compare_strings(expected_result, query_result_string), "fail"
-
 

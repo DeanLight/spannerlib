@@ -1,24 +1,32 @@
-from rgxlog import Session
-from rgxlog.engine.datatypes.ast_node_types import Query
-from rgxlog.engine.datatypes.primitive_types import DataTypes
+from rgxlog.engine.session import Session, query_to_string
+from tests.utils import compare_strings
 
 
 def test_rust_regex():
-    s = Session()
+    from rgxlog.stdlib.rust_spanner_regex import RustRGXString
+    from rgxlog.stdlib.rust_spanner_regex import RustRGXSpan
+    EXPECTED_RESULT = """printing results for query 'string_rel(X)':
+  X
+-----
+ aa
 
-    expected_result_string = (Query("string_rel", ['X'],
-                                    [DataTypes.free_var_name]),
-                              [("aa",)])
+printing results for query 'span_rel(X)':
+   X
+--------
+ [0, 2)
+"""
 
-    expected_result_span = (Query("span_rel", ['X'],
-                                  [DataTypes.free_var_name]),
-                            [((0, 2),)])
+    query = """
+    string_rel(X) <- rust_rgx_string("aa","aa") -> (X)
+    span_rel(X) <- rust_rgx_span("aa","aa") -> (X)
+    ?string_rel(X)
+    ?span_rel(X)
+    """
+    session = Session()
 
-    s.run_query("""string_rel(X) <- rust_rgx_string("aa","aa") -> (X)""")
-    query_result_string = s.run_query("""?string_rel(X)""", print_results=False)
+    session.register(**RustRGXSpan)
+    session.register(**RustRGXString)
+    query_result = session.run_query(query, print_results=False)
+    query_result_string = query_to_string(query_result)
+    assert compare_strings(EXPECTED_RESULT, query_result_string), "fail"
 
-    assert expected_result_string == query_result_string[0]
-
-    s.run_query("""span_rel(X) <- rust_rgx_span("aa","aa") -> (X)""")
-    query_result_span = s.run_query("""?span_rel(X)""", print_results=False)
-    assert expected_result_span == query_result_span[0]
