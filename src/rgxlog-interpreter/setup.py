@@ -59,7 +59,7 @@ setuptools.setup(
         'docopt',
         'tabulate',
         'pyDatalog',
-        'spacy>=2.3.5',
+        'spacy==2.3.5',
         'pandas',
         'jsonpath-ng',
         'psutil',
