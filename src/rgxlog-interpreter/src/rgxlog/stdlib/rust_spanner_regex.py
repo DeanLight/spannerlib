@@ -161,7 +161,7 @@ def rgx_string(text, regex_pattern):
     yield rgx(text, regex_pattern, "string")
 
 
-RustRGXString = dict(ie_function=rgx_span,
+RustRGXString = dict(ie_function=rgx_string,
                      ie_function_name='rust_rgx_string',
                      in_rel=RUST_RGX_IN_TYPES,
                      out_rel=rgx_string_out_type,

@@ -33,6 +33,7 @@ VALUES_LINE_NUM = 3
 FUNC_DICT_NAME = "ie_function_name"
 FUNC_DICT_OBJ = "ie_function_object"
 
+
 # TODO: @niv add rust_rgx_*_from_file (ask dean)
 
 def _infer_relation_type(row: iter):
@@ -257,9 +258,6 @@ class Session:
     # def register_class(self, ie_function_object, ie_function_name):
     #     self._symbol_table.register_ie_function_object(ie_function_object, ie_function_name)
 
-    def delete_rule(self, rule_head: str):
-        pass
-
     def get_pass_stack(self):
         """
         Returns: the current pass stack
@@ -410,7 +408,6 @@ class Session:
     # def _register_default_functions(self):
     #     for func_dict in DEFAULT_FUNCTIONS:
     #         self.register_class(**func_dict)
-
 
 
 if __name__ == '__main__':
