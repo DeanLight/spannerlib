@@ -1,7 +1,8 @@
 from rgxlog.engine.session import Session, query_to_string
+
 from tests.utils import compare_strings
 
-# TODO: Why this test fail in github? (missing Baudrillard)
+
 def test_entities():
     from rgxlog.stdlib.nlp import Entities
 
@@ -14,19 +15,18 @@ def test_entities():
 """
 
     query = '''
-                    text = "You've been living in a dream world, Neo.\
-                            As in Baudrillard's vision, your whole life has been spent inside the map, not the territory.\
-                            This is the world as it exists today.\
-                            Welcome to the desert of the real."
-                    entities(Entity, Classification) <- Entities(text)->(Entity, Classification)
-                    ?entities(Entity, Classification)
-                    '''
+    text = "You've been living in a dream world, Neo.\
+            As in Baudrillard's vision, your whole life has been spent inside the map, not the territory.\
+            This is the world as it exists today.\
+            Welcome to the desert of the real."
+    entities(Entity, Classification) <- Entities(text)->(Entity, Classification)
+    ?entities(Entity, Classification)
+    '''
 
     session = Session()
     session.register(**Entities)
     query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
-    print(f"\nExpected\n{expected_result}\n**************************\nOutput\n{query_result_string}")
     assert compare_strings(expected_result, query_result_string), "fail"
 
 
@@ -390,4 +390,3 @@ def test_clean_xml():
     query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(expected_result, query_result_string), "fail"
-
