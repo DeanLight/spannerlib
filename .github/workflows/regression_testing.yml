@@ -28,4 +28,4 @@ jobs:
         pip install -e ./src/rgxlog-interpreter
     - name: Test with pytest
       run: |
-        pytest
+        pytest -s

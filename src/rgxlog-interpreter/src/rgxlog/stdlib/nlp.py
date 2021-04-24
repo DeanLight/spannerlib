@@ -1,17 +1,15 @@
-from rgxlog.engine.datatypes.primitive_types import DataTypes
 import json
-import spacy
-from os import popen
-from importlib.util import find_spec
-from zipfile import ZipFile
-from urllib.request import urlopen
 from io import BytesIO
-from pathlib import Path
-import shutil
-import os
-import stat
 from os import path
+from os import popen
+from urllib.request import urlopen
+from zipfile import ZipFile
+
 import jdk
+import spacy
+
+from rgxlog.engine.datatypes.primitive_types import DataTypes
+from rgxlog.stdlib.StanfordCoreNLP import StanfordCoreNLP
 
 sp = spacy.load('en_core_web_sm')
 
@@ -22,37 +20,6 @@ NLP_URL = "http://nlp.stanford.edu/software/stanford-corenlp-4.1.0.zip"
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
 CURR_DIR = path.dirname(__file__)
 NLP_DIR_PATH = f"{CURR_DIR}/{NLP_DIR_NAME}"
-
-MODULE = 'StanfordCoreNLP'
-
-def _is_module_installed(module: str):
-    return find_spec(module) is not None
-
-
-def _install_module():
-    if not _is_module_installed(MODULE):
-        p = Path(os.__file__)
-        SITE_PACKAGES_DIR = p.parent.absolute()
-        MODULE_URL = 'https://github.com/DeanLight/spanner_NLP.git'
-        MODULE_DIR_NAME = "spanner_NLP"
-        CLONE_COMMAND = f"git clone {MODULE_URL}"
-        MODULE_DIR_PATH = f"{SITE_PACKAGES_DIR}/{MODULE_DIR_NAME}"
-        MODULE_FILE_PATH_SRC = f"{MODULE_DIR_PATH}/{MODULE}.py"
-        MODULE_FILE_PATH_DST = f"{SITE_PACKAGES_DIR}/{MODULE}.py"
-
-        os.chdir(SITE_PACKAGES_DIR)
-        os.system(CLONE_COMMAND)
-        Path(MODULE_FILE_PATH_SRC).rename(MODULE_FILE_PATH_DST)
-        for root, dirs, files in os.walk(MODULE_DIR_PATH):
-            for dir in dirs:
-                os.chmod(path.join(root, dir), stat.S_IRWXU)
-            for file in files:
-                os.chmod(path.join(root, file), stat.S_IRWXU)
-        shutil.rmtree(MODULE_DIR_PATH)
-
-
-_install_module()
-from StanfordCoreNLP import StanfordCoreNLP
 
 JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = path.expanduser("~")
@@ -86,6 +53,7 @@ def _run_installation():
     if not _is_installed_java():
         jdk.install('8', jre=True)
         assert _is_installed_java()
+
 
 " ******************************************************************************************************************** "
 
@@ -245,7 +213,8 @@ def parse_wrapper(sentence):
     _run_installation()
     with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
         for res in nlp.parse(sentence):
-            yield res.replace("\n", "<nl>").replace("\r", ""),  # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
+            yield res.replace("\n", "<nl>").replace("\r",
+                                                    ""),  # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
 
 
 Parse = dict(ie_function=parse_wrapper,

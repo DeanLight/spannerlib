@@ -384,7 +384,9 @@ class CheckDefinedReferencedVariables(Interpreter):
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
-# We don't use this pass anymore
+# We don't use this pass anymore.
+# We catch relation redefinitions in SymbolTable -> add_relation_schema.
+
 # class CheckForRelationRedefinitions(Interpreter):
 #     """
 #     A lark tree semantic check.

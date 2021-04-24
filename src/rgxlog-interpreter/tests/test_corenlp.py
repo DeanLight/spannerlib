@@ -3,7 +3,6 @@ from tests.utils import compare_strings
 
 # TODO: Why this test fail in github? (missing Baudrillard)
 def test_entities():
-    return
     from rgxlog.stdlib.nlp import Entities
 
     expected_result = """printing results for query 'entities(Entity, Classification)':
@@ -27,6 +26,7 @@ def test_entities():
     session.register(**Entities)
     query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
+    print(f"\nExpected\n{expected_result}\n**************************\nOutput\n{query_result_string}")
     assert compare_strings(expected_result, query_result_string), "fail"
 
 
