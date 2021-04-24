@@ -11,14 +11,11 @@ import shutil
 import os
 import stat
 from os import path
-from subprocess import call
-
-MIN_VERSION = 1.8
+import jdk
 
 sp = spacy.load('en_core_web_sm')
 
-SERVER_URL = 'http://corenlp.run'
-PORT = 80
+MIN_VERSION = 1.8
 
 NLP_URL = "http://nlp.stanford.edu/software/stanford-corenlp-4.1.0.zip"
 
@@ -34,9 +31,6 @@ def _is_module_installed(module: str):
 
 def _install_module():
     if not _is_module_installed(MODULE):
-        req = 'psutil'
-        if not _is_module_installed(req):
-            call(['pip', 'install', req])
         p = Path(os.__file__)
         SITE_PACKAGES_DIR = p.parent.absolute()
         MODULE_URL = 'https://github.com/DeanLight/spanner_NLP.git'
@@ -87,25 +81,11 @@ def _is_installed_java():
 
 def _run_installation():
     if not _is_installed_nlp():
-        # print("installing zip folder")
         _install_nlp()
         assert _is_installed_nlp()
     if not _is_installed_java():
-        # print("installing java")
-        call(['pip', 'install', JAVA_DOWNLOADER])
-        import jdk
         jdk.install('8', jre=True)
         assert _is_installed_java()
-    # if not _is_module_installed():
-    #     print("cloning repo from github")
-    #     _install_module()
-
-
-if __name__ == '__main__':
-    pass
-    # res = os.popen("java -version 2>&1 | grep 'version' 2>&1 | awk -F\\\" '{ split($2,a,\".\"); print a[1]\".\"a[2]}'").read()
-    # print(len(res))
-    # print(system("python -m site --user-site"))
 
 " ******************************************************************************************************************** "
 

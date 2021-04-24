@@ -60,7 +60,10 @@ setuptools.setup(
         'tabulate',
         'pyDatalog',
         'spacy',
-        'pandas'
+        'pandas',
+        'jsonpath-ng',
+        'psutil',
+        'install-jdk'
     ],
     dependency_links=[
     ]

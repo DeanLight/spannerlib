@@ -11,7 +11,6 @@ from pandas import DataFrame
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration, Query
-from rgxlog.engine.ie_functions.rust_spanner_regex import RustRGXString, RustRGXSpan
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
@@ -35,9 +34,6 @@ FUNC_DICT_NAME = "ie_function_name"
 FUNC_DICT_OBJ = "ie_function_object"
 
 # TODO: @niv add rust_rgx_*_from_file (ask dean)
-DEFAULT_FUNCTIONS = [{FUNC_DICT_NAME: "rust_rgx_string", FUNC_DICT_OBJ: RustRGXString()},
-                     {FUNC_DICT_NAME: "rust_rgx_span", FUNC_DICT_OBJ: RustRGXSpan()}]
-
 
 def _infer_relation_type(row: iter):
     # TODO: does not support tuples
@@ -201,7 +197,7 @@ class Session:
             self._grammar = grammar_file.read()
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
-        self._register_default_functions()
+        # self._register_default_functions()
 
     def _run_passes(self, tree, pass_list) -> Tuple[Query, List]:
         """
@@ -256,12 +252,10 @@ class Session:
         return exec_results
 
     def register(self, ie_function, ie_function_name, in_rel, out_rel):
-        # if ie_function_name.startswith("__"):
-        #     raise Exception(f'{ie_function_name} is a reserved name.')
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    def register_class(self, ie_function_object, ie_function_name):
-        self._symbol_table.register_ie_function_object(ie_function_object, ie_function_name)
+    # def register_class(self, ie_function_object, ie_function_name):
+    #     self._symbol_table.register_ie_function_object(ie_function_object, ie_function_name)
 
     def delete_rule(self, rule_head: str):
         pass
@@ -413,16 +407,11 @@ class Session:
         query_df = DataFrame(rows, columns=free_vars)
         return query_df
 
-    def _register_default_functions(self):
-        for func_dict in DEFAULT_FUNCTIONS:
-            self.register_class(**func_dict)
+    # def _register_default_functions(self):
+    #     for func_dict in DEFAULT_FUNCTIONS:
+    #         self.register_class(**func_dict)
 
 
 
 if __name__ == '__main__':
     pass
-    # s = Session()
-    # s.run_query("""string_rel(X) <- rust_rgx_string("aa","aa") -> (X)""", print_results=True)
-    # s.run_query("""?string_rel(X)""", print_results=True)
-    # s.run_query("""span_rel(X) <- rust_rgx_span("aa","aa") -> (X)""", print_results=True)
-    # s.run_query("""?span_rel(X)""", print_results=True)

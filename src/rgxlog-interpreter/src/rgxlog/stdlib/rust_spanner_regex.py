@@ -41,6 +41,8 @@ TIMEOUT_MINUTES = (CARGO_TIMEOUT + RUSTUP_TIMEOUT) // 60
 TIME_FORMAT = "%Y_%m_%d_%H_%M_%S"
 WINDOWS_OS = "win32"
 
+" ******************************************************************************************************************** "
+
 
 def _download_and_install_rust_and_regex():
     with Popen(["cargo"], stdout=PIPE, stderr=PIPE) as cargo:
@@ -71,6 +73,9 @@ def _is_installed_package():
         return path.isfile(REGEX_EXE_PATH_WIN)
     else:
         return path.isfile(REGEX_EXE_PATH_POSIX)
+
+
+" ******************************************************************************************************************** "
 
 
 def rgx_span_out_type(output_arity):
@@ -122,6 +127,9 @@ def rgx(text, regex_pattern, out_type):
         os.remove(temp_file_path)
 
 
+" ******************************************************************************************************************** "
+
+
 def rgx_span(text, regex_pattern):
     """
     Args:
@@ -131,6 +139,15 @@ def rgx_span(text, regex_pattern):
     Returns: tuples of spans that represents the results
     """
     yield rgx(text, regex_pattern, "span")
+
+
+RustRGXSpan = dict(ie_function=rgx_span,
+                   ie_function_name='rust_rgx_span',
+                   in_rel=RUST_RGX_IN_TYPES,
+                   out_rel=rgx_span_out_type,
+                   )
+
+" ******************************************************************************************************************** "
 
 
 def rgx_string(text, regex_pattern):
@@ -144,21 +161,10 @@ def rgx_string(text, regex_pattern):
     yield rgx(text, regex_pattern, "string")
 
 
-class RustRGXSpan(IEFunction):
-    """
-    Performs a regex information extraction.
-    Results are tuples of spans
-    """
+RustRGXString = dict(ie_function=rgx_span,
+                     ie_function_name='rust_rgx_string',
+                     in_rel=RUST_RGX_IN_TYPES,
+                     out_rel=rgx_string_out_type,
+                     )
 
-    def __init__(self):
-        super().__init__(rgx_span, RUST_RGX_IN_TYPES, rgx_span_out_type)
-
-
-class RustRGXString(IEFunction):
-    """
-    Performs a regex information extraction.
-    Results are tuples of strings
-    """
-
-    def __init__(self):
-        super().__init__(rgx_string, RUST_RGX_IN_TYPES, rgx_string_out_type)
+" ******************************************************************************************************************** "

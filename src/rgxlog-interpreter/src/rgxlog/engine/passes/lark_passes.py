@@ -384,45 +384,45 @@ class CheckDefinedReferencedVariables(Interpreter):
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
-
-class CheckForRelationRedefinitions(Interpreter):
-    """
-    A lark tree semantic check.
-    checks if a relation is being redefined, and raises an exception if this is the case.
-    relations can be defined either by a relation declaration or by appearing in a rule head
-    """
-    """
-    TODO: in a future version of rgxlog we might want to allow for a rule head to be "redefined", meaning
-    a relation could be defined by multiple rule heads, allowing for recursion. 
-    This would mean changing this pass as it does not allow a relation to appear in multiple rule heads.
-    """
-
-    def __init__(self, **kw):
-        super().__init__()
-        self.symbol_table = kw['symbol_table']
-
-    def _assert_relation_not_defined(self, relation_name):
-        """
-        an utility function that checks if a relation is already defined and raises an exception
-        if it does.
-
-        Args:
-            relation_name: the relation name to be checked for redefinition
-        """
-        if self.symbol_table.contains_relation(relation_name):
-            raise Exception(f'relation "{relation_name}" is already defined. relation redefinitions are not allowed')
-
-    @unravel_lark_node
-    def relation_declaration(self, relation_decl: RelationDeclaration):
-        self._assert_relation_not_defined(relation_decl.relation_name)
-
-    @unravel_lark_node
-    def rule(self, rule: Rule):
-        """
-        a rule is a definition of the relation that appears in the rule head.
-        this function checks that the relation that appears in the rule head is not being redefined.
-        """
-        self._assert_relation_not_defined(rule.head_relation.relation_name)
+# We don't use this pass anymore
+# class CheckForRelationRedefinitions(Interpreter):
+#     """
+#     A lark tree semantic check.
+#     checks if a relation is being redefined, and raises an exception if this is the case.
+#     relations can be defined either by a relation declaration or by appearing in a rule head
+#     """
+#     """
+#     TODO: in a future version of rgxlog we might want to allow for a rule head to be "redefined", meaning
+#     a relation could be defined by multiple rule heads, allowing for recursion.
+#     This would mean changing this pass as it does not allow a relation to appear in multiple rule heads.
+#     """
+#
+#     def __init__(self, **kw):
+#         super().__init__()
+#         self.symbol_table = kw['symbol_table']
+#
+#     def _assert_relation_not_defined(self, relation_name):
+#         """
+#         an utility function that checks if a relation is already defined and raises an exception
+#         if it does.
+#
+#         Args:
+#             relation_name: the relation name to be checked for redefinition
+#         """
+#         if self.symbol_table.contains_relation(relation_name):
+#             raise Exception(f'relation "{relation_name}" is already defined. relation redefinitions are not allowed')
+#
+#     @unravel_lark_node
+#     def relation_declaration(self, relation_decl: RelationDeclaration):
+#         self._assert_relation_not_defined(relation_decl.relation_name)
+#
+#     @unravel_lark_node
+#     def rule(self, rule: Rule):
+#         """
+#         a rule is a definition of the relation that appears in the rule head.
+#         this function checks that the relation that appears in the rule head is not being redefined.
+#         """
+#         self._assert_relation_not_defined(rule.head_relation.relation_name)
 
 
 class CheckReferencedRelationsExistenceAndArity(Interpreter):
