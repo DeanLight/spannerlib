@@ -1,7 +1,6 @@
 import re
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
-" ******************************************************************************************************************** "
 
 
 def rgx_string(text, regex_formula):
@@ -32,7 +31,6 @@ RGXString = dict(ie_function=rgx_string,
                  out_rel=rgx_string_out_types,
                  )
 
-" ******************************************************************************************************************** "
 
 
 def rgx(text, regex_formula):
@@ -63,4 +61,3 @@ RGX = dict(ie_function=rgx,
            out_rel=rgx_out_type,
            )
 
-" ******************************************************************************************************************** "

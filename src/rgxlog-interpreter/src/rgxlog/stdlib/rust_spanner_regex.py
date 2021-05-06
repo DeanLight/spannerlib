@@ -19,7 +19,7 @@ RUST_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
 DOWNLOAD_RUST_URL = "https://rustup.rs/"
 
 # package info
-PACKAGE_GIT_URL = "https://github.com/PoDMR/enum-spanner-rs/"
+PACKAGE_GIT_URL = "https://github.com/NNRepos/enum-spanner-rs"
 PACKAGE_NAME = "enum-spanner-rs"
 REGEX_FOLDER_NAME = "enum_spanner"
 
@@ -31,7 +31,7 @@ REGEX_TEMP_PATH = path.join(REGEX_FOLDER_PATH, "temp{}.txt")
 
 # commands
 RUSTUP_TOOLCHAIN = "1.34"
-CARGO_CMD_ARGS = ["cargo", "+1.34", "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
+CARGO_CMD_ARGS = ["cargo", "+" + RUSTUP_TOOLCHAIN, "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
 RUSTUP_CMD_ARGS = ["rustup", "toolchain", "install", RUSTUP_TOOLCHAIN]
 CARGO_TIMEOUT = 180
 RUSTUP_TIMEOUT = 180
@@ -41,14 +41,13 @@ TIMEOUT_MINUTES = (CARGO_TIMEOUT + RUSTUP_TIMEOUT) // 60
 TIME_FORMAT = "%Y_%m_%d_%H_%M_%S"
 WINDOWS_OS = "win32"
 
-" ******************************************************************************************************************** "
-
 
 def _download_and_install_rust_and_regex():
-    with Popen(["cargo"], stdout=PIPE, stderr=PIPE) as cargo:
+    # i can't use just "cargo -V" because it starts downloading stuff sometimes
+    with Popen(["where", "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
         errcode = cargo.wait(5)
 
-    with Popen(["rustup", "-V"], stdout=PIPE, stderr=PIPE) as rustup:
+    with Popen(["where", "rustup"], stdout=PIPE, stderr=PIPE) as rustup:
         errcode = errcode or rustup.wait(5)
 
     if errcode:
@@ -57,13 +56,13 @@ def _download_and_install_rust_and_regex():
     logging.info(f"{PACKAGE_NAME} was not found on your system")
     logging.info(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
     with Popen(RUSTUP_CMD_ARGS) as rustup:
-        rustup.wait(180)
+        rustup.wait(RUSTUP_TIMEOUT)
 
     with Popen(CARGO_CMD_ARGS) as cargo:
-        cargo.wait(180)
+        cargo.wait(CARGO_TIMEOUT)
 
     if not _is_installed_package():
-        raise Exception("installation failed")
+        raise Exception("installation failed - check the output")
 
     logging.info("installation completed")
 
@@ -73,9 +72,6 @@ def _is_installed_package():
         return path.isfile(REGEX_EXE_PATH_WIN)
     else:
         return path.isfile(REGEX_EXE_PATH_POSIX)
-
-
-" ******************************************************************************************************************** "
 
 
 def rgx_span_out_type(output_arity):
@@ -127,9 +123,6 @@ def rgx(text, regex_pattern, out_type):
         os.remove(temp_file_path)
 
 
-" ******************************************************************************************************************** "
-
-
 def rgx_span(text, regex_pattern):
     """
     Args:
@@ -147,8 +140,6 @@ RustRGXSpan = dict(ie_function=rgx_span,
                    out_rel=rgx_span_out_type,
                    )
 
-" ******************************************************************************************************************** "
-
 
 def rgx_string(text, regex_pattern):
     """
@@ -164,7 +155,4 @@ def rgx_string(text, regex_pattern):
 RustRGXString = dict(ie_function=rgx_string,
                      ie_function_name='rust_rgx_string',
                      in_rel=RUST_RGX_IN_TYPES,
-                     out_rel=rgx_string_out_type,
-                     )
-
-" ******************************************************************************************************************** "
+                     out_rel=rgx_string_out_type)

@@ -34,7 +34,7 @@ FUNC_DICT_NAME = "ie_function_name"
 FUNC_DICT_OBJ = "ie_function_object"
 
 
-# TODO: @niv add rust_rgx_*_from_file (ask dean)
+# TODO:@niv add rust_rgx_*_from_file (ask dean)
 
 def _infer_relation_type(row: iter):
     # TODO: does not support tuples
