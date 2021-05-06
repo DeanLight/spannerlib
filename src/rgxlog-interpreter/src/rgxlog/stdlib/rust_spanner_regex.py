@@ -40,14 +40,21 @@ TIMEOUT_MINUTES = (CARGO_TIMEOUT + RUSTUP_TIMEOUT) // 60
 # etc
 TIME_FORMAT = "%Y_%m_%d_%H_%M_%S"
 WINDOWS_OS = "win32"
+POSIX_WHICH = "which"
+WINDOWS_WHICH = "where"
 
 
 def _download_and_install_rust_and_regex():
+    if platform == WINDOWS_OS:
+        which_word = WINDOWS_WHICH
+    else:
+        which_word = POSIX_WHICH
+
     # i can't use just "cargo -V" because it starts downloading stuff sometimes
-    with Popen(["where", "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
+    with Popen([which_word, "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
         errcode = cargo.wait(5)
 
-    with Popen(["where", "rustup"], stdout=PIPE, stderr=PIPE) as rustup:
+    with Popen([which_word, "rustup"], stdout=PIPE, stderr=PIPE) as rustup:
         errcode = errcode or rustup.wait(5)
 
     if errcode:
