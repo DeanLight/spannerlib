@@ -55,7 +55,7 @@ def _run_installation():
         assert _is_installed_java()
 
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def tokenize_wrapper(sentence: str):
@@ -68,10 +68,9 @@ def tokenize_wrapper(sentence: str):
 Tokenize = dict(ie_function=tokenize_wrapper,
                 ie_function_name='Tokenize',
                 in_rel=[DataTypes.string],
-                out_rel=[DataTypes.string, DataTypes.span],
-                )
+                out_rel=[DataTypes.string, DataTypes.span])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def ssplit_wrapper(sentence):
@@ -84,10 +83,9 @@ def ssplit_wrapper(sentence):
 SSplit = dict(ie_function=ssplit_wrapper,
               ie_function_name='SSplit',
               in_rel=[DataTypes.string],
-              out_rel=[DataTypes.string],
-              )
+              out_rel=[DataTypes.string])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def pos_wrapper(sentence):
@@ -100,10 +98,9 @@ def pos_wrapper(sentence):
 POS = dict(ie_function=pos_wrapper,
            ie_function_name='POS',
            in_rel=[DataTypes.string],
-           out_rel=[DataTypes.string, DataTypes.string, DataTypes.span],
-           )
+           out_rel=[DataTypes.string, DataTypes.string, DataTypes.span])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def lemma_wrapper(sentence):
@@ -116,10 +113,9 @@ def lemma_wrapper(sentence):
 Lemma = dict(ie_function=lemma_wrapper,
              ie_function_name='Lemma',
              in_rel=[DataTypes.string],
-             out_rel=[DataTypes.string, DataTypes.string, DataTypes.span],
-             )
+             out_rel=[DataTypes.string, DataTypes.string, DataTypes.span])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def ner_wrapper(sentence):
@@ -133,10 +129,9 @@ def ner_wrapper(sentence):
 NER = dict(ie_function=ner_wrapper,
            ie_function_name='NER',
            in_rel=[DataTypes.string],
-           out_rel=[DataTypes.string, DataTypes.string, DataTypes.span],
-           )
+           out_rel=[DataTypes.string, DataTypes.string, DataTypes.span])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def entitymentions_wrapper(sentence):
@@ -144,8 +139,8 @@ def entitymentions_wrapper(sentence):
     with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
         for res in nlp.entitymentions(sentence):
             confidence = json.dumps(res["nerConfidences"]).replace("\"", "'")
-            yield res["docTokenBegin"], res["docTokenEnd"], res["tokenBegin"], res["tokenEnd"], res["text"], \
-                  res["characterOffsetBegin"], res["characterOffsetEnd"], res["ner"], confidence
+            yield (res["docTokenBegin"], res["docTokenEnd"], res["tokenBegin"], res["tokenEnd"], res["text"],
+                   res["characterOffsetBegin"], res["characterOffsetEnd"], res["ner"], confidence)
 
 
 EntityMentions = dict(ie_function=entitymentions_wrapper,
@@ -153,10 +148,9 @@ EntityMentions = dict(ie_function=entitymentions_wrapper,
                       in_rel=[DataTypes.string],
                       out_rel=[DataTypes.integer, DataTypes.integer, DataTypes.integer, DataTypes.integer,
                                DataTypes.string, DataTypes.integer, DataTypes.integer, DataTypes.string,
-                               DataTypes.string]
-                      )
+                               DataTypes.string])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 # TODO: I can't find how pattern should look like
@@ -170,10 +164,9 @@ def regexner_wrapper(sentence, pattern):
 RGXNer = dict(ie_function=regexner_wrapper,
               ie_function_name='RGXNer',
               in_rel=[DataTypes.string, DataTypes.string],
-              out_rel=None
-              )
+              out_rel=None)
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 # TODO: I can't find how pattern should look like
@@ -187,10 +180,9 @@ def tokensregex_wrapper(sentence, pattern):
 TokensRegex = dict(ie_function=tokensregex_wrapper,
                    ie_function_name='TokensRegex',
                    in_rel=[DataTypes.string, DataTypes.string],
-                   out_rel=None
-                   )
+                   out_rel=None)
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def cleanxml_wrapper(sentence):
@@ -203,27 +195,26 @@ def cleanxml_wrapper(sentence):
 CleanXML = dict(ie_function=cleanxml_wrapper,
                 ie_function_name='CleanXML',
                 in_rel=[DataTypes.string],
-                out_rel=[DataTypes.integer, DataTypes.string, DataTypes.string, DataTypes.integer, DataTypes.integer]
-                )
+                out_rel=[DataTypes.integer, DataTypes.string, DataTypes.string, DataTypes.integer, DataTypes.integer])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def parse_wrapper(sentence):
     _run_installation()
     with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
         for res in nlp.parse(sentence):
-            yield res.replace("\n", "<nl>").replace("\r",
-                                                    ""),  # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
+            # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
+            # notice - this yields a tuple
+            yield (res.replace("\n", "<nl>").replace("\r", ""),)
 
 
 Parse = dict(ie_function=parse_wrapper,
              ie_function_name='Parse',
              in_rel=[DataTypes.string],
-             out_rel=[DataTypes.string]
-             )
+             out_rel=[DataTypes.string])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def dependency_parse_wrapper(sentence):
@@ -236,10 +227,9 @@ def dependency_parse_wrapper(sentence):
 DepParse = dict(ie_function=dependency_parse_wrapper,
                 ie_function_name='DepParse',
                 in_rel=[DataTypes.string],
-                out_rel=[DataTypes.string, DataTypes.integer, DataTypes.string, DataTypes.integer, DataTypes.string]
-                )
+                out_rel=[DataTypes.string, DataTypes.integer, DataTypes.string, DataTypes.integer, DataTypes.string])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def coref_wrapper(sentence):
@@ -256,10 +246,9 @@ Coref = dict(ie_function=coref_wrapper,
              in_rel=[DataTypes.string],
              out_rel=[DataTypes.integer, DataTypes.string, DataTypes.string, DataTypes.string, DataTypes.string,
                       DataTypes.string, DataTypes.integer, DataTypes.integer, DataTypes.integer, DataTypes.integer,
-                      DataTypes.span, DataTypes.string]
-             )
+                      DataTypes.span, DataTypes.string])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def openie_wrapper(sentence):
@@ -275,10 +264,9 @@ OpenIE = dict(ie_function=openie_wrapper,
               ie_function_name='OpenIE',
               in_rel=[DataTypes.string],
               out_rel=[DataTypes.string, DataTypes.span, DataTypes.string, DataTypes.span, DataTypes.string,
-                       DataTypes.span]
-              )
+                       DataTypes.span])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def kbp_wrapper(sentence):
@@ -294,29 +282,29 @@ KBP = dict(ie_function=kbp_wrapper,
            ie_function_name='KBP',
            in_rel=[DataTypes.string],
            out_rel=[DataTypes.string, DataTypes.span, DataTypes.string, DataTypes.span, DataTypes.string,
-                    DataTypes.span]
-           )
+                    DataTypes.span])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
+# TODO@niv: tom, are you sure? the second half of the yield wasn't yielded because it wasn't inside parentheses,
+#  that might've been the issue
 # doesn't works because regexlog parser doesn't support strings such as "\"hello\"" (with escapes)
 def quote_wrapper(sentence):
     _run_installation()
     with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
         for res in nlp.quote(sentence):
-            yield res['id'], res['text'], res['beginIndex'], res['endIndex'], res['beginToken'], res['endToken'],
-            res['beginSentence'], res['endSentence'], res['speaker'], res['canonicalSpeaker']
+            yield (res['id'], res['text'], res['beginIndex'], res['endIndex'], res['beginToken'], res['endToken'],
+                   res['beginSentence'], res['endSentence'], res['speaker'], res['canonicalSpeaker'])
 
 
 Quote = dict(ie_function=quote_wrapper,
              ie_function_name='Quote',
              in_rel=[DataTypes.string],
              out_rel=[DataTypes.integer, DataTypes.string, DataTypes.integer, DataTypes.integer, DataTypes.integer,
-                      DataTypes.integer, DataTypes.integer, DataTypes.integer, DataTypes.string, DataTypes.string]
-             )
+                      DataTypes.integer, DataTypes.integer, DataTypes.integer, DataTypes.string, DataTypes.string])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 # currently ignoring sentimentTree
@@ -330,10 +318,9 @@ def sentiment_wrapper(sentence):
 Sentiment = dict(ie_function=sentiment_wrapper,
                  ie_function_name='Sentiment',
                  in_rel=[DataTypes.string],
-                 out_rel=[DataTypes.integer, DataTypes.string, DataTypes.string]
-                 )
+                 out_rel=[DataTypes.integer, DataTypes.string, DataTypes.string])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def truecase_wrapper(sentence):
@@ -346,12 +333,13 @@ def truecase_wrapper(sentence):
 TrueCase = dict(ie_function=truecase_wrapper,
                 ie_function_name='TrueCase',
                 in_rel=[DataTypes.string],
-                out_rel=[DataTypes.string, DataTypes.span, DataTypes.string, DataTypes.string]
-                )
+                out_rel=[DataTypes.string, DataTypes.span, DataTypes.string, DataTypes.string])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
+# TODO@niv: ok, next time leave a TODO instead of a comment (i almost missed it).
+#  call me on zoom and we'll do this together
 # I don't understand the schema (list of dicts with values of list)
 def udfeats_wrapper(sentence: str):
     _run_installation()
@@ -363,10 +351,9 @@ def udfeats_wrapper(sentence: str):
 UDFeats = dict(ie_function=udfeats_wrapper,
                ie_function_name='UDFeats',
                in_rel=[DataTypes.string],
-               out_rel=None,
-               )
+               out_rel=None)
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************
 
 
 def entities(text):
@@ -377,7 +364,6 @@ def entities(text):
 Entities = dict(ie_function=entities,
                 ie_function_name='Entities',
                 in_rel=[DataTypes.string],
-                out_rel=[DataTypes.string, DataTypes.string]
-                )
+                out_rel=[DataTypes.string, DataTypes.string])
 
-" ******************************************************************************************************************** "
+# ********************************************************************************************************************

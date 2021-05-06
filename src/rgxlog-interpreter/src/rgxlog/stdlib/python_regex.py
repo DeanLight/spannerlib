@@ -2,8 +2,7 @@ import re
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 
-
-def rgx_string(text, regex_formula):
+def py_rgx_string(text, regex_formula):
     """
     Args:
         text: The input text for the regex operation
@@ -21,19 +20,17 @@ def rgx_string(text, regex_formula):
         yield matched_strings
 
 
-def rgx_string_out_types(output_arity):
+def py_rgx_string_out_types(output_arity):
     return tuple([DataTypes.string] * output_arity)
 
 
-RGXString = dict(ie_function=rgx_string,
-                 ie_function_name='RGXString',
-                 in_rel=[DataTypes.string, DataTypes.string],
-                 out_rel=rgx_string_out_types,
-                 )
+PYRGX_STRING = dict(ie_function=py_rgx_string,
+                    ie_function_name='RGXString',
+                    in_rel=[DataTypes.string, DataTypes.string],
+                    out_rel=py_rgx_string_out_types)
 
 
-
-def rgx(text, regex_formula):
+def py_rgx(text, regex_formula):
     """
     Args:
         text: The input text for the regex operation
@@ -51,13 +48,11 @@ def rgx(text, regex_formula):
         yield matched_spans
 
 
-def rgx_out_type(output_arity):
+def py_rgx_out_type(output_arity):
     return tuple([DataTypes.span] * output_arity)
 
 
-RGX = dict(ie_function=rgx,
-           ie_function_name='RGX',
-           in_rel=[DataTypes.string, DataTypes.string],
-           out_rel=rgx_out_type,
-           )
-
+PYRGX = dict(ie_function=py_rgx,
+             ie_function_name='RGX',
+             in_rel=[DataTypes.string, DataTypes.string],
+             out_rel=py_rgx_out_type)

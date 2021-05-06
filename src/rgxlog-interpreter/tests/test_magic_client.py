@@ -1,18 +1,20 @@
-from rgxlog import magic_client
-from rgxlog.engine.session import query_to_string
-from tests.utils import compare_strings
+from rgxlog import magic_session
+
+from tests.utils import run_query_assert_output
 
 
-def test_magic_client_basic():
-    session = magic_client
-    EXPECTED_RESULT_INTRO = """printing results for query 'uncle(X, Y)':
+def test_magic_session_basic():
+    session = magic_session
+    expected_result_intro = """printing results for query 'uncle(X, Y)':
       X  |  Y
     -----+------
      bob | greg
     """
 
-    session.run_query("new uncle(str, str)")
-    session.run_query('uncle("bob", "greg")')
-    query_result = session.run_query("?uncle(X,Y)", print_results=False)
-    query_result_string = query_to_string(query_result)
-    assert compare_strings(EXPECTED_RESULT_INTRO, query_result_string), "fail"
+    pre_query = """new uncle(str, str)
+                   uncle("bob", "greg")
+                   """
+
+    query = "?uncle(X,Y)"
+
+    run_query_assert_output(session, query, expected_result_intro, pre_query)

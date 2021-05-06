@@ -10,7 +10,6 @@ from subprocess import Popen, PIPE, check_output
 from sys import platform
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
-from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 
 # types
 RUST_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
@@ -141,11 +140,10 @@ def rgx_span(text, regex_pattern):
     yield rgx(text, regex_pattern, "span")
 
 
-RustRGXSpan = dict(ie_function=rgx_span,
-                   ie_function_name='rust_rgx_span',
-                   in_rel=RUST_RGX_IN_TYPES,
-                   out_rel=rgx_span_out_type,
-                   )
+RGX = dict(ie_function=rgx_span,
+           ie_function_name='rust_rgx_span',
+           in_rel=RUST_RGX_IN_TYPES,
+           out_rel=rgx_span_out_type)
 
 
 def rgx_string(text, regex_pattern):
@@ -159,7 +157,7 @@ def rgx_string(text, regex_pattern):
     yield rgx(text, regex_pattern, "string")
 
 
-RustRGXString = dict(ie_function=rgx_string,
-                     ie_function_name='rust_rgx_string',
-                     in_rel=RUST_RGX_IN_TYPES,
-                     out_rel=rgx_string_out_type)
+RGX_STRING = dict(ie_function=rgx_string,
+                  ie_function_name='rust_rgx_string',
+                  in_rel=RUST_RGX_IN_TYPES,
+                  out_rel=rgx_string_out_type)

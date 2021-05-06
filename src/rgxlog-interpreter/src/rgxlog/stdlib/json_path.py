@@ -14,9 +14,9 @@ def json_path(json_ds: str, json_query: str):
         yield json_result,                       # each json result is a relation
 
 
-json_path = dict(ie_function=json_path,
-                 ie_function_name='JsonPath',
-                 in_rel=[DataTypes.string, DataTypes.string],
-                 out_rel=[DataTypes.string],
-                 )
+JsonPath = dict(ie_function=json_path,
+                ie_function_name='JsonPath',
+                in_rel=[DataTypes.string, DataTypes.string],
+                out_rel=[DataTypes.string],
+                )
 

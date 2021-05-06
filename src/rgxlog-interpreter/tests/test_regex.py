@@ -1,10 +1,11 @@
-from rgxlog.engine.session import Session, query_to_string
-from tests.utils import compare_strings
+from rgxlog.engine.session import Session
+
+from tests.utils import run_query_assert_output
 
 
 def test_rust_regex():
-    from rgxlog.stdlib.rust_spanner_regex import RustRGXString
-    from rgxlog.stdlib.rust_spanner_regex import RustRGXSpan
+    from rgxlog.stdlib.rust_spanner_regex import RGX_STRING
+    from rgxlog.stdlib.rust_spanner_regex import RGX
     expected_result = """printing results for query 'string_rel(X)':
                           X
                         -----
@@ -23,10 +24,6 @@ def test_rust_regex():
     ?span_rel(X)
     """
     session = Session()
-
-    session.register(**RustRGXSpan)
-    session.register(**RustRGXString)
-    query_result = session.run_query(query, print_results=False)
-    query_result_string = query_to_string(query_result)
-    assert compare_strings(expected_result, query_result_string), "fail"
-
+    session.register(**RGX)
+    session.register(**RGX_STRING)
+    run_query_assert_output(session, query, expected_result)

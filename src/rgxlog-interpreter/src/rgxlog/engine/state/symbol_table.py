@@ -216,14 +216,16 @@ class SymbolTable(SymbolTableBase):
         return var_name in self._var_to_type
 
     def add_relation_schema(self, relation_name, schema, is_rule: bool):
-        if not is_rule:
-            if relation_name in self._relation_to_schema:
-                raise Exception(f'relation "{relation_name}" already has a schema')
-        else:
+        # TODO@niv: tom, can you add some documentation here?
+        if is_rule:
             if relation_name in self._relation_to_schema:
                 if not self._relation_to_schema[relation_name] == schema:
                     raise Exception(f'relation "{relation_name}" already has a different schema')
                 return
+
+        else:
+            if relation_name in self._relation_to_schema:
+                raise Exception(f'relation "{relation_name}" already has a schema')
 
         self._relation_to_schema[relation_name] = schema
 

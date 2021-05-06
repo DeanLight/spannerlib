@@ -3,23 +3,24 @@ from tests.utils import compare_strings, run_query_assert_output
 
 
 def test_introduction():
+    session = Session()
     expected_result_intro = """printing results for query 'uncle(X, Y)':
           X  |  Y
         -----+------
          bob | greg
         """
 
-    session = Session()
-    session.run_query('''new uncle(str, str)
-                        uncle("bob", "greg")''')
+    pre_query = """new uncle(str, str)
+                   uncle("bob", "greg")
+                   """
 
-    query_result = session.run_query("?uncle(X,Y)", print_results=False)
-    query_result_string = query_to_string(query_result)
-    assert compare_strings(expected_result_intro, query_result_string), "fail"
+    query = "?uncle(X,Y)"
+
+    run_query_assert_output(session, query, expected_result_intro, pre_query)
 
 
 def test_basic_queries():
-    from rgxlog.stdlib.regex import RGXString
+    from rgxlog.stdlib.python_regex import PYRGX_STRING
     expected_result = """printing results for query 'enrolled_in_chemistry("jordan")':
         [()]
         
@@ -79,11 +80,12 @@ def test_basic_queries():
      abigail
     """
 
-    query2 = r"""gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
-            gpa_of_chemistry_students(Student, Grade) <- RGXString(gpa_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemistry(Student)
-            ?gpa_of_chemistry_students(X, "100")"""
+    query2 = (r"""gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
+            gpa_of_chemistry_students(Student, Grade) <- RGXString(gpa_str, "(\w+).*?(\d+)")"""
+              r"""->(Student, Grade), enrolled_in_chemistry(Student)
+            ?gpa_of_chemistry_students(X, "100")""")
 
-    session.register(**RGXString)
+    session.register(**PYRGX_STRING)
     run_query_assert_output(session, query2, expected_result2)
 
 
@@ -127,7 +129,7 @@ def test_recursive():
 
 
 def test_json_path():
-    from rgxlog.stdlib.json_path import json_path
+    from rgxlog.stdlib.json_path import JsonPath
 
     expected_result = """printing results for query 'simple_1(X)':
            X
@@ -166,7 +168,7 @@ def test_json_path():
         """
 
     session = Session()
-    session.register(**json_path)
+    session.register(**JsonPath)
 
     run_query_assert_output(session, query, expected_result)
 

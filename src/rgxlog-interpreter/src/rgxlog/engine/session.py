@@ -23,6 +23,7 @@ from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 from tabulate import tabulate
 
+# TODO: are these patterns correct?
 SPAN_PATTERN = re.compile(r"^\[(\d+), ?(\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
@@ -37,7 +38,6 @@ FUNC_DICT_OBJ = "ie_function_object"
 # TODO:@niv add rust_rgx_*_from_file (ask dean)
 
 def _infer_relation_type(row: iter):
-    # TODO: does not support tuples
     relation_types = []
     for cell in row:
         if cell.isdigit():
@@ -45,7 +45,6 @@ def _infer_relation_type(row: iter):
         elif re.match(SPAN_PATTERN, cell):
             relation_types.append(DataTypes.span)
         elif re.match(STRING_PATTERN, cell):
-            # TODO: is this pattern correct?
             relation_types.append(DataTypes.string)
         else:
             raise Exception(f"illegal type in csv: {cell}")
@@ -213,7 +212,8 @@ class Session:
             elif issubclass(cur_pass, Transformer):
                 tree = cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).transform(tree)
             elif issubclass(cur_pass, ExecutionBase):
-                # TODO: @dean, is the execution always the last pass? is there always only one execution per statement?
+                # the execution is always the last pass, and there is always only one per statement, so there's
+                # no need to have a list of results here
                 exec_result = cur_pass(
                     term_graph=self._term_graph,
                     symbol_table=self._symbol_table,
@@ -237,8 +237,6 @@ class Session:
         :param print_results: whether to print the results to stdout or not
         :return the last query's results
         """
-        # TODO: @dean is it necessary to return all results (multiple statements)?
-        #   right now i'm returning the last one only - yes
         exec_results = []
         parse_tree = self._parser.parse(query)
 
@@ -320,21 +318,22 @@ class Session:
             relation_types = _infer_relation_type(next(reader))
             fh.seek(0)
 
-            # first make sure the types are legal, then add them to the engine (to make sure
-            #  we don't add them in case of error)
-            facts = []
-            for line in reader:
-                _verify_relation_types(line, relation_types)
-                typed_line = _add_types_to_data(line, relation_types)
-                facts.append(AddFact(relation_name, typed_line, relation_types))
+            self.add_imported_relation_to_engine(engine, reader, relation_name, relation_types, symbol_table)
 
-            # declare relation if it does not exist
-            if not symbol_table.contains_relation(relation_name):
-                engine.declare_relation(RelationDeclaration(relation_name, relation_types))
-                symbol_table.add_relation_schema(relation_name, relation_types, False)
-
-            for fact in facts:
-                engine.add_fact(fact)
+    def add_imported_relation_to_engine(self, engine, relation_table, relation_name, relation_types, symbol_table):
+        # first make sure the types are legal, then add them to the engine (to make sure
+        #  we don't add them in case of error)
+        facts = []
+        for line in relation_table:
+            _verify_relation_types(line, relation_types)
+            typed_line = _add_types_to_data(line, relation_types)
+            facts.append(AddFact(relation_name, typed_line, relation_types))
+        # declare relation if it does not exist
+        if not symbol_table.contains_relation(relation_name):
+            engine.declare_relation(RelationDeclaration(relation_name, relation_types))
+            symbol_table.add_relation_schema(relation_name, relation_types, False)
+        for fact in facts:
+            engine.add_fact(fact)
 
     def import_relation_from_df(self, relation_df: DataFrame, relation_name):
         symbol_table = self._symbol_table
@@ -350,29 +349,16 @@ class Session:
 
         relation_types = _infer_relation_type(data[0])
 
-        # first make sure the types are legal, then add them to the engine (to make sure
-        #  we don't add them in case of error)
-        facts = []
-        for line in data:
-            _verify_relation_types(line, relation_types)
-            facts.append(AddFact(relation_name, line, relation_types))
+        self.add_imported_relation_to_engine(engine, data, relation_name, relation_types, symbol_table)
 
-        # declare relation if it does not exist
-        if not symbol_table.contains_relation(relation_name):
-            engine.declare_relation(RelationDeclaration(relation_name, relation_types))
-            symbol_table.add_relation_schema(relation_name, relation_types, False)
-
-        for fact in facts:
-            engine.add_fact(fact)
-
-    def export_relation_to_csv(self, csv_file_name, relation_name, delimiter=";"):
+    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";"):
         # TODO
         """
         this will be implemented in a future version
         """
         raise NotImplementedError
 
-    def export_relation_to_df(self, df, relation_name):
+    def export_relation_into_df(self, df, relation_name):
         # TODO
         """
         this will be implemented in a future version
