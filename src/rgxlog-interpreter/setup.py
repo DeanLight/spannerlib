@@ -30,7 +30,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="spanner-rgxlog-interpreter",
+    name="rgxlog_interpreter",
     version="0.0.22",
     author="Example Author",
     author_email="author@example.com",
@@ -63,7 +63,8 @@ setuptools.setup(
         'pandas',
         'jsonpath-ng',
         'psutil',
-        'install-jdk'
+        'install-jdk',
+        'parse'
     ],
     dependency_links=[
     ]

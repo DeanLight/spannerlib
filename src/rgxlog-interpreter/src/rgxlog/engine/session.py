@@ -27,13 +27,6 @@ from tabulate import tabulate
 SPAN_PATTERN = re.compile(r"^\[(\d+), ?(\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
-TITLE_LINE_NUM = 0
-VAR_LINE_NUM = 1
-VALUES_LINE_NUM = 3
-
-FUNC_DICT_NAME = "ie_function_name"
-FUNC_DICT_OBJ = "ie_function_object"
-
 
 # TODO:@niv add rust_rgx_*_from_file (ask dean)
 
@@ -57,36 +50,18 @@ def _verify_relation_types(row, expected_types):
         raise Exception(f"row:\n{str(row)}\ndoes not match the relation's types:\n{str(expected_types)}")
 
 
-def _extract_query_results(query_results):
-    """
-    extract vars and values from tabulated query
-    :param query_results:
-    :return:
-    """
-    values = []
-    split_results = query_results.splitlines()
-    if not split_results[TITLE_LINE_NUM].startswith("printing results"):
-        raise Exception("cannot extract results from query. Is debug mode activated?")
-
-    var_line = split_results[VAR_LINE_NUM]
-    free_vars = [var.strip() for var in var_line.split("|")]
-    for line in split_results[VALUES_LINE_NUM:]:
-        values.append([val.strip() for val in line.split("|")])
-    return values, free_vars
-
-
 def _add_types_to_data(line, relation_types):
     # TODO find a better name for this function, like "typify" or something
     transformed_line = []
-    for value, rel_type in zip(line, relation_types):
+    for substring, rel_type in zip(line, relation_types):
         if rel_type == DataTypes.span:
-            start, end = [int(num) for num in re.findall(SPAN_PATTERN, value)[0]]
+            start, end = [int(num) for num in re.findall(SPAN_PATTERN, substring)[0]]
             transformed_line.append(Span(span_start=start, span_end=end))
         elif rel_type == DataTypes.integer:
-            transformed_line.append(int(value))
+            transformed_line.append(int(substring))
         else:
             assert rel_type == DataTypes.string, f"illegal type given: {rel_type}"
-            transformed_line.append(value)
+            transformed_line.append(substring)
 
     return transformed_line
 
@@ -149,8 +124,7 @@ def query_to_string(query_results: List[Tuple[Query, List]]):
     2. the query returned a single empty tuple, in this case '[()]' will be printed
 
 
-    :param query: the Query object used in execution
-    :param results: the execution's results (from PyDatalog)
+    :param query_results: List[the Query object used in execution, the execution's results (from PyDatalog)]
     """
 
     all_result_strings = []
@@ -297,30 +271,9 @@ class Session:
     def _unknown_task_type():
         return 'unknown task type'
 
-    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=";"):
-        if not os.path.isfile(csv_file_name):
-            raise IOError("csv file does not exist")
-
-        if os.stat(csv_file_name).st_size == 0:
-            raise IOError("csv file is empty")
-
-        # the relation_name is either an argument or the file's name
-        if relation_name is None:
-            relation_name = Path(csv_file_name).stem
-
+    def add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
         symbol_table = self._symbol_table
         engine = self._execution
-
-        with open(csv_file_name) as fh:
-            reader = csv.reader(fh, delimiter=delimiter)
-
-            # read first line and go back to start of file
-            relation_types = _infer_relation_type(next(reader))
-            fh.seek(0)
-
-            self.add_imported_relation_to_engine(engine, reader, relation_name, relation_types, symbol_table)
-
-    def add_imported_relation_to_engine(self, engine, relation_table, relation_name, relation_types, symbol_table):
         # first make sure the types are legal, then add them to the engine (to make sure
         #  we don't add them in case of error)
         facts = []
@@ -335,9 +288,27 @@ class Session:
         for fact in facts:
             engine.add_fact(fact)
 
+    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=";"):
+        if not os.path.isfile(csv_file_name):
+            raise IOError("csv file does not exist")
+
+        if os.stat(csv_file_name).st_size == 0:
+            raise IOError("csv file is empty")
+
+        # the relation_name is either an argument or the file's name
+        if relation_name is None:
+            relation_name = Path(csv_file_name).stem
+
+        with open(csv_file_name) as fh:
+            reader = csv.reader(fh, delimiter=delimiter)
+
+            # read first line and go back to start of file - make sure there is no empty line!
+            relation_types = _infer_relation_type(next(reader))
+            fh.seek(0)
+
+            self.add_imported_relation_to_engine(reader, relation_name, relation_types)
+
     def import_relation_from_df(self, relation_df: DataFrame, relation_name):
-        symbol_table = self._symbol_table
-        engine = self._execution
 
         data = relation_df.values.tolist()
 
@@ -349,7 +320,7 @@ class Session:
 
         relation_types = _infer_relation_type(data[0])
 
-        self.add_imported_relation_to_engine(engine, data, relation_name, relation_types, symbol_table)
+        self.add_imported_relation_to_engine(data, relation_name, relation_types)
 
     def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";"):
         # TODO

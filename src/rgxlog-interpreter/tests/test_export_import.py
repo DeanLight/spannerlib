@@ -1,19 +1,17 @@
 import os
+import tempfile
 from os.path import dirname, abspath
+
 import pytest
 from pandas import DataFrame
-from rgxlog.engine.session import Session, query_to_string
 
-
-# csv filenames
+from rgxlog.engine.session import Session
+from tests.constants import EXAMPLE_RELATION, EXAMPLE_RELATION_TWO, QUERY_REL, QUERY_LONGREL
 from tests.utils import run_query_assert_output
 
+# csv filenames
+
 TESTS_DIR = dirname(abspath(__file__))
-LONGREL_CSV = os.path.join(TESTS_DIR, "query_longrel.csv")
-REL_CSV = os.path.join(TESTS_DIR, "query_rel.csv")
-EXAMPLE_RELATION_CSV = os.path.join(TESTS_DIR, "example_relation.csv")
-EXAMPLE_RELATION_TWO_CSV = os.path.join(TESTS_DIR, "example_relation_two.csv")
-TEMP_CSV = os.path.join(TESTS_DIR, "temp.csv")
 
 
 @pytest.fixture(scope="module")
@@ -24,37 +22,43 @@ def im_ex_session():
 
 
 def test_import_csv1(im_ex_session: Session):
-    im_ex_session.import_relation_from_csv(
-        EXAMPLE_RELATION_CSV,
-        relation_name="csv_rel")
+    with tempfile.TemporaryDirectory() as temp_dir:
+        example_relation_csv = os.path.join(temp_dir, 'temp')
+        with open(example_relation_csv, "w") as f:
+            f.write(EXAMPLE_RELATION)
 
-    expected_result_string = """printing results for query \'csv_rel(X, Y, Z)\':
-                                X     |    Y     |   Z
-                            ----------+----------+-----
-                             ano sora | [42, 69) |  24
-                               aoi    |  [1, 2)  |  16
-                               aoi    |  [0, 3)  |   8
-                            """
+        im_ex_session.import_relation_from_csv(example_relation_csv, relation_name="csv_rel")
 
-    query = "?csv_rel(X,Y,Z)"
-    run_query_assert_output(im_ex_session, query, expected_result_string)
+        expected_result_string = """printing results for query \'csv_rel(X, Y, Z)\':
+                                    X     |    Y     |   Z
+                                ----------+----------+-----
+                                 ano sora | [42, 69) |  24
+                                   aoi    |  [1, 2)  |  16
+                                   aoi    |  [0, 3)  |   8
+                                """
+
+        query = "?csv_rel(X,Y,Z)"
+        run_query_assert_output(im_ex_session, query, expected_result_string)
 
 
 def test_import_csv2(im_ex_session: Session):
-    im_ex_session.import_relation_from_csv(
-        EXAMPLE_RELATION_TWO_CSV,
-        relation_name="csv_rel2")
+    with tempfile.TemporaryDirectory() as temp_dir:
+        example_relation2_csv = os.path.join(temp_dir, 'temp')
+        with open(example_relation2_csv, "w") as f:
+            f.write(EXAMPLE_RELATION_TWO)
 
-    expected_result_string = """printing results for query \'csv_rel2(X)\':
-                                  X
-                                -----
-                                  c
-                                  b
-                                  a
-                                """
+        im_ex_session.import_relation_from_csv(example_relation2_csv, relation_name="csv_rel2")
 
-    query = "?csv_rel2(X)"
-    run_query_assert_output(im_ex_session, query, expected_result_string)
+        expected_result_string = """printing results for query \'csv_rel2(X)\':
+                                      X
+                                    -----
+                                      c
+                                      b
+                                      a
+                                    """
+
+        query = "?csv_rel2(X)"
+        run_query_assert_output(im_ex_session, query, expected_result_string)
 
 
 def test_import_df(im_ex_session: Session):
@@ -75,40 +79,45 @@ def test_import_df(im_ex_session: Session):
 
 def test_query_into_csv_basic(im_ex_session: Session):
     # create new relation
-    im_ex_session.run_query("new basic_rel(str)", print_results=False)
-    im_ex_session.run_query('basic_rel("stardew")', print_results=False)
-    im_ex_session.run_query('basic_rel("valley")', print_results=False)
+    query = """new basic_rel(str)
+        basic_rel("stardew")
+        basic_rel("valley")"""
+    im_ex_session.run_query(query, print_results=False)
 
     # query into csv and compare with old file
-    im_ex_session.query_into_csv('?basic_rel(X)', TEMP_CSV)
-    assert os.path.isfile(TEMP_CSV), "file was not created"
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_csv = os.path.join(temp_dir, 'temp')
 
-    with open(TEMP_CSV) as f_temp:
-        with open(REL_CSV) as f_test:
-            assert f_temp.read() == f_test.read(), "files are not equal"
+        im_ex_session.query_into_csv('?basic_rel(X)', temp_csv)
+        assert os.path.isfile(temp_csv), "file was not created"
 
-    os.remove(TEMP_CSV)
-    assert not os.path.isfile(TEMP_CSV), "file could not be deleted"
+        with open(temp_csv) as f_temp:
+            assert f_temp.read().strip() == QUERY_REL.strip(), "file was not written properly"
+
+        os.remove(temp_csv)
+        assert not os.path.isfile(temp_csv), "file could not be deleted"
 
 
 def test_query_into_csv_long(im_ex_session: Session):
     # create new relation
     # TODO@niv: dean, why not change spn into span? much more readable/intuitive
-    im_ex_session.run_query("new longrel(str,spn,int)", print_results=False)
-    im_ex_session.run_query('longrel("ano sora",[42, 69),24)', print_results=False)
-    im_ex_session.run_query('longrel("aoi",[1, 2),16)', print_results=False)
-    im_ex_session.run_query('longrel("aoi",[0, 3),8)', print_results=False)
+    query = """new longrel(str,spn,int)
+        longrel("ano sora",[42, 69),24)
+        longrel("aoi",[1, 2),16)
+        longrel("aoi",[0, 3),8)"""
+    im_ex_session.run_query(query, print_results=False)
 
     # query into csv and compare with old file
-    im_ex_session.query_into_csv("?longrel(X,Y,Z)", TEMP_CSV)
-    assert os.path.isfile(TEMP_CSV), "file was not created"
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_csv = os.path.join(temp_dir, 'temp')
+        im_ex_session.query_into_csv("?longrel(X,Y,Z)", temp_csv)
+        assert os.path.isfile(temp_csv), "file was not created"
 
-    with open(TEMP_CSV) as f_temp:
-        with open(LONGREL_CSV) as f_test:
-            assert f_temp.read() == f_test.read(), "files are not equal"
+        with open(temp_csv) as f_temp:
+            assert f_temp.read().strip() == QUERY_LONGREL.strip(), "file was not written properly"
 
-    os.remove(TEMP_CSV)
-    assert not os.path.isfile(TEMP_CSV), "file could not be deleted"
+        os.remove(temp_csv)
+        assert not os.path.isfile(temp_csv), "file could not be deleted"
 
 
 def test_query_into_df(im_ex_session: Session):
