@@ -1,14 +1,15 @@
+import re
 from typing import List, Optional, Iterable
 
 from rgxlog.engine.session import query_to_string, Session
 
 
 def table_to_query_free_vars_tuples(table: str) -> Iterable:
-    tuples = [line.strip() for line in table.split("\n")]
+    tuples = [line.strip() for line in table.split("\n") if len(line.strip()) != 0]
     if tuples[1] in ["[()]", "[]"]:
         return tuples
 
-    else:  # query    |free vars| tuples
+    else:      # query   |free vars|     tuples
         return tuples[0], tuples[1], set(tuples[3:])
 
 
@@ -16,6 +17,10 @@ def compare_strings(expected: str, output: str) -> bool:
     def split_to_tables(result: str) -> List[str]:
         return result.split("\n\n")
 
+    # _RE_COMBINE_WHITESPACE = re.compile(r"[ \t\r\f\v]{2,}")
+    # expected = _RE_COMBINE_WHITESPACE.sub(" ", expected)
+    # _RE_COMBINE_WHITESPACE = re.compile(r" \| ")
+    # expected = _RE_COMBINE_WHITESPACE.sub("  |  ", expected)
     expected_tables, output_tables = split_to_tables(expected), split_to_tables(output)
     if len(expected_tables) != len(output_tables):
         return False

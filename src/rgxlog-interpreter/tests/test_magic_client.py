@@ -1,6 +1,4 @@
-from rgxlog import magic_session
-
-from tests.utils import run_query_assert_output, run_test
+from tests.utils import run_test
 
 
 def test_magic_session_basic():
