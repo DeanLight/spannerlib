@@ -66,7 +66,8 @@ def _add_types_to_data(line, relation_types):
     return transformed_line
 
 
-def _format_query_results(query: Query, query_results: list):
+def format_query_results(query: Query, query_results: list):
+    # TODO: reformat this to handle multiple queries as well
     # check for the special conditions for which we can't print a table: no results were returned or a single
     # empty tuple was returned
     no_results = len(query_results) == 0
@@ -130,7 +131,7 @@ def query_to_string(query_results: List[Tuple[Query, List]]):
     all_result_strings = []
     query_results = list(filter(None, query_results))  # remove Nones
     for query, results in query_results:
-        query_result_string, _, _ = _format_query_results(query, results)
+        query_result_string, _, _ = format_query_results(query, results)
         query_title = f"printing results for query '{query}':"
 
         # combine the title and table to a single string and save it to the prints buffer
@@ -203,10 +204,11 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
-    def run_query(self, query: str, print_results: bool = True) -> List[Tuple[Query, List]]:
+    def run_query(self, query: str, print_results: bool = True, format_results=False) -> List[Tuple[Query, List]]:
         """
         generates an AST and passes it through the pass stack
 
+        :param format_results:
         :param query: the user's input
         :param print_results: whether to print the results to stdout or not
         :return the last query's results
@@ -221,8 +223,11 @@ class Session:
                 # TODO: @dean maybe we should create a Results object to handle this more easily?
                 print(query_to_string([exec_result]))
 
-        # TODO: make sure prints work fine without flushing (test in jupyter)
-        return exec_results
+        if format_results:
+            # TODO: this should also be able to handle multiple results
+            format_query_results(*exec_results[0])
+        else:
+            return exec_results
 
     def register(self, ie_function, ie_function_name, in_rel, out_rel):
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
@@ -342,7 +347,7 @@ class Session:
         if len(query_results) != 1:
             raise Exception("the query must have exactly one output")
 
-        _, rows, free_vars = _format_query_results(*query_results[0])
+        _, rows, free_vars = format_query_results(*query_results[0])
 
         # add free_vars at start of csv
         rows.insert(0, free_vars)
@@ -357,7 +362,7 @@ class Session:
         if len(query_results) != 1:
             raise Exception("the query must have exactly one output")
 
-        _, rows, free_vars = _format_query_results(*query_results[0])
+        _, rows, free_vars = format_query_results(*query_results[0])
         # TODO: how do i store spans inside a df? use `Span` object?
         query_df = DataFrame(rows, columns=free_vars)
         return query_df
