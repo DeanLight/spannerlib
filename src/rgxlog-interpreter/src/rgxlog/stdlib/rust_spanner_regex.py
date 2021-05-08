@@ -32,6 +32,7 @@ REGEX_TEMP_PATH = path.join(REGEX_FOLDER_PATH, "temp{}.txt")
 RUSTUP_TOOLCHAIN = "1.34"
 CARGO_CMD_ARGS = ["cargo", "+" + RUSTUP_TOOLCHAIN, "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
 RUSTUP_CMD_ARGS = ["rustup", "toolchain", "install", RUSTUP_TOOLCHAIN]
+SHORT_TIMEOUT = 5
 CARGO_TIMEOUT = 180
 RUSTUP_TIMEOUT = 180
 TIMEOUT_MINUTES = (CARGO_TIMEOUT + RUSTUP_TIMEOUT) // 60
@@ -51,16 +52,18 @@ def _download_and_install_rust_and_regex():
 
     # i can't use just "cargo -V" because it starts downloading stuff sometimes
     with Popen([which_word, "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
-        errcode = cargo.wait(5)
+        errcode = cargo.wait(SHORT_TIMEOUT)
 
     with Popen([which_word, "rustup"], stdout=PIPE, stderr=PIPE) as rustup:
-        errcode = errcode or rustup.wait(5)
+        errcode = errcode or rustup.wait(SHORT_TIMEOUT)
 
     if errcode:
         raise IOError(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
 
     logging.info(f"{PACKAGE_NAME} was not found on your system")
     logging.info(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
+
+    # i didn't pipe here because i want the user to see the output
     with Popen(RUSTUP_CMD_ARGS) as rustup:
         rustup.wait(RUSTUP_TIMEOUT)
 
