@@ -221,11 +221,11 @@ class SymbolTable(SymbolTableBase):
         # rule can be defined multiple times with same head (unlike relation)
         if is_rule:
             err_msg = f'relation "{relation_name}" already has a different schema'
-            # check that relation name was actually defines as a rule and not as a relation
-            if relation_name not in self.rule_relations:
-                raise Exception(err_msg)
             # if the rule is already defined the current schema must be equal to the rule's schema
-            elif relation_name in self._relation_to_schema:
+            if relation_name in self._relation_to_schema:
+                # check that relation name was actually defines as a rule and not as a relation
+                if relation_name not in self.rule_relations:
+                    raise Exception(err_msg)
                 if not self._relation_to_schema[relation_name] == schema:
                     raise Exception(err_msg)
                 return
@@ -251,6 +251,7 @@ class SymbolTable(SymbolTableBase):
     def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel):
         # check if ie_function_name is available.
         if self.contains_ie_function(ie_function_name):
+            # TODO@tom: add funcition's metadata
             raise Exception(f"""Already exists ie function named {ie_function_name}.
             The input types of the existing function are {self._registered_ie_functions[ie_function_name].in_types}.""")
 
@@ -261,7 +262,9 @@ class SymbolTable(SymbolTableBase):
     def register_ie_function_object(self, ie_function_object: IEFunction, ie_function_name):
         # check if ie_function_name is available.
         if self.contains_ie_function(ie_function_name):
-            raise Exception(f"Already exists ie function named {ie_function_name}.")
+            # TODO@tom: add funcition's metadata
+            raise Exception(f"""Already exists ie function named {ie_function_name}.
+                        The input types of the existing function are {self._registered_ie_functions[ie_function_name].in_types}.""")
 
         # initialize ie_function_data instance.
         # add a mapping between ie_function_name and ie_function_data instance.
@@ -281,3 +284,7 @@ class SymbolTable(SymbolTableBase):
 
     def register_predefined_ie_functions(self):
         pass
+
+    def registered_ie_functions(self):
+        for ie_function_name, ie_function_obj in self._registered_ie_functions.items():
+            print(f'{ie_function_name}\n{ie_function_obj}\n{ie_function_obj.__doc__}\n\n')

@@ -53,3 +53,7 @@ class IEFunction:
         if not output_arity == len(self.out_types):
             raise Exception("Output arity doesn't match the declared arity.")
         return self.out_types
+
+    # TODO@tom: implement this function
+    def __str__(self):
+        pass

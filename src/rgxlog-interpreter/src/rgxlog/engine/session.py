@@ -367,19 +367,13 @@ class Session:
         query_df = DataFrame(rows, columns=free_vars)
         return query_df
 
+    def registered_ie_functions(self):
+        self._symbol_table.registered_ie_functions()
+
     # def _register_default_functions(self):
     #     for func_dict in DEFAULT_FUNCTIONS:
     #         self.register_class(**func_dict)
 
 
 if __name__ == '__main__':
-    session = Session()
-    query = """
-    new a(int)
-    new b(int)
-    a(1)
-    ?b(X)
-    """
-    session.run_query(query)
-
-
+    pass
