@@ -27,29 +27,29 @@ def test_introduction():
 def test_basic_queries():
     from rgxlog.stdlib.python_regex import PYRGX_STRING
     expected_result = """printing results for query 'enrolled_in_chemistry("jordan")':
-        [()]
-        
-        printing results for query 'enrolled_in_chemistry("gale")':
-        []
-        
-        printing results for query 'enrolled_in_chemistry(X)':
-            X
-        ---------
-         howard
-         jordan
-         abigail
-        
-        printing results for query 'enrolled_in_physics_and_chemistry(X)':
-           X
-        --------
-         howard
-        
-        printing results for query 'lecturer_of(X, "abigail")':
-           X
-        --------
-         linus
-         walter
-        """
+[()]
+
+printing results for query 'enrolled_in_chemistry("gale")':
+[]
+
+printing results for query 'enrolled_in_chemistry(X)':
+    X
+---------
+ howard
+ jordan
+ abigail
+
+printing results for query 'enrolled_in_physics_and_chemistry(X)':
+   X
+--------
+ howard
+
+printing results for query 'lecturer_of(X, "abigail")':
+   X
+--------
+ linus
+ walter
+"""
 
     query = '''
         new lecturer(str, str)
@@ -82,10 +82,10 @@ def test_basic_queries():
 
     session = run_test(query, expected_result)
     expected_result2 = """printing results for query 'gpa_of_chemistry_students(X, "100")':
-        X
-    ---------
-     abigail
-    """
+    X
+---------
+ abigail
+"""
 
     query2 = (r"""gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
             gpa_of_chemistry_students(Student, Grade) <- py_rgx_string(gpa_str, "(\w+).*?(\d+)")"""
@@ -99,23 +99,23 @@ def test_basic_queries():
 
 def test_recursive():
     expected_result = """printing results for query 'ancestor("Liam", X)':
-        X
-    ----------
-      Mason
-      Oliver
-     Benjamin
-       Noah
-    
-    printing results for query 'ancestor(X, "Mason")':
-        X
-    ----------
-       Noah
-       Liam
-     Benjamin
-    
-    printing results for query 'ancestor("Mason", X)':
-    []
-    """
+    X
+----------
+  Mason
+  Oliver
+ Benjamin
+   Noah
+
+printing results for query 'ancestor(X, "Mason")':
+    X
+----------
+   Noah
+   Liam
+ Benjamin
+
+printing results for query 'ancestor("Mason", X)':
+[]
+"""
 
     query = '''
         new parent(str, str)
@@ -142,23 +142,23 @@ def test_json_path():
     from rgxlog.stdlib.json_path import JsonPath
 
     expected_result = """printing results for query 'simple_1(X)':
-           X
-        -----
-           2
-           1
-        
-        printing results for query 'simple_2(X)':
-             X
-        ------------
-         number two
-         number one
-        
-        printing results for query 'advanced(X)':
-                         X
-        -----------------------------------
-         {'foo': [{'baz': 1}, {'baz': 2}]}
-                         1
-    """
+   X
+-----
+   2
+   1
+
+printing results for query 'simple_2(X)':
+     X
+------------
+ number two
+ number one
+
+printing results for query 'advanced(X)':
+                 X
+-----------------------------------
+ {'foo': [{'baz': 1}, {'baz': 2}]}
+                 1
+"""
 
     query = """
             jsonpath_simple_1 = "foo[*].baz"
@@ -187,20 +187,20 @@ def test_json_path():
 
 def test_remove_rule():
     expected_result = """printing results for query 'ancestor(X, Y)':
-      X  |  Y
-    -----+-----
-     Tom | Avi
-    
-    printing results for query 'tmp(X, Y)':
-        X     |    Y
-    ----------+----------
-     Benjamin |  Mason
-       Noah   | Benjamin
-      James   |  Lucas
-       Noah   |  Oliver
-       Liam   |   Noah
-       Tom    |   Avi
-    """
+  X  |  Y
+-----+-----
+ Tom | Avi
+
+printing results for query 'tmp(X, Y)':
+    X     |    Y
+----------+----------
+ Benjamin |  Mason
+   Noah   | Benjamin
+  James   |  Lucas
+   Noah   |  Oliver
+   Liam   |   Noah
+   Tom    |   Avi
+"""
 
     query = """
         new parent(str, str)
