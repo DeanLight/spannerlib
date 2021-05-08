@@ -51,9 +51,27 @@ def compare_strings(expected: str, output: str) -> bool:
     return True
 
 
-def run_query_assert_output(session: Session, query: str, expected_out: str, pre_query: Optional[str] = None):
+def run_query_assert_output(session: Session, query: str, expected_out: str, pre_query: Optional[str] = None, ):
     if pre_query:
         session.run_query(pre_query, print_results=False)
     query_result = session.run_query(query, print_results=False)
     query_result_string = query_to_string(query_result)
     assert compare_strings(query_result_string, expected_out)
+
+
+def run_test(query: str, expected_output: Optional[str] = None, functions_to_import: List[dict] = [],
+             _session: Optional[Session] = None) -> Session:
+    if _session is None:
+        session = Session()
+    else:
+        session = _session
+    for ie_function in functions_to_import:
+        session.register(**ie_function)
+
+    query_result = session.run_query(query, print_results=False)
+
+    if expected_output is not None:
+        query_result_string = query_to_string(query_result)
+        assert compare_strings(expected_output, query_result_string), "fail"
+
+    return session

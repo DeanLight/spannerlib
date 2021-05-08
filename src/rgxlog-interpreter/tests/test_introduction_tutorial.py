@@ -1,22 +1,27 @@
 from rgxlog.engine.session import Session, query_to_string
-from tests.utils import compare_strings, run_query_assert_output
+from tests.utils import compare_strings, run_query_assert_output, run_test
 
 
 def test_introduction():
-    session = Session()
+    # session = Session()
     expected_result_intro = """printing results for query 'uncle(X, Y)':
           X  |  Y
         -----+------
          bob | greg
         """
 
-    pre_query = """new uncle(str, str)
-                   uncle("bob", "greg")
-                   """
+    # pre_query = """new uncle(str, str)
+    #                uncle("bob", "greg")
+    #                """
 
-    query = "?uncle(X,Y)"
+    query = """
+    new uncle(str, str)
+    uncle("bob", "greg")
+    ?uncle(X,Y)
+    """
 
-    run_query_assert_output(session, query, expected_result_intro, pre_query)
+    # run_query_assert_output(session, query, expected_result_intro, pre_query)
+    run_test(query, expected_result_intro)
 
 
 def test_basic_queries():
@@ -72,8 +77,10 @@ def test_basic_queries():
         ?lecturer_of(X, "abigail")
         '''
 
-    session = Session()
-    run_query_assert_output(session, query, expected_result)
+    # session = Session()
+    # run_query_assert_output(session, query, expected_result)
+
+    session = run_test(query, expected_result)
     expected_result2 = """printing results for query 'gpa_of_chemistry_students(X, "100")':
         X
     ---------
@@ -85,8 +92,9 @@ def test_basic_queries():
               r"""->(Student, Grade), enrolled_in_chemistry(Student)
             ?gpa_of_chemistry_students(X, "100")""")
 
-    session.register(**PYRGX_STRING)
-    run_query_assert_output(session, query2, expected_result2)
+    # session.register(**PYRGX_STRING)
+    # run_query_assert_output(session, query2, expected_result2)
+    run_test(query2, expected_result2, [PYRGX_STRING], session)
 
 
 def test_recursive():
@@ -124,8 +132,10 @@ def test_recursive():
         ?ancestor("Mason", X)
         '''
 
-    session = Session()
-    run_query_assert_output(session, query, expected_result)
+    # session = Session()
+    # run_query_assert_output(session, query, expected_result)
+
+    run_test(query, expected_result)
 
 
 def test_json_path():
@@ -167,10 +177,12 @@ def test_json_path():
             ?advanced(X)
         """
 
-    session = Session()
-    session.register(**JsonPath)
+    # session = Session()
+    # session.register(**JsonPath)
+    #
+    # run_query_assert_output(session, query, expected_result)
 
-    run_query_assert_output(session, query, expected_result)
+    run_test(query, expected_result, [JsonPath])
 
 
 def test_remove_rule():
@@ -206,15 +218,16 @@ def test_remove_rule():
         tmp(X, Y) <- ancestor(X,Y)
         tmp(X, Y) <- parent(X,Y)
         """
-
-    session = Session()
-    session.run_query(query, print_results=False)
+    # session = Session()
+    # session.run_query(query, print_results=False)
+    session = run_test(query)
 
     session.remove_rule("ancestor(X,Y) <- parent(X,Y)")
     query = """
             ?ancestor(X, Y)
             ?tmp(X, Y)
           """
-    query_result = session.run_query(query, print_results=False)
-    query_result_string = query_to_string(query_result)
-    assert compare_strings(expected_result, query_result_string), "fail"
+    # query_result = session.run_query(query, print_results=False)
+    # query_result_string = query_to_string(query_result)
+    # assert compare_strings(expected_result, query_result_string), "fail"
+    run_test(query, expected_result, _session=session)

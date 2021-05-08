@@ -1,20 +1,25 @@
 from rgxlog import magic_session
 
-from tests.utils import run_query_assert_output
+from tests.utils import run_query_assert_output, run_test
 
 
 def test_magic_session_basic():
-    session = magic_session
+    # session = Session()
     expected_result_intro = """printing results for query 'uncle(X, Y)':
-      X  |  Y
-    -----+------
-     bob | greg
-    """
+              X  |  Y
+            -----+------
+             bob | greg
+            """
 
-    pre_query = """new uncle(str, str)
-                   uncle("bob", "greg")
-                   """
+    # pre_query = """new uncle(str, str)
+    #                uncle("bob", "greg")
+    #                """
 
-    query = "?uncle(X,Y)"
+    query = """
+        new uncle(str, str)
+        uncle("bob", "greg")
+        ?uncle(X,Y)
+        """
 
-    run_query_assert_output(session, query, expected_result_intro, pre_query)
+    # run_query_assert_output(session, query, expected_result_intro, pre_query)
+    run_test(query, expected_result_intro)

@@ -7,7 +7,7 @@ from pandas import DataFrame
 
 from rgxlog.engine.session import Session
 from tests.constants import EXAMPLE_RELATION, EXAMPLE_RELATION_TWO, QUERY_REL, QUERY_LONGREL
-from tests.utils import run_query_assert_output
+from tests.utils import run_query_assert_output, run_test
 
 # csv filenames
 
@@ -38,7 +38,8 @@ def test_import_csv1(im_ex_session: Session):
                                 """
 
         query = "?csv_rel(X,Y,Z)"
-        run_query_assert_output(im_ex_session, query, expected_result_string)
+        # run_query_assert_output(im_ex_session, query, expected_result_string)
+        run_test(query, expected_result_string, _session=im_ex_session)
 
 
 def test_import_csv2(im_ex_session: Session):
@@ -58,7 +59,8 @@ def test_import_csv2(im_ex_session: Session):
                                     """
 
         query = "?csv_rel2(X)"
-        run_query_assert_output(im_ex_session, query, expected_result_string)
+        # run_query_assert_output(im_ex_session, query, expected_result_string)
+        run_test(query, expected_result_string, _session=im_ex_session)
 
 
 def test_import_df(im_ex_session: Session):
@@ -74,7 +76,8 @@ def test_import_df(im_ex_session: Session):
     query = "?df_rel(X)"
 
     im_ex_session.import_relation_from_df(df, "df_rel")
-    run_query_assert_output(im_ex_session, query, expected_result_string)
+    # run_query_assert_output(im_ex_session, query, expected_result_string)
+    run_test(query, expected_result_string, _session=im_ex_session)
 
 
 def test_query_into_csv_basic(im_ex_session: Session):

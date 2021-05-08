@@ -1,6 +1,6 @@
 from rgxlog.engine.session import Session
 
-from tests.utils import run_query_assert_output
+from tests.utils import run_query_assert_output, run_test
 
 
 def test_rust_regex():
@@ -27,7 +27,8 @@ def test_rust_regex():
     ?string_rel(X)
     ?span_rel(X)
     """
-    session = Session()
-    session.register(**RGX)
-    session.register(**RGX_STRING)
-    run_query_assert_output(session, query, expected_result)
+    # session = Session()
+    # session.register(**RGX)
+    # session.register(**RGX_STRING)
+    # run_query_assert_output(session, query, expected_result)
+    run_test(query, expected_result, [RGX, RGX_STRING])
