@@ -1,6 +1,4 @@
-from rgxlog.engine.session import Session, query_to_string
-
-from tests.utils import run_query_assert_output, compare_strings, run_test
+from tests.utils import run_test
 
 
 def test_entities():
@@ -23,9 +21,6 @@ def test_entities():
     ?entities(Entity, Classification)
     '''
 
-    # session = Session()
-    # session.register(**Entities)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [Entities])
 
 
@@ -50,9 +45,6 @@ def test_tokenize():
                 ?tokens(Token, Span)
             """
 
-    # session = Session()
-    # session.register(**Tokenize)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [Tokenize])
 
 
@@ -71,9 +63,6 @@ def test_ssplit():
             ?sentences(Sentences)
             """
 
-    # session = Session()
-    # session.register(**SSplit)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [SSplit])
 
 
@@ -96,9 +85,6 @@ def test_pos():
             ?pos(Token, POS, Span)
         """
 
-    # session = Session()
-    # session.register(**POS)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [POS])
 
 
@@ -126,9 +112,7 @@ def test_lemma():
             lemma(X, Y, Z) <- Lemma(sentence) -> (X, Y, Z)
             ?lemma(Token, Lemma, Span)
              """
-    # session = Session()
-    # session.register(**Lemma)
-    # run_query_assert_output(session, query, expected_result)
+
     run_test(query, expected_result, [Lemma])
 
 
@@ -150,9 +134,6 @@ def test_ner():
             ner(X, Y, Z) <- NER(sentence) -> (X, Y, Z)
             ?ner(Token, NER, Span)""")
 
-    # session = Session()
-    # session.register(**NER)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [NER])
 
 
@@ -175,9 +156,6 @@ def test_entity_mentions():
         ?em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text, \
         CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences) """
 
-    # session = Session()
-    # session.register(**EntityMentions)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [EntityMentions])
 
 
@@ -194,11 +172,6 @@ def test_parse():
         parse(X) <- Parse(sentence) -> (X)
         ?parse(X)"""
 
-    # session = Session()
-    # session.register(**Parse)
-    # query_result = session.run_query(query, print_results=False)
-    # query_result_string = query_to_string(query_result)
-    # assert compare_strings(expected_result, query_result_string), "fail"
     run_test(query, expected_result, [Parse])
 
 
@@ -223,9 +196,6 @@ def test_depparse():
             depparse(X, Y, Z, W, U) <- DepParse(sentence) -> (X, Y, Z, W, U)
             ?depparse(Dep, Governor, GovernorGloss, Dependent, DependentGloss)"""
 
-    # session = Session()
-    # session.register(**DepParse)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [DepParse])
 
 
@@ -250,9 +220,6 @@ def test_coref():
         ?coref(Id, Text, Type, Number, Gender, Animacy, StartIndex, \
         EndIndex, HeadIndex, SentNum, Position, IsRepresentativeMention)"""
 
-    # session = Session()
-    # session.register(**Coref)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [Coref])
 
 
@@ -276,9 +243,6 @@ def test_openie():
            openie(X1, X2, X3, X4, X5, X6) <- OpenIE(sentence) -> (X1, X2, X3, X4, X5, X6)
            ?openie(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
 
-    # session = Session()
-    # session.register(**OpenIE)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [OpenIE])
 
 
@@ -297,9 +261,6 @@ def test_kbp():
            kbp(X1, X2, X3, X4, X5, X6) <- KBP(sentence) -> (X1, X2, X3, X4, X5, X6)
            ?kbp(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
 
-    # session = Session()
-    # session.register(**KBP)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [KBP])
 
 
@@ -335,9 +296,6 @@ def test_sentiment():
            sentiment(X, Y, Z) <- Sentiment(sentence) -> (X, Y, Z)
            ?sentiment(SentimentValue, Sentiment, SentimentDistribution)"""
 
-    # session = Session()
-    # session.register(**Sentiment)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [Sentiment])
 
 
@@ -364,9 +322,6 @@ def test_truecase():
            truecase(X, Y, Z, W) <- TrueCase(sentence) -> (X, Y, Z, W)
            ?truecase(Token, Span, Truecase, TruecaseText)"""
 
-    # session = Session()
-    # session.register(**TrueCase)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [TrueCase])
 
 
@@ -396,7 +351,4 @@ def test_clean_xml():
            clean_xml(X, Y, Z, W, U) <- CleanXML(sentence) -> (X, Y, Z, W, U)
            ?clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)"""
 
-    # session = Session()
-    # session.register(**CleanXML)
-    # run_query_assert_output(session, query, expected_result)
     run_test(query, expected_result, [CleanXML])
