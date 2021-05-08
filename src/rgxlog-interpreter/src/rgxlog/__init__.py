@@ -1,8 +1,10 @@
 from rgxlog.engine.session import Session
 import rgxlog.engine
 import rgxlog.grammar
-
-# this import registers the magic functions for jupyter
-from rgxlog.magic import rgxlog_magic
+from rgxlog.magic.rgxlog_magic import RgxlogMagic
 
 magic_session = Session()
+
+
+def load_ipython_extension(ipython):
+    ipython.register_magics(RgxlogMagic)

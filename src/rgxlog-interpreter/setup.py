@@ -30,7 +30,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="rgxlog_interpreter",
+    name="rgxlog",
     version="0.0.22",
     author="Example Author",
     author_email="author@example.com",

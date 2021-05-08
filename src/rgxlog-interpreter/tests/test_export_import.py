@@ -123,9 +123,12 @@ def test_query_into_csv_long(im_ex_session: Session):
 def test_query_into_df(im_ex_session: Session):
     test_df = DataFrame(["king", "jump"], columns=["X"])
     # create new relation
-    im_ex_session.run_query("new df_query_rel(str)", print_results=False)
-    im_ex_session.run_query('df_query_rel("jump")', print_results=False)
-    im_ex_session.run_query('df_query_rel("king")', print_results=False)
+    query = """
+        new df_query_rel(str)
+        df_query_rel("jump")
+        df_query_rel("king")"""
+
+    im_ex_session.run_query(query, print_results=False)
 
     # query into df and compare
     temp_df = im_ex_session.query_into_df("?df_query_rel(X)")
