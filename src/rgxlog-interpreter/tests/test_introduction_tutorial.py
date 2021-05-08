@@ -81,7 +81,7 @@ def test_basic_queries():
     """
 
     query2 = (r"""gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
-            gpa_of_chemistry_students(Student, Grade) <- RGXString(gpa_str, "(\w+).*?(\d+)")"""
+            gpa_of_chemistry_students(Student, Grade) <- py_rgx_string(gpa_str, "(\w+).*?(\d+)")"""
               r"""->(Student, Grade), enrolled_in_chemistry(Student)
             ?gpa_of_chemistry_students(X, "100")""")
 
