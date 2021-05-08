@@ -373,4 +373,13 @@ class Session:
 
 
 if __name__ == '__main__':
-    pass
+    session = Session()
+    query = """
+    new a(int)
+    new b(int)
+    a(1)
+    ?b(X)
+    """
+    session.run_query(query)
+
+
