@@ -2,15 +2,15 @@ import re
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 
-def py_rgx_string(text, regex_formula):
+def py_rgx_string(text, regex_pattern):
     """
     Args:
         text: The input text for the regex operation
-        regex_formula: the formula of the regex operation
+        regex_pattern: the pattern of the regex operation
 
     Returns: tuples of strings that represents the results
     """
-    compiled_rgx = re.compile(regex_formula)
+    compiled_rgx = re.compile(regex_pattern)
     num_groups = compiled_rgx.groups
     for match in re.finditer(compiled_rgx, text):
         if num_groups == 0:
@@ -25,20 +25,20 @@ def py_rgx_string_out_types(output_arity):
 
 
 PYRGX_STRING = dict(ie_function=py_rgx_string,
-                    ie_function_name='RGXString',
+                    ie_function_name='py_rgx_string',
                     in_rel=[DataTypes.string, DataTypes.string],
                     out_rel=py_rgx_string_out_types)
 
 
-def py_rgx(text, regex_formula):
+def py_rgx(text, regex_pattern):
     """
     Args:
         text: The input text for the regex operation
-        regex_formula: the formula of the regex operation
+        regex_pattern: the pattern of the regex operation
 
     Returns: tuples of spans that represents the results
     """
-    compiled_rgx = re.compile(regex_formula)
+    compiled_rgx = re.compile(regex_pattern)
     num_groups = compiled_rgx.groups
     for match in re.finditer(compiled_rgx, text):
         if num_groups == 0:
@@ -53,6 +53,6 @@ def py_rgx_out_type(output_arity):
 
 
 PYRGX = dict(ie_function=py_rgx,
-             ie_function_name='RGX',
+             ie_function_name='py_rgx',
              in_rel=[DataTypes.string, DataTypes.string],
              out_rel=py_rgx_out_type)

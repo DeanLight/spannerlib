@@ -192,6 +192,7 @@ class SymbolTable(SymbolTableBase):
         self._var_to_type = {}
         self._relation_to_schema = {}
         self._registered_ie_functions = {}
+        self.rule_relations = set()
         self.register_predefined_ie_functions()
 
     def set_var_value_and_type(self, var_name, var_value, var_type):
@@ -216,18 +217,27 @@ class SymbolTable(SymbolTableBase):
         return var_name in self._var_to_type
 
     def add_relation_schema(self, relation_name, schema, is_rule: bool):
-        # TODO@niv: tom, can you add some documentation here?
+
+        # rule can be defined multiple times with same head (unlike relation)
         if is_rule:
+            err_msg = f'relation "{relation_name}" already has a different schema'
+            # if the rule is already defined the current schema must be equal to the rule's schema
             if relation_name in self._relation_to_schema:
+                # check that relation name was actually defines as a rule and not as a relation
+                if relation_name not in self.rule_relations:
+                    raise Exception(err_msg)
                 if not self._relation_to_schema[relation_name] == schema:
-                    raise Exception(f'relation "{relation_name}" already has a different schema')
+                    raise Exception(err_msg)
                 return
 
-        else:
+        else:  # relation definition
+            # if the relation is already defined we can't redefine her
             if relation_name in self._relation_to_schema:
                 raise Exception(f'relation "{relation_name}" already has a schema')
 
         self._relation_to_schema[relation_name] = schema
+        if is_rule:
+            self.rule_relations.add(relation_name)
 
     def get_relation_schema(self, relation_name):
         return self._relation_to_schema[relation_name]
@@ -241,16 +251,20 @@ class SymbolTable(SymbolTableBase):
     def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel):
         # check if ie_function_name is available.
         if self.contains_ie_function(ie_function_name):
-            raise Exception(f"Already exists ie function named {ie_function_name}.")
+            # TODO@tom: add funcition's metadata
+            raise Exception(f"""Already exists ie function named {ie_function_name}.
+            The input types of the existing function are {self._registered_ie_functions[ie_function_name].in_types}.""")
 
         # initialize ie_function_data instance.
         # add a mapping between ie_function_name and ie_function_data instance.
         self._registered_ie_functions[ie_function_name] = IEFunction(ie_function, in_rel, out_rel)
 
-    def register_ie_function_object(self, ie_function_object : IEFunction, ie_function_name):
+    def register_ie_function_object(self, ie_function_object: IEFunction, ie_function_name):
         # check if ie_function_name is available.
         if self.contains_ie_function(ie_function_name):
-            raise Exception(f"Already exists ie function named {ie_function_name}.")
+            # TODO@tom: add funcition's metadata
+            raise Exception(f"""Already exists ie function named {ie_function_name}.
+                        The input types of the existing function are {self._registered_ie_functions[ie_function_name].in_types}.""")
 
         # initialize ie_function_data instance.
         # add a mapping between ie_function_name and ie_function_data instance.
@@ -270,3 +284,7 @@ class SymbolTable(SymbolTableBase):
 
     def register_predefined_ie_functions(self):
         pass
+
+    def registered_ie_functions(self):
+        for ie_function_name, ie_function_obj in self._registered_ie_functions.items():
+            print(f'{ie_function_name}\n{ie_function_obj}\n{ie_function_obj.__doc__}\n\n')

@@ -4,6 +4,7 @@ this module contains implementation of regex ie functions using the rust package
 import json
 import logging
 import os
+import pdb
 from datetime import datetime
 from os import path
 from subprocess import Popen, PIPE, check_output
@@ -32,6 +33,7 @@ REGEX_TEMP_PATH = path.join(REGEX_FOLDER_PATH, "temp{}.txt")
 RUSTUP_TOOLCHAIN = "1.34"
 CARGO_CMD_ARGS = ["cargo", "+" + RUSTUP_TOOLCHAIN, "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
 RUSTUP_CMD_ARGS = ["rustup", "toolchain", "install", RUSTUP_TOOLCHAIN]
+SHORT_TIMEOUT = 5
 CARGO_TIMEOUT = 180
 RUSTUP_TIMEOUT = 180
 TIMEOUT_MINUTES = (CARGO_TIMEOUT + RUSTUP_TIMEOUT) // 60
@@ -51,16 +53,18 @@ def _download_and_install_rust_and_regex():
 
     # i can't use just "cargo -V" because it starts downloading stuff sometimes
     with Popen([which_word, "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
-        errcode = cargo.wait(5)
+        errcode = cargo.wait(SHORT_TIMEOUT)
 
     with Popen([which_word, "rustup"], stdout=PIPE, stderr=PIPE) as rustup:
-        errcode = errcode or rustup.wait(5)
+        errcode = errcode or rustup.wait(SHORT_TIMEOUT)
 
     if errcode:
         raise IOError(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
 
     logging.info(f"{PACKAGE_NAME} was not found on your system")
     logging.info(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
+
+    # i didn't pipe here because i want the user to see the output
     with Popen(RUSTUP_CMD_ARGS) as rustup:
         rustup.wait(RUSTUP_TIMEOUT)
 
@@ -94,6 +98,7 @@ def _format_spanner_output(output: bytes):
     for out in output_jsons:
         dict_out = json.loads(out)
         if dict_out["span"][0] > -1:
+            # enum_spanner outputs [-1,-1] as the EOF span
             ret.append(dict_out)
 
     return ret
@@ -118,10 +123,11 @@ def rgx(text, regex_pattern, out_type):
         regex_output = _format_spanner_output(check_output(rust_regex_args, stderr=PIPE))
 
         for out in regex_output:
+            # TODO@niv: spanner-rs doesn't support multiple groups
             if out_type == "string":
-                yield out["match"]
+                yield [out["match"]]
             elif out_type == "span":
-                yield tuple(out["span"])
+                yield [tuple(out["span"])]
             else:
                 assert False, "illegal out_type"
 
@@ -133,15 +139,15 @@ def rgx_span(text, regex_pattern):
     """
     Args:
         text: The input text for the regex operation
-        regex_pattern: the formula of the regex operation
+        regex_pattern: the pattern of the regex operation
 
     Returns: tuples of spans that represents the results
     """
-    yield rgx(text, regex_pattern, "span")
+    return rgx(text, regex_pattern, "span")
 
 
 RGX = dict(ie_function=rgx_span,
-           ie_function_name='rust_rgx_span',
+           ie_function_name='rgx_span',
            in_rel=RUST_RGX_IN_TYPES,
            out_rel=rgx_span_out_type)
 
@@ -154,10 +160,10 @@ def rgx_string(text, regex_pattern):
 
     Returns: tuples of strings that represents the results
     """
-    yield rgx(text, regex_pattern, "string")
+    return rgx(text, regex_pattern, "string")
 
 
 RGX_STRING = dict(ie_function=rgx_string,
-                  ie_function_name='rust_rgx_string',
+                  ie_function_name='rgx_string',
                   in_rel=RUST_RGX_IN_TYPES,
                   out_rel=rgx_string_out_type)

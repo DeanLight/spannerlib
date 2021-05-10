@@ -440,6 +440,7 @@ class PydatalogEngine(RgxlogEngineBase):
             ie_outputs = ie_func.ie_function(*ie_input)
             # process each ie output and add it to the output relation
             for ie_output in ie_outputs:
+                # TODO@niv: i don't like this, imo we should check if it's iterable, and if not, put a list around it
                 ie_output = list(ie_output)
 
                 # assert the ie output is properly typed
@@ -452,6 +453,8 @@ class PydatalogEngine(RgxlogEngineBase):
                              for term in ie_output]
 
                 # add the output as a fact to the output relation
+                # TODO@niv: dean, this acts a set (ignores repetitions, e.g. 'a','a', 'aa' becomes 'a','aa').
+                #  is that ok?
                 output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
                 self.add_fact(output_fact)
 
