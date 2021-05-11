@@ -2,8 +2,6 @@ from tests.utils import run_test
 
 
 def test_entities():
-    from rgxlog.stdlib.nlp import Entities
-
     expected_result = """printing results for query 'entities(Entity, Classification)':
    Entity    |            Classification
 -------------+---------------------------------------
@@ -21,12 +19,10 @@ def test_entities():
     ?entities(Entity, Classification)
     '''
 
-    run_test(query, expected_result, [Entities])
+    run_test(query, expected_result)
 
 
 def test_tokenize():
-    from rgxlog.stdlib.nlp import Tokenize
-
     expected_result = """printing results for query 'tokens(Token, Span)':
   Token  |   Span
 ---------+----------
@@ -45,11 +41,10 @@ def test_tokenize():
                 ?tokens(Token, Span)
             """
 
-    run_test(query, expected_result, [Tokenize])
+    run_test(query, expected_result)
 
 
 def test_ssplit():
-    from rgxlog.stdlib.nlp import SSplit
     expected_result = """printing results for query 'sentences(Sentences)':
                           Sentences
                     ---------------------
@@ -63,11 +58,10 @@ def test_ssplit():
             ?sentences(Sentences)
             """
 
-    run_test(query, expected_result, [SSplit])
+    run_test(query, expected_result)
 
 
 def test_pos():
-    from rgxlog.stdlib.nlp import POS
     expected_result = """printing results for query 'pos(Token, POS, Span)':
                       Token  |  POS  |   Span
                     ---------+-------+----------
@@ -85,7 +79,7 @@ def test_pos():
             ?pos(Token, POS, Span)
         """
 
-    run_test(query, expected_result, [POS])
+    run_test(query, expected_result)
 
 
 def test_lemma():
@@ -117,7 +111,6 @@ def test_lemma():
 
 
 def test_ner():
-    from rgxlog.stdlib.nlp import NER
     expected_result = """printing results for query 'ner(Token, NER, Span)':
                        Token   |     NER      |    Span
                     -----------+--------------+------------
@@ -134,11 +127,10 @@ def test_ner():
             ner(X, Y, Z) <- NER(sentence) -> (X, Y, Z)
             ?ner(Token, NER, Span)""")
 
-    run_test(query, expected_result, [NER])
+    run_test(query, expected_result)
 
 
 def test_entity_mentions():
-    from rgxlog.stdlib.nlp import EntityMentions
     expected_result = ("""printing results for query 'em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text,"""
                        """ CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences)':
                        DocTokenBegin |   DocTokenEnd |   TokenBegin |   TokenEnd |      Text      |   """
@@ -156,7 +148,7 @@ def test_entity_mentions():
         ?em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text, \
         CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences) """
 
-    run_test(query, expected_result, [EntityMentions])
+    run_test(query, expected_result)
 
 
 def test_parse():
@@ -176,8 +168,6 @@ def test_parse():
 
 
 def test_depparse():
-    from rgxlog.stdlib.nlp import DepParse
-
     expected_result = """printing results for query 'depparse(Dep, Governor, GovernorGloss, Dependent, DependentGloss)':
                           Dep  |   Governor |  GovernorGloss  |   Dependent |  DependentGloss
                         -------+------------+-----------------+-------------+------------------
@@ -196,12 +186,11 @@ def test_depparse():
             depparse(X, Y, Z, W, U) <- DepParse(sentence) -> (X, Y, Z, W, U)
             ?depparse(Dep, Governor, GovernorGloss, Dependent, DependentGloss)"""
 
-    run_test(query, expected_result, [DepParse])
+    run_test(query, expected_result)
 
 
 # TODO@niv indent strings
 def test_coref():
-    from rgxlog.stdlib.nlp import Coref
     expected_result = ("""printing results for query 'coref(Id, Text, Type, Number, Gender, Animacy, StartIndex,"""
                        """ EndIndex, HeadIndex, SentNum, Position, IsRepresentativeMention)':
                            Id |   Text   |    Type    |  Number  |  Gender  |  Animacy  |   StartIndex |   EndIndex"""
@@ -220,11 +209,10 @@ def test_coref():
         ?coref(Id, Text, Type, Number, Gender, Animacy, StartIndex, \
         EndIndex, HeadIndex, SentNum, Position, IsRepresentativeMention)"""
 
-    run_test(query, expected_result, [Coref])
+    run_test(query, expected_result)
 
 
 def test_openie():
-    from rgxlog.stdlib.nlp import OpenIE
     expected_result = ("""printing results for query 'openie(Subject, SubjectSpan, Relation, RelationSpan,"""
                        """ Object, ObjectSpan)':
                              Subject     |  SubjectSpan  |  Relation  |  RelationSpan  |  Object  |  ObjectSpan
@@ -243,11 +231,10 @@ def test_openie():
            openie(X1, X2, X3, X4, X5, X6) <- OpenIE(sentence) -> (X1, X2, X3, X4, X5, X6)
            ?openie(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
 
-    run_test(query, expected_result, [OpenIE])
+    run_test(query, expected_result)
 
 
 def test_kbp():
-    from rgxlog.stdlib.nlp import KBP
     expected_result = ("""printing results for query 'kbp(Subject, SubjectSpan, Relation, RelationSpan, Object,"""
                        """ ObjectSpan)':
                           Subject  |  SubjectSpan  |           Relation           |  RelationSpan  |  Object  |"""
@@ -261,12 +248,10 @@ def test_kbp():
            kbp(X1, X2, X3, X4, X5, X6) <- KBP(sentence) -> (X1, X2, X3, X4, X5, X6)
            ?kbp(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
 
-    run_test(query, expected_result, [KBP])
+    run_test(query, expected_result)
 
 
 def test_sentiment():
-    from rgxlog.stdlib.nlp import Sentiment
-
     expected_result = ("""printing results for query 'sentiment(SentimentValue, Sentiment, SentimentDistribution)':
                            SentimentValue |  Sentiment  |                                   SentimentDistribution
                         ------------------+-------------+-------------------------------------------------------"""
@@ -296,12 +281,10 @@ def test_sentiment():
            sentiment(X, Y, Z) <- Sentiment(sentence) -> (X, Y, Z)
            ?sentiment(SentimentValue, Sentiment, SentimentDistribution)"""
 
-    run_test(query, expected_result, [Sentiment])
+    run_test(query, expected_result)
 
 
 def test_truecase():
-    from rgxlog.stdlib.nlp import TrueCase
-
     expected_result = """printing results for query 'truecase(Token, Span, Truecase, TruecaseText)':
                           Token  |   Span   |  Truecase  |  TruecaseText
                         ---------+----------+------------+----------------
@@ -322,12 +305,10 @@ def test_truecase():
            truecase(X, Y, Z, W) <- TrueCase(sentence) -> (X, Y, Z, W)
            ?truecase(Token, Span, Truecase, TruecaseText)"""
 
-    run_test(query, expected_result, [TrueCase])
+    run_test(query, expected_result)
 
 
 def test_clean_xml():
-    from rgxlog.stdlib.nlp import CleanXML
-
     expected_result = ("""printing results for query 'clean_xml(Index, Word, OriginalText, CharacterOffsetBegin,"""
                        """ CharacterOffsetEnd)':
                            Index |   Word   |  OriginalText  |   CharacterOffsetBegin |   CharacterOffsetEnd
@@ -351,4 +332,4 @@ def test_clean_xml():
            clean_xml(X, Y, Z, W, U) <- CleanXML(sentence) -> (X, Y, Z, W, U)
            ?clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)"""
 
-    run_test(query, expected_result, [CleanXML])
+    run_test(query, expected_result)

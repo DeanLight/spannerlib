@@ -3,6 +3,7 @@ import logging
 from io import BytesIO
 from os import path
 from os import popen
+# import sh
 from urllib.request import urlopen
 from zipfile import ZipFile
 
@@ -49,6 +50,9 @@ def _is_installed_java():
 
     return path.isdir(INSTALLATION_PATH)
 
+    # # TODO: how to check the java version?
+    # return sh.which("java") is not None
+
 
 def _run_installation():
     if not _is_installed_nlp():
@@ -63,7 +67,6 @@ def _run_installation():
 
 _run_installation()
 CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
-
 
 # ********************************************************************************************************************
 
@@ -179,7 +182,7 @@ RGXNer = dict(ie_function=regexner_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO: I can't find how pattern should look like
+# TODO: I can't find how pattern should look like, ADD LINK TO STANFORD NLP
 def tokensregex_wrapper(sentence, pattern):
     with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
         for res in nlp.tokensregex(sentence, pattern):
@@ -348,8 +351,6 @@ TrueCase = dict(ie_function=truecase_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO@niv: ok, next time leave a TODO instead of a comment (i almost missed it).
-#  call me on zoom and we'll do this together
 # I don't understand the schema (list of dicts with values of list)
 def udfeats_wrapper(sentence: str):
     with StanfordCoreNLP(NLP_DIR_PATH) as nlp:

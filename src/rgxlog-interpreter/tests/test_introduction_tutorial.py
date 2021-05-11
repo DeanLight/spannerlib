@@ -18,7 +18,6 @@ def test_introduction():
 
 
 def test_basic_queries():
-    from rgxlog.stdlib.python_regex import PYRGX_STRING
     expected_result = """printing results for query 'enrolled_in_chemistry("jordan")':
 [()]
 
@@ -82,7 +81,7 @@ printing results for query 'lecturer_of(X, "abigail")':
               r"""->(Student, Grade), enrolled_in_chemistry(Student)
             ?gpa_of_chemistry_students(X, "100")""")
 
-    run_test(query2, expected_result2, [PYRGX_STRING], session)
+    run_test(query2, expected_result2, _session=session)
 
 
 def test_recursive():
@@ -124,8 +123,6 @@ printing results for query 'ancestor("Mason", X)':
 
 
 def test_json_path():
-    from rgxlog.stdlib.json_path import JsonPath
-
     expected_result = """printing results for query 'simple_1(X)':
    X
 -----
@@ -162,7 +159,7 @@ printing results for query 'advanced(X)':
             ?advanced(X)
         """
 
-    run_test(query, expected_result, [JsonPath])
+    run_test(query, expected_result)
 
 
 def test_remove_rule():

@@ -25,4 +25,4 @@ printing results for query 'span_rel(X)':
     ?span_rel(X)
     """
 
-    run_test(query, expected_result, [RGX, RGX_STRING])
+    run_test(query, expected_result)

@@ -5,6 +5,7 @@ this module contains the implementations of symbol tables
 from abc import ABC, abstractmethod
 
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
+from typing import Iterable, Dict
 
 
 class SymbolTableBase(ABC):
@@ -146,12 +147,36 @@ class SymbolTableBase(ABC):
         """
         pass
 
-    @abstractmethod
-    def register_predefined_ie_functions(self):
+    def register_predefined_ie_functions(self, ie_funcs: Iterable[Dict]):
         """
         Adds to symbol table all the predefined ie functions.
+
+        Args:
+            ie_funcs: iterable of the predined ie functions in dict format
+        """
+        for ie_func in ie_funcs:
+            self.register_ie_function(**ie_func)
+
+    @abstractmethod
+    def print_registered_ie_functions(self):
+        """
+            Prints information about the registered ie functions.
         """
         pass
+
+    @abstractmethod
+    def remove_ie_function(self, name: str):
+        """
+        removes a function from the symbol table
+
+        Args:
+            name: the name of the ie function to remove
+        """
+
+    def remove_all_ie_functions(self):
+        """
+        removes all the ie functions from the symbol table
+        """
 
     def __str__(self):
         """
@@ -193,7 +218,6 @@ class SymbolTable(SymbolTableBase):
         self._relation_to_schema = {}
         self._registered_ie_functions = {}
         self.rule_relations = set()
-        self.register_predefined_ie_functions()
 
     def set_var_value_and_type(self, var_name, var_value, var_type):
         self._var_to_value[var_name] = var_value
@@ -250,10 +274,9 @@ class SymbolTable(SymbolTableBase):
 
     def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel):
         # check if ie_function_name is available.
-        if self.contains_ie_function(ie_function_name):
-            # TODO@tom: add funcition's metadata
-            raise Exception(f"""Already exists ie function named {ie_function_name}.
-            The input types of the existing function are {self._registered_ie_functions[ie_function_name].in_types}.""")
+        # if self.contains_ie_function(ie_function_name):
+        #     raise Exception(f"""Already exists ie function named {ie_function_name}.\n
+        #     {self._registered_ie_functions[ie_function_name].get_meta_data}""" )
 
         # initialize ie_function_data instance.
         # add a mapping between ie_function_name and ie_function_data instance.
@@ -261,10 +284,9 @@ class SymbolTable(SymbolTableBase):
 
     def register_ie_function_object(self, ie_function_object: IEFunction, ie_function_name):
         # check if ie_function_name is available.
-        if self.contains_ie_function(ie_function_name):
-            # TODO@tom: add funcition's metadata
-            raise Exception(f"""Already exists ie function named {ie_function_name}.
-                        The input types of the existing function are {self._registered_ie_functions[ie_function_name].in_types}.""")
+        # if self.contains_ie_function(ie_function_name):
+        #     raise Exception(f"""Already exists ie function named {ie_function_name}.\n
+        #     {self._registered_ie_functions[ie_function_name].get_meta_data}""")
 
         # initialize ie_function_data instance.
         # add a mapping between ie_function_name and ie_function_data instance.
@@ -282,9 +304,14 @@ class SymbolTable(SymbolTableBase):
     def get_all_registered_ie_funcs(self):
         return self._registered_ie_functions.copy()
 
-    def register_predefined_ie_functions(self):
-        pass
 
-    def registered_ie_functions(self):
+    def remove_ie_function(self, name: str):
+        if not self._registered_ie_functions.pop(name, None):
+            raise Exception(f"IE function named {name} doesn't exist")
+
+    def remove_all_ie_functions(self):
+        self._registered_ie_functions = dict()
+
+    def print_registered_ie_functions(self):
         for ie_function_name, ie_function_obj in self._registered_ie_functions.items():
-            print(f'{ie_function_name}\n{ie_function_obj}\n{ie_function_obj.__doc__}\n\n')
+            print(f'{ie_function_name}\n{ie_function_obj.get_meta_data}\n{ie_function_obj}\n{ie_function_obj.__doc__}\n\n')

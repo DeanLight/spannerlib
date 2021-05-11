@@ -23,6 +23,15 @@ from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 from tabulate import tabulate
 
+from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
+from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
+from rgxlog.stdlib.json_path import JsonPath
+from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
+                               OpenIE, KBP, Quote, Sentiment, TrueCase, Entities)
+
+PREDINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, SSplit, POS, Lemma, NER, EntityMentions,
+                     CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase, Entities]
+
 # TODO: are these patterns correct?
 SPAN_PATTERN = re.compile(r"^\[(\d+), ?(\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
@@ -143,6 +152,7 @@ def query_to_string(query_results: List[Tuple[Query, List]]):
 class Session:
     def __init__(self, debug=False):
         self._symbol_table = SymbolTable()
+        self._symbol_table.register_predefined_ie_functions(PREDINED_IE_FUNCS)
         self._term_graph = NetxTermGraph()
         self._execution = execution.PydatalogEngine(debug)
 
@@ -241,6 +251,7 @@ class Session:
         """
         return [pass_.__name__ for pass_ in self._pass_stack]
 
+    # TODO: it's theirs implementation.
     def set_pass_stack(self, user_stack):
         """
         sets a new pass stack instead of the current one
@@ -367,13 +378,72 @@ class Session:
         query_df = DataFrame(rows, columns=free_vars)
         return query_df
 
-    def registered_ie_functions(self):
-        self._symbol_table.registered_ie_functions()
+    def print_registered_ie_functions(self):
+        """
+            Prints information about the registered ie functions
+        """
+        self._symbol_table.print_registered_ie_functions()
 
-    # def _register_default_functions(self):
-    #     for func_dict in DEFAULT_FUNCTIONS:
-    #         self.register_class(**func_dict)
+    def remove_ie_function(self, name: str):
+        """
+        removes a function from the symbol table
+
+        Args:
+            name: the name of the ie function to remove
+        """
+        self._symbol_table.remove_ie_function(name)
+
+
+    def remove_all_ie_functions(self):
+        """
+        removes all the ie functions from the symbol table
+        """
+        self._symbol_table.remove_all_ie_functions()
+
 
 
 if __name__ == '__main__':
-    pass
+    # from rgxlog.stdlib.nlp import NER, Coref, OpenIE, Lemma
+    #
+    # # brothers(X, Y) < - person(X), person(Y), openie(X, Z1, W1, S, U1, V1), openie(Y, Z2, W2, S, U2, V2)
+    # # ?brothers(X, Y)
+    # query = '''
+    #     sentence = "Tom and Dan are brothers. Their mother is called Anny, she is very nice!"
+    #     ner(X, Y, Z) <- NER(sentence)->(X, Y, Z)
+    #     person(X) <- ner(X, "PERSON", Z)
+    #     ?person(Name)
+    #     abstract_rel(X1, R, X2, S) <- OpenIE(sentence) -> (X1, U, Z, S, RR, X2), Lemma(RR) -> (A, R, B)
+    #     ?abstract_rel(X1, R, X2, S)
+    #     openie(X1, U, RR, S, W, X2) <- OpenIE(sentence) -> (X1, U, RR, S, W, X2)
+    #     ?openie(X1, U, RR, S, W, X2)
+    #     '''
+    #
+    session = Session()
+    # session.run_query(query)
+
+    # def my_length(word: str):
+    #     yield word, len(word)
+    #
+    # session = Session()
+    # session.register(my_length, "myLen", [DataTypes.string], [DataTypes.string, DataTypes.integer])
+    # query = """
+    #     new words(str)
+    #     words("a")
+    #     words("ab")
+    #     words("abc")
+    #     words("abcd")
+    #
+    #     word_len(W, L) <- words(X), myLen(X) -> (W, L)
+    #     ?word_len(W, L)
+    # """
+
+    query = """
+    string_rel(X) <- rgx_string("aa",".+") -> (X)
+    span_rel(X) <- rgx_span("aa",".+") -> (X)
+    ?string_rel(X)
+    ?span_rel(X)
+    """
+
+    session.run_query(query)
+
+

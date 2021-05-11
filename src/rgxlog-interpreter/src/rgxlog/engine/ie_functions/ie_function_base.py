@@ -1,3 +1,6 @@
+from typing import Iterable, List
+from rgxlog.engine.datatypes.primitive_types import DataTypes
+
 class IEFunction:
     """
     A class that contains all the functions that provide data
@@ -16,7 +19,7 @@ class IEFunction:
         self.in_types = in_types
         self.out_types = out_types
 
-    def ie_function(self, *args):
+    def ie_function(self, *args) -> Iterable[Iterable]:
         """
         The actual information extraction function that will be used
         the function must return a list of lists/tuples that represents the results, another option is to yield the
@@ -32,14 +35,14 @@ class IEFunction:
         #     return (output,)
         return output
 
-    def get_input_types(self):
+    def get_input_types(self) -> List[DataTypes]:
         """
         returns an iterable of the input types to the function
         This function must be defined as it is used for type checking in semantic passes and execution.
         """
         return self.in_types
 
-    def get_output_types(self, output_arity):
+    def get_output_types(self, output_arity:int) -> List[DataTypes]:
         """
         given an expected output arity returns an iterable of the output types to the function.
         if the ie function cannot return an output of length output_arity, should return None.
@@ -54,6 +57,7 @@ class IEFunction:
             raise Exception("Output arity doesn't match the declared arity.")
         return self.out_types
 
-    # TODO@tom: implement this function
-    def __str__(self):
-        pass
+    def get_meta_data(self) -> str:
+        metadata = f"""Input types: {self.in_types}.\nOutput types: {self.out_types}"""
+        return metadata
+
