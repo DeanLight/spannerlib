@@ -5,6 +5,7 @@ and an rgxlog engine.
 """
 
 # TODO change all imports to relative imports (after installing rgxlog, we run from site-packages instead of this code)
+import re
 from abc import ABC, abstractmethod
 from itertools import count
 from typing import List, Tuple
@@ -268,8 +269,13 @@ class PydatalogEngine(RgxlogEngineBase):
         pyDatalog.load(remove_fact_statement)
 
     def remove_rule(self, rule: str):
-        # the syntax for a 'remove rule' statement in pyDatalog is '-rule_definition' create that statement
-        remove_rule_statement = f'-({rule.replace("-", "=")})'
+        # the syntax for a 'remove rule' statement in pyDatalog is '-(rule_definition)'
+        # transform rule in RGXLog's syntax into PyDatalog's syntax
+        # i.e, ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y) will be transformed to:
+        # ancestor(X,Y) <= parent(X,Z)& ancestor(Z,Y)
+        replace_commas = re.compile(r'(?:[^,(]|\([^)]*\))+')
+        remove_rule_statement = "&".join(replace_commas.findall(rule))
+        remove_rule_statement = f'-({remove_rule_statement.replace("-", "=")})'
         if self.debug:
             self.prints_buffer.append(remove_rule_statement)
         # remove the rule in pyDatalog
@@ -455,8 +461,9 @@ class PydatalogEngine(RgxlogEngineBase):
                 # add the output as a fact to the output relation
                 # TODO@niv: dean, this acts a set (ignores repetitions, e.g. 'a','a', 'aa' becomes 'a','aa').
                 #  is that ok?
-                output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
-                self.add_fact(output_fact)
+                if len(ie_output) != 0:
+                    output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
+                    self.add_fact(output_fact)
 
         # create and return the result relation. it's a relation that is the join of the input and output relations
         result_relation = self.join_relations([input_relation, output_relation], name=ie_relation_name)
@@ -645,7 +652,7 @@ class PydatalogEngine(RgxlogEngineBase):
 
         # assert that the ie output is properly typed
         ie_output_is_properly_typed = ie_output_term_types == list(ie_output_schema)
-        if not ie_output_is_properly_typed:
+        if not ie_output_is_properly_typed and len(ie_output_term_types) != 0:
             raise Exception(f'executing ie relation {ie_relation}\n'
                             f'with the input {ie_input}\n'
                             f'failed because one of the outputs had unexpected term types\n'

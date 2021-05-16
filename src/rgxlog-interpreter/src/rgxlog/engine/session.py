@@ -242,9 +242,6 @@ class Session:
     def register(self, ie_function, ie_function_name, in_rel, out_rel):
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    # def register_class(self, ie_function_object, ie_function_name):
-    #     self._symbol_table.register_ie_function_object(ie_function_object, ie_function_name)
-
     def get_pass_stack(self):
         """
         Returns: the current pass stack
@@ -437,13 +434,51 @@ if __name__ == '__main__':
     #     ?word_len(W, L)
     # """
 
-    query = """
-    string_rel(X) <- rgx_string("aa",".+") -> (X)
-    span_rel(X) <- rgx_span("aa",".+") -> (X)
-    ?string_rel(X)
-    ?span_rel(X)
-    """
+    # query = """
+    # string_rel(X) <- rgx_string("aa",".+") -> (X)
+    # span_rel(X) <- rgx_span("aa",".+") -> (X)
+    # ?string_rel(X)
+    # ?span_rel(X)
+    # """
+    #
+    # session.run_query(query)
+
+    # def NEQ(x, y):
+    #     if x == y:
+    #         yield tuple()
+    #     else:
+    #         yield x, y
+    #
+    #
+    # in_out_types = [DataTypes.string, DataTypes.string]
+    # session.register(NEQ, "NEQ", in_out_types, in_out_types)
+    # query = """new pair(str, str)
+    #             pair("Dan", "Tom")
+    #             pair("Cat", "Dog")
+    #             pair("Apple", "Apple")
+    #             pair("Cow", "Cow")
+    #             pair("123", "321")
+    #
+    #             unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
+    #             ?unique_pair(X, Y)
+    #             """
+    # session.run_query(query)
+
+    query = '''
+            new parent(str, str)
+            parent("Liam", "Noah")
+            parent("Noah", "Oliver")
+            parent("James", "Lucas")
+            parent("Noah", "Benjamin")
+            parent("Benjamin", "Mason")
+            ancestor(X,Y) <- parent(X,Y)
+            ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
+
+            ?ancestor(X, Y)
+            '''
 
     session.run_query(query)
+    session.remove_rule("ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)")
+    session.run_query('?ancestor(X, Y)')
 
 

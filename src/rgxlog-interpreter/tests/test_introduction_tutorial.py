@@ -1,3 +1,4 @@
+from rgxlog.engine.datatypes.primitive_types import DataTypes
 from tests.utils import run_test
 
 
@@ -205,3 +206,70 @@ printing results for query 'tmp(X, Y)':
           """
 
     run_test(query, expected_result, _session=session)
+
+
+def test_string_len():
+    def length(string):
+        # here we append the input to the output inside the ie function!
+        yield len(string), string
+
+    Length = dict(ie_function=length,
+                  ie_function_name='Length',
+                  in_rel=[DataTypes.string],
+                  out_rel=[DataTypes.integer, DataTypes.string],
+                  )
+    expected_result = """printing results for query 'string_length(Str, Len)':
+  Str  |   Len
+-------+-------
+   a   |     1
+  ab   |     2
+  abc  |     3
+ abcd  |     4
+"""
+    query = """new string(str)
+            string("a")
+            string("ab")
+            string("abc")
+            string("abcd")
+            
+            string_length(Str, Len) <- string(Tmp), Length(Tmp) -> (Len, Str)
+            ?string_length(Str, Len)
+            """
+
+    run_test(query, expected_result, [Length])
+
+
+def test_neq():
+    def neq(x, y):
+        if x == y:
+            # return false
+            yield tuple()
+        else:
+            # return true
+            yield x, y
+
+    in_out_types = [DataTypes.string, DataTypes.string]
+    NEQ = dict(ie_function=neq,
+               ie_function_name='NEQ',
+               in_rel=in_out_types,
+               out_rel=in_out_types,
+               )
+    expected_result = """printing results for query 'unique_pair(X, Y)':
+  X  |  Y
+-----+-----
+ Dan | Tom
+ Cat | Dog
+ 123 | 321
+"""
+
+    query = """new pair(str, str)
+            pair("Dan", "Tom")
+            pair("Cat", "Dog")
+            pair("Apple", "Apple")
+            pair("Cow", "Cow")
+            pair("123", "321")
+            
+            unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
+            ?unique_pair(X, Y)
+            """
+    run_test(query, expected_result, [NEQ])
