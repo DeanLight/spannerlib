@@ -33,6 +33,7 @@ def compare_strings(expected: str, output: str) -> bool:
 
     return True
 
+
 def run_test(query: str, expected_output: Optional[str] = None, functions_to_import: Iterable[dict] = tuple(),
              _session: Optional[Session] = None) -> Session:
     if _session is None:

@@ -142,8 +142,7 @@ def tabulate_result(result: Union[DataFrame, List]):
 
 
 def queries_to_string(query_results: List[Tuple[Query, List]]):
-    # TODO: this doesn't execute a query anymore, edit this docstring
-    # TODO: if we combined Query+List into a `Result` object, we could turn it into a __str__ method
+    # TODO@niv: maybe we should remove the "printing results" thing?
     """
     takes in a list of results from PyDatalog and converts them into a single string, which contains
     either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.
@@ -361,20 +360,6 @@ class Session:
 
         self._add_imported_relation_to_engine(data, relation_name, relation_types)
 
-    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";"):
-        # TODO
-        """
-        this will be implemented in a future version
-        """
-        raise NotImplementedError
-
-    def export_relation_into_df(self, df, relation_name):
-        # TODO
-        """
-        this will be implemented in a future version
-        """
-        raise NotImplementedError
-
     def query_into_csv(self, query: str, csv_file_name: str, delimiter=";"):
         # run a query normally and get formatted results:
         query_results = self.run_query(query, print_results=False)
@@ -398,6 +383,21 @@ class Session:
             raise Exception("the query must have exactly one output")
 
         return format_query_results(*query_results[0])
+
+    def _relation_name_to_query(self, relation_name: str):
+        symbol_table = self._symbol_table
+        relation_schema = symbol_table.get_relation_schema(relation_name)
+        relation_arity = len(relation_schema)
+        query = "?" + relation_name + "(" + ", ".join(f"T{i}" for i in range(relation_arity)) + ")"
+        return query
+
+    def export_relation_into_df(self, relation_name: str):
+        query = self._relation_name_to_query(relation_name)
+        return self.query_into_df(query)
+
+    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";"):
+        query = self._relation_name_to_query(relation_name)
+        return self.query_into_csv(query, csv_file_name, delimiter)
 
     def print_registered_ie_functions(self):
         """

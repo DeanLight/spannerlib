@@ -53,3 +53,12 @@ class Span:
 
     def __str__(self):
         return f"[{self.span_start}, {self.span_end})"
+
+    def __lt__(self, other: "Span"):
+        if self.span_start == other.span_start:
+            return self.span_end < other.span_end
+
+        return self.span_start < other.span_start
+
+    def __eq__(self, other:"Span"):
+        return self.span_start == other.span_start and self.span_end == other.span_end

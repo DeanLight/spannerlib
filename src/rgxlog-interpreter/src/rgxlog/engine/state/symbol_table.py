@@ -264,6 +264,7 @@ class SymbolTable(SymbolTableBase):
             self.rule_relations.add(relation_name)
 
     def get_relation_schema(self, relation_name):
+        # TODO@niv: maybe add error checking here?
         return self._relation_to_schema[relation_name]
 
     def get_all_relations(self):

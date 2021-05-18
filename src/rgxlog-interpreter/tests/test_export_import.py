@@ -1,13 +1,15 @@
 import os
 import tempfile
 from os.path import dirname, abspath
+import numpy as np
 
+import pandas
 import pytest
 from pandas import DataFrame
 
+from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.session import Session
 from tests.utils import run_test
-
 
 TEMP_FILE_NAME = "temp"
 
@@ -69,6 +71,7 @@ def test_import_csv2(im_ex_session: Session):
 
 
 def test_import_df(im_ex_session: Session):
+    # TODO@niv: try Span and [) here
     df = DataFrame(["a", "b", "c"])
 
     expected_result_string = """printing results for query \'df_rel(X)\':
@@ -139,6 +142,7 @@ def test_query_into_csv_long(im_ex_session: Session):
 
 
 def test_query_into_df(im_ex_session: Session):
+    # TODO@niv: use `pandas.testing.assert_frame_equal` if this fails
     test_df = DataFrame(["king", "jump"], columns=["X"])
     # create new relation
     query = """
@@ -151,3 +155,26 @@ def test_query_into_df(im_ex_session: Session):
     # query into df and compare
     temp_df = im_ex_session.query_into_df("?df_query_rel(X)")
     assert temp_df.equals(test_df)
+
+
+def test_export_relation_into_csv(im_ex_session: Session):
+    pass
+
+
+def test_export_relation_into_df(im_ex_session: Session):
+    column_names = ["T0", "T1"]
+    expected_df = DataFrame([[Span(1, 3), "aa"], [Span(2, 4), "bb"]], columns=column_names)
+
+    query = """
+    new export_df_rel(spn, str)
+    export_df_rel([1,3), "aa")
+    export_df_rel([2,4), "bb")"""
+
+    im_ex_session.run_query(query)
+    result_df = im_ex_session.export_relation_into_df("export_df_rel")
+
+    # TODO@niv: @dean, is there an easy way to compare these dataframes? i've tried sorting but `Span` is unhashable...
+    for col in expected_df.columns:
+        expected_col = expected_df[col].sort_values().reset_index(drop=True)
+        result_col = result_df[col].sort_values().reset_index(drop=True)
+        assert expected_col.equals(result_col)
