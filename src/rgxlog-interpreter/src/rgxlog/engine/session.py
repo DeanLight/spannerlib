@@ -2,7 +2,7 @@ import csv
 import os
 import re
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 import rgxlog
 from lark.lark import Lark
@@ -32,19 +32,32 @@ from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions
 PREDINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, SSplit, POS, Lemma, NER, EntityMentions,
                      CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase, Entities]
 
-# TODO: are these patterns correct?
-SPAN_PATTERN = re.compile(r"^\[(\d+), ?(\d+)\)$")
+SPAN_GROUP1 = "start"
+SPAN_GROUP2 = "end"
+# TODO@niv: do we support negative numbers and floating point numbers? might have to add a pattern
+
+SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
+# rgx constants
+FALSE_VALUE = []
+TRUE_VALUE = [tuple()]
 
-# TODO:@niv add rust_rgx_*_from_file (ask dean)
+
+# TODO@niv: add rust_rgx_*_from_file (ask dean)
 
 def _infer_relation_type(row: iter):
+    """
+    guess the relation type based on the data.
+    we support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`)
+    :param row:
+    :return:
+    """
     relation_types = []
     for cell in row:
-        if cell.isdigit():
+        if isinstance(cell, int) or cell.isdigit():
             relation_types.append(DataTypes.integer)
-        elif re.match(SPAN_PATTERN, cell):
+        elif isinstance(cell, Span) or re.match(SPAN_PATTERN, cell):
             relation_types.append(DataTypes.span)
         elif re.match(STRING_PATTERN, cell):
             relation_types.append(DataTypes.string)
@@ -59,39 +72,44 @@ def _verify_relation_types(row, expected_types):
         raise Exception(f"row:\n{str(row)}\ndoes not match the relation's types:\n{str(expected_types)}")
 
 
-def _add_types_to_data(line, relation_types):
-    # TODO find a better name for this function, like "typify" or something
+def _text_to_typed_data(line, relation_types):
     transformed_line = []
-    for substring, rel_type in zip(line, relation_types):
+    for str_or_object, rel_type in zip(line, relation_types):
         if rel_type == DataTypes.span:
-            start, end = [int(num) for num in re.findall(SPAN_PATTERN, substring)[0]]
-            transformed_line.append(Span(span_start=start, span_end=end))
+            if isinstance(str_or_object, Span):
+                transformed_line.append(str_or_object)
+            else:
+                span_match = re.match(SPAN_PATTERN, str_or_object)
+                start, end = span_match.group(SPAN_GROUP1), span_match.group(SPAN_GROUP2)
+                transformed_line.append(Span(span_start=start, span_end=end))
         elif rel_type == DataTypes.integer:
-            transformed_line.append(int(substring))
+            transformed_line.append(int(str_or_object))
         else:
             assert rel_type == DataTypes.string, f"illegal type given: {rel_type}"
-            transformed_line.append(substring)
+            transformed_line.append(str_or_object)
 
     return transformed_line
 
 
-def format_query_results(query: Query, query_results: list):
-    # TODO: reformat this to handle multiple queries as well
+def format_query_results(query: Query, query_results: List) -> Union[DataFrame, List]:
+    """
+    formats a single result from the engine into a usable format
+    :param query:
+    :param query_results:
+    :return:
+    """
+    assert isinstance(query_results, list), "illegal results format"
+
     # check for the special conditions for which we can't print a table: no results were returned or a single
     # empty tuple was returned
-    no_results = len(query_results) == 0
-    result_is_single_empty_tuple = len(query_results) == 1 and len(query_results[0]) == 0
-    formatted_results = []
-    query_free_vars = []
 
-    if no_results:
-        tabulated_result_string = '[]'
-    elif result_is_single_empty_tuple:
-        tabulated_result_string = '[()]'
-        formatted_results.append(tuple())
+    if query_results == FALSE_VALUE:  # empty list := false
+        return FALSE_VALUE
+    elif query_results == TRUE_VALUE:  # single tuple := true
+        return TRUE_VALUE
     else:
-        # query results can be printed as a table
         # convert the resulting tuples to a more organized format
+        results_matrix = []
         for result in query_results:
             # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
             # they will be printed as a span instead of a tuple
@@ -99,27 +117,36 @@ def format_query_results(query: Query, query_results: list):
                                      else term
                                      for term in result]
 
-            formatted_results.append(converted_span_result)
+            results_matrix.append(converted_span_result)
 
         # get the free variables of the query, they will be used as headers
         query_free_vars = [term for term, term_type in zip(query.term_list, query.type_list)
                            if term_type is DataTypes.free_var_name]
 
-        # get the query result as a table
-        tabulated_result_string = tabulate(formatted_results, headers=query_free_vars, tablefmt='presto',
-                                           stralign='center')
-
-    return tabulated_result_string, formatted_results, query_free_vars
+        return DataFrame(data=results_matrix, columns=query_free_vars)
 
 
-def query_to_string(query_results: List[Tuple[Query, List]]):
+def tabulate_result(result: Union[DataFrame, List]):
+    if isinstance(result, DataFrame):
+        # query results can be printed as a table
+        result_string = tabulate(result, headers="keys", tablefmt="presto", stralign="center", showindex=False)
+    else:
+        assert isinstance(result, list), "illegal result format"
+        if len(result) == 0:
+            result_string = "[]"
+        else:
+            assert len(result) == 1, "illegal result format"
+            result_string = "[()]"
+
+    return result_string
+
+
+def queries_to_string(query_results: List[Tuple[Query, List]]):
     # TODO: this doesn't execute a query anymore, edit this docstring
     # TODO: if we combined Query+List into a `Result` object, we could turn it into a __str__ method
     """
-    queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
-    the resulting string is a table that contains all of the resulting tuples of the query.
-    the headers of the table are the free variables used in the query.
-    above the table there will be a title that contains the query as it was written by the user
+    takes in a list of results from PyDatalog and converts them into a single string, which contains
+    either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.
 
     for example:
 
@@ -129,10 +156,6 @@ def query_to_string(query_results: List[Tuple[Query, List]]):
     linus
     walter
 
-    there are two cases where a table cannot be printed:
-    1. the query returned no results. in this case '[]' will be printed
-    2. the query returned a single empty tuple, in this case '[()]' will be printed
-
 
     :param query_results: List[the Query object used in execution, the execution's results (from PyDatalog)]
     """
@@ -140,7 +163,7 @@ def query_to_string(query_results: List[Tuple[Query, List]]):
     all_result_strings = []
     query_results = list(filter(None, query_results))  # remove Nones
     for query, results in query_results:
-        query_result_string, _, _ = format_query_results(query, results)
+        query_result_string = tabulate_result(format_query_results(query, results))
         query_title = f"printing results for query '{query}':"
 
         # combine the title and table to a single string and save it to the prints buffer
@@ -214,14 +237,15 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
-    def run_query(self, query: str, print_results: bool = True, format_results=False) -> List[Tuple[Query, List]]:
+    def run_query(self, query: str, print_results: bool = True, format_results=False) -> (
+            Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
         generates an AST and passes it through the pass stack
 
-        :param format_results:
+        :param format_results: if this is true, return the formatted result instead of the `[Query, List]` pair
         :param query: the user's input
         :param print_results: whether to print the results to stdout or not
-        :return the last query's results
+        :return the results of every query, in a list
         """
         exec_results = []
         parse_tree = self._parser.parse(query)
@@ -230,12 +254,10 @@ class Session:
             exec_result = self._run_passes(statement, self._pass_stack)
             exec_results.append(exec_result)
             if print_results and exec_result:
-                # TODO: @dean maybe we should create a Results object to handle this more easily?
-                print(query_to_string([exec_result]))
+                print(queries_to_string([exec_result]))
 
         if format_results:
-            # TODO: this should also be able to handle multiple results
-            format_query_results(*exec_results[0])
+            return [format_query_results(*exec_result) for exec_result in exec_results]
         else:
             return exec_results
 
@@ -248,7 +270,7 @@ class Session:
         """
         return [pass_.__name__ for pass_ in self._pass_stack]
 
-    # TODO: it's theirs implementation.
+    # TODO@tom: it's their implementation. (@niv: can you be more explicit here? i'm not sure what this means)
     def set_pass_stack(self, user_stack):
         """
         sets a new pass stack instead of the current one
@@ -284,20 +306,24 @@ class Session:
     def _unknown_task_type():
         return 'unknown task type'
 
-    def add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
+    def _add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
         symbol_table = self._symbol_table
         engine = self._execution
-        # first make sure the types are legal, then add them to the engine (to make sure
-        #  we don't add them in case of error)
+        # first make sure the types are legal, then we add them to the engine (to make sure
+        #  we don't add them in case of an error)
         facts = []
-        for line in relation_table:
-            _verify_relation_types(line, relation_types)
-            typed_line = _add_types_to_data(line, relation_types)
+
+        # TODO@niv: this needs to support both strings and objects
+        for row in relation_table:
+            _verify_relation_types(row, relation_types)
+            typed_line = _text_to_typed_data(row, relation_types)
             facts.append(AddFact(relation_name, typed_line, relation_types))
+
         # declare relation if it does not exist
         if not symbol_table.contains_relation(relation_name):
             engine.declare_relation(RelationDeclaration(relation_name, relation_types))
             symbol_table.add_relation_schema(relation_name, relation_types, False)
+
         for fact in facts:
             engine.add_fact(fact)
 
@@ -319,7 +345,7 @@ class Session:
             relation_types = _infer_relation_type(next(reader))
             fh.seek(0)
 
-            self.add_imported_relation_to_engine(reader, relation_name, relation_types)
+            self._add_imported_relation_to_engine(reader, relation_name, relation_types)
 
     def import_relation_from_df(self, relation_df: DataFrame, relation_name):
 
@@ -333,7 +359,7 @@ class Session:
 
         relation_types = _infer_relation_type(data[0])
 
-        self.add_imported_relation_to_engine(data, relation_name, relation_types)
+        self._add_imported_relation_to_engine(data, relation_name, relation_types)
 
     def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";"):
         # TODO
@@ -349,31 +375,29 @@ class Session:
         """
         raise NotImplementedError
 
-    def query_into_csv(self, query: str, csv_file_name, delimiter=";"):
+    def query_into_csv(self, query: str, csv_file_name: str, delimiter=";"):
+        # run a query normally and get formatted results:
+        query_results = self.run_query(query, print_results=False)
+        if len(query_results) != 1:
+            raise Exception("a query into csv must have exactly one output")
+
+        formatted_result = format_query_results(*query_results[0])
+
+        if isinstance(formatted_result, DataFrame):
+            formatted_result.to_csv(csv_file_name, index=False, sep=delimiter)
+        else:
+            # true or false
+            with open(csv_file_name, "w", newline="") as f:
+                writer = csv.writer(f, delimiter=delimiter)
+                writer.writerows(formatted_result)
+
+    def query_into_df(self, query: str) -> Union[DataFrame, List]:
         # run a query normally and get formatted results:
         query_results = self.run_query(query, print_results=False)
         if len(query_results) != 1:
             raise Exception("the query must have exactly one output")
 
-        _, rows, free_vars = format_query_results(*query_results[0])
-
-        # add free_vars at start of csv
-        rows.insert(0, free_vars)
-
-        with open(csv_file_name, "w", newline="") as f:
-            writer = csv.writer(f, delimiter=delimiter)
-            writer.writerows(rows)
-
-    def query_into_df(self, query: str) -> DataFrame:
-        # run a query normally and get formatted results:
-        query_results = self.run_query(query, print_results=False)
-        if len(query_results) != 1:
-            raise Exception("the query must have exactly one output")
-
-        _, rows, free_vars = format_query_results(*query_results[0])
-        # TODO: how do i store spans inside a df? use `Span` object?
-        query_df = DataFrame(rows, columns=free_vars)
-        return query_df
+        return format_query_results(*query_results[0])
 
     def print_registered_ie_functions(self):
         """
@@ -390,95 +414,8 @@ class Session:
         """
         self._symbol_table.remove_ie_function(name)
 
-
     def remove_all_ie_functions(self):
         """
         removes all the ie functions from the symbol table
         """
         self._symbol_table.remove_all_ie_functions()
-
-
-
-if __name__ == '__main__':
-    # from rgxlog.stdlib.nlp import NER, Coref, OpenIE, Lemma
-    #
-    # # brothers(X, Y) < - person(X), person(Y), openie(X, Z1, W1, S, U1, V1), openie(Y, Z2, W2, S, U2, V2)
-    # # ?brothers(X, Y)
-    # query = '''
-    #     sentence = "Tom and Dan are brothers. Their mother is called Anny, she is very nice!"
-    #     ner(X, Y, Z) <- NER(sentence)->(X, Y, Z)
-    #     person(X) <- ner(X, "PERSON", Z)
-    #     ?person(Name)
-    #     abstract_rel(X1, R, X2, S) <- OpenIE(sentence) -> (X1, U, Z, S, RR, X2), Lemma(RR) -> (A, R, B)
-    #     ?abstract_rel(X1, R, X2, S)
-    #     openie(X1, U, RR, S, W, X2) <- OpenIE(sentence) -> (X1, U, RR, S, W, X2)
-    #     ?openie(X1, U, RR, S, W, X2)
-    #     '''
-    #
-    session = Session()
-    # session.run_query(query)
-
-    # def my_length(word: str):
-    #     yield word, len(word)
-    #
-    # session = Session()
-    # session.register(my_length, "myLen", [DataTypes.string], [DataTypes.string, DataTypes.integer])
-    # query = """
-    #     new words(str)
-    #     words("a")
-    #     words("ab")
-    #     words("abc")
-    #     words("abcd")
-    #
-    #     word_len(W, L) <- words(X), myLen(X) -> (W, L)
-    #     ?word_len(W, L)
-    # """
-
-    # query = """
-    # string_rel(X) <- rgx_string("aa",".+") -> (X)
-    # span_rel(X) <- rgx_span("aa",".+") -> (X)
-    # ?string_rel(X)
-    # ?span_rel(X)
-    # """
-    #
-    # session.run_query(query)
-
-    # def NEQ(x, y):
-    #     if x == y:
-    #         yield tuple()
-    #     else:
-    #         yield x, y
-    #
-    #
-    # in_out_types = [DataTypes.string, DataTypes.string]
-    # session.register(NEQ, "NEQ", in_out_types, in_out_types)
-    # query = """new pair(str, str)
-    #             pair("Dan", "Tom")
-    #             pair("Cat", "Dog")
-    #             pair("Apple", "Apple")
-    #             pair("Cow", "Cow")
-    #             pair("123", "321")
-    #
-    #             unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
-    #             ?unique_pair(X, Y)
-    #             """
-    # session.run_query(query)
-
-    query = '''
-            new parent(str, str)
-            parent("Liam", "Noah")
-            parent("Noah", "Oliver")
-            parent("James", "Lucas")
-            parent("Noah", "Benjamin")
-            parent("Benjamin", "Mason")
-            ancestor(X,Y) <- parent(X,Y)
-            ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
-
-            ?ancestor(X, Y)
-            '''
-
-    session.run_query(query)
-    session.remove_rule("ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)")
-    session.run_query('?ancestor(X, Y)')
-
-

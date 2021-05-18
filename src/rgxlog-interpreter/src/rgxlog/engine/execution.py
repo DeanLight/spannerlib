@@ -735,7 +735,6 @@ class GenericExecution(ExecutionBase):
             elif term_type == "query":
                 query = term_attrs['value']
                 # TODO: change this - enable returning the pre-formatted query
-                # currently only print queries are supported
                 exec_result = (query, rgxlog_engine.query(query))
 
             elif term_type == "rule":
