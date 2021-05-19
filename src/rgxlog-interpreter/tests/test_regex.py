@@ -2,9 +2,13 @@ from tests.utils import run_test
 
 # TODO: there's a bug when using the same function twice (i.e. rule1 <- f1, rule2 <- f1)
 #  not sure how to solve that right now
+# @response, make a minimal bug reproduction test.
+# this will probably go away when we revamp the engine anyway so dont sweat it
 
 # def test_rust_regex():
 #     # TODO@niv: @dean, see my comment at execution.py:~460 about repetition
+#     # @response: this makes sense and is the intended behavior.
+#     # That is why the algorithm developers use spans and not strings most of the time
 #     expected_result = """printing results for query 'string_rel(X)':
 #           X
 #         -----
@@ -31,6 +35,7 @@ from tests.utils import run_test
 
 def test_rust_regex_groups():
     # TODO@niv: @dean, how does the user know what order to expect, regarding the capture groups?
+    # @response, when introducing this default ie function, you should tell him with some examples
     expected_result = """printing results for query 'group_string_rel(X, Y, Z)':
           X  |  Y  |  Z
         -----+-----+-----

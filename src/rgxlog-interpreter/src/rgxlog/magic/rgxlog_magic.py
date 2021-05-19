@@ -5,6 +5,7 @@ from IPython.core.magic import (Magics, magics_class, line_cell_magic)
 class RgxlogMagic(Magics):
     @line_cell_magic
     # TODO@niv: @dean, maybe rename this to rgxlog?
+    # @response: good call. Lets do it
     def spanner(self, line, cell=None):
         from rgxlog import magic_session
         # import locally to prevent circular import issues

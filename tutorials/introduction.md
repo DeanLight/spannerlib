@@ -1,3 +1,18 @@
+---
+jupyter:
+  jupytext:
+    formats: ipynb,md
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.11.1
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
 # Spanner Workbench Introduction
 In this tutorial you will learn the basics of spanner workbench:
 * [how to install, import and use RGXLog](#use_rgxlog)
@@ -14,73 +29,74 @@ In this tutorial you will learn the basics of spanner workbench:
 
 At the end of this tutorial there is also an [example for a small RGXLog program.](#example_program)
 
+
 # Using RGXLog<a class="anchor" id="use_rgxlog"></a>
 
+
+### Installation
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
 prerequisites:
 
 * Have [Python](https://www.python.org/downloads/) version 3.8 or above installed
 
-To install RGXLog run the following command in your terminal:
+To download and install RGXLog run the following command in your terminal:
 
 ```bash
-$ python3 -m pip install --upgrade --index-url https://test.pypi.org/simple/ --no-deps my-pkg-coldfear-rgxlog-interpreter
+git clone https://github.com/DeanLight/spanner_workbench
+cd spanner_workbench
+
+pip install src/rgxlog-interpreter 
+
 ```
+Make sure you are calling the pip version of your current python environment.
+To install with another python interpreter, run
 
-(This command is likely to change in the future)
+```bash
 
-* If this command doesn't work, try calling python instead of python3 (or whatever name you have for your python installation)
+<path_to_python_interpreter> -m pip install  src/rgxlog-interpreter
 
+```
 You can also install RGXLog in the current Jupyter kernel:
+<!-- #endregion -->
 
-
+<!-- #region pycharm={"name": "#%%\n"} -->
 ```python
 import sys
-current_python=sys.executable
+from pathlib import Path
+current_python=f"{sys.executable}"
+package_path=Path("../src/rgxlog-interpreter")
+```
+<!-- #endregion -->
+
+```
+! {current_python} -m pip install {package_path}
 ```
 
+<!-- #region pycharm={"name": "#%% md\n"} -->
+In order to use RGXLog in jupyter notebooks, you must first load it:
+
+<!-- #endregion -->
 
 ```python
-! {current_python} -m pip install --upgrade --index-url https://test.pypi.org/simple/ --no-deps my-pkg-coldfear-rgxlog-interpreter
+%load_ext rgxlog
 ```
 
-    Looking in indexes: https://test.pypi.org/simple/
-    Collecting my-pkg-coldfear-rgxlog-interpreter
-    [31m  Could not find a version that satisfies the requirement my-pkg-coldfear-rgxlog-interpreter (from versions: )[0m
-    [31mNo matching distribution found for my-pkg-coldfear-rgxlog-interpreter[0m
-    
-
-In order to use RGXLog in jupyter notebooks, you must first import it:
-
-
+Importing the RGXLog library automatically loads the `%spanner` and `%%spanner` cell magics which accepts RGXLog queries as shown below.
 
 ```python
-import rgxlog
+%spanner new relation(str)
+print("this is python code")
 ```
 
-Importing the RGXLog library automatically loads the `%%spanner` cell magic which accepts RGXLog queries as shown below.
-
-
-
-```python
+```python pycharm={"name": "#%%\n"}
 %%spanner
 new uncle(str, str)
 uncle("bob", "greg")
+?uncle(X,Y)
 ```
 
-    start
-      relation_declaration
-        relation_name	uncle
-        decl_term_list
-          decl_string
-          decl_string
-      fact
-        relation_name	uncle
-        fact_term_list
-          string	bob
-          string	greg
-    
-    
-
+<!-- #region pycharm={"name": "#%% md\n"} -->
 # Local and free variables<a class="anchor" id="local_and_free_vars"></a>
 
 RGXLog distinguishes two kinds of variables.
@@ -114,40 +130,23 @@ And here are some illegal free variable names:
 * `_Some_STRING`
 * `1A`
 
+<!-- #endregion -->
 
 # Local variable assignment<a class="anchor" id="local_var_assignment"></a>
 RGXLog allows you to use three types of variables: strings, integers and spans.
 The assignment of a string is intuitive:
-
 
 ```python
 %%spanner
 b = "bob"
 b2 = b # b2's value is "bob"
 # you can write multiline strings using a line overflow escape like in python
-b3 = "this is a multiline " \
-"string"
+b3 = "this is a multiline  \
+string"
 b4 = "this is a multiline string" # b4 holds the same value as b3
 ```
 
-    start
-      assign_literal_string
-        var_name	b
-        string	bob
-      assign_var
-        var_name	b2
-        var_name	b
-      assign_literal_string
-        var_name	b3
-        string	this is a multiline string
-      assign_literal_string
-        var_name	b4
-        string	this is a multiline string
-    
-    
-
 The assignment of integers is also very simple:
-
 
 ```python
 %%spanner
@@ -155,19 +154,8 @@ n = 4
 n2 = n # n2 = 4
 ```
 
-    start
-      assign_int
-        var_name	n
-        integer	4
-      assign_var
-        var_name	n2
-        var_name	n
-    
-    
-
  A span identifies a substring of a string by specifying its bounding indices. It is constructed from two integers.
  You can assign a span value like this:
-
 
 ```python
 %%spanner
@@ -175,46 +163,19 @@ span1 = [3,7)
 span2 = span1 # span2 value is [3,7)
 ```
 
-    start
-      assign_span
-        var_name	span1
-        span
-          integer	3
-          integer	7
-      assign_var
-        var_name	span2
-        var_name	span1
-    
-    
-
 # Reading from a file<a class="anchor" id="read_a_file"></a>
 You can also perform a string assignment by reading from a file. You will need to provide a path to a file by either using a string literal or a string variable:
 
-
 ```python
 %%spanner
-a = read("path/to/file")
-b = "path/to/file" 
+a = read("introduction.ipynb")
+b = "introduction.ipynb" 
 c = read(b) # c holds the same string value as a
 ```
 
-    start
-      assign_string_from_file_string_param
-        var_name	a
-        string	path/to/file
-      assign_literal_string
-        var_name	b
-        string	path/to/file
-      assign_string_from_file_var_param
-        var_name	c
-        var_name	b
-    
-    
-
-# Derclaring a relation<a class="anchor" id="declare_relations"></a>
+# Declaring a relation<a class="anchor" id="declare_relations"></a>
 RGXLog allows you to define and query relations.
 You have to declare a relation before you can use it (unless you define it with a rule as we'll see in the "rules" chapter). Each term in a relation could be a string, an integer or a span. Here are some examples for declaring relations:
-
 
 ```python
 %%spanner
@@ -228,29 +189,6 @@ new animal(str, spn)
 new scores(str, int)
 ```
 
-    start
-      relation_declaration
-        relation_name	brothers
-        decl_term_list
-          decl_string
-          decl_string
-      relation_declaration
-        relation_name	confused
-        decl_term_list
-          decl_string
-      relation_declaration
-        relation_name	animal
-        decl_term_list
-          decl_string
-          decl_span
-      relation_declaration
-        relation_name	scores
-        decl_term_list
-          decl_string
-          decl_int
-    
-    
-
 # Facts<a class="anchor" id="facts"></a>
 RGXLog is an extension of Datalog, a declarative logic programming language. In Datalog you can declare "facts", essentially adding tuples to a relation. To do it you use the following syntax:
 
@@ -258,10 +196,15 @@ RGXLog is an extension of Datalog, a declarative logic programming language. In 
 relation_name(term_1,term_2,...term_3)
 ```
 
+or
+
+```
+relation_name(term_1,term_2,...term_3) <- True
+```
+
 where each `term` is either a constant or a local variable that is from the same variable type that was declared for `relation_name` at the same location.
 
 For example:
-
 
 ```python
 %%spanner
@@ -272,53 +215,28 @@ new noun(str, spn)
 noun("Life finds a way", [0,4)) 
 # another example
 new sisters(str, str)
-sisters("alice", "rin")
+sisters("alice", "rin") <- True
 # sisters([0,4), "rin") # illegal as [0,4) is not a string
-# example with int
-new goals(str, int)
-goals("kronovi", 10)                          
 ```
 
-    start
-      relation_declaration
-        relation_name	noun
-        decl_term_list
-          decl_string
-          decl_span
-      fact
-        relation_name	noun
-        fact_term_list
-          string	Life finds a way
-          span
-            integer	0
-            integer	4
-      relation_declaration
-        relation_name	sisters
-        decl_term_list
-          decl_string
-          decl_string
-      fact
-        relation_name	sisters
-        fact_term_list
-          string	alice
-          string	rin
-      relation_declaration
-        relation_name	goals
-        decl_term_list
-          decl_string
-          decl_int
-      fact
-        relation_name	goals
-        fact_term_list
-          string	kronovi
-          integer	10
-    
-    
+You could also remove a fact using a similar syntax:
+
+```relation_name(term_1,term_2,...term_3) <- False```
+
+if a fact that you try to remove does not exist, the remove fact statement will be silently ignored
+
+
+```python
+%%spanner
+new goals(str, int)
+goals("kronovi", 10)
+goals("kronovi", 10) <- False  # 'goals' relation is now empty
+goals("kronovi", 10) <- False  # this statement does nothing
+```
 
 # Rules<a class="anchor" id="rules"></a>
 Datalog allows you to deduce new tuples for a relation.
 RGXLog includes this feature as well:
-
 
 ```python
 %%spanner
@@ -329,47 +247,47 @@ parent("greg", "alice")
 grandparent(X,Z) <- parent(X,Y), parent(Y,Z) # ',' is a short hand to the 'and' operator
 ```
 
-    start
-      relation_declaration
-        relation_name	parent
-        decl_term_list
-          decl_string
-          decl_string
-      fact
-        relation_name	parent
-        fact_term_list
-          string	bob
-          string	greg
-      fact
-        relation_name	parent
-        fact_term_list
-          string	greg
-          string	alice
-      rule
-        rule_head
-          relation_name	grandparent
-          free_var_name_list
-            free_var_name	X
-            free_var_name	Z
-        rule_body
-          relation
-            relation_name	parent
-            term_list
-              free_var_name	X
-              free_var_name	Y
-          relation
-            relation_name	parent
-            term_list
-              free_var_name	Y
-              free_var_name	Z
-    
-    
+RGXLog also supports recursive rules:
+
+```python
+%%spanner
+parent("Liam", "Noah")
+parent("Noah", "Oliver")
+parent("James", "Lucas")
+parent("Noah", "Benjamin")
+parent("Benjamin", "Mason")
+ancestor(X,Y) <- parent(X,Y)
+# This is a recursive rule
+ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
+
+# Queties are explained in the next section
+?ancestor("Liam", X)
+?ancestor(X, "Mason")
+?ancestor("Mason", X)
+```
+
+You could also remove a rule via the session:
+
+```magic_session.remove_rule(rule_to_delete)```
+
+Note that rules that use ie functions and recursive rules cannot be deleted!
+
+```python
+%%spanner
+ancestor(X,Y) <- grandparent(X,Y)
+# OOPS, that was a mistake!
+```
+
+```python
+from rgxlog import magic_session
+# remove the rule from the current session
+magic_session.remove_rule("ancestor(X,Y) <- grandparent(X,Y)")
+```
 
 # Queries<a class="anchor" id="queries"></a>
 Querying is very simple in RGXLog. You can query by using constant values, local variables and free variables:
 
-
-```python
+```python pycharm={"name": "#%%\n"}
 %%spanner
 # first create a relation with some facts for the example
 new grandfather(str, str)
@@ -402,129 +320,7 @@ orders("cake", 0)
 ?orders(X, 4) # retutns "pie" and "pizza"         
 ```
 
-    start
-      relation_declaration
-        relation_name	grandfather
-        decl_term_list
-          decl_string
-          decl_string
-      fact
-        relation_name	grandfather
-        fact_term_list
-          string	bob
-          string	alice
-      fact
-        relation_name	grandfather
-        fact_term_list
-          string	bob
-          string	rin
-      fact
-        relation_name	grandfather
-        fact_term_list
-          string	george
-          string	alice
-      fact
-        relation_name	grandfather
-        fact_term_list
-          string	george
-          string	rin
-      fact
-        relation_name	grandfather
-        fact_term_list
-          string	edward
-          string	john
-      query
-        relation
-          relation_name	grandfather
-          term_list
-            string	bob
-            string	alice
-      query
-        relation
-          relation_name	grandfather
-          term_list
-            string	edward
-            string	alice
-      query
-        relation
-          relation_name	grandfather
-          term_list
-            string	george
-            free_var_name	X
-      query
-        relation
-          relation_name	grandfather
-          term_list
-            free_var_name	X
-            string	rin
-      query
-        relation
-          relation_name	grandfather
-          term_list
-            free_var_name	X
-            free_var_name	Y
-      relation_declaration
-        relation_name	verb
-        decl_term_list
-          decl_string
-          decl_span
-      fact
-        relation_name	verb
-        fact_term_list
-          string	Ron eats quickly.
-          span
-            integer	4
-            integer	8
-      fact
-        relation_name	verb
-        fact_term_list
-          string	You write neatly.
-          span
-            integer	4
-            integer	9
-      query
-        relation
-          relation_name	verb
-          term_list
-            string	Ron eats quickly.
-            free_var_name	X
-      query
-        relation
-          relation_name	verb
-          term_list
-            free_var_name	X
-            span
-              integer	4
-              integer	9
-      relation_declaration
-        relation_name	orders
-        decl_term_list
-          decl_string
-          decl_int
-      fact
-        relation_name	orders
-        fact_term_list
-          string	pie
-          integer	4
-      fact
-        relation_name	orders
-        fact_term_list
-          string	pizza
-          integer	4
-      fact
-        relation_name	orders
-        fact_term_list
-          string	cake
-          integer	0
-      query
-        relation
-          relation_name	orders
-          term_list
-            free_var_name	X
-            integer	4
-    
-    
-
+<!-- #region pycharm={"name": "#%% md\n"} -->
 You may have noticed that the query
 
 ```
@@ -541,73 +337,116 @@ A good example for using free variables to construct a relation is the query:
 ```
 
 which finds all of george's grandchildren (`X`) and constructs a tuple for each one.
+<!-- #endregion -->
 
+<!-- #region pycharm={"name": "#%% md\n"} -->
 # Functional regex formulas<a class="anchor" id="RGX_ie"></a>
 RGXLog supports information extraction using a regular expressions and named capture groups (for now in rule bodies only).
 You will first need to define a string variable either by using a literal or a load from a file, and then you can use the following syntax in a rule body:
 
 ```
-extract RGX<regex_formula>(x_1, x_2, ...,x_n) from s
+rgx_span(regex_input ,regex_formula)->(x_1, x_2, ...,x_n)
+```
+
+or
+
+```
+rgx_string(regex_input ,regex_formula)->(x_1, x_2, ...,x_n)
 ```
 
 where:
+* `regex_input` is the string that the regex operation will be performed on
 * `regex_formula` is either a string literal or a string variable that represents your regular expression.
-* `x_1`, `x_2`, ... `x_n` can be any terms including capture groups that appear in the regular expressions. They're used to construct the tuples of the resulting relation. the number of terms has to be the same as the number of capture groups used in `regex_formula`.
-* `s` is a string variable that the information will be extracted from.
+* `x_1`, `x_2`, ... `x_n` can be either constant terms or free variable terms. They're used to construct the tuples of the resulting relation. the number of terms has to be the same as the number of capture groups used in `regex_formula`. If not capture groups are used, then each returned tuple includes a single, whole regex match, so only one term should be used.
+
+The only difference between the 'rgx_span' and 'rgx_string' ie functions, is that RGX returns spans while RGXString returns strings. This also means that if you want to use constant terms as return values, they have to be spans if you use 'RGX', or strings if you use 'RGXString'
 
 For example:
+<!-- #endregion -->
 
+```python
+from rgxlog.stdlib.python_regex import PYRGX_STRING
+magic_session.register(**PYRGX_STRING) 
+# TODO: i think the dict name should be the same as the function name (at least for non-default functions), less confusing
+# @response: do you mean the ie function name in rgxlog, or the pythonic function object?
+# I agree if you mean the former, the latter will overshadow the function object which is problematic.
+# in that case you can have a suffix for the dict var name but keep the prefix the same as the function object var name
+```
 
 ```python
 %%spanner
 report = "In 2019 we earned 2000 EUR"
-# you can use line overflow escape to separate your statement (like in python)
-annual_earning(Year,Amount) <- extract RGX<".*(?<Year>\d\d\d\d).*(?<Amount>\d+)\sEUR"> \
-(Year, Amount) from report
-?annual_earning(X,Y) # returns ("2019", "2000")
+annual_earning(Year, Amount) <- py_rgx_string(report,"(\d\d\d\d).*?(?P<a>\d+)")->(Amount, Year)
+?annual_earning(X, Y) # TODO@niv: dean, if we use regex with repetitions here, this becomes is ugly - is this intentional?
+# @response What do you mean by with repetitions? 
+# I think you are talking about regex semantics, let me give you some terminology
+# When talking about possible overlapping matches in regex matching, we see 3 flavors
+# 1. Greedy match semantics, return the biggest match that fits (like python re)
+# 2. Lazy match semantics, return the smallest match that fits
+# 3. Exhaustive semantics, return every possible match (like in enum-span-rs)
+# 
+# Here is an example, if we match a+b+ to "aaab"
+#  Greedy will return aab
+# lazy will reutrn ab
+# exhaustive will return ab, aab and aaab
+#
+# in this example, we want greedy matching, so its good to use python regex
+# if someone wants exhaustive matching, they should use enum-span-rs
 ```
 
-    start
-      assign_literal_string
-        var_name	report
-        string	In 2019 we earned 2000 EUR
-      rule
-        rule_head
-          relation_name	annual_earning
-          free_var_name_list
-            free_var_name	Year
-            free_var_name	Amount
-        rule_body
-          rgx_ie_relation
-            term_list
-              string	.*(?<Year>\d\d\d\d).*(?<Amount>\d+)\sEUR
-            term_list
-              free_var_name	Year
-              free_var_name	Amount
-            var_name	report
-      query
-        relation
-          relation_name	annual_earning
-          term_list
-            free_var_name	X
-            free_var_name	Y
-    
-    
+# Creating and Registering a New IE Function
+
+<!-- #region -->
+In addition to the existing/default IE functions, users may create their own functions to be used as part of rgxlog.
+In order to do so, the following are required:
+
+* `ie_function`: a function which yields an iterable of primitive types
+* `ie_function_name`: the name by which the function is called inside rgxlog
+* `in_rel`: the input types, e.g. [DataTypes.string]
+* `out_rel`: the output types, can be either a method which expects an arity, or an iterable, e.g. [DataTypes.span]
+
+now, just register it:
+```python
+session.register(ie_function, ie_function_name, in_rel, out_rel)
+```
+<!-- #endregion -->
+
+```python
+import re
+from rgxlog.engine.datatypes.primitive_types import DataTypes
+
+def get_happy(text):
+    compiled_rgx = re.compile("(\w+) is happy")
+    num_groups = compiled_rgx.groups
+    for match in re.finditer(compiled_rgx, text):
+        if num_groups == 0:
+            matched_strings = [match.group()]
+        else:
+            matched_strings = [group for group in match.groups()]
+        yield matched_strings
+
+get_happy_out_types = [DataTypes.string]
+get_happy_in_types = [DataTypes.string]
+        
+magic_session.register(ie_function=get_happy,
+                       ie_function_name = "get_happy",
+                       in_rel=get_happy_in_types,
+                       out_rel=get_happy_out_types)
+```
 
 # Custom information extractors<a class="anchor" id="custom_ie"></a>
-RGXLog allows you to define and use your own information extractors. You can use them only in rule bodies (TBD). The following is the syntax for custom information extractors:
+RGXLog allows you to define and use your own information extractors. You can use them only in rule bodies in the current version. The following is the syntax for custom information extractors:
 
 ```
-func<term_1,term_2,...term_n>(x_1, x_2, ..., x_n)
+func(term_1,term_2,...term_n)->(x_1, x_2, ..., x_n)
 ```
 
 where:
-* `func` is a IE function that was previously defined (TBD where it was defined)     
+* `func` is a IE function that was previously defined and registered (see the 'advanced_usage' tutorial)
 * `term_1`,`term_2`,...,`term_n` are the parameters for func
 * `x_1`, ... `x_n` could be any type of terms, and are used to construct tuples of the resulting relation
 
 For example:
-
 
 ```python
 %%spanner
@@ -615,74 +454,40 @@ new grandmother(str, str)
 grandmother("rin", "alice")
 grandmother("denna", "joel")
 sentence = "rin is happy, denna is sad."
-happy_grandmother(X) <- grandmother(X,Z),get_happy<sentence>(X)
+# note that this statement will fail as 'get_happy' is not registered as an ie_function
+test_happy(X) <- get_happy(sentence) -> (X)
+happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 ?happy_grandmother(X) # assuming get_happy returned "rin", also returns "rin"
 ```
 
-    start
-      relation_declaration
-        relation_name	grandmother
-        decl_term_list
-          decl_string
-          decl_string
-      fact
-        relation_name	grandmother
-        fact_term_list
-          string	rin
-          string	alice
-      fact
-        relation_name	grandmother
-        fact_term_list
-          string	denna
-          string	joel
-      assign_literal_string
-        var_name	sentence
-        string	rin is happy, denna is sad.
-      rule
-        rule_head
-          relation_name	happy_grandmother
-          free_var_name_list
-            free_var_name	X
-        rule_body
-          relation
-            relation_name	grandmother
-            term_list
-              free_var_name	X
-              free_var_name	Z
-          func_ie_relation
-            function_name	get_happy
-            term_list
-              var_name	sentence
-            term_list
-              free_var_name	X
-      query
-        relation
-          relation_name	happy_grandmother
-          term_list
-            free_var_name	X
-    
-    
+## More information about ie functions
+* You can remove an ie function via the session:
 
+```magic_session.remove_ie_function(ie_function_name)```
+
+* If you want to remove all the registered ie functions:
+
+```magic_session.remove_all_ie_function()```
+
+* If you register ie function with a name that was already registerd before, the old ie function will be overwitten by the new one. 
+<br><br>
+* You can inspect all the registered ie functions by:
+
+```magic_session.print_registered_ie_functions()```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
 # Additional small features<a class="anchor" id="small_features"></a>
 You can use line overflow escapes if you want to split your statements into multiple lines
+<!-- #endregion -->
 
-
-```python
+```python pycharm={"name": "#%%\n"}
 %%spanner
 k \
-= "some " \
-"string"
+= "some \
+string"
 ```
 
-    start
-      assign_literal_string
-        var_name	k
-        string	some string
-    
-    
-
 # RGXLog program example<a class="anchor" id="example_program"></a>
-
 
 ```python
 %%spanner
@@ -710,165 +515,102 @@ enrolled_in_physics_and_chemistry(X) <- enrolled(X, "chemistry"), enrolled(X, "p
 lecturer_of(X,Z) <- lecturer(X,Y), enrolled(Z,Y)
 ?lecturer_of(X,"abigail") # returns "walter" and "linus"
 
-gpa_str = "\n abigail 100\n jordan 80\n gale 79\n howard 60\n"
-gpa_of_chemistry_students(Student, Grade) <- extract \
-RGX<".*[\n](?<Student>[a-z]+).*(?<Grade>\d+).*[\n]">(Student, Grade) from gpa_str, \
-enrolled_in_chemistry(Student)
+gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
+gpa_of_chemistry_students(Student, Grade) <- \
+py_rgx_string(gpa_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemistry(Student)
 ?gpa_of_chemistry_students(X, "100") # returns "abigail"
 ```
 
-    start
-      relation_declaration
-        relation_name	lecturer
-        decl_term_list
-          decl_string
-          decl_string
-      fact
-        relation_name	lecturer
-        fact_term_list
-          string	walter
-          string	chemistry
-      fact
-        relation_name	lecturer
-        fact_term_list
-          string	linus
-          string	operation systems
-      fact
-        relation_name	lecturer
-        fact_term_list
-          string	rick
-          string	physics
-      relation_declaration
-        relation_name	enrolled
-        decl_term_list
-          decl_string
-          decl_string
-      fact
-        relation_name	enrolled
-        fact_term_list
-          string	abigail
-          string	chemistry
-      fact
-        relation_name	enrolled
-        fact_term_list
-          string	abigail
-          string	operation systems
-      fact
-        relation_name	enrolled
-        fact_term_list
-          string	jordan
-          string	chemistry
-      fact
-        relation_name	enrolled
-        fact_term_list
-          string	gale
-          string	operation systems
-      fact
-        relation_name	enrolled
-        fact_term_list
-          string	howard
-          string	chemistry
-      fact
-        relation_name	enrolled
-        fact_term_list
-          string	howard
-          string	physics
-      rule
-        rule_head
-          relation_name	enrolled_in_chemistry
-          free_var_name_list
-            free_var_name	X
-        rule_body
-          relation
-            relation_name	enrolled
-            term_list
-              free_var_name	X
-              string	chemistry
-      query
-        relation
-          relation_name	enrolled_in_chemistry
-          term_list
-            string	jordan
-      query
-        relation
-          relation_name	enrolled_in_chemistry
-          term_list
-            string	gale
-      query
-        relation
-          relation_name	enrolled_in_chemistry
-          term_list
-            free_var_name	X
-      rule
-        rule_head
-          relation_name	enrolled_in_physics_and_chemistry
-          free_var_name_list
-            free_var_name	X
-        rule_body
-          relation
-            relation_name	enrolled
-            term_list
-              free_var_name	X
-              string	chemistry
-          relation
-            relation_name	enrolled
-            term_list
-              free_var_name	X
-              string	physics
-      query
-        relation
-          relation_name	enrolled_in_physics_and_chemistry
-          term_list
-            free_var_name	X
-      rule
-        rule_head
-          relation_name	lecturer_of
-          free_var_name_list
-            free_var_name	X
-            free_var_name	Z
-        rule_body
-          relation
-            relation_name	lecturer
-            term_list
-              free_var_name	X
-              free_var_name	Y
-          relation
-            relation_name	enrolled
-            term_list
-              free_var_name	Z
-              free_var_name	Y
-      query
-        relation
-          relation_name	lecturer_of
-          term_list
-            free_var_name	X
-            string	abigail
-      assign_literal_string
-        var_name	gpa_str
-        string	\n abigail 100\n jordan 80\n gale 79\n howard 60\n
-      rule
-        rule_head
-          relation_name	gpa_of_chemistry_students
-          free_var_name_list
-            free_var_name	Student
-            free_var_name	Grade
-        rule_body
-          rgx_ie_relation
-            term_list
-              string	.*[\n](?<Student>[a-z]+).*(?<Grade>\d+).*[\n]
-            term_list
-              free_var_name	Student
-              free_var_name	Grade
-            var_name	gpa_str
-          relation
-            relation_name	enrolled_in_chemistry
-            term_list
-              free_var_name	Student
-      query
-        relation
-          relation_name	gpa_of_chemistry_students
-          term_list
-            free_var_name	X
-            string	100
+# Useful tricks<a class="anchor" id="Usefull tricks"></a>
+## First Trick:
+Lets write a rgxlog program that gets a table in which each row is a strings - string(str).
+<br>
+The program will create a new table in which each row is a string and it's length.
+### First try:
+
+```python
+#Step1: implementation ie function
+def length(string):
+    yield len(string), 
     
+#Step2: registretion of the function
+magic_session.register(length, "Length", [DataTypes.string], [DataTypes.integer])
+```
+
+```python
+%%spanner
+#Lets test this solution
+new string(str)
+string("a")
+string("ab")
+string("abc")
+string("abcd")
+
+string_length(Str, Len) <- string(Str), Length(Str) -> (Len)
+?string_length(Str, Len)
+```
+
+### Looks like something went wrong!
+Our goal was to append to each string in thhe table it's length.
+What we actually got is the length of each string appended to **all** the strings.
+<br>
+This happens becuase RGXLog stores all the inputs of ie function in an intput table and all the outputs in an output table. 
+Then it's joining the input table with the output table.
+<br><br>
+Therefore, if we want append to each input to it's output, we have to do it mannualy.
+### Second try:
+
+```python
+def length2(string):
+    #here we append the input to the output inside the ie function!
+    yield len(string), string
     
+magic_session.register(length2, "Length2", [DataTypes.string], [DataTypes.integer, DataTypes.string])
+```
+
+```python
+%%spanner
+string_length_2(Str, Len) <- string(Tmp), Length2(Tmp) -> (Len, Str)
+?string_length_2(Str, Len)
+```
+
+## Second Trick:
+Suppose we have a table in which each row contains two strings - pair(str, str).
+Our goal is to filter all the rows that contain the same value twice.
+<br>
+In other words, we want to implement the relation **not equals (NEQ)**.
+
+We would like to have a rule such as:
+<br>
+```unique_pair(X, Y) <- pair(X, Y), X != Y```
+<br><br>
+Unfortunately RGXLog doesn't support True/False values. Therefore, we can't use ```X != Y```.
+<br>
+Our solution to this problem is to create an ie function that implements NEQ relation:
+
+```python
+def NEQ(x, y):
+    if x == y:
+        # return false
+        yield tuple() 
+    else:
+        #return true
+        yield x, y
+
+in_out_types = [DataTypes.string, DataTypes.string]
+magic_session.register(NEQ, "NEQ", in_out_types, in_out_types)
+```
+
+```python
+%%spanner
+#Lets test this solution
+new pair(str, str)
+pair("Dan", "Tom")
+pair("Cat", "Dog")
+pair("Apple", "Apple")
+pair("Cow", "Cow")
+pair("123", "321")
+
+unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
+?unique_pair(X, Y)
+```

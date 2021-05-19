@@ -35,6 +35,8 @@ PREDINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, S
 SPAN_GROUP1 = "start"
 SPAN_GROUP2 = "end"
 # TODO@niv: do we support negative numbers and floating point numbers? might have to add a pattern
+# @response negative I dont know, check. floats i think we dont at the moment. its not a priority but might be nice in the future
+
 
 SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
@@ -45,6 +47,7 @@ TRUE_VALUE = [tuple()]
 
 
 # TODO@niv: add rust_rgx_*_from_file (ask dean)
+# @response i dont understand this question. Please elaborate
 
 def _infer_relation_type(row: iter):
     """
@@ -148,6 +151,8 @@ def tabulate_result(result: Union[DataFrame, List]):
 
 def queries_to_string(query_results: List[Tuple[Query, List]]):
     # TODO@niv: maybe we should remove the "printing results" thing?
+    # @response, what are the pros and cons? Did you consider user experience
+    # I need more to go on to understand if we should do this
     """
     takes in a list of results from PyDatalog and converts them into a single string, which contains
     either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.
@@ -256,6 +261,7 @@ class Session:
 
         # TODO@niv: @dean, maybe we should only return a single result here, instead of a list?
         #  i don't think users will call multiple queries at once and expect a list of results
+        # @response, that makes sense, as long as you explain the behavior in the tutorials somewhere
         for statement in parse_tree.children:
             exec_result = self._run_passes(statement, self._pass_stack)
             if exec_result is not None:

@@ -131,6 +131,7 @@ def test_ner():
 
 
 # TODO@niv: this sometimes raises `raise RuntimeError('Java not found.')` (inside `spanner-nlp`)
+# @reponse: wierd, have you checked why? is it only this test, or only this annotator?
 def test_entity_mentions():
     expected_result = ("""printing results for query 'em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text,"""
                        """ CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences)':
@@ -191,6 +192,8 @@ def test_depparse():
 
 
 # TODO@niv: this test is really slow sometimes
+# @response: nlp is slow unfortunatly, I dont remember which test suite you use (maybe pytest)
+# but you can annotate it as a special test that only runs when given a slow-test flag or something
 def test_coref():
     expected_result = ("""printing results for query 'coref(Id, Text, Type, Number, Gender, Animacy, StartIndex,"""
                        """ EndIndex, HeadIndex, SentNum, Position, IsRepresentativeMention)':
@@ -236,6 +239,10 @@ def test_openie():
 
 
 # TODO@niv: this used ~3GB RAM for me, is this normal?
+# @ response:
+# yes, see this: https://stanfordnlp.github.io/CoreNLP/memory-time.html
+# there is a way to limit memory usage in java https://stackoverflow.com/a/1493951/14571960
+# which i think will cause the engine to crash if the mem footprint of the annotator is too large
 def test_kbp():
     expected_result = ("""printing results for query 'kbp(Subject, SubjectSpan, Relation, RelationSpan, Object,"""
                        """ ObjectSpan)':

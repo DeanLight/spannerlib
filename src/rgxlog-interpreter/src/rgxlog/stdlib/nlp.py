@@ -27,6 +27,7 @@ JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = path.expanduser("~")
 INSTALLATION_PATH = path.join(_USER_DIR, ".jre")
 
+# TODO @response, why is enum_spanner and stanford-corenlp in the git tree, did you forget to add them to gitignore?
 
 def _is_installed_nlp():
     return path.isdir(NLP_DIR_PATH)
@@ -52,6 +53,8 @@ def _is_installed_java():
 
     # # TODO: how to check the java version?
     # return sh.which("java") is not None
+    # @response: i think `java -version` works for 1.6 upwards
+    # you can assume that earlier versions are not applicable and consider them as not installed or something
 
 
 def _run_installation():

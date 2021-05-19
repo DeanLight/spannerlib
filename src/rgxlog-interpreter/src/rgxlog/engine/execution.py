@@ -414,6 +414,7 @@ class PydatalogEngine(RgxlogEngineBase):
             for ie_output in ie_outputs:
                 # TODO@niv: i don't like this, imo we should check if it's iterable, and if not, put a list around it.
                 #  it would be easier to debug that way
+                # @response go for it.
                 ie_output = list(ie_output)
 
                 # assert the ie output is properly typed
@@ -428,6 +429,9 @@ class PydatalogEngine(RgxlogEngineBase):
                 # add the output as a fact to the output relation
                 # TODO@niv: dean, this acts a set (ignores repetitions, e.g. 'a','a', 'aa' becomes 'a','aa').
                 #  is that ok?
+                # @response, yes, the semantics of datalog queries is to return the set of all 
+                # variable assignments that satisfy the constraints.
+                # Some times there are two logical paths that produce the same assignment, we dont want to output them twice
                 if len(ie_output) != 0:
                     output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
                     self.add_fact(output_fact)
@@ -629,6 +633,7 @@ class PydatalogEngine(RgxlogEngineBase):
 
     def clear_all(self):
         # TODO@niv: @dean, maybe we should run this between tests?
+        # @response, good idea
         pyDatalog.clear()
 
 

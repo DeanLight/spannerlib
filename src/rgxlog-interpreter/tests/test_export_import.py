@@ -115,6 +115,7 @@ def test_query_into_csv_long(im_ex_session: Session):
 
     # create new relation
     # TODO@niv: dean, why not change spn into span? much more readable/intuitive
+    # @response: sure, lets do it
     query = """new longrel(str,spn,int)
         longrel("ano sora",[42, 69),24)
         longrel("aoi",[1, 2),16)

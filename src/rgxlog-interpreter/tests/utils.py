@@ -58,6 +58,7 @@ def run_test(query: str, expected_output: Optional[str] = None, functions_to_imp
         test_session.register(**ie_function)
 
     # TODO@niv: i think printing results is more comfy for debugging
+    # @response: agreed
     query_result = test_session.run_query(query, print_results=True)
 
     if expected_output is not None:
