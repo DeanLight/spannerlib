@@ -395,8 +395,8 @@ class CheckDefinedReferencedVariables(Interpreter):
 #     """
 #     """
 #     TODO: in a future version of rgxlog we might want to allow for a rule head to be "redefined", meaning
-#     a relation could be defined by multiple rule heads, allowing for recursion.
-#     This would mean changing this pass as it does not allow a relation to appear in multiple rule heads.
+#      a relation could be defined by multiple rule heads, allowing for recursion.
+#      This would mean changing this pass as it does not allow a relation to appear in multiple rule heads.
 #     """
 #
 #     def __init__(self, **kw):

@@ -254,6 +254,8 @@ class Session:
         exec_results = []
         parse_tree = self._parser.parse(query)
 
+        # TODO@niv: @dean, maybe we should only return a single result here, instead of a list?
+        #  i don't think users will call multiple queries at once and expect a list of results
         for statement in parse_tree.children:
             exec_result = self._run_passes(statement, self._pass_stack)
             if exec_result is not None:
@@ -318,7 +320,6 @@ class Session:
         #  we don't add them in case of an error)
         facts = []
 
-        # TODO@niv: this needs to support both strings and objects
         for row in relation_table:
             _verify_relation_types(row, relation_types)
             typed_line = _text_to_typed_data(row, relation_types)

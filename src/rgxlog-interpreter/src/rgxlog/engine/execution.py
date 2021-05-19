@@ -4,7 +4,7 @@ and also implementations of 'ExecutionBase' which serves as an abstraction for a
 and an rgxlog engine.
 """
 
-# TODO change all imports to relative imports (after installing rgxlog, we run from site-packages instead of this code)
+# TODO remove import * where not needed
 import re
 from abc import ABC, abstractmethod
 from itertools import count

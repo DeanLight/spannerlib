@@ -132,7 +132,6 @@ def test_query_into_csv_long(im_ex_session: Session):
 
 
 def test_query_into_df(im_ex_session: Session):
-    # TODO@niv: use `pandas.testing.assert_frame_equal` if this fails
     test_df = DataFrame(["king", "jump"], columns=["X"])
     # create new relation
     query = """
