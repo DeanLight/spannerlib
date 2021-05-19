@@ -50,18 +50,18 @@ def compare_strings(expected: str, output: str) -> bool:
 
 
 def run_test(query: str, expected_output: Optional[str] = None, functions_to_import: Iterable[dict] = tuple(),
-             session: Optional[Session] = None) -> Session:
-    if session is None:
-        session = Session()
+             test_session: Optional[Session] = None) -> Session:
+    if test_session is None:
+        test_session = Session()
 
     for ie_function in functions_to_import:
-        session.register(**ie_function)
+        test_session.register(**ie_function)
 
     # TODO@niv: i think printing results is more comfy for debugging
-    query_result = session.run_query(query, print_results=True)
+    query_result = test_session.run_query(query, print_results=True)
 
     if expected_output is not None:
         query_result_string = queries_to_string(query_result)
         assert compare_strings(expected_output, query_result_string), "expected string != result string"
 
-    return session
+    return test_session

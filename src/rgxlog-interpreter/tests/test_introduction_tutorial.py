@@ -82,7 +82,7 @@ def test_basic_queries():
               r"""->(Student, Grade), enrolled_in_chemistry(Student)
             ?gpa_of_chemistry_students(X, "100")""")
 
-    run_test(query2, expected_result2, session=session)
+    run_test(query2, expected_result2, test_session=session)
 
 
 def test_recursive():
@@ -205,7 +205,7 @@ def test_remove_rule():
             ?tmp(X, Y)
           """
 
-    run_test(query, expected_result, session=session)
+    run_test(query, expected_result, test_session=session)
 
 
 def test_string_len():
