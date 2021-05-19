@@ -1,7 +1,22 @@
-import re
 from typing import List, Optional, Iterable
 
+import numpy as np
+from pandas import DataFrame
+
 from rgxlog.engine.session import queries_to_string, Session
+
+
+def is_equal_stripped_sorted_tables(result_text, expected_text):
+    result_text = sorted([line.strip() for line in result_text.splitlines() if line.strip()])
+    expected_text = sorted([line.strip() for line in expected_text.splitlines() if line.strip()])
+    return result_text == expected_text
+
+
+def is_equal_dataframes_ignore_order(result_df, expected_df):
+    result_df_sorted = DataFrame(np.sort(result_df.values, axis=0), index=result_df.index, columns=result_df.columns)
+    expected_df_sorted = DataFrame(np.sort(expected_df.values, axis=0), index=expected_df.index,
+                                   columns=expected_df.columns)
+    return result_df_sorted.equals(expected_df_sorted)
 
 
 def table_to_query_free_vars_tuples(table: str) -> Iterable:
@@ -9,18 +24,15 @@ def table_to_query_free_vars_tuples(table: str) -> Iterable:
     if tuples[1] in ["[()]", "[]"]:
         return tuples
 
-    else:      # query   |free vars|     tuples
+    else:  # query   |free vars|     tuples
         return tuples[0], tuples[1], set(tuples[3:])
 
 
-def compare_strings(expected: str, output: str) -> bool:
-    def split_to_tables(result: str) -> List[str]:
-        return result.split("\n\n")
+def split_to_tables(result: str) -> List[str]:
+    return result.split("\n\n")
 
-    # _RE_COMBINE_WHITESPACE = re.compile(r"[ \t\r\f\v]{2,}")
-    # expected = _RE_COMBINE_WHITESPACE.sub(" ", expected)
-    # _RE_COMBINE_WHITESPACE = re.compile(r" \| ")
-    # expected = _RE_COMBINE_WHITESPACE.sub("  |  ", expected)
+
+def compare_strings(expected: str, output: str) -> bool:
     expected_tables, output_tables = split_to_tables(expected), split_to_tables(output)
     if len(expected_tables) != len(output_tables):
         return False

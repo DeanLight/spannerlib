@@ -1,15 +1,12 @@
 import os
 import tempfile
-from os.path import dirname, abspath
-import numpy as np
 
-import pandas
 import pytest
 from pandas import DataFrame
 
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.session import Session
-from tests.utils import run_test
+from tests.utils import run_test, is_equal_stripped_sorted_tables, is_equal_dataframes_ignore_order
 
 TEMP_FILE_NAME = "temp"
 
@@ -88,7 +85,7 @@ def test_import_df(im_ex_session: Session):
 
 
 def test_query_into_csv_basic(im_ex_session: Session):
-    query_rel = (
+    expected_rel = (
         "X\n"
         "valley\n"
         "stardew\n")
@@ -107,14 +104,11 @@ def test_query_into_csv_basic(im_ex_session: Session):
         assert os.path.isfile(temp_csv), "file was not created"
 
         with open(temp_csv) as f_temp:
-            assert f_temp.read().strip() == query_rel.strip(), "file was not written properly"
-
-        os.remove(temp_csv)
-        assert not os.path.isfile(temp_csv), "file could not be deleted"
+            assert f_temp.read().strip() == expected_rel.strip(), "file was not written properly"
 
 
 def test_query_into_csv_long(im_ex_session: Session):
-    query_longrel = (
+    expected_longrel = (
         "X;Y;Z\n"
         "aoi;[0, 3);8\n"
         "aoi;[1, 2);16\n"
@@ -135,10 +129,7 @@ def test_query_into_csv_long(im_ex_session: Session):
         assert os.path.isfile(temp_csv), "file was not created"
 
         with open(temp_csv) as f_temp:
-            assert f_temp.read().strip() == query_longrel.strip(), "file was not written properly"
-
-        os.remove(temp_csv)
-        assert not os.path.isfile(temp_csv), "file could not be deleted"
+            assert f_temp.read().strip() == expected_longrel.strip(), "file was not written properly"
 
 
 def test_query_into_df(im_ex_session: Session):
@@ -158,23 +149,41 @@ def test_query_into_df(im_ex_session: Session):
 
 
 def test_export_relation_into_csv(im_ex_session: Session):
-    pass
+    expected_export_rel = """
+        T0:T1
+        wow:42
+        such summer:420
+        much heat:42"""
+
+    relation_name = "hotdoge"
+    query = f"""
+        new {relation_name}(str, int)
+        {relation_name}("wow",42)
+        {relation_name}("such summer", 420)
+        {relation_name}("much heat", 42)"""
+
+    im_ex_session.run_query(query, print_results=False)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
+        im_ex_session.export_relation_into_csv(temp_csv, relation_name, delimiter=":")
+        assert os.path.isfile(temp_csv), "file was not created"
+
+        with open(temp_csv) as f_temp:
+            assert is_equal_stripped_sorted_tables(f_temp.read(), expected_export_rel), "file was not written properly"
 
 
 def test_export_relation_into_df(im_ex_session: Session):
     column_names = ["T0", "T1"]
     expected_df = DataFrame([[Span(1, 3), "aa"], [Span(2, 4), "bb"]], columns=column_names)
+    relation_name = "export_df_rel"
 
-    query = """
-    new export_df_rel(spn, str)
-    export_df_rel([1,3), "aa")
-    export_df_rel([2,4), "bb")"""
+    query = f"""
+    new {relation_name}(spn, str)
+    {relation_name}([1,3), "aa")
+    {relation_name}([2,4), "bb")"""
 
     im_ex_session.run_query(query)
-    result_df = im_ex_session.export_relation_into_df("export_df_rel")
+    result_df = im_ex_session.export_relation_into_df(relation_name)
 
-    # TODO@niv: @dean, is there an easy way to compare these dataframes? i've tried sorting but `Span` is unhashable...
-    for col in expected_df.columns:
-        expected_col = expected_df[col].sort_values().reset_index(drop=True)
-        result_col = result_df[col].sort_values().reset_index(drop=True)
-        assert expected_col.equals(result_col)
+    assert is_equal_dataframes_ignore_order(result_df, expected_df)
