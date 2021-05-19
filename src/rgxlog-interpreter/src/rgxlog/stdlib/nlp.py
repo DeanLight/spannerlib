@@ -9,9 +9,9 @@ from zipfile import ZipFile
 
 import jdk
 import spacy
+from spanner_nlp.StanfordCoreNLP import StanfordCoreNLP
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
-from StanfordCoreNLP import StanfordCoreNLP
 
 sp = spacy.load('en_core_web_sm')
 
@@ -67,6 +67,7 @@ def _run_installation():
 
 _run_installation()
 CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
+
 
 # ********************************************************************************************************************
 
