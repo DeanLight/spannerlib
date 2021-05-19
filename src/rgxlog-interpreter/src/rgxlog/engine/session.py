@@ -4,10 +4,12 @@ import re
 from pathlib import Path
 from typing import Tuple, List, Union
 
-import rgxlog
 from lark.lark import Lark
 from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
 from pandas import DataFrame
+from tabulate import tabulate
+
+import rgxlog
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration, Query
@@ -21,13 +23,11 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               ExecuteAssignments, AddStatementsToNetxTermGraph)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
-from tabulate import tabulate
-
-from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
-from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
 from rgxlog.stdlib.json_path import JsonPath
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
                                OpenIE, KBP, Quote, Sentiment, TrueCase, Entities)
+from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
+from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
 
 PREDINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, SSplit, POS, Lemma, NER, EntityMentions,
                      CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase, Entities]
@@ -55,7 +55,12 @@ def _infer_relation_type(row: iter):
     """
     relation_types = []
     for cell in row:
-        if isinstance(cell, int) or cell.isdigit():
+        try:
+            is_num = int(cell)
+        except (ValueError, TypeError):
+            is_num = None
+
+        if is_num is not None:
             relation_types.append(DataTypes.integer)
         elif isinstance(cell, Span) or re.match(SPAN_PATTERN, cell):
             relation_types.append(DataTypes.span)
@@ -251,9 +256,10 @@ class Session:
 
         for statement in parse_tree.children:
             exec_result = self._run_passes(statement, self._pass_stack)
-            exec_results.append(exec_result)
-            if print_results and exec_result:
-                print(queries_to_string([exec_result]))
+            if exec_result is not None:
+                exec_results.append(exec_result)
+                if print_results:
+                    print(queries_to_string([exec_result]))
 
         if format_results:
             return [format_query_results(*exec_result) for exec_result in exec_results]

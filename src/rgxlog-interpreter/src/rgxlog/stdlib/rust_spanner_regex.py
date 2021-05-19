@@ -4,7 +4,7 @@ this module contains implementation of regex ie functions using the rust package
 import logging
 import os
 import re
-from datetime import datetime
+import tempfile
 from os import path
 from subprocess import Popen, PIPE, check_output
 from sys import platform
@@ -47,7 +47,7 @@ ESCAPED_STRINGS_PATTERN = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"', re.DOTALL)
 SPAN_PATTERN = re.compile(r"(?P<start>\d+), ?(?P<end>\d+)")
 
 # etc
-TIME_FORMAT = "%Y_%m_%d_%H_%M_%S"
+TEMP_FILE_NAME = "temp"
 
 
 def _download_and_install_rust_and_regex():
@@ -122,21 +122,20 @@ def rgx(text, regex_pattern, out_type):
     if not _is_installed_package():
         _download_and_install_rust_and_regex()
 
-    date_for_temp_file = datetime.now().strftime(TIME_FORMAT)
-    temp_file_path = REGEX_TEMP_PATH.format(date_for_temp_file)
-    with open(temp_file_path, "w+") as f:
-        f.write(text)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        rgx_temp_file_name = os.path.join(temp_dir, TEMP_FILE_NAME)
+        with open(rgx_temp_file_name, "w+") as f:
+            f.write(text)
 
-    try:
         if out_type == "string":
-            rust_regex_args = [REGEX_EXE_PATH, regex_pattern, temp_file_path]
+            rust_regex_args = [REGEX_EXE_PATH, regex_pattern, rgx_temp_file_name]
             regex_output = _format_spanner_string_output(check_output(rust_regex_args, stderr=PIPE))
 
             for out in regex_output:
                 yield out
 
         elif out_type == "span":
-            rust_regex_args = [REGEX_EXE_PATH, regex_pattern, temp_file_path, "--bytes-offset"]
+            rust_regex_args = [REGEX_EXE_PATH, regex_pattern, rgx_temp_file_name, "--bytes-offset"]
             regex_output = _format_spanner_span_output(check_output(rust_regex_args, stderr=PIPE))
 
             for out in regex_output:
@@ -144,10 +143,6 @@ def rgx(text, regex_pattern, out_type):
 
         else:
             assert False, "illegal out_type"
-
-    finally:
-        # TODO@niv: use temp file instead
-        os.remove(temp_file_path)
 
 
 def rgx_span(text, regex_pattern):

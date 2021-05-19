@@ -68,17 +68,16 @@ def test_import_csv2(im_ex_session: Session):
 
 
 def test_import_df(im_ex_session: Session):
-    # TODO@niv: try Span and [) here
-    df = DataFrame(["a", "b", "c"])
+    df = DataFrame([["a", "[1,2)"], ["b", Span(6, 8)], ["c", "[2,10)"]], columns=["str", "span"])
 
-    expected_result_string = """printing results for query \'df_rel(X)\':
-                              X
-                            -----
-                              c
-                              b
-                              a
-                            """
-    query = "?df_rel(X)"
+    expected_result_string = """printing results for query 'df_rel(X, Y)':
+          X  |    Y
+        -----+---------
+          c  | [2, 10)
+          b  | [6, 8)
+          a  | [1, 2)"""
+
+    query = "?df_rel(X,Y)"
 
     im_ex_session.import_relation_from_df(df, "df_rel")
     run_test(query, expected_result_string, test_session=im_ex_session)
