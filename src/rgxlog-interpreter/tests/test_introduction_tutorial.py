@@ -20,29 +20,29 @@ def test_introduction():
 
 def test_basic_queries():
     expected_result = """printing results for query 'enrolled_in_chemistry("jordan")':
-[()]
-
-printing results for query 'enrolled_in_chemistry("gale")':
-[]
-
-printing results for query 'enrolled_in_chemistry(X)':
-    X
----------
- howard
- jordan
- abigail
-
-printing results for query 'enrolled_in_physics_and_chemistry(X)':
-   X
---------
- howard
-
-printing results for query 'lecturer_of(X, "abigail")':
-   X
---------
- linus
- walter
-"""
+        [()]
+        
+        printing results for query 'enrolled_in_chemistry("gale")':
+        []
+        
+        printing results for query 'enrolled_in_chemistry(X)':
+            X
+        ---------
+         howard
+         jordan
+         abigail
+        
+        printing results for query 'enrolled_in_physics_and_chemistry(X)':
+           X
+        --------
+         howard
+        
+        printing results for query 'lecturer_of(X, "abigail")':
+           X
+        --------
+         linus
+         walter
+        """
 
     query = '''
         new lecturer(str, str)
@@ -72,38 +72,38 @@ printing results for query 'lecturer_of(X, "abigail")':
 
     session = run_test(query, expected_result)
     expected_result2 = """printing results for query 'gpa_of_chemistry_students(X, "100")':
-    X
----------
- abigail
-"""
+            X
+        ---------
+         abigail
+        """
 
     query2 = (r"""gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
             gpa_of_chemistry_students(Student, Grade) <- py_rgx_string(gpa_str, "(\w+).*?(\d+)")"""
               r"""->(Student, Grade), enrolled_in_chemistry(Student)
             ?gpa_of_chemistry_students(X, "100")""")
 
-    run_test(query2, expected_result2, _session=session)
+    run_test(query2, expected_result2, session=session)
 
 
 def test_recursive():
     expected_result = """printing results for query 'ancestor("Liam", X)':
-    X
-----------
-  Mason
-  Oliver
- Benjamin
-   Noah
-
-printing results for query 'ancestor(X, "Mason")':
-    X
-----------
-   Noah
-   Liam
- Benjamin
-
-printing results for query 'ancestor("Mason", X)':
-[]
-"""
+            X
+        ----------
+          Mason
+          Oliver
+         Benjamin
+           Noah
+        
+        printing results for query 'ancestor(X, "Mason")':
+            X
+        ----------
+           Noah
+           Liam
+         Benjamin
+        
+        printing results for query 'ancestor("Mason", X)':
+        []
+        """
 
     query = '''
         new parent(str, str)
@@ -125,23 +125,23 @@ printing results for query 'ancestor("Mason", X)':
 
 def test_json_path():
     expected_result = """printing results for query 'simple_1(X)':
-   X
------
-   2
-   1
-
-printing results for query 'simple_2(X)':
-     X
-------------
- number two
- number one
-
-printing results for query 'advanced(X)':
-                 X
------------------------------------
- {'foo': [{'baz': 1}, {'baz': 2}]}
-                 1
-"""
+           X
+        -----
+           2
+           1
+        
+        printing results for query 'simple_2(X)':
+             X
+        ------------
+         number two
+         number one
+        
+        printing results for query 'advanced(X)':
+                         X
+        -----------------------------------
+         {'foo': [{'baz': 1}, {'baz': 2}]}
+                         1
+        """
 
     query = """
             jsonpath_simple_1 = "foo[*].baz"
@@ -165,20 +165,20 @@ printing results for query 'advanced(X)':
 
 def test_remove_rule():
     expected_result = """printing results for query 'ancestor(X, Y)':
-  X  |  Y
------+-----
- Tom | Avi
-
-printing results for query 'tmp(X, Y)':
-    X     |    Y
-----------+----------
- Benjamin |  Mason
-   Noah   | Benjamin
-  James   |  Lucas
-   Noah   |  Oliver
-   Liam   |   Noah
-   Tom    |   Avi
-"""
+          X  |  Y
+        -----+-----
+         Tom | Avi
+        
+        printing results for query 'tmp(X, Y)':
+            X     |    Y
+        ----------+----------
+         Benjamin |  Mason
+           Noah   | Benjamin
+          James   |  Lucas
+           Noah   |  Oliver
+           Liam   |   Noah
+           Tom    |   Avi
+        """
 
     query = """
         new parent(str, str)
@@ -205,7 +205,7 @@ printing results for query 'tmp(X, Y)':
             ?tmp(X, Y)
           """
 
-    run_test(query, expected_result, _session=session)
+    run_test(query, expected_result, session=session)
 
 
 def test_string_len():
@@ -219,13 +219,13 @@ def test_string_len():
                   out_rel=[DataTypes.integer, DataTypes.string],
                   )
     expected_result = """printing results for query 'string_length(Str, Len)':
-  Str  |   Len
--------+-------
-   a   |     1
-  ab   |     2
-  abc  |     3
- abcd  |     4
-"""
+          Str  |   Len
+        -------+-------
+           a   |     1
+          ab   |     2
+          abc  |     3
+         abcd  |     4
+        """
     query = """new string(str)
             string("a")
             string("ab")
@@ -255,12 +255,12 @@ def test_neq():
                out_rel=in_out_types,
                )
     expected_result = """printing results for query 'unique_pair(X, Y)':
-  X  |  Y
------+-----
- Dan | Tom
- Cat | Dog
- 123 | 321
-"""
+          X  |  Y
+        -----+-----
+         Dan | Tom
+         Cat | Dog
+         123 | 321
+        """
 
     query = """new pair(str, str)
             pair("Dan", "Tom")

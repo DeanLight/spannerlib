@@ -12,3 +12,5 @@ psutil
 install-jdk
 parse
 spanner-nlp
+sh
+pbs

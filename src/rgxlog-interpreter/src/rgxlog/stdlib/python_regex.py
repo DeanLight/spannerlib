@@ -53,6 +53,6 @@ def py_rgx_out_type(output_arity):
 
 
 PYRGX = dict(ie_function=py_rgx,
-             ie_function_name='py_rgx',
+             ie_function_name='py_rgx_span',
              in_rel=[DataTypes.string, DataTypes.string],
              out_rel=py_rgx_out_type)

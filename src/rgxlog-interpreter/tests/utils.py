@@ -33,6 +33,9 @@ def split_to_tables(result: str) -> List[str]:
 
 
 def compare_strings(expected: str, output: str) -> bool:
+    expected = "\n".join([line.strip() for line in expected.splitlines()])
+    output = "\n".join([line.strip() for line in output.splitlines()])
+
     expected_tables, output_tables = split_to_tables(expected), split_to_tables(output)
     if len(expected_tables) != len(output_tables):
         return False
@@ -47,18 +50,18 @@ def compare_strings(expected: str, output: str) -> bool:
 
 
 def run_test(query: str, expected_output: Optional[str] = None, functions_to_import: Iterable[dict] = tuple(),
-             _session: Optional[Session] = None) -> Session:
-    if _session is None:
+             session: Optional[Session] = None) -> Session:
+    if session is None:
         session = Session()
-    else:
-        session = _session
+
     for ie_function in functions_to_import:
         session.register(**ie_function)
 
-    query_result = session.run_query(query, print_results=False)
+    # TODO@niv: i think printing results is more comfy for debugging
+    query_result = session.run_query(query, print_results=True)
 
     if expected_output is not None:
         query_result_string = queries_to_string(query_result)
-        assert compare_strings(expected_output, query_result_string), "fail"
+        assert compare_strings(expected_output, query_result_string), "expected string != result string"
 
     return session

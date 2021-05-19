@@ -65,7 +65,9 @@ setuptools.setup(
         'psutil',
         'install-jdk',
         'parse',
-        'spanner-nlp'
+        'spanner-nlp',
+        'sh',
+        'pbs'
     ],
     dependency_links=[
     ]
