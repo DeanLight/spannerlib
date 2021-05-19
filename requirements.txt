@@ -11,3 +11,4 @@ jsonpath-ng
 psutil
 install-jdk
 parse
+spanner-nlp

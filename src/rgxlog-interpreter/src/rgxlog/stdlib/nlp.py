@@ -11,7 +11,7 @@ import jdk
 import spacy
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
-from rgxlog.stdlib.StanfordCoreNLP import StanfordCoreNLP
+from StanfordCoreNLP import StanfordCoreNLP
 
 sp = spacy.load('en_core_web_sm')
 
