@@ -64,10 +64,7 @@ setuptools.setup(
         'jsonpath-ng',
         'psutil',
         'install-jdk',
-        'parse',
-        'spanner-nlp',
-        'sh',
-        'pbs'
+        'spanner-nlp'
     ],
     dependency_links=[
     ]

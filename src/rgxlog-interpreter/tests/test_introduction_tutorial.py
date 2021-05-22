@@ -213,11 +213,11 @@ def test_string_len():
         # here we append the input to the output inside the ie function!
         yield len(string), string
 
-    Length = dict(ie_function=length,
-                  ie_function_name='Length',
-                  in_rel=[DataTypes.string],
-                  out_rel=[DataTypes.integer, DataTypes.string],
-                  )
+    length_dict = dict(ie_function=length,
+                       ie_function_name='Length',
+                       in_rel=[DataTypes.string],
+                       out_rel=[DataTypes.integer, DataTypes.string])
+
     expected_result = """printing results for query 'string_length(Str, Len)':
           Str  |   Len
         -------+-------
@@ -236,7 +236,7 @@ def test_string_len():
             ?string_length(Str, Len)
             """
 
-    run_test(query, expected_result, [Length])
+    run_test(query, expected_result, [length_dict])
 
 
 def test_neq():
@@ -249,11 +249,11 @@ def test_neq():
             yield x, y
 
     in_out_types = [DataTypes.string, DataTypes.string]
-    NEQ = dict(ie_function=neq,
-               ie_function_name='NEQ',
-               in_rel=in_out_types,
-               out_rel=in_out_types,
-               )
+    neq_dict = dict(ie_function=neq,
+                    ie_function_name='NEQ',
+                    in_rel=in_out_types,
+                    out_rel=in_out_types)
+
     expected_result = """printing results for query 'unique_pair(X, Y)':
           X  |  Y
         -----+-----
@@ -272,4 +272,4 @@ def test_neq():
             unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
             ?unique_pair(X, Y)
             """
-    run_test(query, expected_result, [NEQ])
+    run_test(query, expected_result, [neq_dict])

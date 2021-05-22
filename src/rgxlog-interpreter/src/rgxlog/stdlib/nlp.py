@@ -27,7 +27,10 @@ JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = path.expanduser("~")
 INSTALLATION_PATH = path.join(_USER_DIR, ".jre")
 
-# TODO @response, why is enum_spanner and stanford-corenlp in the git tree, did you forget to add them to gitignore?
+
+# TODO @response, why is enum_spanner_regex and stanford-corenlp in the git tree, did you forget to add them to gitignore?
+# TODO@niv: @dean, no - i use enum_spanner_regex for the installation (convenient because we don't have to mess with
+#  temporary folders and stuff like that), and stanford-corenlp isn't in the tree
 
 def _is_installed_nlp():
     return path.isdir(NLP_DIR_PATH)
@@ -354,7 +357,7 @@ TrueCase = dict(ie_function=truecase_wrapper,
 
 # ********************************************************************************************************************
 
-
+# TODO@niv: @dean
 # I don't understand the schema (list of dicts with values of list)
 def udfeats_wrapper(sentence: str):
     with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
@@ -370,7 +373,7 @@ UDFeats = dict(ie_function=udfeats_wrapper,
 
 # ********************************************************************************************************************
 
-
+# TODO@niv: @tom, this is our only usage of spacy, can we refactor it?
 def entities(text):
     ent = sp(text).ents
     return ((entity.text, spacy.explain(entity.label_)) for entity in ent)

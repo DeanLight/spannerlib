@@ -20,7 +20,7 @@ DOWNLOAD_RUST_URL = "https://rustup.rs/"
 # package info
 PACKAGE_GIT_URL = "https://github.com/NNRepos/enum-spanner-rs"
 PACKAGE_NAME = "enum-spanner-rs"
-REGEX_FOLDER_NAME = "enum_spanner"
+REGEX_FOLDER_NAME = "enum_spanner_regex"
 
 # installation paths
 REGEX_FOLDER_PATH = path.join(path.dirname(__file__), REGEX_FOLDER_NAME)
@@ -51,7 +51,7 @@ TEMP_FILE_NAME = "temp"
 
 
 def _download_and_install_rust_and_regex():
-    # i can't use just "cargo -V" because it starts downloading stuff sometimes
+    # don't use "cargo -V" because it starts downloading stuff sometimes
     with Popen([WHICH_WORD, "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
         errcode = cargo.wait(SHORT_TIMEOUT)
 
@@ -119,9 +119,6 @@ def _format_spanner_span_output(output: bytes):
 
 
 def rgx(text, regex_pattern, out_type):
-    if not _is_installed_package():
-        _download_and_install_rust_and_regex()
-
     with tempfile.TemporaryDirectory() as temp_dir:
         rgx_temp_file_name = os.path.join(temp_dir, TEMP_FILE_NAME)
         with open(rgx_temp_file_name, "w+") as f:
@@ -177,3 +174,7 @@ RGX_STRING = dict(ie_function=rgx_string,
                   ie_function_name='rgx_string',
                   in_rel=RUST_RGX_IN_TYPES,
                   out_rel=rgx_string_out_type)
+
+# currently, the package is installed when this module is imported
+if not _is_installed_package():
+    _download_and_install_rust_and_regex()
