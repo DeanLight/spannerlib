@@ -305,7 +305,6 @@ class SymbolTable(SymbolTableBase):
     def get_all_registered_ie_funcs(self):
         return self._registered_ie_functions.copy()
 
-
     def remove_ie_function(self, name: str):
         if not self._registered_ie_functions.pop(name, None):
             raise Exception(f"IE function named {name} doesn't exist")
@@ -315,4 +314,5 @@ class SymbolTable(SymbolTableBase):
 
     def print_registered_ie_functions(self):
         for ie_function_name, ie_function_obj in self._registered_ie_functions.items():
-            print(f'{ie_function_name}\n{ie_function_obj.get_meta_data}\n{ie_function_obj}\n{ie_function_obj.__doc__}\n\n')
+            print(f'{ie_function_name}\n{ie_function_obj.get_meta_data}\n{ie_function_obj}\n'
+                  f'{ie_function_obj.__doc__}\n\n')

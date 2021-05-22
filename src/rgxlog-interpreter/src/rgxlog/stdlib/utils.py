@@ -1,22 +1,24 @@
-# TODO@niv: use shlex, Popen, shell=False, and explain every part with comments for users
 import shlex
 from subprocess import Popen, PIPE
 from threading import Timer
 from typing import Iterable
 
 import psutil
+from sys import platform
+
+WINDOWS_OS = "win32"
+IS_POSIX = (platform != WINDOWS_OS)
 
 
-def kill_process(process: Popen):
+def kill_process_and_children(process: Popen):
     print("~~~~ process timed out ~~~~")
     if process.poll() is not None:
         ps_process = psutil.Process(process.pid)
-        for child in ps_process.children(recursive=True):  # kill children as well
-            child.kill()
-        process.kill()
+        for child in ps_process.children(recursive=True):  # first, kill the children :)
+            child.kill()  # not recommended in real life
+        process.kill()  # lastly, kill the process
 
 
-# TODO@niv: create example IE function with cmd /c ping and timeout, for windows/linux, and add test
 def run_command(command: str, stdout=True, stderr=False, shell=False, timeout=-1) -> Iterable[str]:
     """
     this utility can be used to run any cli command, and iterate over the output
@@ -30,7 +32,7 @@ def run_command(command: str, stdout=True, stderr=False, shell=False, timeout=-1
     :return: string iterator
     """
     # `shlex.split` just splits the command into a list properly
-    command_list = shlex.split(command)
+    command_list = shlex.split(command, posix=IS_POSIX)
     stdout = PIPE if stdout else None
     stderr = PIPE if stderr else None
 
@@ -40,14 +42,15 @@ def run_command(command: str, stdout=True, stderr=False, shell=False, timeout=-1
     my_timer = None
     if timeout > 0:
         # set timer to kill the process
-        my_timer = Timer(timeout, kill_process, [process])
+        my_timer = Timer(timeout, kill_process_and_children, [process])
         my_timer.start()
 
     # get output
     while True:
         output = process.stdout.readline()  # type(output) == bytes
+        output = output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
         if output:
-            yield output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
+            yield output
         elif process.poll() is not None:  # process died
             if my_timer is not None:
                 my_timer.cancel()

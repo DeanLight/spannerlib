@@ -6,10 +6,12 @@ import os
 import re
 import tempfile
 from os import path
-from subprocess import Popen, PIPE, check_output
+from subprocess import Popen, PIPE
 from sys import platform
+from typing import Iterable
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
+from rgxlog.stdlib.utils import run_command
 
 # types
 RUST_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
@@ -32,7 +34,7 @@ REGEX_EXE_PATH_WIN = path.join(REGEX_FOLDER_PATH, "bin", PACKAGE_NAME + ".exe")
 RUSTUP_TOOLCHAIN = "1.34"
 CARGO_CMD_ARGS = ["cargo", "+" + RUSTUP_TOOLCHAIN, "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
 RUSTUP_CMD_ARGS = ["rustup", "toolchain", "install", RUSTUP_TOOLCHAIN]
-SHORT_TIMEOUT = 10
+SHORT_TIMEOUT = 3
 CARGO_TIMEOUT = 300
 RUSTUP_TIMEOUT = 300
 TIMEOUT_MINUTES = (CARGO_TIMEOUT + RUSTUP_TIMEOUT) // 60
@@ -61,8 +63,9 @@ def _download_and_install_rust_and_regex():
     if errcode:
         raise IOError(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
 
-    logging.info(f"{PACKAGE_NAME} was not found on your system")
+    logging.warning(f"{PACKAGE_NAME} was not found on your system")
     logging.info(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
+    print("\nstarting installation")
 
     # i didn't pipe here because i want the user to see the output
     with Popen(RUSTUP_CMD_ARGS) as rustup:
@@ -89,10 +92,9 @@ def rgx_string_out_type(output_arity):
     return tuple([DataTypes.string] * output_arity)
 
 
-def _format_spanner_string_output(output: bytes):
+def _format_spanner_string_output(output: Iterable[str]):
     output_lists = []
-    output_lines = [x.decode("utf-8") for x in output.splitlines() if x]
-    for out in output_lines:
+    for out in output:
         out_list = []
         matches = ESCAPED_STRINGS_PATTERN.findall(out)
         for match in matches:
@@ -104,10 +106,9 @@ def _format_spanner_string_output(output: bytes):
     return output_lists
 
 
-def _format_spanner_span_output(output: bytes):
+def _format_spanner_span_output(output: Iterable[str]):
     output_lists = []
-    output_lines = [x.decode("utf-8") for x in output.splitlines() if x]
-    for out in output_lines:
+    for out in output:
         out_list = []
         matches = SPAN_PATTERN.finditer(out)
         for match in matches:
@@ -125,21 +126,18 @@ def rgx(text, regex_pattern, out_type):
             f.write(text)
 
         if out_type == "string":
-            rust_regex_args = [REGEX_EXE_PATH, regex_pattern, rgx_temp_file_name]
-            regex_output = _format_spanner_string_output(check_output(rust_regex_args, stderr=PIPE))
-
-            for out in regex_output:
-                yield out
-
+            rust_regex_args = rf"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name}"
+            format_function = _format_spanner_string_output
         elif out_type == "span":
-            rust_regex_args = [REGEX_EXE_PATH, regex_pattern, rgx_temp_file_name, "--bytes-offset"]
-            regex_output = _format_spanner_span_output(check_output(rust_regex_args, stderr=PIPE))
-
-            for out in regex_output:
-                yield out
-
+            rust_regex_args = rf"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name} --bytes-offset"
+            format_function = _format_spanner_span_output
         else:
             assert False, "illegal out_type"
+
+        regex_output = format_function(run_command(rust_regex_args, stderr=True))
+
+        for out in regex_output:
+            yield out
 
 
 def rgx_span(text, regex_pattern):

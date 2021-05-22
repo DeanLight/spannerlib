@@ -1,6 +1,11 @@
 from tests.utils import run_test
 
 
+# TODO@niv: discovered a bug, that sometimes when running jupyter notebook, and importing
+#  chen's project, i get a "Java not found" exception (not sure if jupyter is related, maybe it's a RAM thing)
+#  additionally, i've found out that after running the code a few times, i've had ~10 java.exe processes
+#  running in the background. looks like chen's process never dies
+
 def test_entities():
     expected_result = """printing results for query 'entities(Entity, Classification)':
    Entity    |            Classification
