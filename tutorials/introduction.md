@@ -366,16 +366,10 @@ For example:
 <!-- #endregion -->
 
 ```python
-from rgxlog.stdlib.python_regex import PYRGX_STRING
-magic_session.register(**PYRGX_STRING) 
-# TODO: i think the dict name should be the same as the function name (at least for non-default functions), less confusing
-```
-
-```python
 %%rgxlog
 report = "In 2019 we earned 2000 EUR"
 annual_earning(Year, Amount) <- py_rgx_string(report,"(\d\d\d\d).*?(?P<a>\d+)")->(Amount, Year)
-?annual_earning(X, Y) # TODO@niv: dean, if we use regex with repetitions here, this becomes is ugly - is this intentional?
+?annual_earning(X, Y)
 ```
 
 # Creating and Registering a New IE Function
