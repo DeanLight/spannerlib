@@ -34,10 +34,8 @@ PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize,
 
 SPAN_GROUP1 = "start"
 SPAN_GROUP2 = "end"
-# TODO@niv: do we support negative numbers and floating point numbers? might have to add a pattern
-# @response negative I dont know, check. floats i think we dont at the moment. its not a priority but might be nice in the future
 
-
+# as of now, we don't support negative/float numbers (for both spans and integers)
 SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
@@ -48,6 +46,7 @@ TRUE_VALUE = [tuple()]
 
 # TODO@niv: add rust_rgx_*_from_file (ask dean)
 # @response i dont understand this question. Please elaborate
+# TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
 
 def _infer_relation_type(row: iter):
     """
@@ -150,9 +149,14 @@ def tabulate_result(result: Union[DataFrame, List]):
 
 
 def queries_to_string(query_results: List[Tuple[Query, List]]):
-    # TODO@niv: maybe we should remove the "printing results" thing?
+    # @niv: maybe we should remove the "printing results" thing?
     # @response, what are the pros and cons? Did you consider user experience
     # I need more to go on to understand if we should do this
+    # TODO@niv: @dean this is why i've opened the issue - i think it's easier to discuss things there.
+    #  pros - that's how most interpreters work, since the users know the input that they insert.
+    #   also, this way we don't have to save it, which allows us to use cleaner structures.
+    #  cons - more difficult to debug, perhaps less convenient for beginners, especially when running multiple commands
+    #   in a single query
     """
     takes in a list of results from PyDatalog and converts them into a single string, which contains
     either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.

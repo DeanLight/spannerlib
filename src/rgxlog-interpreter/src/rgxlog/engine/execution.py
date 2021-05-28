@@ -187,7 +187,8 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    def clear_all(self):
+    @staticmethod
+    def clear_all():
         """
         removes all facts and clauses from the engine
         :return:
@@ -505,10 +506,11 @@ class PydatalogEngine(RgxlogEngineBase):
             ie_outputs = ie_func.ie_function(*ie_input)
             # process each ie output and add it to the output relation
             for ie_output in ie_outputs:
-                # TODO@niv: i don't like this, imo we should check if it's iterable, and if not, put a list around it.
-                #  it would be easier to debug that way
-                # @response go for it.
-                ie_output = list(ie_output)
+                # the output should be a tuple, but if a single value is returned, we accept it as well
+                if isinstance(ie_output, str) or isinstance(ie_output, int) or isinstance(ie_output, Span):
+                    ie_output = [ie_output]
+                else:
+                    ie_output = list(ie_output)
 
                 # assert the ie output is properly typed
                 self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)
@@ -520,11 +522,7 @@ class PydatalogEngine(RgxlogEngineBase):
                              for term in ie_output]
 
                 # add the output as a fact to the output relation
-                # TODO@niv: dean, this acts a set (ignores repetitions, e.g. 'a','a', 'aa' becomes 'a','aa').
-                #  is that ok?
-                # @response, yes, the semantics of datalog queries is to return the set of all 
-                # variable assignments that satisfy the constraints.
-                # Some times there are two logical paths that produce the same assignment, we dont want to output them twice
+                # notice - repetitions are ignored here (results are in a set)
                 if len(ie_output) != 0:
                     output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
                     self.add_fact(output_fact)
@@ -724,9 +722,11 @@ class PydatalogEngine(RgxlogEngineBase):
                             f'the output term types: {ie_output_term_types}\n'
                             f'the expected types: {ie_output_schema}')
 
-    def clear_all(self):
-        # TODO@niv: @dean, maybe we should run this between tests?
+    @staticmethod
+    def clear_all():
+        # @dean, maybe we should run this between tests?
         # @response, good idea
+        #  TODO@niv: add this to pytest
         pyDatalog.clear()
 
 

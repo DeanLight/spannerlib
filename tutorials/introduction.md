@@ -79,7 +79,7 @@ In order to use RGXLog in jupyter notebooks, you must first load it:
 <!-- #endregion -->
 
 ```python
-%load_ext rgxlog
+import rgxlog
 ```
 
 Importing the RGXLog library automatically loads the `%rgxlog` and `%%rgxlog` cell magics which accepts RGXLog queries as shown below.
@@ -376,24 +376,14 @@ magic_session.register(**PYRGX_STRING)
 report = "In 2019 we earned 2000 EUR"
 annual_earning(Year, Amount) <- py_rgx_string(report,"(\d\d\d\d).*?(?P<a>\d+)")->(Amount, Year)
 ?annual_earning(X, Y) # TODO@niv: dean, if we use regex with repetitions here, this becomes is ugly - is this intentional?
+
 ```
 
 # Creating and Registering a New IE Function
 
-<!-- #region -->
-In addition to the existing/default IE functions, users may create their own functions to be used as part of rgxlog.
-In order to do so, the following are required:
 
-* `ie_function`: a function which yields an iterable of primitive types
-* `ie_function_name`: the name by which the function is called inside rgxlog
-* `in_rel`: the input types, e.g. [DataTypes.string]
-* `out_rel`: the output types, can be either a method which expects an arity, or an iterable, e.g. [DataTypes.span]
-
-now, just register it:
-```python
-session.register(ie_function, ie_function_name, in_rel, out_rel)
-```
-<!-- #endregion -->
+Using regex is nice, but what if we want to define our own IE function? <br>
+RGXLog allows us to do that:
 
 ### IE function `get_happy`
 
@@ -401,7 +391,11 @@ session.register(ie_function, ie_function_name, in_rel, out_rel)
 import re
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
+# the function itself, which should yield an iterable of primitive types
 def get_happy(text):
+    """
+    get the names of people who are happy in `text`
+    """
     compiled_rgx = re.compile("(\w+) is happy")
     num_groups = compiled_rgx.groups
     for match in re.finditer(compiled_rgx, text):
@@ -411,38 +405,18 @@ def get_happy(text):
             matched_strings = [group for group in match.groups()]
         yield matched_strings
 
+# the input types, a list of primitive types
 get_happy_in_types = [DataTypes.string]
-get_happy_out_types = [DataTypes.string]
-        
+
+# the output types, either a list of primitive types or a method which expects an arity
+get_happy_out_types = lambda arity : arity * [DataTypes.string]
+# or: `get_happy_out_types = [DataTypes.string]`
+
+# finally, register the function
 magic_session.register(ie_function=get_happy,
                        ie_function_name = "get_happy",
                        in_rel=get_happy_in_types,
                        out_rel=get_happy_out_types)
-```
-
-### IE function short_ping
-
-```python
-from rgxlog.stdlib.utils import run_command
-from sys import platform
-WINDOWS_OS = "win32"
-
-# TODO@niv: @dean, looks like there's a bug that functions can't have 0 args, due to syntax error
-def short_ping(seconds):
-    if platform == WINDOWS_OS:
-        for result in run_command("ping 8.8.8.8", timeout=seconds):
-            if "Pinging" not in result:
-                yield tuple([result])
-    else:
-        yield tuple(["this ain't windows!"])
-
-short_ping_in_types = [DataTypes.integer]
-short_ping_out_types = [DataTypes.string]
-        
-magic_session.register(ie_function=short_ping,
-                       ie_function_name = "short_ping",
-                       in_rel=short_ping_in_types,
-                       out_rel=short_ping_out_types)
 ```
 
 ### #TODO@niv: @dean, maybe rename information extractors to tell them apart from IE functions?
@@ -476,14 +450,7 @@ test_happy(X) <- get_happy(sentence) -> (X)
 happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 ?happy_grandmother(X) # assuming get_happy returned "rin", also returns "rin"
 ```
-
-### custom IE using `short_ping`
-
-```python
-%%rgxlog
-ping_results(X) <- short_ping(4) -> (X)
-?ping_results(X)
-```
+6999999999999999999999999999
 
 ```python
 # TODO: add debug examples
@@ -551,24 +518,24 @@ py_rgx_string(gpa_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemistry
 ```
 
 # Useful tricks<a class="anchor" id="Usefull tricks"></a>
-## First Trick:
+## Table Alignment:
 Lets write a rgxlog program that gets a table in which each row is a strings - string(str).
 <br>
 The program will create a new table in which each row is a string and it's length.
 ### First try:
 
 ```python
-#Step1: implementation ie function
+# Step 1: implement an IE function
 def length(string):
     yield len(string), 
     
-#Step2: registretion of the function
+# Step 2: register the function
 magic_session.register(length, "Length", [DataTypes.string], [DataTypes.integer])
 ```
 
 ```python
 %%rgxlog
-#Lets test this solution
+# Let's test this solution:
 new string(str)
 string("a")
 string("ab")
@@ -580,13 +547,13 @@ string_length(Str, Len) <- string(Str), Length(Str) -> (Len)
 ```
 
 ### Looks like something went wrong!
-Our goal was to append to each string in thhe table it's length.
+Our goal was to append to each string in the table its length.
 What we actually got is the length of each string appended to **all** the strings.
 <br>
-This happens becuase RGXLog stores all the inputs of ie function in an intput table and all the outputs in an output table. 
+This happens becuase RGXLog stores all the inputs of each IE function in an input table and all the outputs in an output table. 
 Then it's joining the input table with the output table.
 <br><br>
-Therefore, if we want append to each input to it's output, we have to do it mannualy.
+Therefore, if we want append to each input to its output, we have to do it manually.
 ### Second try:
 
 ```python
@@ -603,7 +570,7 @@ string_length_2(Str, Len) <- string(Tmp), Length2(Tmp) -> (Len, Str)
 ?string_length_2(Str, Len)
 ```
 
-## Second Trick:
+## Logical Operators:
 Suppose we have a table in which each row contains two strings - pair(str, str).
 Our goal is to filter all the rows that contain the same value twice.
 <br>

@@ -29,10 +29,6 @@ so it's probably a bad idea to use more than one at a time.
 Using a session manually enables one to dynamically generate queries, facts, and rules
 
 ```python
-%load_ext rgxlog
-```
-
-```python
 import rgxlog
 session = rgxlog.magic_session
 ```
@@ -200,4 +196,40 @@ from pandas import DataFrame
 df = DataFrame([["Shrek",42], ["Fiona", 1337]], columns=["name", "number"])
 session.import_relation_from_df(df, relation_name="ogres")
 %rgxlog ?ogres(X,Y)
+
+```
+## Creating Information Extractors Dynamically
+
+```python
+from rgxlog import magic_session
+
+%rgxlog new sibling(str,str)
+%rgxlog new parent(str,str)
+
+a = ["parent","uncle_aunt","grandparent", "sibling"]
+# sibling(X,Y) <- parent(Z,X), parent(Z,Y)
+d = {"uncle_aunt":["sibling","parent"], "grandparent":["parent","parent"], "great_aunt_uncle": ["sibling","parent","parent"]}
+for key, steps in d.items():
+    result = key + "(A,Z) <- "
+    for num, step in enumerate(steps):
+        curr_letter = chr(num+ord("A"))
+        result += step + "(" + curr_letter + ","
+        if (num == len(steps)-1):
+            result += "Z)"
+        else:
+            result += chr(1 + ord(curr_letter)) + "), "
+    print("running:", result)
+    magic_session.run_query(result)
+
+%rgxlog parent("jonathan", "george")
+%rgxlog parent("george", "joseph")
+%rgxlog sibling("dio", "jonathan")
+%rgxlog ?great_aunt_uncle(X,Y)
+        
+# uncle_aunt(A,Z) <- sibling(A,B), parent(B,Z)
+# grandparent(A,Z) <- parent(A,B), parent(B,Z)
+# great_aunt_uncle(A,Z) <- sibling(A,B), parent(B,C), parent(C,Z)
+```
+
+```python
 ```
