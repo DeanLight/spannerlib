@@ -6,7 +6,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.3'
-      jupytext_version: 1.11.1
+      jupytext_version: 1.11.2
   kernelspec:
     display_name: Python 3
     language: python
@@ -19,7 +19,7 @@ jupyter:
 ## Default session
 
 
-When rgxlog is loaded, a default session (`rgxlog.magic_session`) is created behind the scenes. This is the session that %%spanner uses.
+When rgxlog is loaded, a default session (`rgxlog.magic_session`) is created behind the scenes. This is the session that %%rgxlog uses.
 
 
 NOTE: currently, all sessions share the same engine (same rules and clauses stored inside `PyDatalog`),
@@ -27,10 +27,6 @@ so it's probably a bad idea to use more than one at a time.
 
 
 Using a session manually enables one to dynamically generate queries, facts, and rules
-
-```python
-%load_ext rgxlog
-```
 
 ```python
 import rgxlog
@@ -64,10 +60,9 @@ another_session=Session()
 ```
 
 ```python
-%%spanner
+%%rgxlog
 # still using the default session
 # TODO@niv: dean, why do the sessions share their execution? is this intentional?
-# @responce They shouldn't share anything, much less their execution. I dont excatly mean what you mean by sharing execution though.
 # new uncle(str, str)
 uncle("bob", "greg")
 ?uncle(X,Y)
@@ -89,7 +84,7 @@ We wouldnt want to manually write a rule for every single subject.
 We write our data manually. In the future we would be able to import it from csvs/dataframes
 
 ```python
-%%spanner
+%%rgxlog
 new lecturer(str, str)
 lecturer("walter", "chemistry")
 lecturer("linus", "operation_systems")
@@ -110,7 +105,7 @@ gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
 ```
 
 ```python
-%%spanner
+%%rgxlog
 
 gpa(Student,Grade) <- py_rgx_string(gpa_str, "(\w+).*?(\d+)")->(Student, Grade),enrolled(Student,X)
 
@@ -138,7 +133,7 @@ for subject in subjects:
 As you can see, we can use the dynamically defined rules in a magic cell
 
 ```python
-%%spanner
+%%rgxlog
 ?gpa_of_operation_systems_students(X,Y)
 ```
 
@@ -200,5 +195,5 @@ from pandas import DataFrame
 
 df = DataFrame([["Shrek",42], ["Fiona", 1337]], columns=["name", "number"])
 session.import_relation_from_df(df, relation_name="ogres")
-%spanner ?ogres(X,Y)
+%rgxlog ?ogres(X,Y)
 ```
