@@ -220,6 +220,7 @@ class PydatalogEngine(RgxlogEngineBase):
         super().__init__()
         self.temp_relation_id_counter = count()
         self.debug = debug
+        self.rules_history = dict()
 
     def declare_relation(self, relation_decl: RelationDeclaration):
         """
@@ -281,13 +282,30 @@ class PydatalogEngine(RgxlogEngineBase):
         # transform rule in RGXLog's syntax into PyDatalog's syntax
         # i.e, ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y) will be transformed to:
         # ancestor(X,Y) <= parent(X,Z)& ancestor(Z,Y)
-        replace_commas = re.compile(r'(?:[^,(]|\([^)]*\))+')
-        remove_rule_statement = "&".join(replace_commas.findall(rule))
-        remove_rule_statement = f'-({remove_rule_statement.replace("-", "=")})'
-        if self.debug:
-            self.prints_buffer.append(remove_rule_statement)
-        # remove the rule in pyDatalog
-        pyDatalog.load(remove_rule_statement)
+
+        # The user must supply exact same rule as the one in print_all_rules
+
+        rule_head = rule.split("(")[0]
+        if rule_head not in self.rules_history:
+            raise Exception(f"{rule} was never registered (you can run 'print_all_rules' to see all the registered "
+                            f"rules)")
+        else:
+            for i, (rgxlog_rule, pydatalog_rule) in enumerate(self.rules_history[rule_head]):
+                if rgxlog_rule == rule:
+                    remove_rule_statement = f'-({pydatalog_rule})'
+                    # remove the rule in pyDatalog
+                    pyDatalog.load(remove_rule_statement)
+                    # remove rule from history
+                    del self.rules_history[rule_head][i]
+                    if len(self.rules_history[rule_head]) == 0:
+                        del self.rules_history[rule_head]
+                    if self.debug:
+                        self.prints_buffer.append(remove_rule_statement)
+                    break
+            else:
+                # if we are here then the rule doesn't exist
+                raise Exception(f"{rule} was never registered (you can run 'print_all_rules' to see all the registered "
+                                f"rules)")
 
     # TODO: remove this, put the docstring in run_query somehow
     def print_query(self, query: Query):
@@ -341,27 +359,102 @@ class PydatalogEngine(RgxlogEngineBase):
             query_results = py_datalog_answer_object.answers
         return query_results
 
-    def add_rule(self, rule_head: Relation, rule_body_relation_list: List[Relation]):
+    def rule_to_string(self, rule_head: Relation, rule_body_relation_list: List,
+                       format: str = "PyDatalog") -> str:
+        """
+        Return a string that represents the rule in PyDatalog's/RGXlog's format.
+
+        Args:
+            rule_head: a relation that defines the rule head
+            rule_body_relation_list: a list of relations that defines the rule body
+            format: return format of the string
+        """
+        assert format in ["PyDatalog", "RGXlog"]
+        arrow, delimiter = ("<=", " & ") if format == "PyDatalog" else ("<-", " , ")
+        rule_head_string = self._get_relation_string(rule_head)
+        rule_body_relation_strings = [str(relation) for relation in rule_body_relation_list]
+        rule_body_string = delimiter.join(rule_body_relation_strings)
+        return f'{rule_head_string} {arrow} {rule_body_string}'
+
+    def add_rule(self, rule_head: Relation, rule_body_relation_list: List[Relation]) -> str:
         """
         add a rule to the pydatalog engine.
         only normal relations are allowed in the rule body
+        Returns the rule we registered to pydataog.
 
         Args:
             rule_head: a relation that defines the rule head
             rule_body_relation_list: a list of relations that defines the rule body
         """
-
         # get a string that represents the rule in pyDatalog
-        rule_head_string = self._get_relation_string(rule_head)
-        rule_body_relation_strings = [self._get_relation_string(relation) for relation in rule_body_relation_list]
-        rule_body_string = " & ".join(rule_body_relation_strings)
-        rule_string = f'{rule_head_string} <= {rule_body_string}'
+        rule_string = self.rule_to_string(rule_head, rule_body_relation_list)
 
         if self.debug:
             self.prints_buffer.append(rule_string)
 
         # add the rule to pyDatalog
         pyDatalog.load(rule_string)
+
+        return rule_string
+
+    def add_and_save_rule(self, rule_head: Relation, rule_body_relation_list: List[Relation],
+                          rule_body_original_list: List):
+        """
+        A wrapper to add_rule. It adds the rule to PyDatalogs engine and save a binding between the original rule
+        and the rule we actually passed to PyDatalog.
+
+        Args:
+            rule_head: a relation that defines the rule head
+            rule_body_relation_list: a list of relations that defines the rule body
+            rule_body_original_list: a List of the original relations that defined
+        """
+
+        pydatalog_rule_string = self.add_rule(rule_head, rule_body_relation_list)
+        rgxlog_rule_string = self.rule_to_string(rule_head, rule_body_original_list, "RGXlog")
+
+        rule_head_str = self._get_relation_string(rule_head)
+        # get relation name (without schema)
+        rule_head_name = rule_head_str.split("(")[0]
+
+        # don't save temp rgxlog rules
+        if not rule_head_name.startswith("__rgxlog"):
+            rule_binding = (rgxlog_rule_string, pydatalog_rule_string)
+            if rule_head_name in self.rules_history:
+                self.rules_history[rule_head_name].append(rule_binding)
+            else:
+                self.rules_history[rule_head_name] = [rule_binding]
+
+    def print_all_rules(self, rule_head: str = None):
+        """
+        prints all the rules that are registered.
+
+        Args:
+            rule_head: if rule head is not none we print all rules with rule_head
+        """
+
+        if rule_head is None:
+            print("Printing all rules:")
+            for head in self.rules_history:
+                self.print_all_rules_with_head(head)
+
+        else:
+            print(f"Printing all rules with head {rule_head}:")
+            self.print_all_rules_with_head(rule_head)
+        # looks better with new line (\n)
+        print()
+
+    def print_all_rules_with_head(self, rule_head: str):
+        """
+        prints all the rules with rule_head that are registered.
+
+        Args:
+            rule_head: we print all rules with rule_head
+        """
+        if rule_head not in self.rules_history:
+            raise Exception(f"No rules with head {rule_head} were registered.")
+
+        for rule, _ in self.rules_history[rule_head]:
+            print(rule)
 
     def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
                             bounding_relation: Relation):
@@ -801,6 +894,8 @@ class GenericExecution(ExecutionBase):
         rule_head_id, rule_body_id = term_graph.get_children(rule_term_id)
         body_relation_id_list = term_graph.get_children(rule_body_id)
 
+        body_relation_original_list = list()
+
         # compute the rule body relations from left to right and save the intermediate results in
         # 'intermediate_relation'
         intermediate_relation = None
@@ -810,6 +905,8 @@ class GenericExecution(ExecutionBase):
 
             relation = relation_term_attrs['value']
             relation_type = relation_term_attrs['type']
+
+            body_relation_original_list.append(relation)
 
             # compute the relation in the engine if needed
             if relation_type == 'relation':
@@ -841,4 +938,4 @@ class GenericExecution(ExecutionBase):
         rgxlog_engine.declare_relation(rule_head_declaration)
 
         # define the rule head in the rgxlog engine by filtering the tuples of the intermediate relation into it
-        rgxlog_engine.add_rule(rule_head_relation, [intermediate_relation])
+        rgxlog_engine.add_and_save_rule(rule_head_relation, [intermediate_relation], body_relation_original_list)

@@ -366,10 +366,17 @@ For example:
 <!-- #endregion -->
 
 ```python
+from rgxlog.stdlib.python_regex import PYRGX_STRING
+magic_session.register(**PYRGX_STRING) 
+# TODO: i think the dict name should be the same as the function name (at least for non-default functions), less confusing
+```
+
+```python
 %%rgxlog
 report = "In 2019 we earned 2000 EUR"
 annual_earning(Year, Amount) <- py_rgx_string(report,"(\d\d\d\d).*?(?P<a>\d+)")->(Amount, Year)
-?annual_earning(X, Y)
+?annual_earning(X, Y) # TODO@niv: dean, if we use regex with repetitions here, this becomes is ugly - is this intentional?
+
 ```
 
 # Creating and Registering a New IE Function
@@ -377,6 +384,8 @@ annual_earning(Year, Amount) <- py_rgx_string(report,"(\d\d\d\d).*?(?P<a>\d+)")-
 
 Using regex is nice, but what if we want to define our own IE function? <br>
 RGXLog allows us to do that:
+
+### IE function `get_happy`
 
 ```python
 import re
@@ -440,6 +449,11 @@ sentence = "rin is happy, denna is sad."
 test_happy(X) <- get_happy(sentence) -> (X)
 happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 ?happy_grandmother(X) # assuming get_happy returned "rin", also returns "rin"
+```
+6999999999999999999999999999
+
+```python
+# TODO: add debug examples
 ```
 
 ## More information about IE functions

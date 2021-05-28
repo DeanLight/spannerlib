@@ -196,8 +196,8 @@ from pandas import DataFrame
 df = DataFrame([["Shrek",42], ["Fiona", 1337]], columns=["name", "number"])
 session.import_relation_from_df(df, relation_name="ogres")
 %rgxlog ?ogres(X,Y)
-```
 
+```
 ## Creating Information Extractors Dynamically
 
 ```python
@@ -232,5 +232,4 @@ for key, steps in d.items():
 ```
 
 ```python
-
 ```
