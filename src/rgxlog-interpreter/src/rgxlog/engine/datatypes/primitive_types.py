@@ -63,5 +63,6 @@ class Span:
     def __eq__(self, other: "Span"):
         return self.span_start == other.span_start and self.span_end == other.span_end
 
+    # used for sorting `Span`s in dataframes
     def __hash__(self):
         return hash((self.span_start, self.span_end))
