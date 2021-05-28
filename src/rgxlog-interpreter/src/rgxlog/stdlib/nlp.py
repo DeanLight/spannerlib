@@ -7,7 +7,6 @@ from urllib.request import urlopen
 from zipfile import ZipFile
 
 import jdk
-# import sh
 import spacy
 from spanner_nlp.StanfordCoreNLP import StanfordCoreNLP
 
@@ -17,7 +16,7 @@ sp = spacy.load('en_core_web_sm')
 
 MIN_VERSION = 1.8
 
-NLP_URL = "http://nlp.stanford.edu/software/stanford-corenlp-4.1.0.zip"
+NLP_URL = "http://CoreNLPEngine.stanford.edu/software/stanford-corenlp-4.1.0.zip"
 
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
 CURR_DIR = path.dirname(__file__)
@@ -53,16 +52,6 @@ def _is_installed_java():
         return True
 
     return path.isdir(INSTALLATION_PATH)
-    # if None in [sh.which("java"), sh.which('java -version')]:
-    #     return False
-    # return True
-    
-    # # TODO: how to check the java version?
-    # return sh.which("java") is not None
-    # @dean: i think `java -version` works for 1.6 upwards
-    # you can assume that earlier versions are not applicable and consider them as not installed or something
-    # TODO@tom
-
 
 def _run_installation():
     if not _is_installed_nlp():
@@ -83,9 +72,8 @@ CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
 
 
 def tokenize_wrapper(sentence: str):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for token in nlp.tokenize(sentence):
-            yield token["token"], token["span"]
+    for token in CoreNLPEngine.tokenize(sentence):
+        yield token["token"], token["span"]
 
 
 Tokenize = dict(ie_function=tokenize_wrapper,
@@ -98,9 +86,8 @@ Tokenize = dict(ie_function=tokenize_wrapper,
 
 
 def ssplit_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for s in nlp.ssplit(sentence):
-            yield s,
+    for s in CoreNLPEngine.ssplit(sentence):
+        yield s,
 
 
 SSplit = dict(ie_function=ssplit_wrapper,
@@ -113,9 +100,8 @@ SSplit = dict(ie_function=ssplit_wrapper,
 
 
 def pos_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.pos(sentence):
-            yield res["token"], res["pos"], res["span"]
+    for res in CoreNLPEngine.pos(sentence):
+        yield res["token"], res["pos"], res["span"]
 
 
 POS = dict(ie_function=pos_wrapper,
@@ -128,9 +114,8 @@ POS = dict(ie_function=pos_wrapper,
 
 
 def lemma_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.lemma(sentence):
-            yield res["token"], res["lemma"], res["span"]
+    for res in CoreNLPEngine.lemma(sentence):
+        yield res["token"], res["lemma"], res["span"]
 
 
 Lemma = dict(ie_function=lemma_wrapper,
@@ -143,10 +128,9 @@ Lemma = dict(ie_function=lemma_wrapper,
 
 
 def ner_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.ner(sentence):
-            if res["ner"] != 'O':
-                yield res["token"], res["ner"], res["span"]
+    for res in CoreNLPEngine.ner(sentence):
+        if res["ner"] != 'O':
+            yield res["token"], res["ner"], res["span"]
 
 
 NER = dict(ie_function=ner_wrapper,
@@ -159,11 +143,10 @@ NER = dict(ie_function=ner_wrapper,
 
 
 def entitymentions_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.entitymentions(sentence):
-            confidence = json.dumps(res["nerConfidences"]).replace("\"", "'")
-            yield (res["docTokenBegin"], res["docTokenEnd"], res["tokenBegin"], res["tokenEnd"], res["text"],
-                   res["characterOffsetBegin"], res["characterOffsetEnd"], res["ner"], confidence)
+    for res in CoreNLPEngine.entitymentions(sentence):
+        confidence = json.dumps(res["nerConfidences"]).replace("\"", "'")
+        yield (res["docTokenBegin"], res["docTokenEnd"], res["tokenBegin"], res["tokenEnd"], res["text"],
+               res["characterOffsetBegin"], res["characterOffsetEnd"], res["ner"], confidence)
 
 
 EntityMentions = dict(ie_function=entitymentions_wrapper,
@@ -179,9 +162,8 @@ EntityMentions = dict(ie_function=entitymentions_wrapper,
 
 # TODO: I can't find how pattern should look like
 def regexner_wrapper(sentence, pattern):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.regexner(sentence, pattern):
-            raise NotImplementedError()
+    for res in CoreNLPEngine.regexner(sentence, pattern):
+        raise NotImplementedError()
 
 
 RGXNer = dict(ie_function=regexner_wrapper,
@@ -195,9 +177,8 @@ RGXNer = dict(ie_function=regexner_wrapper,
 
 # TODO: I can't find how pattern should look like, ADD LINK TO STANFORD NLP
 def tokensregex_wrapper(sentence, pattern):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.tokensregex(sentence, pattern):
-            raise NotImplementedError()
+    for res in CoreNLPEngine.tokensregex(sentence, pattern):
+        raise NotImplementedError()
 
 
 TokensRegex = dict(ie_function=tokensregex_wrapper,
@@ -210,9 +191,8 @@ TokensRegex = dict(ie_function=tokensregex_wrapper,
 
 
 def cleanxml_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.cleanxml(sentence)["tokens"]:
-            yield res['index'], res['word'], res['originalText'], res['characterOffsetBegin'], res['characterOffsetEnd']
+    for res in CoreNLPEngine.cleanxml(sentence)["tokens"]:
+        yield res['index'], res['word'], res['originalText'], res['characterOffsetBegin'], res['characterOffsetEnd']
 
 
 CleanXML = dict(ie_function=cleanxml_wrapper,
@@ -225,11 +205,10 @@ CleanXML = dict(ie_function=cleanxml_wrapper,
 
 
 def parse_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.parse(sentence):
-            # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
-            # notice - this yields a tuple
-            yield (res.replace("\n", "<nl>").replace("\r", ""),)
+    for res in CoreNLPEngine.parse(sentence):
+        # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
+        # notice - this yields a tuple
+        yield (res.replace("\n", "<nl>").replace("\r", ""),)
 
 
 Parse = dict(ie_function=parse_wrapper,
@@ -242,9 +221,8 @@ Parse = dict(ie_function=parse_wrapper,
 
 
 def dependency_parse_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.dependency_parse(sentence):
-            yield res['dep'], res['governor'], res['governorGloss'], res['dependent'], res['dependentGloss']
+    for res in CoreNLPEngine.dependency_parse(sentence):
+        yield res['dep'], res['governor'], res['governorGloss'], res['dependent'], res['dependentGloss']
 
 
 DepParse = dict(ie_function=dependency_parse_wrapper,
@@ -257,11 +235,10 @@ DepParse = dict(ie_function=dependency_parse_wrapper,
 
 
 def coref_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.coref(sentence):
-            yield res['id'], res['text'], res['type'], res['number'], res['gender'], res['animacy'], res['startIndex'], \
-                  res['endIndex'], res['headIndex'], res['sentNum'], \
-                  tuple(res['position']), str(res['isRepresentativeMention'])
+    for res in CoreNLPEngine.coref(sentence):
+        yield res['id'], res['text'], res['type'], res['number'], res['gender'], res['animacy'], res['startIndex'], \
+              res['endIndex'], res['headIndex'], res['sentNum'], \
+              tuple(res['position']), str(res['isRepresentativeMention'])
 
 
 Coref = dict(ie_function=coref_wrapper,
@@ -276,11 +253,10 @@ Coref = dict(ie_function=coref_wrapper,
 
 
 def openie_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for lst in nlp.openie(sentence):
-            for res in lst:
-                yield res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']), \
-                      res['object'], tuple(res['objectSpan'])
+    for lst in CoreNLPEngine.openie(sentence):
+        for res in lst:
+            yield res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']), \
+                  res['object'], tuple(res['objectSpan'])
 
 
 OpenIE = dict(ie_function=openie_wrapper,
@@ -294,11 +270,10 @@ OpenIE = dict(ie_function=openie_wrapper,
 
 
 def kbp_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for lst in nlp.kbp(sentence):
-            for res in lst:
-                yield res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']), \
-                      res['object'], tuple(res['objectSpan'])
+    for lst in CoreNLPEngine.kbp(sentence):
+        for res in lst:
+            yield res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']), \
+                  res['object'], tuple(res['objectSpan'])
 
 
 KBP = dict(ie_function=kbp_wrapper,
@@ -315,10 +290,9 @@ KBP = dict(ie_function=kbp_wrapper,
 #  that might've been the issue
 # doesn't works because regexlog parser doesn't support strings such as "\"hello\"" (with escapes)
 def quote_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.quote(sentence):
-            yield (res['id'], res['text'], res['beginIndex'], res['endIndex'], res['beginToken'], res['endToken'],
-                   res['beginSentence'], res['endSentence'], res['speaker'], res['canonicalSpeaker'])
+    for res in CoreNLPEngine.quote(sentence):
+        yield (res['id'], res['text'], res['beginIndex'], res['endIndex'], res['beginToken'], res['endToken'],
+               res['beginSentence'], res['endSentence'], res['speaker'], res['canonicalSpeaker'])
 
 
 Quote = dict(ie_function=quote_wrapper,
@@ -333,9 +307,8 @@ Quote = dict(ie_function=quote_wrapper,
 
 # currently ignoring sentimentTree
 def sentiment_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.sentiment(sentence):
-            yield int(res['sentimentValue']), res['sentiment'], json.dumps(res['sentimentDistribution'])
+    for res in CoreNLPEngine.sentiment(sentence):
+        yield int(res['sentimentValue']), res['sentiment'], json.dumps(res['sentimentDistribution'])
 
 
 Sentiment = dict(ie_function=sentiment_wrapper,
@@ -348,9 +321,8 @@ Sentiment = dict(ie_function=sentiment_wrapper,
 
 
 def truecase_wrapper(sentence):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for res in nlp.truecase(sentence):
-            yield res['token'], res['span'], res['truecase'], res['truecaseText']
+    for res in CoreNLPEngine.truecase(sentence):
+        yield res['token'], res['span'], res['truecase'], res['truecaseText']
 
 
 TrueCase = dict(ie_function=truecase_wrapper,
@@ -364,9 +336,8 @@ TrueCase = dict(ie_function=truecase_wrapper,
 # TODO@niv: @dean
 # I don't understand the schema (list of dicts with values of list)
 def udfeats_wrapper(sentence: str):
-    with StanfordCoreNLP(NLP_DIR_PATH) as nlp:
-        for token in nlp.udfeats(sentence):
-            raise NotImplementedError()
+    for token in CoreNLPEngine.udfeats(sentence):
+        raise NotImplementedError()
 
 
 UDFeats = dict(ie_function=udfeats_wrapper,
