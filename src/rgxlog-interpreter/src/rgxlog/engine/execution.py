@@ -631,9 +631,10 @@ class PydatalogEngine(RgxlogEngineBase):
 
     @staticmethod
     def clear_all():
-        # @dean, maybe we should run this between tests?
-        # @response, good idea
-        #  TODO@niv: add this to pytest
+        """
+        removes all the data from the pydatalog engine. without this, all sessions share their facts and relations
+        :return:
+        """
         pyDatalog.clear()
 
 

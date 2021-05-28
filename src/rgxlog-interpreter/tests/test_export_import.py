@@ -113,10 +113,7 @@ def test_query_into_csv_long(im_ex_session: Session):
         "aoi;[1, 2);16\n"
         "ano sora;[42, 69);24\n")
 
-    # create new relation
-    # TODO@niv: dean, why not change spn into span? much more readable/intuitive
-    # @response: sure, lets do it
-    query = """new longrel(str,spn,int)
+    query = """new longrel(str,span,int)
         longrel("ano sora",[42, 69),24)
         longrel("aoi",[1, 2),16)
         longrel("aoi",[0, 3),8)"""
@@ -178,7 +175,7 @@ def test_export_relation_into_df(im_ex_session: Session):
     relation_name = "export_df_rel"
 
     query = f"""
-    new {relation_name}(spn, str)
+    new {relation_name}(span, str)
     {relation_name}([1,3), "aa")
     {relation_name}([2,4), "bb")"""
 

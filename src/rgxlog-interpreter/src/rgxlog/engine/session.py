@@ -44,8 +44,8 @@ FALSE_VALUE = []
 TRUE_VALUE = [tuple()]
 
 
-# TODO@niv: add rust_rgx_*_from_file (ask dean)
-# @response i dont understand this question. Please elaborate
+# @niv: add rust_rgx_*_from_file (ask dean)
+# @dean: i dont understand this question. Please elaborate
 # TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
 
 def _infer_relation_type(row: iter):
@@ -150,8 +150,8 @@ def tabulate_result(result: Union[DataFrame, List]):
 
 def queries_to_string(query_results: List[Tuple[Query, List]]):
     # @niv: maybe we should remove the "printing results" thing?
-    # @response, what are the pros and cons? Did you consider user experience
-    # I need more to go on to understand if we should do this
+    # @dean: what are the pros and cons? Did you consider user experience
+    #  I need more to go on to understand if we should do this
     # TODO@niv: @dean this is why i've opened the issue - i think it's easier to discuss things there.
     #  pros - that's how most interpreters work, since the users know the input that they insert.
     #   also, this way we don't have to save it, which allows us to use cleaner structures.
@@ -263,9 +263,6 @@ class Session:
         exec_results = []
         parse_tree = self._parser.parse(query)
 
-        # TODO@niv: @dean, maybe we should only return a single result here, instead of a list?
-        #  i don't think users will call multiple queries at once and expect a list of results
-        # @response, that makes sense, as long as you explain the behavior in the tutorials somewhere
         for statement in parse_tree.children:
             exec_result = self._run_passes(statement, self._pass_stack)
             if exec_result is not None:

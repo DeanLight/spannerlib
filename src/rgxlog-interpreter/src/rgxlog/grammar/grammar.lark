@@ -19,7 +19,7 @@ relation_declaration: "new" _SEPARATOR relation_name "(" decl_term_list ")"
 decl_term_list: decl_term ("," decl_term)*
 
 ?decl_term: "str" -> decl_string
-          | "spn" -> decl_span
+          | "span" -> decl_span
           | "int" -> decl_int
 
 rule: rule_head "<-" rule_body_relation_list

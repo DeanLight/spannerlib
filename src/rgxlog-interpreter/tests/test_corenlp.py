@@ -1,3 +1,5 @@
+import pytest
+
 from tests.utils import run_test
 
 
@@ -115,6 +117,7 @@ def test_lemma():
     run_test(query, expected_result, [Lemma])
 
 
+@pytest.mark.long
 def test_ner():
     expected_result = """printing results for query 'ner(Token, NER, Span)':
                        Token   |     NER      |    Span
@@ -135,8 +138,10 @@ def test_ner():
     run_test(query, expected_result)
 
 
-# TODO@niv: this sometimes raises `raise RuntimeError('Java not found.')` (inside `spanner-nlp`)
-# @reponse: wierd, have you checked why? is it only this test, or only this annotator?
+# @niv: this sometimes raises `raise RuntimeError('Java not found.')` (inside `spanner-nlp`)
+# @dean: wierd, have you checked why? is it only this test, or only this annotator?
+# TODO@niv: @dean, read the top of this file
+@pytest.mark.long
 def test_entity_mentions():
     expected_result = ("""printing results for query 'em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text,"""
                        """ CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences)':
@@ -174,6 +179,7 @@ def test_parse():
     run_test(query, expected_result, [Parse])
 
 
+@pytest.mark.long
 def test_depparse():
     expected_result = """printing results for query 'depparse(Dep, Governor, GovernorGloss, Dependent, DependentGloss)':
                           Dep  |   Governor |  GovernorGloss  |   Dependent |  DependentGloss
@@ -196,9 +202,7 @@ def test_depparse():
     run_test(query, expected_result)
 
 
-# TODO@niv: this test is really slow sometimes
-# @response: nlp is slow unfortunatly, I dont remember which test suite you use (maybe pytest)
-# but you can annotate it as a special test that only runs when given a slow-test flag or something
+@pytest.mark.long
 def test_coref():
     expected_result = ("""printing results for query 'coref(Id, Text, Type, Number, Gender, Animacy, StartIndex,"""
                        """ EndIndex, HeadIndex, SentNum, Position, IsRepresentativeMention)':
@@ -221,6 +225,7 @@ def test_coref():
     run_test(query, expected_result)
 
 
+@pytest.mark.long
 def test_openie():
     expected_result = ("""printing results for query 'openie(Subject, SubjectSpan, Relation, RelationSpan,"""
                        """ Object, ObjectSpan)':
@@ -243,11 +248,8 @@ def test_openie():
     run_test(query, expected_result)
 
 
-# TODO@niv: this used ~3GB RAM for me, is this normal?
-# @ response:
-# yes, see this: https://stanfordnlp.github.io/CoreNLP/memory-time.html
-# there is a way to limit memory usage in java https://stackoverflow.com/a/1493951/14571960
-# which i think will cause the engine to crash if the mem footprint of the annotator is too large
+# note: this test uses 3+ GB of RAM
+@pytest.mark.long
 def test_kbp():
     expected_result = ("""printing results for query 'kbp(Subject, SubjectSpan, Relation, RelationSpan, Object,"""
                        """ ObjectSpan)':
@@ -298,6 +300,7 @@ def test_sentiment():
     run_test(query, expected_result)
 
 
+@pytest.mark.long
 def test_truecase():
     expected_result = """printing results for query 'truecase(Token, Span, Truecase, TruecaseText)':
                           Token  |   Span   |  Truecase  |  TruecaseText

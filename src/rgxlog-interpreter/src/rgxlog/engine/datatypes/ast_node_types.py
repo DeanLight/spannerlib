@@ -119,7 +119,7 @@ class RelationDeclaration:
             if term_type is DataTypes.string:
                 type_strings.append('str')
             elif term_type is DataTypes.span:
-                type_strings.append('spn')
+                type_strings.append('span')
             elif term_type is DataTypes.integer:
                 type_strings.append('int')
             else:
