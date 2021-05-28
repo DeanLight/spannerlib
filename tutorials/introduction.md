@@ -184,7 +184,7 @@ new brothers(str, str)
 # 'confused' is a relation with one string term.
 new confused(str)
 # 'animal' is a relation with one string term and one span term 
-new animal(str, spn)
+new animal(str, span)
 # 'scores' is a relation with one string term and one int term
 new scores(str, int)
 ```
@@ -209,7 +209,7 @@ For example:
 ```python
 %%rgxlog
 # first declare the relation that you want to use
-new noun(str, spn)
+new noun(str, span)
 # now you can add facts (tuples) to that relation
 # this span indicates that a noun "Life" can be found at indexes 0 to 3
 noun("Life finds a way", [0,4)) 
@@ -270,20 +270,38 @@ You could also remove a rule via the session:
 
 ```magic_session.remove_rule(rule_to_delete)```
 
-Note that rules that use ie functions and recursive rules cannot be deleted!
+note: the rule must be written exactly as it appears in the output of `print_all_rules`
 
 ```python
 %%rgxlog
-ancestor(X,Y) <- grandparent(X,Y)
-# TODO@niv: @dean, what does this mean?
-# OOPS, that was a mistake!
+confused("Josh")
+brothers("Drake", "Josh")
+
+# oops! this rule was added by mistake!
+ancestor(X, Y) <- brothers(X, Y), confused(Y)
+
+?ancestor(X,Y)
 ```
 
 ```python
 from rgxlog import magic_session
 # remove the rule from the current session
-magic_session.remove_rule("ancestor(X,Y) <- grandparent(X,Y)")
+print ("before:")
+magic_session.print_all_rules()
+
+magic_session.remove_rule("ancestor(X, Y) <- brothers(X, Y), confused(Y)")
+
+print ("after:")
+magic_session.print_all_rules()
 ```
+
+```python
+%%rgxlog
+?ancestor(X,Y)
+```
+
+success! the rule was deleted - Drake and Josh are no longer part of the `?ancestor` query result
+
 
 # Queries<a class="anchor" id="queries"></a>
 Querying is very simple in RGXLog. You can query by using constant values, local variables and free variables:
@@ -308,7 +326,7 @@ grandfather("edward", "john")
 ?grandfather(X, "rin") # returns "bob" and "george" (rin's grandfathers)
 ?grandfather(X, Y) # returns all the tuples in the 'grandfather' relation
 
-new verb(str, spn)
+new verb(str, span)
 verb("Ron eats quickly.", [4,8))
 verb("You write neatly.", [4,9))
 ?verb("Ron eats quickly.", X) # returns [4,8)
@@ -364,12 +382,6 @@ The only difference between the 'rgx_span' and 'rgx_string' ie functions, is tha
 
 For example:
 <!-- #endregion -->
-
-```python
-from rgxlog.stdlib.python_regex import PYRGX_STRING
-magic_session.register(**PYRGX_STRING) 
-# TODO: i think the dict name should be the same as the function name (at least for non-default functions), less confusing
-```
 
 ```python
 %%rgxlog
@@ -450,12 +462,6 @@ test_happy(X) <- get_happy(sentence) -> (X)
 happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 ?happy_grandmother(X) # assuming get_happy returned "rin", also returns "rin"
 ```
-6999999999999999999999999999
-
-```python
-# TODO: add debug examples
-```
-
 ## More information about IE functions
 * You can remove an IE function via the session:
 
@@ -463,7 +469,7 @@ happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 
 * If you want to remove all the registered ie functions:
 
-```magic_session.remove_all_ie_function()```
+```magic_session.remove_all_ie_functions()```
 
 * If you register an IE function with a name that was already registered before, the old IE function will be overwitten by the new one. 
 <br><br>
@@ -471,6 +477,21 @@ happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 
 ```magic_session.print_registered_ie_functions()```
 
+
+
+```python
+# first, let's print all functions:
+magic_session.print_registered_ie_functions()
+```
+
+```python
+magic_session.remove_ie_function("Coref")
+magic_session.print_registered_ie_functions()
+```
+
+another tremendous triumph! Coref was deleted from the registered functions
+
+<!-- #region -->
 <!-- #region pycharm={"name": "#%% md\n"} -->
 # Additional small features<a class="anchor" id="small_features"></a>
 You can use line overflow escapes if you want to split your statements into multiple lines
@@ -484,6 +505,7 @@ string"
 ```
 
 # RGXLog program example<a class="anchor" id="example_program"></a>
+<!-- #endregion -->
 
 ```python
 %%rgxlog

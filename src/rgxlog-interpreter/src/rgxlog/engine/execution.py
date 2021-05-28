@@ -370,7 +370,7 @@ class PydatalogEngine(RgxlogEngineBase):
             format: return format of the string
         """
         assert format in ["PyDatalog", "RGXlog"]
-        arrow, delimiter = ("<=", " & ") if format == "PyDatalog" else ("<-", " , ")
+        arrow, delimiter = ("<=", " & ") if format == "PyDatalog" else ("<-", ", ")
         rule_head_string = self._get_relation_string(rule_head)
         rule_body_relation_strings = [str(relation) for relation in rule_body_relation_list]
         rule_body_string = delimiter.join(rule_body_relation_strings)
@@ -436,10 +436,10 @@ class PydatalogEngine(RgxlogEngineBase):
             print("Printing all rules:")
             for head in self.rules_history:
                 self.print_all_rules_with_head(head)
-
         else:
             print(f"Printing all rules with head {rule_head}:")
             self.print_all_rules_with_head(rule_head)
+
         # looks better with new line (\n)
         print()
 

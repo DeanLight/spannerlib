@@ -200,18 +200,29 @@ session.import_relation_from_df(df, relation_name="ogres")
 ```
 ## Creating Information Extractors Dynamically
 
+
+sometimes we can save time by creating rgxlog code dynamically:
+
 ```python
 from rgxlog import magic_session
 
 %rgxlog new sibling(str,str)
 %rgxlog new parent(str,str)
+%rgxlog parent("jonathan", "george")
+%rgxlog parent("george", "joseph")
+%rgxlog parent("joseph", "holy")
+%rgxlog parent("holy", "jotaro")
+%rgxlog sibling("dio", "jonathan")
 
 a = ["parent","uncle_aunt","grandparent", "sibling"]
 # sibling(X,Y) <- parent(Z,X), parent(Z,Y)
 d = {"uncle_aunt":["sibling","parent"], "grandparent":["parent","parent"], "great_aunt_uncle": ["sibling","parent","parent"]}
 for key, steps in d.items():
+    # add the start of the rule
     result = key + "(A,Z) <- "
     for num, step in enumerate(steps):
+        # for every step in the list, add the condition: step(letter, next letter).
+        #  the first letter is always `A`, and the last is always `Z`
         curr_letter = chr(num+ord("A"))
         result += step + "(" + curr_letter + ","
         if (num == len(steps)-1):
@@ -220,16 +231,11 @@ for key, steps in d.items():
             result += chr(1 + ord(curr_letter)) + "), "
     print("running:", result)
     magic_session.run_query(result)
-
-%rgxlog parent("jonathan", "george")
-%rgxlog parent("george", "joseph")
-%rgxlog sibling("dio", "jonathan")
-%rgxlog ?great_aunt_uncle(X,Y)
-        
-# uncle_aunt(A,Z) <- sibling(A,B), parent(B,Z)
-# grandparent(A,Z) <- parent(A,B), parent(B,Z)
-# great_aunt_uncle(A,Z) <- sibling(A,B), parent(B,C), parent(C,Z)
+    magic_session.run_query(f"?{key}(X,Y)")
 ```
 
+## TODO: things. not today 
+
 ```python
+
 ```

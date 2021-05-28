@@ -216,7 +216,7 @@ class SymbolTable(SymbolTableBase):
         self._var_to_value = {}
         self._var_to_type = {}
         self._relation_to_schema = {}
-        self._registered_ie_functions = {}
+        self._registered_ie_functions: Dict[str, IEFunction] = {}
         self.rule_relations = set()
 
     def set_var_value_and_type(self, var_name, var_value, var_type):
@@ -313,6 +313,7 @@ class SymbolTable(SymbolTableBase):
         self._registered_ie_functions = dict()
 
     def print_registered_ie_functions(self):
+        # TODO@niv: add docstring for every default function
         for ie_function_name, ie_function_obj in self._registered_ie_functions.items():
             print(f'{ie_function_name}\n{ie_function_obj.get_meta_data}\n{ie_function_obj}\n'
-                  f'{ie_function_obj.__doc__}\n\n')
+                  f'{ie_function_obj.ie_function_def.__doc__}\n\n')

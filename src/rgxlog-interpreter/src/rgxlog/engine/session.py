@@ -301,8 +301,6 @@ class Session:
         self._pass_stack = user_stack.copy()
         return self.get_pass_stack()
 
-    # Note that PyDatalog doesn't support retraction of recursive rule!
-    # e.g, we can't delete a rule such as: ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
     def remove_rule(self, rule: str):
         """
         remove a rule from the rgxlog engine
