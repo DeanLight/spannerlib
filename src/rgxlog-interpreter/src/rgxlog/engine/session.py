@@ -29,8 +29,8 @@ from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
 from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
 
-PREDINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, SSplit, POS, Lemma, NER, EntityMentions,
-                     CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase, Entities]
+PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, SSplit, POS, Lemma, NER, EntityMentions,
+                       CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase, Entities]
 
 SPAN_GROUP1 = "start"
 SPAN_GROUP2 = "end"
@@ -184,7 +184,7 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 class Session:
     def __init__(self, debug=False):
         self._symbol_table = SymbolTable()
-        self._symbol_table.register_predefined_ie_functions(PREDINED_IE_FUNCS)
+        self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
         self._term_graph = NetxTermGraph()
         self._execution = execution.PydatalogEngine(debug)
 
@@ -221,10 +221,8 @@ class Session:
         Runs the passes in pass_list on tree, one after another.
         """
         exec_result = None
-
         for cur_pass in pass_list:
-            if issubclass(cur_pass, Visitor) or issubclass(cur_pass, Visitor_Recursive) or \
-                    issubclass(cur_pass, Interpreter):
+            if issubclass(cur_pass, (Visitor, Visitor_Recursive, Interpreter)):
                 cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).visit(tree)
             elif issubclass(cur_pass, Transformer):
                 tree = cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).transform(tree)
@@ -283,8 +281,7 @@ class Session:
         """
         return [pass_.__name__ for pass_ in self._pass_stack]
 
-    # TODO@tom: it's their implementation. (@niv: can you be more explicit here? i'm not sure what this means)
-    def set_pass_stack(self, user_stack):
+    def set_pass_stack(self, user_stack: List):
         """
         sets a new pass stack instead of the current one
         Args:
@@ -294,14 +291,13 @@ class Session:
         """
 
         if type(user_stack) is not list:
-            raise TypeError('user stack should be a list of pass names (strings)')
+            raise TypeError('user stack should be a list of passes')
         for pass_ in user_stack:
-            if type(pass_) is not str:
-                raise TypeError('user stack should be a list of pass names (strings)')
+            if not issubclass(pass_, (Visitor, Visitor_Recursive, Interpreter, Transformer, ExecutionBase)):
+                raise TypeError('user stack should be a subclass of '
+                                'Visitor/Visitor_Recursive/Interpreter/Transformer/ExecutionBase')
 
-        self._pass_stack = []
-        for pass_ in user_stack:
-            self._pass_stack.append(eval(pass_))
+        self._pass_stack = user_stack.copy()
         return self.get_pass_stack()
 
     # Note that PyDatalog doesn't support retraction of recursive rule!
@@ -432,3 +428,38 @@ class Session:
         removes all the ie functions from the symbol table
         """
         self._symbol_table.remove_all_ie_functions()
+
+    def print_all_rules(self, rule_head: str = None):
+        """
+        prints all the rules that are registered.
+
+        Args:
+            rule_head: if rule head is not none we print all rules with rule_head
+        """
+
+        self._execution.print_all_rules(rule_head)
+
+
+if __name__ == "__main__":
+    session = Session()
+    query = '''
+        new parent(str, str)
+        parent("Liam", "Noah")
+        parent("Noah", "Oliver")
+        parent("James", "Lucas")
+        parent("Noah", "Benjamin")
+        parent("Benjamin", "Mason")
+        ancestor(X,Y) <- parent(X,Y)
+        ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
+
+        ?ancestor("Liam", X)
+        ?ancestor(X, "Mason")
+        ?ancestor("Mason", X)
+        '''
+
+    session.run_query(query)
+    session.print_all_rules()
+
+    session.remove_rule('ancestor(X, Y) <- parent(X, Z) , ancestor(Z, Y)')
+    session.run_query('?ancestor(X, Y)')
+    session.print_all_rules()

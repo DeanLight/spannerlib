@@ -6,7 +6,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.3'
-      jupytext_version: 1.11.1
+      jupytext_version: 1.11.2
   kernelspec:
     display_name: Python 3
     language: python
@@ -82,15 +82,15 @@ In order to use RGXLog in jupyter notebooks, you must first load it:
 %load_ext rgxlog
 ```
 
-Importing the RGXLog library automatically loads the `%spanner` and `%%spanner` cell magics which accepts RGXLog queries as shown below.
+Importing the RGXLog library automatically loads the `%rgxlog` and `%%rgxlog` cell magics which accepts RGXLog queries as shown below.
 
 ```python
-%spanner new relation(str)
+%rgxlog new relation(str)
 print("this is python code")
 ```
 
 ```python pycharm={"name": "#%%\n"}
-%%spanner
+%%rgxlog
 new uncle(str, str)
 uncle("bob", "greg")
 ?uncle(X,Y)
@@ -137,7 +137,7 @@ RGXLog allows you to use three types of variables: strings, integers and spans.
 The assignment of a string is intuitive:
 
 ```python
-%%spanner
+%%rgxlog
 b = "bob"
 b2 = b # b2's value is "bob"
 # you can write multiline strings using a line overflow escape like in python
@@ -149,7 +149,7 @@ b4 = "this is a multiline string" # b4 holds the same value as b3
 The assignment of integers is also very simple:
 
 ```python
-%%spanner
+%%rgxlog
 n = 4
 n2 = n # n2 = 4
 ```
@@ -158,7 +158,7 @@ n2 = n # n2 = 4
  You can assign a span value like this:
 
 ```python
-%%spanner
+%%rgxlog
 span1 = [3,7)
 span2 = span1 # span2 value is [3,7)
 ```
@@ -167,7 +167,7 @@ span2 = span1 # span2 value is [3,7)
 You can also perform a string assignment by reading from a file. You will need to provide a path to a file by either using a string literal or a string variable:
 
 ```python
-%%spanner
+%%rgxlog
 a = read("introduction.ipynb")
 b = "introduction.ipynb" 
 c = read(b) # c holds the same string value as a
@@ -178,7 +178,7 @@ RGXLog allows you to define and query relations.
 You have to declare a relation before you can use it (unless you define it with a rule as we'll see in the "rules" chapter). Each term in a relation could be a string, an integer or a span. Here are some examples for declaring relations:
 
 ```python
-%%spanner
+%%rgxlog
 # 'brothers' is a relation with two string terms.
 new brothers(str, str)
 # 'confused' is a relation with one string term.
@@ -207,7 +207,7 @@ where each `term` is either a constant or a local variable that is from the same
 For example:
 
 ```python
-%%spanner
+%%rgxlog
 # first declare the relation that you want to use
 new noun(str, spn)
 # now you can add facts (tuples) to that relation
@@ -227,7 +227,7 @@ if a fact that you try to remove does not exist, the remove fact statement will 
 
 
 ```python
-%%spanner
+%%rgxlog
 new goals(str, int)
 goals("kronovi", 10)
 goals("kronovi", 10) <- False  # 'goals' relation is now empty
@@ -239,7 +239,7 @@ Datalog allows you to deduce new tuples for a relation.
 RGXLog includes this feature as well:
 
 ```python
-%%spanner
+%%rgxlog
 new parent(str ,str)
 parent("bob", "greg")
 parent("greg", "alice")
@@ -250,7 +250,7 @@ grandparent(X,Z) <- parent(X,Y), parent(Y,Z) # ',' is a short hand to the 'and' 
 RGXLog also supports recursive rules:
 
 ```python
-%%spanner
+%%rgxlog
 parent("Liam", "Noah")
 parent("Noah", "Oliver")
 parent("James", "Lucas")
@@ -260,7 +260,7 @@ ancestor(X,Y) <- parent(X,Y)
 # This is a recursive rule
 ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
 
-# Queties are explained in the next section
+# Queries are explained in the next section
 ?ancestor("Liam", X)
 ?ancestor(X, "Mason")
 ?ancestor("Mason", X)
@@ -273,8 +273,9 @@ You could also remove a rule via the session:
 Note that rules that use ie functions and recursive rules cannot be deleted!
 
 ```python
-%%spanner
+%%rgxlog
 ancestor(X,Y) <- grandparent(X,Y)
+# TODO@niv: @dean, what does this mean?
 # OOPS, that was a mistake!
 ```
 
@@ -288,7 +289,7 @@ magic_session.remove_rule("ancestor(X,Y) <- grandparent(X,Y)")
 Querying is very simple in RGXLog. You can query by using constant values, local variables and free variables:
 
 ```python pycharm={"name": "#%%\n"}
-%%spanner
+%%rgxlog
 # first create a relation with some facts for the example
 new grandfather(str, str)
 # bob and george are the grandfathers of alice and rin
@@ -368,30 +369,13 @@ For example:
 from rgxlog.stdlib.python_regex import PYRGX_STRING
 magic_session.register(**PYRGX_STRING) 
 # TODO: i think the dict name should be the same as the function name (at least for non-default functions), less confusing
-# @response: do you mean the ie function name in rgxlog, or the pythonic function object?
-# I agree if you mean the former, the latter will overshadow the function object which is problematic.
-# in that case you can have a suffix for the dict var name but keep the prefix the same as the function object var name
 ```
 
 ```python
-%%spanner
+%%rgxlog
 report = "In 2019 we earned 2000 EUR"
 annual_earning(Year, Amount) <- py_rgx_string(report,"(\d\d\d\d).*?(?P<a>\d+)")->(Amount, Year)
 ?annual_earning(X, Y) # TODO@niv: dean, if we use regex with repetitions here, this becomes is ugly - is this intentional?
-# @response What do you mean by with repetitions? 
-# I think you are talking about regex semantics, let me give you some terminology
-# When talking about possible overlapping matches in regex matching, we see 3 flavors
-# 1. Greedy match semantics, return the biggest match that fits (like python re)
-# 2. Lazy match semantics, return the smallest match that fits
-# 3. Exhaustive semantics, return every possible match (like in enum-span-rs)
-# 
-# Here is an example, if we match a+b+ to "aaab"
-#  Greedy will return aab
-# lazy will reutrn ab
-# exhaustive will return ab, aab and aaab
-#
-# in this example, we want greedy matching, so its good to use python regex
-# if someone wants exhaustive matching, they should use enum-span-rs
 ```
 
 # Creating and Registering a New IE Function
@@ -411,6 +395,8 @@ session.register(ie_function, ie_function_name, in_rel, out_rel)
 ```
 <!-- #endregion -->
 
+### IE function `get_happy`
+
 ```python
 import re
 from rgxlog.engine.datatypes.primitive_types import DataTypes
@@ -425,14 +411,42 @@ def get_happy(text):
             matched_strings = [group for group in match.groups()]
         yield matched_strings
 
-get_happy_out_types = [DataTypes.string]
 get_happy_in_types = [DataTypes.string]
+get_happy_out_types = [DataTypes.string]
         
 magic_session.register(ie_function=get_happy,
                        ie_function_name = "get_happy",
                        in_rel=get_happy_in_types,
                        out_rel=get_happy_out_types)
 ```
+
+### IE function short_ping
+
+```python
+from rgxlog.stdlib.utils import run_command
+from sys import platform
+WINDOWS_OS = "win32"
+
+# TODO@niv: @dean, looks like there's a bug that functions can't have 0 args, due to syntax error
+def short_ping(seconds):
+    if platform == WINDOWS_OS:
+        for result in run_command("ping 8.8.8.8", timeout=seconds):
+            if "Pinging" not in result:
+                yield tuple([result])
+    else:
+        yield tuple(["this ain't windows!"])
+
+short_ping_in_types = [DataTypes.integer]
+short_ping_out_types = [DataTypes.string]
+        
+magic_session.register(ie_function=short_ping,
+                       ie_function_name = "short_ping",
+                       in_rel=short_ping_in_types,
+                       out_rel=short_ping_out_types)
+```
+
+### #TODO@niv: @dean, maybe rename information extractors to tell them apart from IE functions?
+
 
 # Custom information extractors<a class="anchor" id="custom_ie"></a>
 RGXLog allows you to define and use your own information extractors. You can use them only in rule bodies in the current version. The following is the syntax for custom information extractors:
@@ -448,8 +462,11 @@ where:
 
 For example:
 
+
+### custom IE using `get_happy`
+
 ```python
-%%spanner
+%%rgxlog
 new grandmother(str, str)
 grandmother("rin", "alice")
 grandmother("denna", "joel")
@@ -460,8 +477,20 @@ happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 ?happy_grandmother(X) # assuming get_happy returned "rin", also returns "rin"
 ```
 
-## More information about ie functions
-* You can remove an ie function via the session:
+### custom IE using `short_ping`
+
+```python
+%%rgxlog
+ping_results(X) <- short_ping(4) -> (X)
+?ping_results(X)
+```
+
+```python
+# TODO: add debug examples
+```
+
+## More information about IE functions
+* You can remove an IE function via the session:
 
 ```magic_session.remove_ie_function(ie_function_name)```
 
@@ -469,9 +498,9 @@ happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 
 ```magic_session.remove_all_ie_function()```
 
-* If you register ie function with a name that was already registerd before, the old ie function will be overwitten by the new one. 
+* If you register an IE function with a name that was already registered before, the old IE function will be overwitten by the new one. 
 <br><br>
-* You can inspect all the registered ie functions by:
+* You can inspect all the registered IE functions using the following command:
 
 ```magic_session.print_registered_ie_functions()```
 
@@ -481,7 +510,7 @@ You can use line overflow escapes if you want to split your statements into mult
 <!-- #endregion -->
 
 ```python pycharm={"name": "#%%\n"}
-%%spanner
+%%rgxlog
 k \
 = "some \
 string"
@@ -490,7 +519,7 @@ string"
 # RGXLog program example<a class="anchor" id="example_program"></a>
 
 ```python
-%%spanner
+%%rgxlog
 new lecturer(str, str)
 lecturer("walter", "chemistry")
 lecturer("linus", "operation systems")
@@ -538,7 +567,7 @@ magic_session.register(length, "Length", [DataTypes.string], [DataTypes.integer]
 ```
 
 ```python
-%%spanner
+%%rgxlog
 #Lets test this solution
 new string(str)
 string("a")
@@ -569,7 +598,7 @@ magic_session.register(length2, "Length2", [DataTypes.string], [DataTypes.intege
 ```
 
 ```python
-%%spanner
+%%rgxlog
 string_length_2(Str, Len) <- string(Tmp), Length2(Tmp) -> (Len, Str)
 ?string_length_2(Str, Len)
 ```
@@ -602,7 +631,7 @@ magic_session.register(NEQ, "NEQ", in_out_types, in_out_types)
 ```
 
 ```python
-%%spanner
+%%rgxlog
 #Lets test this solution
 new pair(str, str)
 pair("Dan", "Tom")

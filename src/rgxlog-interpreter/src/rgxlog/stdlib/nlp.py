@@ -3,11 +3,11 @@ import logging
 from io import BytesIO
 from os import path
 from os import popen
-# import sh
 from urllib.request import urlopen
 from zipfile import ZipFile
 
 import jdk
+# import sh
 import spacy
 from spanner_nlp.StanfordCoreNLP import StanfordCoreNLP
 
@@ -53,7 +53,10 @@ def _is_installed_java():
         return True
 
     return path.isdir(INSTALLATION_PATH)
-
+    # if None in [sh.which("java"), sh.which('java -version')]:
+    #     return False
+    # return True
+    
     # # TODO: how to check the java version?
     # return sh.which("java") is not None
     # @response: i think `java -version` works for 1.6 upwards
@@ -68,7 +71,7 @@ def _run_installation():
         logging.info(f"Installing JRE into {INSTALLATION_PATH}.")
         jdk.install('8', jre=True)
         logging.info("installation completed.")
-        assert _is_installed_java()
+        # assert _is_installed_java()
 
 
 _run_installation()

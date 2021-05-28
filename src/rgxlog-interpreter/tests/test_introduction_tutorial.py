@@ -199,7 +199,7 @@ def test_remove_rule():
 
     session = run_test(query)
 
-    session.remove_rule("ancestor(X,Y) <- parent(X,Y)")
+    session.remove_rule("ancestor(X, Y) <- parent(X, Y)")
     query = """
             ?ancestor(X, Y)
             ?tmp(X, Y)
