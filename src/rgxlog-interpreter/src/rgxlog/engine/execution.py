@@ -403,10 +403,10 @@ class PydatalogEngine(RgxlogEngineBase):
         A wrapper to add_rule. It adds the rule to PyDatalogs engine and save a binding between the original rule
         and the rule we actually passed to PyDatalog.
 
-        Args:
-            rule_head: a relation that defines the rule head
-            rule_body_relation_list: a list of relations that defines the rule body
-            rule_body_original_list: a List of the original relations that defined
+        :param rule_head: a relation that defines the rule head
+        :param rule_body_relation_list: a list of relations that defines the rule body
+        :param rule_body_original_list: a List of the original relations that defined
+        :return:
         """
 
         pydatalog_rule_string = self.add_rule(rule_head, rule_body_relation_list)
