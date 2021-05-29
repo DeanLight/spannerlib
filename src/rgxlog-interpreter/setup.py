@@ -51,7 +51,6 @@ setuptools.setup(
     },
     python_requires='>=3.8',
     install_requires=[
-
         'lark-parser',
         'networkx',
         'docopt',

@@ -79,10 +79,11 @@ In order to use RGXLog in jupyter notebooks, you must first load it:
 <!-- #endregion -->
 
 ```python
-import rgxlog
+import rgxlog  # or `load_ext rgxlog`
 ```
 
-Importing the RGXLog library automatically loads the `%rgxlog` and `%%rgxlog` cell magics which accepts RGXLog queries as shown below.
+Importing the RGXLog library automatically loads the `%rgxlog` and `%%rgxlog` cell magics which accepts RGXLog queries as shown below.<br>
+use %rgxlog to run a single line, and %%rgxlog to run a block of code:
 
 ```python
 %rgxlog new relation(str)
@@ -635,15 +636,38 @@ unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
 
 
 let's try to compare coding in python and coding in rgxlog.
-we are given lists of `enrolled` pairs, `student_gpa` pairs, 
+we are given two long strings of enrolled pairs, grades pairs.
 our goal is to find all student that are enrolled in biology and chemistry, and have a GPA > 80.
 
-```python
-
-```
 
 ## python 
 
 ```python
+import re
+enrolled = "subaru chemistry subaru biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
+grades = "subaru 80 rem 66 ram 66 roswaal 100 emilia 88"
 
+enrolled_pairs = re.findall(r"(\w+).*?(\w+)", enrolled)
+grade_pairs = re.findall(r"(\w+).*?(\d+)", grades)
+for student1, course1 in enrolled_pairs:
+    for student2, course2 in enrolled_pairs:
+        for student3, grade in grade_pairs:
+            if (student1 == student2 == student3):
+                if (course1 == "biology" and course2 == "chemistry" and int(grade) == 80):
+                    print(student1, grade)
 ```
+
+## rgxlog
+
+```python
+%%rgxlog
+enrolled = "subaru chemistry subaru biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
+grades = "subaru 80 rem 66 ram 66 roswaal 100 emilia 88"
+
+enrolled_in(Student, Course) <- py_rgx_string(enrolled, "(\w+).*?(\w+)")->(Student, Course)
+student_grade(Student, Grade) <- py_rgx_string(grades, "(\w+).*?(\d+)") -> (Student, Grade)
+interesting_student(X) <- enrolled_in(X, "biology"), enrolled_in(X, "chemistry"), student_grade(X, "80")
+?interesting_student(X)
+```
+
+in this case, the python implementation was long and unnatural. on the other hand, the rgxlog implementation was cleaner and allowed us to express our intentions directly, rather than dealing with annoying programming logic.
