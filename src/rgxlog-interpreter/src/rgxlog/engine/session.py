@@ -49,11 +49,12 @@ TRUE_VALUE = [tuple()]
 # TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
 
 def _infer_relation_type(row: iter):
+    # TODO@tom: @niv add documentation to row param
     """
     guess the relation type based on the data.
     we support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`)
-    :param row:
-    :return:
+    @param row:
+    @raise Exception: if there is a cell inside the dataframe with illegal type.
     """
     relation_types = []
     for cell in row:
@@ -99,11 +100,12 @@ def _text_to_typed_data(line, relation_types):
 
 
 def format_query_results(query: Query, query_results: List) -> Union[DataFrame, List]:
+    # TODO@tom: @niv add documentation to params
     """
     formats a single result from the engine into a usable format
-    :param query:
-    :param query_results:
-    :return:
+    @param query:
+    @param query_results:
+    @return:
     """
     assert isinstance(query_results, list), "illegal results format"
 
@@ -170,7 +172,7 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
     walter
 
 
-    :param query_results: List[the Query object used in execution, the execution's results (from PyDatalog)]
+    @param query_results: List[the Query object used in execution, the execution's results (from PyDatalog)]
     """
 
     all_result_strings = []
@@ -253,10 +255,10 @@ class Session:
         """
         generates an AST and passes it through the pass stack
 
-        :param format_results: if this is true, return the formatted result instead of the `[Query, List]` pair
-        :param query: the user's input
-        :param print_results: whether to print the results to stdout or not
-        :return the results of every query, in a list
+        @param format_results: if this is true, return the formatted result instead of the `[Query, List]` pair
+        @param query: the user's input
+        @param print_results: whether to print the results to stdout or not
+        @return the results of every query, in a list
         """
         exec_results = []
         parse_tree = self._parser.parse(query)
@@ -278,17 +280,16 @@ class Session:
 
     def get_pass_stack(self):
         """
-        Returns: the current pass stack
+        @return: the current pass stack
         """
         return [pass_.__name__ for pass_ in self._pass_stack]
 
     def set_pass_stack(self, user_stack: List):
         """
         sets a new pass stack instead of the current one
-        Args:
-            user_stack: a user supplied pass stack
+        @param user_stack: a user supplied pass stack
 
-        Returns: success message with the new pass stack
+        @return: success message with the new pass stack
         """
 
         if type(user_stack) is not list:
@@ -305,8 +306,7 @@ class Session:
         """
         remove a rule from the rgxlog engine
 
-        Args:
-            rule: the rule to be removed
+        @param rule: the rule to be removed
         """
         self._execution.remove_rule(rule)
 
@@ -417,8 +417,7 @@ class Session:
         """
         removes a function from the symbol table
 
-        Args:
-            name: the name of the ie function to remove
+        @param name: the name of the ie function to remove
         """
         self._symbol_table.remove_ie_function(name)
 
@@ -432,33 +431,32 @@ class Session:
         """
         prints all the rules that are registered.
 
-        Args:
-            rule_head: if rule head is not none we print all rules with rule_head
+        @param rule_head: if rule head is not none we print all rules with rule_head
         """
 
         self._execution.print_all_rules(rule_head)
 
 
-if __name__ == "__main__":
-    session = Session()
-    query = '''
-        new parent(str, str)
-        parent("Liam", "Noah")
-        parent("Noah", "Oliver")
-        parent("James", "Lucas")
-        parent("Noah", "Benjamin")
-        parent("Benjamin", "Mason")
-        ancestor(X,Y) <- parent(X,Y)
-        ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
-
-        ?ancestor("Liam", X)
-        ?ancestor(X, "Mason")
-        ?ancestor("Mason", X)
-        '''
-
-    session.run_query(query)
-    session.print_all_rules()
-
-    session.remove_rule('ancestor(X, Y) <- parent(X, Z) , ancestor(Z, Y)')
-    session.run_query('?ancestor(X, Y)')
-    session.print_all_rules()
+# if __name__ == "__main__":
+#     session = Session()
+#     query = '''
+#         new parent(str, str)
+#         parent("Liam", "Noah")
+#         parent("Noah", "Oliver")
+#         parent("James", "Lucas")
+#         parent("Noah", "Benjamin")
+#         parent("Benjamin", "Mason")
+#         ancestor(X,Y) <- parent(X,Y)
+#         ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
+#
+#         ?ancestor("Liam", X)
+#         ?ancestor(X, "Mason")
+#         ?ancestor("Mason", X)
+#         '''
+#
+#     session.run_query(query)
+#     session.print_all_rules()
+#
+#     session.remove_rule('ancestor(X, Y) <- parent(X, Z) , ancestor(Z, Y)')
+#     session.run_query('?ancestor(X, Y)')
+#     session.print_all_rules()

@@ -22,37 +22,32 @@ class SymbolTableBase(ABC):
         """
         set the type and value of a variable in the symbol table
 
-        Args:
-            var_name: the name of the variable
-            var_value: the value of the variable
-            var_type: the type of the variable
+        @param var_name: the name of the variable
+        @param var_value: the value of the variable
+        @param var_type: the type of the variable
         """
         pass
 
     @abstractmethod
     def get_variable_type(self, var_name):
         """
-        Args:
-            var_name: a variable name
-
-        Returns: the variable's type
+        @param var_name: a variable name
+        @return: the variable's type
         """
         pass
 
     @abstractmethod
     def get_variable_value(self, var_name):
         """
-        Args:
-            var_name: a variable name
-
-        Returns: the variable's value
+        @param var_name: a variable name
+        @return: the variable's value
         """
         pass
 
     @abstractmethod
     def get_all_variables(self):
         """
-        Returns: an iterable that contains tuples of the format (variable name, variable type, variable value)
+        @return: an iterable that contains tuples of the format (variable name, variable type, variable value)
         for each variable in the symbol table
         """
         pass
@@ -60,10 +55,8 @@ class SymbolTableBase(ABC):
     @abstractmethod
     def contains_variable(self, var_name):
         """
-        Args:
-            var_name: a variable name
-
-        Returns: true if the variable is in the symbol table, else false
+        @param var_name: a variable name
+        @return: true if the variable is in the symbol table, else false
         """
         pass
 
@@ -74,27 +67,24 @@ class SymbolTableBase(ABC):
         trying to add two schemas for the same relation will result in an exception as relation redefinitions
         are not allowed
 
-        Args:
-            relation_name: the relation's name
-            schema: the relation's schema
-            is_rule: true if rule false if relation
+        @param relation_name: the relation's name
+        @param schema: the relation's schema
+        @param is_rule: true if rule false if relation
         """
         pass
 
     @abstractmethod
     def get_relation_schema(self, relation_name):
         """
-        Args:
-            relation_name: a relation name
-
-        Returns: the relation's schema
+        @param relation_name: a relation name
+        @return: the relation's schema
         """
         pass
 
     @abstractmethod
     def get_all_relations(self):
         """
-        Returns: an iterable that contains tuples of the format (relation name, relation schema)
+        @return: an iterable that contains tuples of the format (relation name, relation schema)
         for each relation in the symbol table
         """
         pass
@@ -102,10 +92,8 @@ class SymbolTableBase(ABC):
     @abstractmethod
     def contains_relation(self, relation_name):
         """
-        Args:
-            relation_name: a relation name
-
-        Returns: true if the relation exists in the symbol table, else false
+        @param relation_name: a relation name
+        @return: true if the relation exists in the symbol table, else false
         """
         pass
 
@@ -113,29 +101,25 @@ class SymbolTableBase(ABC):
     def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel):
         """
         add a new ie function to the symbol table
-
-        Args:
-            explained in IEFunction class.
+        see params in IEFunction's __init__.
         """
         pass
 
     @abstractmethod
     def contains_ie_function(self, ie_func_name):
         """
-        Args:
-            ie_func_name: a name of an information extraction function
+        @param ie_func_name: a name of an information extraction function
 
-        Returns: true if the ie function exists in the symbol table, else false
+        @return: true if the ie function exists in the symbol table, else false
         """
         pass
 
     @abstractmethod
     def get_ie_func_data(self, ie_func_name):
         """
-        Args:
-            ie_func_name: a name of an information extraction function
+        @param ie_func_name: a name of an information extraction function
 
-        Returns: the ie function's data (see ie_function_base.IEFunctionData for more information on
+        @return: the ie function's data (see ie_function_base.IEFunctionData for more information on
         ie function data instances)
         """
         pass
@@ -143,7 +127,7 @@ class SymbolTableBase(ABC):
     @abstractmethod
     def get_all_registered_ie_funcs(self):
         """
-        Returns: an iterable containing the names of all of the ie functions that are registered in the symbol table
+        @return: an iterable containing the names of all of the ie functions that are registered in the symbol table
         """
         pass
 
@@ -151,8 +135,7 @@ class SymbolTableBase(ABC):
         """
         Adds to symbol table all the predefined ie functions.
 
-        Args:
-            ie_funcs: iterable of the predined ie functions in dict format
+        @param ie_funcs: iterable of the predined ie functions in dict format
         """
         for ie_func in ie_funcs:
             self.register_ie_function(**ie_func)
@@ -160,7 +143,7 @@ class SymbolTableBase(ABC):
     @abstractmethod
     def print_registered_ie_functions(self):
         """
-            Prints information about the registered ie functions.
+        Prints information about the registered ie functions.
         """
         pass
 
@@ -169,8 +152,7 @@ class SymbolTableBase(ABC):
         """
         removes a function from the symbol table
 
-        Args:
-            name: the name of the ie function to remove
+        @param name: the name of the ie function to remove
         """
 
     def remove_all_ie_functions(self):

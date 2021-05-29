@@ -51,8 +51,7 @@ class RgxlogEngineBase(ABC):
         """
         declares a relation in the rgxlog engine
 
-        Args:
-            relation_decl: a relation declaration
+        @param relation_decl: a relation declaration
         """
         pass
 
@@ -61,8 +60,7 @@ class RgxlogEngineBase(ABC):
         """
         add a fact to the rgxlog engine
 
-        Args:
-            fact: the fact to be added
+        @param fact: the fact to be added
         """
         pass
 
@@ -71,8 +69,7 @@ class RgxlogEngineBase(ABC):
         """
         remove a fact from the rgxlog engine
 
-        Args:
-            fact: the fact to be removed
+        @param fact: the fact to be removed
         """
         pass
 
@@ -81,8 +78,7 @@ class RgxlogEngineBase(ABC):
         """
         remove a rule from the rgxlog engine
 
-        Args:
-            rule: the rule to be removed
+        @param rule: the rule to be removed
         """
 
     @abstractmethod
@@ -90,10 +86,8 @@ class RgxlogEngineBase(ABC):
         """
         queries the rgxlog engine
 
-        Args:
-            query: a query for the rgxlog engine
-
-        Returns: a list of tuples that are the query's results
+        @param query: a query for the rgxlog engine
+        @return: a list of tuples that are the query's results
         """
         pass
 
@@ -104,9 +98,8 @@ class RgxlogEngineBase(ABC):
         this method assumes that all the relations in the rule body are normal relations (non ie relations)
         this means that the rule will be added as it is, without any micro operations (e.g. computing an ie relation)
 
-        Args:
-            rule_head: a relation that defines the rule head
-            rule_body_relation_list: a list of relations that defines the rule body
+        @param rule_head: a relation that defines the rule head
+        @param rule_body_relation_list: a list of relations that defines the rule body
         """
         pass
 
@@ -151,13 +144,11 @@ class RgxlogEngineBase(ABC):
         a part of a rule body, which serves to define the rule head relation. the rule head only "cares" about
         free variables, so we can throw away all of the columns defined by constant terms.
 
-        Args:
-            ie_relation: an ie relation that determines the input and output terms of the ie function
-            ie_func_data: the data for the ie function that will be used to compute the ie relation
-            bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
-            queried from it
-
-        Returns: a normal relation that contains all of the resulting tuples in the rgxlog engine
+        @param ie_relation: an ie relation that determines the input and output terms of the ie function
+        @param ie_func_data: the data for the ie function that will be used to compute the ie relation
+        @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
+                                  queried from it
+        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine
         """
         pass
 
@@ -179,11 +170,9 @@ class RgxlogEngineBase(ABC):
         this method is helpful for saving intermediate results while computing a rule body and also
         for filtering the results of an ie function
 
-        Args:
-            relation_list: a list of normal relations
-            name: the name for the joined relation (to be used as a part of a temporary relation name)
-
-        Returns: a new relation as described above
+        @param relation_list: a list of normal relations
+        @param name: the name for the joined relation (to be used as a part of a temporary relation name)
+        @return: a new relation as described above
         """
         pass
 
@@ -191,7 +180,6 @@ class RgxlogEngineBase(ABC):
     def clear_all():
         """
         removes all facts and clauses from the engine
-        :return:
         """
         pass
 
@@ -214,8 +202,7 @@ class PydatalogEngine(RgxlogEngineBase):
 
     def __init__(self, debug=False):
         """
-        Args:
-            debug: print the commands that are loaded into pyDatalog
+        @param debug: print the commands that are loaded into pyDatalog
         """
         super().__init__()
         self.temp_relation_id_counter = count()
@@ -226,8 +213,7 @@ class PydatalogEngine(RgxlogEngineBase):
         """
         declares a relation in the pyDatalog engine
 
-        Args:
-            relation_decl: a relation declaration
+        @param relation_decl: a relation declaration
         """
 
         # unlike rgxlog, pyDatalog does not have a relation declaration statement and typechecking, but pyDatalog
@@ -257,8 +243,7 @@ class PydatalogEngine(RgxlogEngineBase):
         """
         add a fact in the pyDatalog engine
 
-        Args:
-            fact: the fact to be added
+        @param fact: the fact to be added
         """
         relation_string = self._get_relation_string(fact)
         # the syntax for a 'add fact' statement in pyDatalog is '+some_relation(term_list)' create that statement
@@ -269,6 +254,11 @@ class PydatalogEngine(RgxlogEngineBase):
         pyDatalog.load(add_fact_statement)
 
     def remove_fact(self, fact: RemoveFact):
+        """
+        remove a fact from the pyDatalog engine
+
+        @param fact: the fact to be removed
+        """
         relation_string = self._get_relation_string(fact)
         # the syntax for a 'remove fact' statement in pyDatalog is '-some_relation(term_list)' create that statement
         remove_fact_statement = f'-{relation_string}'
@@ -278,6 +268,12 @@ class PydatalogEngine(RgxlogEngineBase):
         pyDatalog.load(remove_fact_statement)
 
     def remove_rule(self, rule: str):
+        """
+        remove a rule from the pyDatalog engine
+
+        @param rule: the fact to be removed
+        @raise Exception: if the rule is not inside rules_history.
+        """
         # the syntax for a 'remove rule' statement in pyDatalog is '-(rule_definition)'
         # transform rule in RGXLog's syntax into PyDatalog's syntax
         # i.e, ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y) will be transformed to:
@@ -327,17 +323,14 @@ class PydatalogEngine(RgxlogEngineBase):
         1. the query returned no results. in this case '[]' will be printed
         2. the query returned a single empty tuple, in this case '[()]' will be printed
 
-        Args:
-            query: a query for pyDatalog
+        @param query: a query for pyDatalog
         """
         raise NotImplementedError
 
     def query(self, query: Query):
         """
-        Args:
-            query: a query for pyDatalog
-
-        Returns: a list of tuples that are the query's results
+        @param query: a query for pyDatalog
+        @return: a list of tuples that are the query's results
         """
 
         # create the query. note that we don't use a question mark when we expect pyDatalog to return the query's
@@ -360,17 +353,17 @@ class PydatalogEngine(RgxlogEngineBase):
         return query_results
 
     def rule_to_string(self, rule_head: Relation, rule_body_relation_list: List,
-                       format: str = "PyDatalog") -> str:
+                       rule_format: str = "PyDatalog") -> str:
         """
-        Return a string that represents the rule in PyDatalog's/RGXlog's format.
 
-        Args:
-            rule_head: a relation that defines the rule head
-            rule_body_relation_list: a list of relations that defines the rule body
-            format: return format of the string
+        @param rule_head: a relation that defines the rule head.
+        @param rule_body_relation_list: a list of relations that defines the rule body.
+        @param rule_format: return format of the string.
+        @return: a string that represents the rule in PyDatalog's/RGXlog's format.
         """
-        assert format in ["PyDatalog", "RGXlog"]
-        arrow, delimiter = ("<=", " & ") if format == "PyDatalog" else ("<-", ", ")
+
+        assert rule_format in ["PyDatalog", "RGXlog"]
+        arrow, delimiter = ("<=", " & ") if rule_format == "PyDatalog" else ("<-", ", ")
         rule_head_string = self._get_relation_string(rule_head)
         rule_body_relation_strings = [str(relation) for relation in rule_body_relation_list]
         rule_body_string = delimiter.join(rule_body_relation_strings)
@@ -378,14 +371,13 @@ class PydatalogEngine(RgxlogEngineBase):
 
     def add_rule(self, rule_head: Relation, rule_body_relation_list: List[Relation]) -> str:
         """
-        add a rule to the pydatalog engine.
-        only normal relations are allowed in the rule body
-        Returns the rule we registered to pydataog.
+        adds a rule to the pydatalog engine.
 
-        Args:
-            rule_head: a relation that defines the rule head
-            rule_body_relation_list: a list of relations that defines the rule body
+        @param rule_head: a relation that defines the rule head
+        @param rule_body_relation_list: a list of relations that defines the rule body
+        @return: the rule we registered to pydataog.
         """
+
         # get a string that represents the rule in pyDatalog
         rule_string = self.rule_to_string(rule_head, rule_body_relation_list)
 
@@ -403,10 +395,10 @@ class PydatalogEngine(RgxlogEngineBase):
         A wrapper to add_rule. It adds the rule to PyDatalogs engine and save a binding between the original rule
         and the rule we actually passed to PyDatalog.
 
-        :param rule_head: a relation that defines the rule head
-        :param rule_body_relation_list: a list of relations that defines the rule body
-        :param rule_body_original_list: a List of the original relations that defined
-        :return:
+        @param rule_head: a relation that defines the rule head
+        @param rule_body_relation_list: a list of relations that defines the rule body
+        @param rule_body_original_list: a List of the original relations that defined
+        @return:
         """
 
         pydatalog_rule_string = self.add_rule(rule_head, rule_body_relation_list)
@@ -428,8 +420,7 @@ class PydatalogEngine(RgxlogEngineBase):
         """
         prints all the rules that are registered.
 
-        Args:
-            rule_head: if rule head is not none we print all rules with rule_head
+        @param rule_head: if rule head is not none we print all rules with rule_head
         """
 
         if rule_head is None:
@@ -447,8 +438,8 @@ class PydatalogEngine(RgxlogEngineBase):
         """
         prints all the rules with rule_head that are registered.
 
-        Args:
-            rule_head: we print all rules with rule_head
+        @param rule_head: we print all rules with rule_head
+        @raise Exception: if rule head was specified but there is no rule with that rule head.
         """
         if rule_head not in self.rules_history:
             raise Exception(f"No rules with head {rule_head} were registered.")
@@ -460,16 +451,15 @@ class PydatalogEngine(RgxlogEngineBase):
                             bounding_relation: Relation):
         """
         computes an information extraction relation, returning the result as a normal relation.
-        for more details see RgxlogEngineBase.compute_ie_relation
+        for more details see RgxlogEngineBase.compute_ie_relation.
 
-        Args:
-            ie_relation: an ie relation that determines the input and output terms of the ie function
-            ie_func: the ie function that will be used to compute the ie relation
-            bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
-            queried from it
-
-        Returns: a normal relation that contains all of the resulting tuples in the rgxlog engine
+        @param ie_relation: an ie relation that determines the input and output terms of the ie function
+        @param ie_func: the ie function that will be used to compute the ie relation
+        @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
+                                  queried from it
+        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine
         """
+
         ie_relation_name = ie_relation.relation_name
 
         # create the input relation for the ie function, and also declare it inside pyDatalog
@@ -540,11 +530,9 @@ class PydatalogEngine(RgxlogEngineBase):
 
         for an example and more details see RgxlogEngineBase.join_relations
 
-        Args:
-            relation_list: a list of normal relations
-            name: a name for the joined relation (will be used as a part of a temporary relation name)
-
-        Returns: a new relation as described above
+        @param relation_list: a list of normal relations
+        @param name: a name for the joined relation (will be used as a part of a temporary relation name)
+        @return: a new relation as described above
         """
 
         # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
@@ -571,12 +559,12 @@ class PydatalogEngine(RgxlogEngineBase):
         """
         the pyDatalog execution engine receives instructions via strings.
         return a string representation of a term in pyDatalog.
-        Args:
-            term: a term of any type
-            term_type: the type of the term
 
-        Returns: a string representation of the term in pyDatalog
+        @param term: a term of any type
+        @param term_type: the type of the term
+        @return: a string representation of the term in pyDatalog
         """
+
         if term_type is DataTypes.string:
             # add quotes to strings to avoid pyDatalog thinking a string is a variable
             return f"\"{term}\""
@@ -592,11 +580,11 @@ class PydatalogEngine(RgxlogEngineBase):
         return a string representation of a span term in pyDatalog.
         since there's no built in representation of a span in pyDatalog, and custom classes do not seem to work
         as intended , so we represent a span using a tuple of length 2.
-        Args:
-            span: a span
 
-        Returns: a pyDatalog string representation of the span
+        @param span: a span
+        @return: a pyDatalog string representation of the span
         """
+
         span_string = f'({span.span_start}, {span.span_end})'
         return span_string
 
@@ -607,10 +595,8 @@ class PydatalogEngine(RgxlogEngineBase):
         quotes are added to string terms so pyDatalog will not be confused between strings and variables.
         spans are represented as tuples of length 2 (see PydatalogEngine.__get_span_string())
 
-        Args:
-            relation: a relation
-
-        Returns: a pydatalog string representation of the relation
+        @param relation: a relation
+        @return: a pydatalog string representation of the relation
         """
 
         # create a string representation of the relation's term list in pyDatalog
@@ -624,11 +610,10 @@ class PydatalogEngine(RgxlogEngineBase):
 
     def _get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
         """
-        Args:
-            relation: a relation to be queried
-
-        Returns: all the tuples of 'relation' as a list of tuples
+        @param relation: a relation to be queried
+        @return: all the tuples of 'relation' as a list of tuples
         """
+
         relation_name = relation.relation_name
         relation_arity = len(relation.term_list)
 
@@ -649,12 +634,10 @@ class PydatalogEngine(RgxlogEngineBase):
         declares a new temporary relation with the requested arity in pyDatalog
         note that the relation's schema is not needed as there's no typechecking in pyDatalog
 
-        Args:
-            arity: the temporary relation's arity (needed for declaring the new relation inside pyDatalog)
-            name: will be used as a part of the temporary relation's name. for example for the name 'RGX',
-            the temporary relation's name could be __rgxlog__RGX_0
-
-        Returns: the new temporary relation's name
+        @param arity: the temporary relation's arity (needed for declaring the new relation inside pyDatalog)
+        @param name: will be used as a part of the temporary relation's name. for example for the name 'RGX',
+                     the temporary relation's name could be __rgxlog__RGX_0
+        @return: the new temporary relation's name
         """
 
         if len(name) != 0:
@@ -682,12 +665,12 @@ class PydatalogEngine(RgxlogEngineBase):
         are written by the users and could yield results that are not properly typed.
         this method asserts an information extraction function's output is properly typed
 
-        Args:
-            ie_input: the input of the ie function (used in the exception when the type check fails)
-            ie_output: an output of the ie function
-            ie_output_schema: the expected schema for ie_output
-            ie_relation: the ie relation for which the output was computed (will be used to print an exception
+        @param ie_input: the input of the ie function (used in the exception when the type check fails)
+        @param ie_output: an output of the ie function
+        @param ie_output_schema: the expected schema for ie_output
+        @param ie_relation: the ie relation for which the output was computed (will be used to print an exception
             in case the output is not properly typed)
+        @raise Exception: if there is output term of an unsupported type or the output relation is not properly typed.
         """
 
         # get a list of the ie output's term types
@@ -726,7 +709,6 @@ class PydatalogEngine(RgxlogEngineBase):
     def clear_all():
         """
         removes all the data from the pydatalog engine. without this, all sessions share their facts and relations
-        :return:
         """
         pyDatalog.clear()
 
@@ -738,11 +720,11 @@ class ExecutionBase(ABC):
 
     def __init__(self, term_graph, symbol_table, rgxlog_engine):
         """
-        Args:
-            term_graph: a term graph to execute
-            symbol_table: a symbol table
-            rgxlog_engine: a rgxlog engine that will be used to execute the term graph
+        @param term_graph: a term graph to execute
+        @param symbol_table: a symbol table
+        @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph
         """
+
         super().__init__()
         self.term_graph = term_graph
         self.symbol_table = symbol_table

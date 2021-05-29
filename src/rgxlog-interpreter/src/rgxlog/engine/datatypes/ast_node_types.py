@@ -15,11 +15,10 @@ def get_term_list_string(term_list, type_list):
     returns a string representation of the term list.
     quotes are added to string terms so they will not be confused with variables.
 
-    Args:
-        term_list: the term list to be turned into a string
-        type_list: the types of the terms in term_list
+    @param term_list: the term list to be turned into a string
+    @param type_list: the types of the terms in term_list
 
-    Returns: a string representation of the term list
+    @return: a string representation of the term list
     """
     terms_with_quoted_strings = [f'"{term}"' if term_type is DataTypes.string
                                  else str(term)
@@ -35,10 +34,10 @@ class Relation:
 
     def __init__(self, relation_name, term_list, type_list):
         """
-        Args:
-            relation_name: the name of the relation
-            term_list: a list of the relation terms.
-            type_list: a list of the relation term types.
+        @param relation_name: the name of the relation
+        @param term_list: a list of the relation terms.
+        @param type_list: a list of the relation term types.
+        @raise Exception: if length of term list doesn't match the length of type list.
         """
         if len(term_list) != len(type_list):
             raise Exception(f"received different lengths of term_list ({len(term_list)}) "
@@ -51,11 +50,6 @@ class Relation:
         term_list_string = get_term_list_string(self.term_list, self.type_list)
         relation_string = f"{self.relation_name}({term_list_string})"
         return relation_string
-
-    # def __eq__(self, other:"Relation"):
-    #     return (self.term_list == other.term_list and
-    #             self.relation_name == other.relation_name and
-    #             self.type_list == other.type_list)
 
 
 class IERelation:
@@ -73,14 +67,14 @@ class IERelation:
 
     def __init__(self, relation_name, input_term_list, input_type_list, output_term_list, output_type_list):
         """
-        Args:
-            relation_name: the name of the information extraction relation
-            input_term_list: a list of the input terms for the ie function.
-            must be either literal values or free variables
-            input_type_list: a list of the term types in input_term_list
-            output_term_list: a list of the output terms for the ie function.
-            must be either literal values or free variables
-            output_type_list: a list of the term types in output_term_list
+        @param relation_name: the name of the information extraction relation
+        @param input_term_list: a list of the input terms for the ie function.
+                                must be either literal values or free variables
+        @param input_type_list: a list of the term types in input_term_list
+        @param output_term_list: a list of the output terms for the ie function.
+                                 must be either literal values or free variables
+        @param output_type_list: a list of the term types in output_term_list
+        @raise Exception: if lenght of in/out term list doesn't match length of in/out type_list.
         """
         if len(input_term_list) != len(input_type_list):
             raise Exception(f"received different lengths of input_term_list ({len(input_term_list)}) "
@@ -106,9 +100,9 @@ class RelationDeclaration:
 
     def __init__(self, relation_name, type_list):
         """
-        Args:
-            relation_name: the name of the relation
-            type_list: a list of the types of the terms in the relation's tuples
+        @param relation_name: the name of the relation
+        @param type_list: a list of the types of the terms in the relation's tuples
+        @raise Exception: if there is invalid term type in term list.
         """
         self.relation_name = relation_name
         self.type_list = type_list
@@ -136,6 +130,9 @@ class AddFact(Relation):
     """
 
     def __init__(self, relation_name, term_list, type_list):
+        """
+        see documentation of Relation's __init__.
+        """
         super().__init__(relation_name, term_list, type_list)
 
 
@@ -146,6 +143,9 @@ class RemoveFact(Relation):
     """
 
     def __init__(self, relation_name, term_list, type_list):
+        """
+        see documentation of Relation's __init__.
+        """
         super().__init__(relation_name, term_list, type_list)
 
 
@@ -156,6 +156,9 @@ class Query(Relation):
     """
 
     def __init__(self, relation_name, term_list, type_list):
+        """
+        see documentation of Relation's __init__.
+        """
         super().__init__(relation_name, term_list, type_list)
 
 
@@ -166,10 +169,9 @@ class Rule:
 
     def __init__(self, head_relation: Relation, body_relation_list, body_relation_type_list):
         """
-        Args:
-            head_relation: the rule head, which is represented by a single relation
-            body_relation_list: a list of the rule body relations
-            body_relation_type_list: a list of the rule body relations types (e.g. "relation", "ie_relation")
+        @param head_relation: the rule head, which is represented by a single relation
+        @param body_relation_list: a list of the rule body relations
+        @param body_relation_type_list: a list of the rule body relations types (e.g. "relation", "ie_relation")
         """
         self.head_relation = head_relation
         self.body_relation_list = body_relation_list
@@ -193,10 +195,9 @@ class Assignment:
 
     def __init__(self, var_name, value, value_type):
         """
-        Args:
-            var_name: the variable name to be assigned a value
-            value: the assigned value
-            value_type: the assigned value's type
+        @param var_name: the variable name to be assigned a value
+        @param value: the assigned value
+        @param value_type: the assigned value's type
         """
         self.var_name = var_name
         self.value = value
@@ -218,10 +219,9 @@ class ReadAssignment:
 
     def __init__(self, var_name, read_arg, read_arg_type):
         """
-        Args:
-            var_name: the variable name to be assigned a value
-            read_arg: the argument that is passed to the read() function (e.g. "some_file" in 's = read("some_file")')
-            read_arg_type: the type of the argument that is passed to the read function
+        @param var_name: the variable name to be assigned a value
+        @param read_arg: the argument that is passed to the read() function (e.g. "some_file" in 's = read("some_file")')
+        @param read_arg_type: the type of the argument that is passed to the read function
         """
         if read_arg_type not in [DataTypes.string, DataTypes.var_name]:
             raise Exception(

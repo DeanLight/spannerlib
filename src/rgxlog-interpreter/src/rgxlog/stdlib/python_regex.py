@@ -4,11 +4,10 @@ from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 def py_rgx_string(text, regex_pattern):
     """
-    Args:
-        text: The input text for the regex operation
-        regex_pattern: the pattern of the regex operation
+    @param text: The input text for the regex operation
+    @param regex_pattern: the pattern of the regex operation
 
-    Returns: tuples of strings that represents the results
+    @return: tuples of strings that represents the results
     """
     compiled_rgx = re.compile(regex_pattern)
     num_groups = compiled_rgx.groups
@@ -32,11 +31,10 @@ PYRGX_STRING = dict(ie_function=py_rgx_string,
 
 def py_rgx(text, regex_pattern):
     """
-    Args:
-        text: The input text for the regex operation
-        regex_pattern: the pattern of the regex operation
+    @param text: The input text for the regex operation
+    @param regex_pattern: the pattern of the regex operation
 
-    Returns: tuples of spans that represents the results
+    @return: tuples of spans that represents the results
     """
     compiled_rgx = re.compile(regex_pattern)
     num_groups = compiled_rgx.groups

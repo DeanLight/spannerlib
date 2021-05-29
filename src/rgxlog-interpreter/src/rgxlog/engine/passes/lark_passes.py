@@ -443,8 +443,7 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
         An utility function that checks if a relation exists in the symbol table
         and if the correct arity was used
 
-        Args:
-            relation: the relation that will be checked.
+        @param relation: the relation that will be checked.
         """
 
         # get the relation name and the arity that was used by the user
@@ -615,7 +614,7 @@ class CheckRuleSafety(Visitor_Recursive):
             """
             an utility function to be used as the distance function of the fixed point algorithm
 
-            Returns: the size difference of set1 and set2
+            @return: the size difference of set1 and set2
             """
             size_difference = abs(len(set1) - len(set2))
             return size_difference
@@ -626,10 +625,9 @@ class CheckRuleSafety(Visitor_Recursive):
             this function iterates over all of the rule body relations, checking if each one of them is safe.
             if a rule is found to be safe, this function will mark its output free variables as bound
 
-            Args:
-                known_bound_free_vars: a set of the free variables in the rule that are known to be bound
+            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound
 
-            Returns: a union of 'known_bound_free_vars' with the bound free variables that were found
+            @return: a union of 'known_bound_free_vars' with the bound free variables that were found
             """
 
             for relation, relation_type in zip(body_relation_list, body_relation_type_list):
@@ -702,7 +700,7 @@ class ReorderRuleBody(Visitor_Recursive):
             """
             an utility function to be used as the distance function of the fixed point algorithm
 
-            Returns: the size difference of set1 and set2
+            @return: the size difference of set1 and set2
             """
             size_difference = abs(len(set1) - len(set2))
             return size_difference
@@ -714,10 +712,9 @@ class ReorderRuleBody(Visitor_Recursive):
             if a rule is found to be safe, this function will mark its output free variables as bound, and
             add it to the reordered relations list (thus finding a valid body relations order).
 
-            Args:
-                known_bound_free_vars: a set of the free variables in the rule that are known to be bound
+            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound
 
-            Returns: a union of 'known_bound_free_vars' with the bound free variables that were found
+            @return: a union of 'known_bound_free_vars' with the bound free variables that were found
             """
 
             # try to find new safe relations
@@ -909,9 +906,8 @@ class ResolveVariablesReferences(Interpreter):
         its DataTypes.var_name type in type_list with its real type
         the changes to the lists are done in-place
 
-        Args:
-            term_list: a list of terms
-            type_list: the type of terms in term_list
+        @param term_list: a list of terms
+        @param type_list: the type of terms in term_list
         """
 
         # get the list of terms with resolved variable values
@@ -1022,10 +1018,9 @@ class AddStatementsToNetxTermGraph(Interpreter):
         represents the statement to the term graph, then attach the node to the term graph's root.
         Should only be used for simple statements (i.e. can be described by a single node)
 
-        Args:
-            statement_type: the type of the statement, (e.g. add_fact). should be the same as the statement's
-            name in the grammar. Will be set as the node's type attribute.
-            statement_value: will be set as the value attribute of the node.
+        @param statement_type: the type of the statement, (e.g. add_fact). should be the same as the statement's
+                               name in the grammar. Will be set as the node's type attribute.
+        @param statement_value: will be set as the value attribute of the node.
         """
         new_statement_node = self.term_graph.add_term(type=statement_type, value=statement_value)
         self.term_graph.add_edge(self.term_graph.get_root_id(), new_statement_node)

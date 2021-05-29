@@ -142,11 +142,10 @@ def rgx(text, regex_pattern, out_type):
 
 def rgx_span(text, regex_pattern):
     """
-    Args:
-        text: The input text for the regex operation
-        regex_pattern: the pattern of the regex operation
+    @param text: The input text for the regex operation
+    @param regex_pattern: the pattern of the regex operation
 
-    Returns: tuples of spans that represents the results
+    @return: tuples of spans that represents the results
     """
     return rgx(text, regex_pattern, "span")
 
@@ -159,11 +158,10 @@ RGX = dict(ie_function=rgx_span,
 
 def rgx_string(text, regex_pattern):
     """
-    Args:
-        text: The input text for the regex operation
-        regex_pattern: the pattern of the regex operation
+    @param text: The input text for the regex operation
+    @param regex_pattern: the pattern of the regex operation
 
-    Returns: tuples of strings that represents the results
+    @return: tuples of strings that represents the results
     """
     return rgx(text, regex_pattern, "string")
 

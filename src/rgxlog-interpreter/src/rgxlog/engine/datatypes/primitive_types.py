@@ -44,9 +44,8 @@ class Span:
 
     def __init__(self, span_start, span_end):
         """
-        Args:
-            span_start: the first (included) index of the span
-            span_end: the last (excluded) index of the span
+        @param span_start: the first (included) index of the span
+        @param span_end: the last (excluded) index of the span
         """
         self.span_start = span_start
         self.span_end = span_end

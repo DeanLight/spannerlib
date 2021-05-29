@@ -1,5 +1,6 @@
-from typing import Iterable, List
+from typing import Iterable, List, Callable, Union
 from rgxlog.engine.datatypes.primitive_types import DataTypes
+
 
 class IEFunction:
     """
@@ -7,14 +8,13 @@ class IEFunction:
     needed for using a single information extraction function
     """
 
-    """
-    Members: 
-        ie_function_def : callable() - the user defined ie function implementation. 
-        in_types        : iter()     - iterable of the input types to the function.  
-        out_types       :            - either a function (int->iterable) or an iterable
-    """
-
-    def __init__(self, ie_function_def, in_types, out_types):
+    def __init__(self, ie_function_def: Callable, in_types: Iterable[DataTypes],
+                 out_types: Union[Iterable[DataTypes], Callable[[int], Iterable[DataTypes]]]):
+        """
+        @param ie_function_def : the user defined ie function implementation.
+        @param in_types        : iterable of the input types to the function.
+        @param out_types       :  either a function (int->iterable) or an iterable
+        """
         self.ie_function_def = ie_function_def
         self.in_types = in_types
         self.out_types = out_types
@@ -42,7 +42,7 @@ class IEFunction:
         """
         return self.in_types
 
-    def get_output_types(self, output_arity:int) -> List[DataTypes]:
+    def get_output_types(self, output_arity: int) -> List[DataTypes]:
         """
         given an expected output arity returns an iterable of the output types to the function.
         if the ie function cannot return an output of length output_arity, should return None.
@@ -60,4 +60,3 @@ class IEFunction:
     def get_meta_data(self) -> str:
         metadata = f"""Input types: {self.in_types}.\nOutput types: {self.out_types}"""
         return metadata
-
