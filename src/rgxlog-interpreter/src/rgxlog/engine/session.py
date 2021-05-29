@@ -29,7 +29,8 @@ from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
 from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
 
-PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, SSplit, POS, Lemma, NER, EntityMentions,
+PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, SSplit, POS, Lemma, NER,
+                       EntityMentions,
                        CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
 
 SPAN_GROUP1 = "start"
@@ -314,7 +315,14 @@ class Session:
     def _unknown_task_type():
         return 'unknown task type'
 
-    def _add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
+    def _add_imported_relation_to_engine(self, relation_table, relation_name, relation_types) -> None:
+        """
+        utility method for importing relations
+        :param relation_table: the imported data
+        :param relation_name: the name of the new relation
+        :param relation_types: the inferred types of the data
+        :return:
+        """
         symbol_table = self._symbol_table
         engine = self._execution
         # first make sure the types are legal, then we add them to the engine (to make sure
@@ -334,7 +342,14 @@ class Session:
         for fact in facts:
             engine.add_fact(fact)
 
-    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=";"):
+    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=";") -> None:
+        """
+        import a new relation into rgxlog, using data from a csv file
+        :param csv_file_name: the name of the file
+        :param relation_name: the name of the new relation. default: the name of the file
+        :param delimiter: the csv delimiter. default: `;`
+        :return: None
+        """
         if not os.path.isfile(csv_file_name):
             raise IOError("csv file does not exist")
 
@@ -354,7 +369,13 @@ class Session:
 
             self._add_imported_relation_to_engine(reader, relation_name, relation_types)
 
-    def import_relation_from_df(self, relation_df: DataFrame, relation_name):
+    def import_relation_from_df(self, relation_df: DataFrame, relation_name) -> None:
+        """
+        import a new relation from a `pandas.DataFrame` object
+        :param relation_df: the `DataFrame` object
+        :param relation_name: the name of the new relation
+        :return: None
+        """
 
         data = relation_df.values.tolist()
 
@@ -368,8 +389,14 @@ class Session:
 
         self._add_imported_relation_to_engine(data, relation_name, relation_types)
 
-    def query_into_csv(self, query: str, csv_file_name: str, delimiter=";"):
-        # run a query normally and get formatted results:
+    def query_into_csv(self, query: str, csv_file_name: str, delimiter=";") -> None:
+        """
+        run a query using `Session.run_query` and output the results into a csv file
+        :param query: the query to run
+        :param csv_file_name: the output file
+        :param delimiter: the csv delimiter. default: `;`
+        :return: None
+        """
         query_results = self.run_query(query, print_results=False)
         if len(query_results) != 1:
             raise Exception("a query into csv must have exactly one output")
@@ -385,25 +412,46 @@ class Session:
                 writer.writerows(formatted_result)
 
     def query_into_df(self, query: str) -> Union[DataFrame, List]:
-        # run a query normally and get formatted results:
+        """
+        run a query using `Session.run_query` and output the results into a `pandas.DataFrame` object
+        :param query: the query to run
+        :return: the resulting `pandas.DataFrame` object
+        """
         query_results = self.run_query(query, print_results=False)
         if len(query_results) != 1:
             raise Exception("the query must have exactly one output")
 
         return format_query_results(*query_results[0])
 
-    def _relation_name_to_query(self, relation_name: str):
+    def _relation_name_to_query(self, relation_name: str) -> str:
+        """
+        utility method to convert a relation's name into a query which outputs its whole contents
+        :param relation_name: the name of the relation
+        :return: the query string
+        """
         symbol_table = self._symbol_table
         relation_schema = symbol_table.get_relation_schema(relation_name)
         relation_arity = len(relation_schema)
         query = "?" + relation_name + "(" + ", ".join(f"T{i}" for i in range(relation_arity)) + ")"
         return query
 
-    def export_relation_into_df(self, relation_name: str):
+    def export_relation_into_df(self, relation_name: str) -> DataFrame:
+        """
+        export a relation into a `pandas.DataFrame` object
+        :param relation_name: the relation to export
+        :return: the `pandas.DataFrame` object
+        """
         query = self._relation_name_to_query(relation_name)
         return self.query_into_df(query)
 
-    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";"):
+    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";") -> None:
+        """
+        export a relation into a csv file
+        :param csv_file_name: the name of the file
+        :param relation_name: the name of the new relation
+        :param delimiter: the csv delimiter. default=';'
+        :return: None
+        """
         query = self._relation_name_to_query(relation_name)
         return self.query_into_csv(query, csv_file_name, delimiter)
 
@@ -437,28 +485,3 @@ class Session:
         """
 
         self._execution.print_all_rules(rule_head)
-
-
-if __name__ == "__main__":
-    session = Session()
-    query = '''
-        new parent(str, str)
-        parent("Liam", "Noah")
-        parent("Noah", "Oliver")
-        parent("James", "Lucas")
-        parent("Noah", "Benjamin")
-        parent("Benjamin", "Mason")
-        ancestor(X,Y) <- parent(X,Y)
-        ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
-
-        ?ancestor("Liam", X)
-        ?ancestor(X, "Mason")
-        ?ancestor("Mason", X)
-        '''
-
-    session.run_query(query)
-    session.print_all_rules()
-
-    session.remove_rule('ancestor(X, Y) <- parent(X, Z) , ancestor(Z, Y)')
-    session.run_query('?ancestor(X, Y)')
-    session.print_all_rules()

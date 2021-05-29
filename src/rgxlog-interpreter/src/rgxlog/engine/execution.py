@@ -5,7 +5,6 @@ and an rgxlog engine.
 """
 
 # TODO remove import * where not needed
-import re
 from abc import ABC, abstractmethod
 from itertools import count
 from typing import List, Tuple

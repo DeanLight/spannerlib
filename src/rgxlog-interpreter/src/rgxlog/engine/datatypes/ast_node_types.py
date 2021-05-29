@@ -5,7 +5,6 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
-import dataclasses
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
