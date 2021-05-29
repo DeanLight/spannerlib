@@ -7,16 +7,14 @@ from urllib.request import urlopen
 from zipfile import ZipFile
 
 import jdk
-import spacy
 from spanner_nlp.StanfordCoreNLP import StanfordCoreNLP
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
-sp = spacy.load('en_core_web_sm')
 
 MIN_VERSION = 1.8
 
-NLP_URL = "https://CoreNLPEngine.stanford.edu/software/stanford-corenlp-4.1.0.zip"
+NLP_URL = "https://nlp.stanford.edu/software/stanford-corenlp-4.1.0.zip"
 
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
 CURR_DIR = path.dirname(__file__)
@@ -52,6 +50,7 @@ def _is_installed_java():
         return True
 
     return path.isdir(INSTALLATION_PATH)
+
 
 def _run_installation():
     if not _is_installed_nlp():
@@ -344,19 +343,3 @@ UDFeats = dict(ie_function=udfeats_wrapper,
                ie_function_name='UDFeats',
                in_rel=[DataTypes.string],
                out_rel=None)
-
-
-# ********************************************************************************************************************
-
-# TODO@niv: @tom, this is our only usage of spacy, can we refactor it?
-def entities(text):
-    ent = sp(text).ents
-    return ((entity.text, spacy.explain(entity.label_)) for entity in ent)
-
-
-Entities = dict(ie_function=entities,
-                ie_function_name='Entities',
-                in_rel=[DataTypes.string],
-                out_rel=[DataTypes.string, DataTypes.string])
-
-# ********************************************************************************************************************

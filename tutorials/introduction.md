@@ -491,11 +491,9 @@ magic_session.print_registered_ie_functions()
 
 another tremendous triumph! Coref was deleted from the registered functions
 
-<!-- #region -->
 <!-- #region pycharm={"name": "#%% md\n"} -->
 # Additional small features<a class="anchor" id="small_features"></a>
 You can use line overflow escapes if you want to split your statements into multiple lines
-<!-- #endregion -->
 
 ```python pycharm={"name": "#%%\n"}
 %%rgxlog
@@ -533,10 +531,10 @@ enrolled_in_physics_and_chemistry(X) <- enrolled(X, "chemistry"), enrolled(X, "p
 lecturer_of(X,Z) <- lecturer(X,Y), enrolled(Z,Y)
 ?lecturer_of(X,"abigail") # returns "walter" and "linus"
 
-gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
-gpa_of_chemistry_students(Student, Grade) <- \
-py_rgx_string(gpa_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemistry(Student)
-?gpa_of_chemistry_students(X, "100") # returns "abigail"
+grade_str = "abigail 100 jordan 80 gale 79 howard 60"
+grade_of_chemistry_students(Student, Grade) <- \
+py_rgx_string(grade_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemistry(Student)
+?grade_of_chemistry_students(X, "100") # returns "abigail"
 ```
 
 # Useful tricks<a class="anchor" id="Usefull tricks"></a>
@@ -631,4 +629,21 @@ pair("123", "321")
 
 unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
 ?unique_pair(X, Y)
+```
+
+# python Implementation v.s. RgxLog Implementation
+
+
+let's try to compare coding in python and coding in rgxlog.
+we are given lists of `enrolled` pairs, `student_gpa` pairs, 
+our goal is to find all student that are enrolled in biology and chemistry, and have a GPA > 80.
+
+```python
+
+```
+
+## python 
+
+```python
+
 ```

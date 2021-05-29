@@ -8,27 +8,6 @@ from tests.utils import run_test
 #  additionally, i've found out that after running the code a few times, i've had ~10 java.exe processes
 #  running in the background. looks like chen's process never dies
 
-def test_entities():
-    expected_result = """printing results for query 'entities(Entity, Classification)':
-   Entity    |            Classification
--------------+---------------------------------------
-    today    | Absolute or relative dates or periods
- Baudrillard |      People, including fictional
-     Neo     |      People, including fictional
-"""
-
-    query = '''
-    text = "You've been living in a dream world, Neo.\
-            As in Baudrillard's vision, your whole life has been spent inside the map, not the territory.\
-            This is the world as it exists today.\
-            Welcome to the desert of the real."
-    entities(Entity, Classification) <- Entities(text)->(Entity, Classification)
-    ?entities(Entity, Classification)
-    '''
-
-    run_test(query, expected_result)
-
-
 def test_tokenize():
     expected_result = """printing results for query 'tokens(Token, Span)':
   Token  |   Span

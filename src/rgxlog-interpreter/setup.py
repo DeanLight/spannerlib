@@ -15,7 +15,6 @@ class PostDevelopCommand(develop):
 
     def run(self):
         develop.run(self)
-        check_output(f"{sys.executable} -m spacy download en_core_web_sm", shell=True)
 
 
 class PostInstallCommand(install):
@@ -23,7 +22,6 @@ class PostInstallCommand(install):
 
     def run(self):
         install.run(self)
-        check_output(f"{sys.executable} -m spacy download en_core_web_sm", shell=True)
 
 
 with open("README.md", "r") as fh:
@@ -59,7 +57,6 @@ setuptools.setup(
         'docopt',
         'tabulate',
         'pyDatalog',
-        'spacy==2.3.5',
         'pandas',
         'jsonpath-ng',
         'psutil',

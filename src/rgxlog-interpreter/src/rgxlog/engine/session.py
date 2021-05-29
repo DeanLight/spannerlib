@@ -25,12 +25,12 @@ from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 from rgxlog.stdlib.json_path import JsonPath
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
-                               OpenIE, KBP, Quote, Sentiment, TrueCase, Entities)
+                               OpenIE, KBP, Quote, Sentiment, TrueCase)
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
 from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
 
 PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, SSplit, POS, Lemma, NER, EntityMentions,
-                       CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase, Entities]
+                       CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
 
 SPAN_GROUP1 = "start"
 SPAN_GROUP2 = "end"
