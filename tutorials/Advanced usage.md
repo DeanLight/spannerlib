@@ -233,9 +233,3 @@ for key, steps in d.items():
     magic_session.run_query(result)
     magic_session.run_query(f"?{key}(X,Y)")
 ```
-
-## TODO: things. not today 
-
-```python
-
-```

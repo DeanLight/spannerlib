@@ -304,6 +304,28 @@ magic_session.print_all_rules()
 success! the rule was deleted - Drake and Josh are no longer part of the `?ancestor` query result
 
 
+Note that during this examples we used ```print_all_rules```.<br>
+This function prints all the registered rules.<br>
+If you wan't to print only rules that relevant to spesific rule head, you can pass the rule head as a parameter.
+
+```python
+magic_session.print_all_rules("ancestor")
+```
+
+In addition you can use ```remove_all_rules``` to remove all the rules (it won't affect the facts).<br>
+You can pass rule head paraemetr to remove all the rules related to it.
+
+```python
+magic_session.remove_all_rules("ancestor")
+magic_session.print_all_rules()
+
+magic_session.remove_all_rules()
+magic_session.print_all_rules()
+
+# facts are not affected...
+%rgxlog ?parent(X, Y)
+```
+
 # Queries<a class="anchor" id="queries"></a>
 Querying is very simple in RGXLog. You can query by using constant values, local variables and free variables:
 
@@ -478,8 +500,6 @@ happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 
 ```magic_session.print_registered_ie_functions()```
 
-
-
 ```python
 # first, let's print all functions:
 magic_session.print_registered_ie_functions()
@@ -608,7 +628,7 @@ Our solution to this problem is to create an ie function that implements NEQ rel
 ```python
 def NEQ(x, y):
     if x == y:
-        # return false
+        # return false (empty tuple represents false)
         yield tuple() 
     else:
         #return true
@@ -632,7 +652,7 @@ unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
 ?unique_pair(X, Y)
 ```
 
-# python Implementation v.s. RgxLog Implementation
+# Python Implementation v.s. RgxLog Implementation
 
 
 let's try to compare coding in python and coding in rgxlog.
@@ -654,7 +674,7 @@ for student1, course1 in enrolled_pairs:
         for student3, grade in grade_pairs:
             if (student1 == student2 == student3):
                 if (course1 == "biology" and course2 == "chemistry" and int(grade) == 80):
-                    print(student1, grade)
+                    print(student1)
 ```
 
 ## rgxlog
@@ -671,3 +691,30 @@ interesting_student(X) <- enrolled_in(X, "biology"), enrolled_in(X, "chemistry")
 ```
 
 in this case, the python implementation was long and unnatural. on the other hand, the rgxlog implementation was cleaner and allowed us to express our intentions directly, rather than dealing with annoying programming logic.
+
+
+# Parsing JSON document using RgxLog
+
+
+Rglog's JsonPath/JsonFullPath ie funciton allows us to easily parse json documents using path expressions.<br>
+We will demonstrate how to use this function.
+<br>
+<br>
+Suppose we have a json document of the following format {student: {subject: grade, ...} ,...}
+We want to create a rglox relation containg tuples of (student, subject, grade).
+
+```python
+%%rgxlog
+# we use string as RgxLog doesn't support dicts.
+json_string = "{ \
+                'abigail': {'chemistry': 80, 'operation systems': 99}, \
+                'jordan':  {'chemistry': 65, 'physics': 70}, \
+                'gale':    {'operation systems': 100}, \
+                'howard':  {'chemistry': 90, 'physics':91, 'biology':92} \
+                }"
+
+# path expression is the path to the key of each grade (in our simple case it's *.*)
+# than JsonPathFull appends the full path to the value
+json_table(Student, Subject, Grade) <- JsonPathFull(json_string, "*.*") -> (Student, Subject, Grade)
+?json_table(Student, Subject, Grade)
+```

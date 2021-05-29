@@ -303,6 +303,36 @@ class PydatalogEngine(RgxlogEngineBase):
                 raise Exception(f"{rule} was never registered (you can run 'print_all_rules' to see all the registered "
                                 f"rules)")
 
+    def remove_all_rules(self, rule_head):
+        """
+        Removes all rules from PyDatalog's engine.
+        @param rule_head: we print all rules with rule_head. if it None we remove all rules.
+        """
+
+        if rule_head is None:
+            for head in self.rules_history:
+                self.remove_all_rules_with_head(head)
+            self.rules_history = dict()
+        else:
+            self.remove_all_rules_with_head(rule_head)
+            del self.rules_history[rule_head]
+
+    def remove_all_rules_with_head(self, rule_head):
+        """
+        Removes all rules with specific head from PyDatalog's engine.
+        @param rule_head: we print all rules with rule_head.
+        @raise Exception: if there is no rule with rule_head.
+        """
+
+        if rule_head not in self.rules_history:
+            raise Exception(f"There is not rule with head {rule_head}")
+
+        for (_, rule) in self.rules_history[rule_head]:
+            remove_rule_statement = f'-({rule})'
+            if self.debug:
+                self.prints_buffer.append(remove_rule_statement)
+            pyDatalog.load(remove_rule_statement)
+
     # TODO: remove this, put the docstring in run_query somehow
     def print_query(self, query: Query):
         """

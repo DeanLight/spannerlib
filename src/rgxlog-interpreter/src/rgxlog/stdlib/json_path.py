@@ -2,26 +2,32 @@ from jsonpath_ng import parse
 import json
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
+def parse_match(match) -> str:
+    """
+    @param match: a match result of json path query
+    @return: a string that reprisents the match in string format
+    """
+    json_result = match.value
+    if type(json_result) != str:
+        # we replace for the same reason as in json_path implementation.
+        json_result = json.dumps(json_result).replace("\"", "'")
+    return json_result
+
 
 def json_path(json_document: str, path_expression: str):
     """
-    Args:
-        json_document: The document on which we will run the path expression
-        path_expression: The query to execute.
+    @param json_document: The document on which we will run the path expression
+    @param path_expression: The query to execute.
 
-    Returns: json documents
+    @return: json documents
     """
     # covert string to actual json
-    # json library demands the input string to be enclosed in double quotes, therefor we replace...
+    # json library demands the input string to be enclosed in double quotes, therefore we replace...
     json_document = json.loads(json_document.replace("'", "\""))
     jsonpath_expr = parse(path_expression)
     for match in jsonpath_expr.find(json_document):
-        json_result = match.value
-        if type(json_result) != str:
-            # we replace for the same reason as before.
-            json_result = json.dumps(json_result).replace("\"", "'")
         # each json result is a relation
-        yield json_result,
+        yield parse_match(match),
 
 
 JsonPath = dict(ie_function=json_path,
@@ -30,3 +36,25 @@ JsonPath = dict(ie_function=json_path,
                 out_rel=[DataTypes.string],
                 )
 
+
+def json_path_full(json_document: str, path_expression: str):
+    """
+    @param json_document: The document on which we will run the path expression
+    @param path_expression: The query to execute.
+
+    @return: json documents with the full results paths.
+    """
+
+    json_document = json.loads(json_document.replace("'", "\""))
+    jsonpath_expr = parse(path_expression)
+    for match in jsonpath_expr.find(json_document):
+        json_result = str(match.full_path)
+        # objects in full path are separated by dots.
+        yield *json_result.split("."), parse_match(match)
+
+
+JsonPathFull = dict(ie_function=json_path_full,
+                    ie_function_name='JsonPathFull',
+                    in_rel=[DataTypes.string, DataTypes.string],
+                    out_rel=lambda arity: [DataTypes.string] * arity,
+                    )

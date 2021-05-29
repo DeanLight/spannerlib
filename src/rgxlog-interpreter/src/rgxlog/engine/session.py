@@ -23,14 +23,14 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               ExecuteAssignments, AddStatementsToNetxTermGraph)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
-from rgxlog.stdlib.json_path import JsonPath
+from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
                                OpenIE, KBP, Quote, Sentiment, TrueCase)
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
 from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
 
-PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, Tokenize, SSplit, POS, Lemma, NER, EntityMentions,
-                       CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
+PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, JsonPathFull, Tokenize, SSplit, POS, Lemma, NER,
+                       EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
 
 SPAN_GROUP1 = "start"
 SPAN_GROUP2 = "end"
@@ -310,6 +310,21 @@ class Session:
         """
         self._execution.remove_rule(rule)
 
+    def remove_rule(self, rule: str):
+        """
+        remove a rule from the rgxlog engine
+
+        @param rule: the rule to be removed
+        """
+        self._execution.remove_rule(rule)
+
+    def remove_all_rules(self, rule_head: str = None):
+        """
+        Removes all rules from PyDatalog's engine.
+        @param rule_head: if rule head is not none we remove all rules with rule_head
+        """
+        self._execution.remove_all_rules(rule_head)
+
     @staticmethod
     def _unknown_task_type():
         return 'unknown task type'
@@ -437,26 +452,17 @@ class Session:
         self._execution.print_all_rules(rule_head)
 
 
-# if __name__ == "__main__":
-#     session = Session()
-#     query = '''
-#         new parent(str, str)
-#         parent("Liam", "Noah")
-#         parent("Noah", "Oliver")
-#         parent("James", "Lucas")
-#         parent("Noah", "Benjamin")
-#         parent("Benjamin", "Mason")
-#         ancestor(X,Y) <- parent(X,Y)
-#         ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
-#
-#         ?ancestor("Liam", X)
-#         ?ancestor(X, "Mason")
-#         ?ancestor("Mason", X)
-#         '''
-#
-#     session.run_query(query)
-#     session.print_all_rules()
-#
-#     session.remove_rule('ancestor(X, Y) <- parent(X, Z) , ancestor(Z, Y)')
-#     session.run_query('?ancestor(X, Y)')
-#     session.print_all_rules()
+if __name__ == "__main__":
+    session = Session()
+    query = '''
+        json_string = " \
+        {'abigail': {'chemistry': 80, 'operation systems': 99}, \
+        'jordan':  {'chemistry': 65, 'physics': 70}, \
+        'gale':    {'operation systems': 100}, \
+        'howard':  {'chemistry': 90, 'physics':91, 'biology':92} \
+        }"
+        json_table(Student, Subject, Grade) <- JsonPathFull(json_string, "*.*") -> (Student, Subject, Grade)
+        ?json_table(Student, Subject, Grade)
+        '''
+
+    session.run_query(query)
