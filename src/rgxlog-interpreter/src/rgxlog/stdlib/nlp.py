@@ -16,7 +16,7 @@ sp = spacy.load('en_core_web_sm')
 
 MIN_VERSION = 1.8
 
-NLP_URL = "http://CoreNLPEngine.stanford.edu/software/stanford-corenlp-4.1.0.zip"
+NLP_URL = "https://CoreNLPEngine.stanford.edu/software/stanford-corenlp-4.1.0.zip"
 
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
 CURR_DIR = path.dirname(__file__)
