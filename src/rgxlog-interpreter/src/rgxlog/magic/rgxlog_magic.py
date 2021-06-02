@@ -1,13 +1,14 @@
-from IPython.core.magic import register_line_cell_magic
+from IPython.core.magic import (Magics, magics_class, line_cell_magic)
 
 
-@register_line_cell_magic
-def spanner(line, cell=None):
-    from rgxlog import magic_client
-    # import locally to prevent circular import issues
+@magics_class
+class RgxlogMagic(Magics):
+    @line_cell_magic
+    def rgxlog(self, line, cell=None):
+        # import locally to prevent circular import issues
+        from rgxlog import magic_session
 
-    if not magic_client.connected:
-        magic_client.connect()
-
-    result = magic_client.execute(cell)
-    print(result)
+        if cell:
+            magic_session.run_query(cell, print_results=True)
+        else:
+            magic_session.run_query(line, print_results=True)

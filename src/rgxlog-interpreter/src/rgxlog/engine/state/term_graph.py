@@ -26,17 +26,17 @@ class TermGraphBase:
     def add_term(self, **attr):
         """
         add a term to the term graph
-        Args:
-            **attr: the attributes of the term
 
-        Returns: a term id that refers to the term that was added
+        @param **attr: the attributes of the term
+
+        @return: a term id that refers to the term that was added
         """
         pass
 
     @abstractmethod
     def get_root_id(self):
         """
-        Returns: the term id of the root of the term graph
+        @return: the term id of the root of the term graph
         """
         pass
 
@@ -44,8 +44,8 @@ class TermGraphBase:
     def remove_term(self, term_id):
         """
         removes a term from the term graph
-        Args:
-            term_id: the id of the term that will be removed
+
+        @param term_id: the id of the term that will be removed
         """
         pass
 
@@ -54,17 +54,17 @@ class TermGraphBase:
         """
         Adds the edge (father_id, son_id) to the term graph.
         the edge signifies that the father term is dependent on the son term
-        Args:
-            father_id: the id of the father term
-            son_id: the id of the son term
-            **attr: the attributes for the edge
+
+        @param father_id: the id of the father term
+        @param son_id: the id of the son term
+        @param **attr: the attributes for the edge
         """
         pass
 
     @abstractmethod
     def pre_order_dfs(self):
         """
-        Returns: an iterable of the term ids generated from a depth-first-search pre-ordering starting at the root
+        @return: an iterable of the term ids generated from a depth-first-search pre-ordering starting at the root
         of the term graph
         """
         pass
@@ -72,7 +72,7 @@ class TermGraphBase:
     @abstractmethod
     def post_order_dfs(self):
         """
-        Returns: an iterable of the term ids generated from a depth-first-search post-ordering starting at the root
+        @return: an iterable of the term ids generated from a depth-first-search post-ordering starting at the root
         of the term graph
         """
         pass
@@ -83,10 +83,9 @@ class TermGraphBase:
         in a term graph the children of a term are its dependencies
         this function returns the children of a term
 
-        Args:
-            term_id: a term id
+        @param term_id: a term id
 
-        Returns: an iterable of the children of the term.
+        @return: an iterable of the children of the term.
         """
         pass
 
@@ -95,20 +94,18 @@ class TermGraphBase:
         """
         sets an attribute of a term
 
-        Args:
-            term_id: the id of the term
-            attr_name: the name of the attribute
-            attr_value: the value that will be set for the attribute
+        @param term_id: the id of the term
+        @param attr_name: the name of the attribute
+        @param attr_value: the value that will be set for the attribute
         """
         pass
 
     @abstractmethod
     def get_term_attributes(self, term_id) -> dict:
         """
-        Args:
-            term_id: a term id
+        @param term_id: a term id
 
-        Returns: a dict containing the attributes of the term
+        @return: a dict containing the attributes of the term
         """
         pass
 
@@ -198,10 +195,9 @@ class NetxTermGraph(TermGraphBase):
     def _get_term_string(self, term_id):
         """
         an utility function for pretty()
-        Args:
-            term_id: a term id
+        @param term_id: a term id
 
-        Returns: a string representation of the term
+        @return: a string representation of the term
         """
 
         term_attrs = self.get_term_attributes(term_id)
@@ -220,11 +216,10 @@ class NetxTermGraph(TermGraphBase):
         """
         a helper function for pretty()
 
-        Args:
-            term_id: an id of a term in the term graph
-            level: the depth of the term in the tree (used for indentation)
+        @param term_id: an id of a term in the term graph
+        @param level: the depth of the term in the tree (used for indentation)
 
-        Returns: a list of strings that represents the term and its children
+        @return: a list of strings that represents the term and its children
         """
         indent_str = '  '
 

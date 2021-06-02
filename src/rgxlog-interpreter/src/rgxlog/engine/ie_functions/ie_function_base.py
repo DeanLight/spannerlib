@@ -1,23 +1,25 @@
-"""
-this module contains the 'IEFunctionData' class: an abstraction for classes that contain all the
-information needed to semantic check and execute an information extraction function
-"""
-
-from abc import abstractmethod, ABC
+from typing import Iterable, List, Callable, Union
+from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 
-class IEFunctionData(ABC):
+class IEFunction:
     """
     A class that contains all the functions that provide data
     needed for using a single information extraction function
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, ie_function_def: Callable, in_types: Iterable[DataTypes],
+                 out_types: Union[Iterable[DataTypes], Callable[[int], Iterable[DataTypes]]]):
+        """
+        @param ie_function_def : the user defined ie function implementation.
+        @param in_types        : iterable of the input types to the function.
+        @param out_types       :  either a function (int->iterable) or an iterable
+        """
+        self.ie_function_def = ie_function_def
+        self.in_types = in_types
+        self.out_types = out_types
 
-    @staticmethod
-    @abstractmethod
-    def ie_function(*args):
+    def ie_function(self, *args) -> Iterable[Iterable]:
         """
         The actual information extraction function that will be used
         the function must return a list of lists/tuples that represents the results, another option is to yield the
@@ -28,31 +30,33 @@ class IEFunctionData(ABC):
         an integer should be returned as an int instance
         a span could be returned either as a tuple of length 2, or as a datatypes.Span instance
         """
-        pass
+        output = self.ie_function_def(*args)
+        # if not isinstance(output, collections.Iterable):
+        #     return (output,)
+        return output
 
-    @staticmethod
-    @abstractmethod
-    def get_input_types():
+    def get_input_types(self) -> List[DataTypes]:
         """
         returns an iterable of the input types to the function
         This function must be defined as it is used for type checking in semantic passes and execution.
         """
-        pass
+        return self.in_types
 
-    @staticmethod
-    @abstractmethod
-    def get_output_types(output_arity):
+    def get_output_types(self, output_arity: int) -> List[DataTypes]:
         """
         given an expected output arity returns an iterable of the output types to the function.
         if the ie function cannot return an output of length output_arity, should return None.
         This function must be defined as it is used for type checking in semantic passes and execution.
         """
-        """
-        TODO instead of making the user implement this function, allow the user to use a regular expression
-        to define this function. The semantic pass will use said regex and the expected output arity to get the
-        expected output types.
-        for example for the RGX ie function, the output types regex will be spn*.
-        Then, for the call RGX(s1,s2)->(X,Y,Z,W), the semantic pass / execution will use the regex spn* to determine
-        the expected output types to be [spn,spn,spn,spn]
-        """
-        pass
+
+        if callable(self.out_types):
+            return self.out_types(output_arity)
+
+        # output is constant
+        if not output_arity == len(self.out_types):
+            raise Exception("Output arity doesn't match the declared arity.")
+        return self.out_types
+
+    def get_meta_data(self) -> str:
+        metadata = f"""Input types: {self.in_types}.\nOutput types: {self.out_types}"""
+        return metadata

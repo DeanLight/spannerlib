@@ -15,7 +15,6 @@ class PostDevelopCommand(develop):
 
     def run(self):
         develop.run(self)
-        check_output(f"{sys.executable} -m spacy download en_core_web_sm", shell=True)
 
 
 class PostInstallCommand(install):
@@ -23,14 +22,13 @@ class PostInstallCommand(install):
 
     def run(self):
         install.run(self)
-        check_output(f"{sys.executable} -m spacy download en_core_web_sm", shell=True)
 
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="test-rgxlog-interpreter",
+    name="rgxlog",
     version="0.0.22",
     author="Example Author",
     author_email="author@example.com",
@@ -51,14 +49,18 @@ setuptools.setup(
         'develop': PostDevelopCommand,
         'install': PostInstallCommand,
     },
-    python_requires='==3.8.*',
+    python_requires='>=3.8',
     install_requires=[
         'lark-parser',
         'networkx',
         'docopt',
         'tabulate',
         'pyDatalog',
-        'spacy'
+        'pandas',
+        'jsonpath-ng',
+        'psutil',
+        'install-jdk',
+        'spanner-nlp'
     ],
     dependency_links=[
     ]
