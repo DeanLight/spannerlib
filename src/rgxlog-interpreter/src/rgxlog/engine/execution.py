@@ -27,6 +27,7 @@ class RgxlogEngineBase(ABC):
         super().__init__()
         self.prints_buffer = []
 
+    # TODO@niv: this is used only for debug - reformat it somehow
     def flush_prints_buffer(self) -> str:
         """
         some of the methods in this class should print their results, but since this project uses jupyter notebook's
@@ -181,6 +182,38 @@ class RgxlogEngineBase(ABC):
         removes all facts and clauses from the engine
         """
         pass
+
+    def select(self):
+        # TODO
+        pass
+
+
+class MySQLEngine(RgxlogEngineBase):
+    def add_fact(self, fact):
+        pass
+
+    def remove_fact(self, fact):
+        pass
+
+    def remove_rule(self, rule: str):
+        pass
+
+    def query(self, query):
+        pass
+
+    def add_rule(self, rule_head, rule_body_relation_list):
+        pass
+
+    def compute_ie_relation(self, ie_relation, ie_func_data, bounding_relation):
+        pass
+
+    def join_relations(self, relation_list, name=""):
+        pass
+
+    def declare_relation(self, relation_decl):
+        pass
+
+    # TODO
 
 
 class PydatalogEngine(RgxlogEngineBase):
