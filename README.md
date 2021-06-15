@@ -95,6 +95,7 @@ Specifically for our case, we can delegate running code that is written in our o
 Here is an example of language bash magic.
 ![bash_magic](doc/bash_magic_example.png)
 
+# TODO@niv: redesign all diagrams involving clients (we don't use those anymore)
 Here is schematic view of the interaction
 ![interfacing with jupyter notebook](doc/Ipython_magic_scheme.svg)
 
@@ -165,7 +166,7 @@ The only exception is the term graph execution pass (GenericExecution), you can 
 
 Below are some relevant links that will allow you to learn about lark's transformers/visitors:
 
-* The previously mention cheat sheet:  
+* The previously mentioned cheat sheet:
 https://cheatography.com/erezsh/cheat-sheets/lark/
   
 * the official documentation on transformers:  

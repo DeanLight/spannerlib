@@ -45,18 +45,18 @@ class RemoveTokens(Transformer):
 
     @staticmethod
     def INT(args):
-        string_of_integer = args[0:]
+        string_of_integer = args
         integer = int(string_of_integer)
         return integer
 
     @staticmethod
     def LOWER_CASE_NAME(args):
-        name_string = args[0:]
+        name_string = args
         return name_string
 
     @staticmethod
     def UPPER_CASE_NAME(args):
-        name_string = args[0:]
+        name_string = args
         return name_string
 
     @staticmethod
@@ -255,7 +255,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
     @staticmethod
     def _create_structured_relation_node(relation_node: LarkNode) -> Relation:
         """
-        an utility function that constructs a structured relation node.
+        a utility function that constructs a structured relation node.
         while a relation node isn't a statement in and of itself, it is useful for defining
         a structured rule node (which is constructed from multiple relations).
         This is also a useful method for getting the attributes of a relation that defines a fact or a query
@@ -281,7 +281,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
     @staticmethod
     def _create_structured_ie_relation_node(ie_relation_node: LarkNode) -> IERelation:
         """
-        an utility function that constructs a structured ie relation node.
+        a utility function that constructs a structured ie relation node.
         while an ie relation node isn't a statement in and of itself, it is useful for defining
         a structured rule node (which is constructed from multiple relations which may include ie relations).
 
@@ -323,7 +323,7 @@ class CheckDefinedReferencedVariables(Interpreter):
 
     def _assert_var_defined(self, var_name):
         """
-        an utility function that checks if a variable is a defined variable in the symbol table
+        a utility function that checks if a variable is a defined variable in the symbol table.
         if not, raises an exception
 
         Args:
@@ -334,7 +334,7 @@ class CheckDefinedReferencedVariables(Interpreter):
 
     def _assert_var_terms_defined(self, term_list, type_list):
         """
-        an utility function that checks if the non free variables in a term list are defined
+        a utility function that checks if the non free variables in a term list are defined
         if one of them is not defined, raises an exception
 
         Args:
@@ -405,7 +405,7 @@ class CheckDefinedReferencedVariables(Interpreter):
 #
 #     def _assert_relation_not_defined(self, relation_name):
 #         """
-#         an utility function that checks if a relation is already defined and raises an exception
+#         a utility function that checks if a relation is already defined and raises an exception
 #         if it does.
 #
 #         Args:
@@ -440,7 +440,7 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
 
     def _assert_relation_exists_and_correct_arity(self, relation: Relation):
         """
-        An utility function that checks if a relation exists in the symbol table
+        A utility function that checks if a relation exists in the symbol table
         and if the correct arity was used
 
         @param relation: the relation that will be checked.
@@ -612,7 +612,7 @@ class CheckRuleSafety(Visitor_Recursive):
 
         def get_size_difference(set1: set, set2: set):
             """
-            an utility function to be used as the distance function of the fixed point algorithm
+            a utility function to be used as the distance function of the fixed point algorithm
 
             @return: the size difference of set1 and set2
             """
@@ -621,7 +621,7 @@ class CheckRuleSafety(Visitor_Recursive):
 
         def get_bound_free_vars(known_bound_free_vars: set) -> set:
             """
-            an utility function to be used as the step function of the fixed point algorithm.
+            a utility function to be used as the step function of the fixed point algorithm.
             this function iterates over all of the rule body relations, checking if each one of them is safe.
             if a rule is found to be safe, this function will mark its output free variables as bound
 
@@ -678,6 +678,8 @@ class ReorderRuleBody(Visitor_Recursive):
         body_relation_list = rule.body_relation_list
         body_relation_type_list = rule.body_relation_type_list
 
+        # TODO@niv: what is this? a future plan?
+
         # in order to reorder the relations, we will use a similar fixed point algorithm to the one in
         # the 'CheckRuleSafety' pass.
         # when a safe relation is found, it will be inserted into a list. This way, an order in which each
@@ -698,7 +700,7 @@ class ReorderRuleBody(Visitor_Recursive):
 
         def get_size_difference(set1: set, set2: set):
             """
-            an utility function to be used as the distance function of the fixed point algorithm
+            a utility function to be used as the distance function of the fixed point algorithm
 
             @return: the size difference of set1 and set2
             """
@@ -707,7 +709,7 @@ class ReorderRuleBody(Visitor_Recursive):
 
         def get_bound_free_vars(known_bound_free_vars: set):
             """
-            an utility function to be used as the step function of the fixed point algorithm.
+            a utility function to be used as the step function of the fixed point algorithm.
             this function iterates over all of the rule body relations, checking if each one of them is safe.
             if a rule is found to be safe, this function will mark its output free variables as bound, and
             add it to the reordered relations list (thus finding a valid body relations order).
@@ -901,7 +903,7 @@ class ResolveVariablesReferences(Interpreter):
 
     def _resolve_var_terms(self, term_list, type_list):
         """
-        an utility function for resolving variables in term lists
+        a utility function for resolving variables in term lists
         for each variable term in term_list, replace its value in term_list with its literal value, and
         its DataTypes.var_name type in type_list with its real type
         the changes to the lists are done in-place
@@ -1014,7 +1016,7 @@ class AddStatementsToNetxTermGraph(Interpreter):
 
     def _add_statement_to_term_graph(self, statement_type, statement_value):
         """
-        An utility function that adds a statement to the term graph, meaning it adds a node that
+        A utility function that adds a statement to the term graph, meaning it adds a node that
         represents the statement to the term graph, then attach the node to the term graph's root.
         Should only be used for simple statements (i.e. can be described by a single node)
 

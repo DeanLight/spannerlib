@@ -8,6 +8,7 @@ from enum import Enum
 from itertools import count
 
 
+# TODO@niv: change this to bool (`if x['computed'] == True`), it's redundant
 class EvalState(Enum):
     """
     will be used to determine if a term is computed or not
@@ -194,7 +195,7 @@ class NetxTermGraph(TermGraphBase):
 
     def _get_term_string(self, term_id):
         """
-        an utility function for pretty()
+        a utility function for pretty()
         @param term_id: a term id
 
         @return: a string representation of the term

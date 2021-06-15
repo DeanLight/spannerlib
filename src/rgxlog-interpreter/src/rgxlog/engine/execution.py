@@ -183,37 +183,123 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    def select(self):
+    def operator_select(self):
         # TODO
+        pass
+
+    def operator_project(self):
+        pass
+
+    def operator_union(self):
+        pass
+
+    def operator_difference(self):
+        pass
+
+    def operator_product(self):
+        pass
+
+    def operator_rename(self):
         pass
 
 
 class MySQLEngine(RgxlogEngineBase):
+    # TODO@niv:
+    """
+    general idea (i took this from `execution.py:970` we need to create intermediate tables for everything we do.
+    for example, let's see this rule:
+    `very_cool_and_even(X) <- cool(X), awesome(X),  get_number(X) -> (Y), even(Y)`
+
+    we need to create a few tables:
+    very_cool(X) <- cool(X), awesome(X)  # SQL union
+    input_get_number(X) <- very_cool(X)  # SQL select
+    get_number_pairs(X,Y) = run `get_number` on every X, output (X,Y)  # SQL select and then for loop with IE func
+    final_join_relations(X,Y) <- very_cool(X), get_number_pairs(X,Y), even(Y)  # SQL union and project/rename
+
+    and finally:
+    very_cool_and_even(X) <- final_join_relations(X,Y)  # SQL project/rename
+
+    notice that all we need for those is a few SQL selects/unions, and running and IE function over an SQL table.
+    """
     def add_fact(self, fact):
+        # this should be as simple as an `insert` statement
+        # do we need to use a single table for each relation?
         pass
 
     def remove_fact(self, fact):
-        pass
-
-    def remove_rule(self, rule: str):
-        pass
-
-    def query(self, query):
+        # use a `DELETE` statement
         pass
 
     def add_rule(self, rule_head, rule_body_relation_list):
+        # we need to maintain the tables that resulted from a rule, right? this means that
+        # we need to recalculate the rule table every time it is called. maybe we should store some
+        # metadata, like the last change to the tables we depend on.
+        pass
+
+    def remove_rule(self, rule: str):
+        # we just need to delete the table that the rule created
+        pass
+
+    def query(self, query):
+        # note: this is an engine query (which asks a single question),
+        # not a session query (which can do anything).
+        # so we only need a `SELECT` statement here.
         pass
 
     def compute_ie_relation(self, ie_relation, ie_func_data, bounding_relation):
+        # this can probably be copied from pydatalogEngine
         pass
 
     def join_relations(self, relation_list, name=""):
+        # TODO: check if we still need this
         pass
 
     def declare_relation(self, relation_decl):
+        # this should be done by using the `CREATE TABLE` command
+        # so, something like this:
+        """
+        import mysql.connector
+
+        mydb = mysql.connector.connect(
+          host="localhost",
+          user="yourusername",
+          password="yourpassword",
+          database="mydatabase")
+
+        mycursor = mydb.cursor()
+
+        tables = mycursor.execute("SHOW TABLES")
+        if relation_decl in tables:
+            raise Exception(...)
+
+        # get types of declaration and convert into sql types
+        types = [string, string]
+        sql_types = to_sql_types(types)
+
+        # create the relation table
+        mycursor.execute(f"CREATE TABLE {relation_decl} (t1 {sql_types[0]}, str2 {sql_types[1]})")
+
+        """
         pass
 
-    # TODO
+    def operator_select(self):
+        # TODO: i'm talking about the relational algebra operator, which might be different from the sql operator
+        pass
+
+    def operator_project(self):
+        pass
+
+    def operator_union(self):
+        pass
+
+    def operator_difference(self):
+        pass
+
+    def operator_product(self):
+        pass
+
+    def operator_rename(self):
+        pass
 
 
 class PydatalogEngine(RgxlogEngineBase):
@@ -265,8 +351,8 @@ class PydatalogEngine(RgxlogEngineBase):
         temp_fact_string = f'{relation_name}({decl_terms_string})'
 
         # create the string that we will use to declare the relation (add and remove the same fact)
-        relation_decl_statement = f'+{temp_fact_string}\n' + \
-                                  f'-{temp_fact_string}'
+        relation_decl_statement = (f'+{temp_fact_string}\n' +
+                                   f'-{temp_fact_string}')
 
         # declare the relation in pyDatalog
         pyDatalog.load(relation_decl_statement)
@@ -412,6 +498,13 @@ class PydatalogEngine(RgxlogEngineBase):
         else:
             # there's at least one resulting tuple, get the list of resulting tuples by accessing the 'answers' field
             query_results = py_datalog_answer_object.answers
+
+        # TODO@niv: is this the right place for debug prints?
+        if self.debug:
+            print(" ~~~ flushing debug buffer ~~~")
+            print(self.flush_prints_buffer())
+            print(" ~~~ end of buffer ~~~")
+
         return query_results
 
     def rule_to_string(self, rule_head: Relation, rule_body_relation_list: List,
@@ -493,7 +586,7 @@ class PydatalogEngine(RgxlogEngineBase):
             print(f"Printing all rules with head {rule_head}:")
             self.print_all_rules_with_head(rule_head)
 
-        # looks better with new line (\n)
+        # looks better with newline (\n)
         print()
 
     def print_all_rules_with_head(self, rule_head: str):
@@ -848,7 +941,7 @@ class GenericExecution(ExecutionBase):
 
             elif term_type == "query":
                 query = term_attrs['value']
-                # TODO: change this - enable returning the pre-formatted query
+                # TODO@niv: change this - enable returning the pre-formatted query (should be possible with sql engine)
                 exec_result = (query, rgxlog_engine.query(query))
 
             elif term_type == "rule":
@@ -864,7 +957,7 @@ class GenericExecution(ExecutionBase):
         rule_term_id is expected to be a root of a subtree in the term graph that represents a single rule
         the children of rule_term_id node should be:
         1. a rule head relation node
-        2. a rule body relation list, who's children are all the body relations of the rule
+        2. a rule body relation list, whose children are all the body relations of the rule
 
         This rule execution assumes that a previous pass reordered the rule body relations in a way that
         each relation's input free variables (should they exist) are bounded by relations to the relation's

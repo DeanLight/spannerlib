@@ -238,8 +238,7 @@ class Session:
                 exec_result = cur_pass(
                     term_graph=self._term_graph,
                     symbol_table=self._symbol_table,
-                    rgxlog_engine=self._execution
-                ).execute()
+                    rgxlog_engine=self._execution).execute()
             else:
                 raise Exception(f'invalid pass: {cur_pass}')
         return exec_result
@@ -250,6 +249,7 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
+    # TODO@niv: maybe change this to run_code or something, since the name `query` is already in use? (e.g. "?rel(X)")
     def run_query(self, query: str, print_results: bool = True, format_results=False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
@@ -301,14 +301,6 @@ class Session:
 
         self._pass_stack = user_stack.copy()
         return self.get_pass_stack()
-
-    def remove_rule(self, rule: str):
-        """
-        remove a rule from the rgxlog engine
-
-        @param rule: the rule to be removed
-        """
-        self._execution.remove_rule(rule)
 
     def remove_rule(self, rule: str):
         """
@@ -453,16 +445,15 @@ class Session:
 
 
 if __name__ == "__main__":
-    session = Session()
-    query = '''
-        json_string = " \
-        {'abigail': {'chemistry': 80, 'operation systems': 99}, \
-        'jordan':  {'chemistry': 65, 'physics': 70}, \
-        'gale':    {'operation systems': 100}, \
-        'howard':  {'chemistry': 90, 'physics':91, 'biology':92} \
-        }"
-        json_table(Student, Subject, Grade) <- JsonPathFull(json_string, "*.*") -> (Student, Subject, Grade)
-        ?json_table(Student, Subject, Grade)
+    # this is for debugging. don't shadow variables like `query`, that's annoying
+    my_session = Session(True)
+    my_query = '''
+        new parent(str ,str)
+        parent("bob", "greg")
+        parent("greg", "alice")
+        # now add a rule that deduces that bob is a grandparent of alice
+        grandparent(X,Z) <- parent(X,Y), parent(Y,Z) # ',' is a short hand to the 'and' operator
+        ?grandparent(X,Y)
         '''
 
-    session.run_query(query)
+    my_session.run_query(my_query)
