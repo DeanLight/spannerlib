@@ -189,10 +189,11 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 
 class Session:
     def __init__(self, debug=False):
+        self.debug = debug
         self._symbol_table = SymbolTable()
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
         self._term_graph = NetxTermGraph()
-        self._execution = execution.PydatalogEngine(debug)
+        self._execution = execution.SqliteEngine(debug)
 
         self._pass_stack = [
             RemoveTokens,
@@ -227,6 +228,9 @@ class Session:
         Runs the passes in pass_list on tree, one after another.
         """
         exec_result = None
+
+        if self.debug:
+            print(f"initial tree:\n{tree.pretty()}")
         for cur_pass in pass_list:
             if issubclass(cur_pass, (Visitor, Visitor_Recursive, Interpreter)):
                 cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).visit(tree)
@@ -243,8 +247,11 @@ class Session:
 
             else:
                 raise Exception(f'invalid pass: {cur_pass}')
-            print(f"{cur_pass}\n{tree.pretty()}")
-        return exec_result
+
+            if self.debug:
+                print(f"{cur_pass}\n{tree.pretty()}")
+
+
 
     def __repr__(self):
         return [repr(self._symbol_table), repr(self._term_graph)]
@@ -462,3 +469,4 @@ if __name__ == "__main__":
     new c(int, int)""")
     print("\n**************************\n")
     session.run_query("d(X, Y, Z) <- a(X, Y), b(Y, R), c(Z, W)")
+

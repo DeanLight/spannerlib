@@ -5,6 +5,9 @@ and an rgxlog engine.
 """
 
 # TODO remove import * where not needed
+import os
+import sqlite3 as sqlite
+import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
 from typing import List, Tuple
@@ -203,7 +206,7 @@ class RgxlogEngineBase(ABC):
         pass
 
 
-class MySQLEngine(RgxlogEngineBase):
+class SqliteEngine(RgxlogEngineBase):
     # TODO@niv:
     """
     general idea (i took this from `execution.py:970` we need to create intermediate tables for everything we do.
@@ -221,14 +224,37 @@ class MySQLEngine(RgxlogEngineBase):
 
     notice that all we need for those is a few SQL selects/unions, and running and IE function over an SQL table.
     """
-    def add_fact(self, fact):
-        # this should be as simple as an `insert` statement
-        # do we need to use a single table for each relation?
-        pass
 
-    def remove_fact(self, fact):
+    def __init__(self, debug=False, database_name="blah"):
+        """
+        @param debug: print the commands that are loaded into pyDatalog
+        """
+        super().__init__()
+        self.temp_relation_id_counter = count()
+        self.debug = debug
+        self.rules_history = dict()
+
+        # sql stuff
+        # TODO@niv: add option for non-temporary database
+        # TODO@niv: i've tried using a temporary directory but it caused some issues. this works for now
+        self.temporary_db_file = tempfile.NamedTemporaryFile(delete=False)
+        self.temporary_db_file.close()
+        self.sql_conn = sqlite.connect(self.temporary_db_file.name)
+        self.sql_cursor = self.sql_conn.cursor()
+
+    def add_fact(self, fact: AddFact):
+        # this should be as simple as an `insert` statement
+        sql_terms = fact.term_list  # add quotes here
+
+        self.sql_cursor.execute(f"INSERT INTO {fact.relation_name} VALUES"
+                                f"(t1 '{sql_terms[0]}', t2 '{sql_terms[1]}')")
+
+    def remove_fact(self, fact: RemoveFact):
         # use a `DELETE` statement
-        pass
+        sql_terms = fact.term_list  # add quotes here
+
+        self.sql_cursor.execute(f"DELETE FROM {fact.relation_name} WHERE"
+                                f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
 
     def add_rule(self, rule_head, rule_body_relation_list):
         # we need to maintain the tables that resulted from a rule, right? this means that
@@ -254,33 +280,18 @@ class MySQLEngine(RgxlogEngineBase):
         # TODO: check if we still need this
         pass
 
-    def declare_relation(self, relation_decl):
+    def declare_relation(self, relation_decl: RelationDeclaration):
         # this should be done by using the `CREATE TABLE` command
-        # so, something like this:
-        """
-        import mysql.connector
 
-        mydb = mysql.connector.connect(
-          host="localhost",
-          user="yourusername",
-          password="yourpassword",
-          database="mydatabase")
-
-        mycursor = mydb.cursor()
-
-        tables = mycursor.execute("SHOW TABLES")
-        if relation_decl in tables:
-            raise Exception(...)
-
-        # get types of declaration and convert into sql types
-        types = [string, string]
-        sql_types = to_sql_types(types)
+        # get types and convert to SQL types
+        # types = relation_decl.type_list
+        sql_types = ["text", "integer"]
 
         # create the relation table
-        mycursor.execute(f"CREATE TABLE {relation_decl} (t1 {sql_types[0]}, str2 {sql_types[1]})")
+        self.sql_cursor.execute(f"CREATE TABLE {relation_decl.relation_name} (t1 {sql_types[0]}, t2 {sql_types[1]})")
 
-        """
-        pass
+        # save to file
+        self.sql_conn.commit()
 
     def operator_select(self):
         # TODO: i'm talking about the relational algebra operator, which might be different from the sql operator
