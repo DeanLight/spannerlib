@@ -10,8 +10,7 @@ def assert_expected_node_structure_aux(lark_node):
     """
     checks whether a lark node has a structure that the lark passes expect
 
-    Args:
-        lark_node: the lark node to be checked
+    @param: lark_node: the lark node to be checked
     """
 
     # check if lark_node is really a lark node. this is done because applying the check recursively might result in

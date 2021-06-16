@@ -216,11 +216,11 @@ class Session:
 
         grammar_file_path = os.path.dirname(rgxlog.grammar.__file__)
         grammar_file_name = 'grammar.lark'
+        # TODO: use path.join
         with open(f'{grammar_file_path}/{grammar_file_name}', 'r') as grammar_file:
             self._grammar = grammar_file.read()
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
-        # self._register_default_functions()
 
     def _run_passes(self, tree, pass_list) -> Tuple[Query, List]:
         """
@@ -238,9 +238,12 @@ class Session:
                 exec_result = cur_pass(
                     term_graph=self._term_graph,
                     symbol_table=self._symbol_table,
-                    rgxlog_engine=self._execution).execute()
+                    rgxlog_engine=self._execution
+                ).execute()
+
             else:
                 raise Exception(f'invalid pass: {cur_pass}')
+            print(f"{cur_pass}\n{tree.pretty()}")
         return exec_result
 
     def __repr__(self):
@@ -249,7 +252,6 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
-    # TODO@niv: maybe change this to run_code or something, since the name `query` is already in use? (e.g. "?rel(X)")
     def run_query(self, query: str, print_results: bool = True, format_results=False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
@@ -262,6 +264,7 @@ class Session:
         """
         exec_results = []
         parse_tree = self._parser.parse(query)
+        # print(parse_tree.pretty())
 
         for statement in parse_tree.children:
             exec_result = self._run_passes(statement, self._pass_stack)
@@ -301,6 +304,14 @@ class Session:
 
         self._pass_stack = user_stack.copy()
         return self.get_pass_stack()
+
+    def remove_rule(self, rule: str):
+        """
+        remove a rule from the rgxlog engine
+
+        @param rule: the rule to be removed
+        """
+        self._execution.remove_rule(rule)
 
     def remove_rule(self, rule: str):
         """
@@ -445,15 +456,9 @@ class Session:
 
 
 if __name__ == "__main__":
-    # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(True)
-    my_query = '''
-        new parent(str ,str)
-        parent("bob", "greg")
-        parent("greg", "alice")
-        # now add a rule that deduces that bob is a grandparent of alice
-        grandparent(X,Z) <- parent(X,Y), parent(Y,Z) # ',' is a short hand to the 'and' operator
-        ?grandparent(X,Y)
-        '''
-
-    my_session.run_query(my_query)
+    session = Session()
+    session.run_query("""new a(str, span)
+    new b(str, str)
+    new c(int, int)""")
+    print("\n**************************\n")
+    session.run_query("d(X, Y, Z) <- a(X, Y), b(Y, R), c(Z, W)")

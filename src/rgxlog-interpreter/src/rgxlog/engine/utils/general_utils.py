@@ -4,7 +4,7 @@ general utilities that are not specific to any kind of pass, execution engine, e
 
 from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from typing import Union
+from typing import Union, List, Set
 from typing import Callable
 
 
@@ -23,26 +23,25 @@ def fixed_point(start, step: Callable, distance: Callable, thresh=0):
     return x
 
 
-def get_free_var_names(term_list: list, type_list: list) -> set:
+def get_free_var_names(term_list: List, type_list: List) -> Set:
     """
-    Args:
-        term_list: a list of terms
-        type_list: a list of the term types
+    @param term_list: a list of terms.
+    @param type_list: a list of the term types.
 
-    Returns: a set of all the free variable names in term_list
+    @return:  a set of all the free variable names in term_list
     """
     free_var_names = set(term for term, term_type in zip(term_list, type_list)
                          if term_type is DataTypes.free_var_name)
     return free_var_names
 
 
-def get_input_free_var_names(relation: Union[Relation, IERelation], relation_type: str) -> set:
+def get_input_free_var_names(relation: Union[Relation, IERelation], relation_type: str) -> Set:
     """
-    Args:
-        relation: a relation (either a normal relation or an ie relation)
-        relation_type: the type of the relation
+    @param relation: a relation (either a normal relation or an ie relation).
+    @param relation_type: the type of the relation.
 
-    Returns: a set of the free variable names used as input terms in the relation
+    @return: a set of the free variable names used as input terms in the relation.
+    @raise Exception if the relation isn't regular relation nor ie relation (unknown relation type).
     """
     if relation_type == "relation":
         # normal relations don't have input terms, return an empty set
@@ -54,13 +53,13 @@ def get_input_free_var_names(relation: Union[Relation, IERelation], relation_typ
         raise Exception(f'unexpected relation type: {relation_type}')
 
 
-def get_output_free_var_names(relation: Union[Relation, IERelation], relation_type: str) -> set:
+def get_output_free_var_names(relation: Union[Relation, IERelation], relation_type: str) -> Set:
     """
-    Args:
-        relation: a relation (either a normal relation or an ie relation)
-        relation_type: the type of the relation
+    @param relation: a relation (either a normal relation or an ie relation).
+    @param relation_type: the type of the relation.
 
-    Returns: a set of the free variable names used as output terms in the relation
+    @return: a set of the free variable names used as output terms in the relation.
+    @raise Exception if the relation isn't regular relation nor ie relation (unknown relation type).
     """
     if relation_type == "relation":
         # the term list of a normal relation serves as the output term list, return its free variables
@@ -77,13 +76,14 @@ def check_properly_typed_term_list(term_list: list, type_list: list,
     """
     check if the term list is properly typed.
     the term list could include free variables, this method will assume their actual type is correct.
-    Args:
-        term_list: the term list to be type checked
-        type_list: the types of the terms in term_list
-        correct_type_list: a list of the types that the terms must have to pass the type check
-        symbol_table: a symbol table (used to get the types of variables)
 
-    Returns: True if the type check passed, else False
+    @param term_list: the term list to be type checked.
+    @param type_list: the types of the terms in term_list.
+    @param correct_type_list: a list of the types that the terms must have to pass the type check.
+    @param symbol_table: a symbol table (used to get the types of variables).
+
+    @return: True if the type check passed, else False.
+    @raise Exception if length of term_list doesn't match length og type_list and length of correct_type_list.
     """
     if len(term_list) != len(type_list) or len(term_list) != len(correct_type_list):
         raise Exception("the length of term_list, type_list and correct_type_list should be the same")
@@ -109,12 +109,12 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation], relatio
     checks if a relation is properly typed
     this check ignores free variables
 
-    Args:
-        relation: the relation to be checked
-        relation_type: the type of the relation
-        symbol_table: a symbol table (to check the types of regular variables)
+    @param relation: the relation to be checked
+    @param relation_type: the type of the relation
+    @param symbol_table: a symbol table (to check the types of regular variables)
 
-    Returns: true if the relation is properly typed, else false
+    @return: true if the relation is properly typed, else false
+    @raise Exception if the relation isn't regular relation nor ie relation (unknown relation type).
     """
 
     if relation_type == 'relation':
@@ -154,13 +154,14 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
     for each free variable in the rule body relations, this method will check for its type and will check if it
     has conflicting types
 
-    Args:
-        rule: the rule to be checked
-        symbol_table: a symbol table (used to get the schema of the relation)
+    @param rule: the rule to be checked
+    @param symbol_table: a symbol table (used to get the schema of the relation)
 
-    Returns: a tuple (free_var_to_type, conflicted_free_vars) where
+    @return: a tuple (free_var_to_type, conflicted_free_vars) where
         free_var_to_type: a mapping from a free variable to its type
         conflicted_free_vars: a set of all the conflicted free variables
+    @raise Exception if the relation isn't regular relation nor ie relation (unknown relation type).
+
     """
     free_var_to_type = dict()
     conflicted_free_vars = set()
@@ -201,14 +202,15 @@ def type_check_rule_free_vars_aux(term_list: list, type_list: list, correct_type
     a helper function for the method "type_check_rule_free_vars"
     performs the free variables type checking on term_list
 
-    Args:
-        term_list: the term list of a rule body relation
-        type_list: the types of the terms in term_list
-        correct_type_list: a list of the types that the terms in the term list should have
-        free_var_to_type: a mapping of free variables to their type (those that are currently known)
+    @param term_list: the term list of a rule body relation
+    @param type_list: the types of the terms in term_list
+    @param correct_type_list: a list of the types that the terms in the term list should have
+    @param free_var_to_type: a mapping of free variables to their type (those that are currently known)
         this function updates this mapping if it finds new free variables in term_list
         conflicted_free_vars: a set of the free variables that are found to have conflicting types
         this function adds conflicting free variables that it finds to this set
+
+    @raise Exception if the relation isn't regular relation nor ie relation (unknown relation type).
     """
     if len(term_list) != len(type_list) or len(term_list) != len(correct_type_list):
         raise Exception("the length of term_list, type_list and correct_type_list should be the same")
