@@ -189,10 +189,11 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 
 class Session:
     def __init__(self, debug=False):
+        self.debug = debug
         self._symbol_table = SymbolTable()
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
         self._term_graph = NetxTermGraph()
-        self._execution = execution.PydatalogEngine(debug)
+        self._execution = execution.SqliteEngine(debug)
 
         self._pass_stack = [
             RemoveTokens,
@@ -227,6 +228,9 @@ class Session:
         Runs the passes in pass_list on tree, one after another.
         """
         exec_result = None
+
+        if self.debug:
+            print(f"initial tree:\n{tree.pretty()}")
         for cur_pass in pass_list:
             if issubclass(cur_pass, (Visitor, Visitor_Recursive, Interpreter)):
                 cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).visit(tree)
@@ -241,6 +245,10 @@ class Session:
                     rgxlog_engine=self._execution).execute()
             else:
                 raise Exception(f'invalid pass: {cur_pass}')
+
+            if self.debug:
+                print(f"{cur_pass}\n{tree.pretty()}")
+
         return exec_result
 
     def __repr__(self):
@@ -448,12 +456,9 @@ if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
     my_query = '''
-        new parent(str ,str)
-        parent("bob", "greg")
-        parent("greg", "alice")
-        # now add a rule that deduces that bob is a grandparent of alice
-        grandparent(X,Z) <- parent(X,Y), parent(Y,Z) # ',' is a short hand to the 'and' operator
-        ?grandparent(X,Y)
+        new parent(str ,span)
+        parent("bob", [1,2))
+        ?parent(X,Y)
         '''
 
     my_session.run_query(my_query)
