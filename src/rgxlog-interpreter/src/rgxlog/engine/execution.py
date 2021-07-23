@@ -20,6 +20,8 @@ from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
 from rgxlog.engine.utils.general_utils import get_output_free_var_names
 
+DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
+
 
 class RgxlogEngineBase(ABC):
     """
@@ -186,6 +188,18 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
+    @staticmethod
+    def _get_span_string(span: Span):
+        """
+        convert Span(start,end) to string("[start, end)")
+
+        @param span: a span object
+        @return: a string representation of the span
+        """
+
+        span_string = f'[{span.span_start}, {span.span_end})'
+        return span_string
+
     def operator_select(self):
         # TODO
         pass
@@ -222,32 +236,50 @@ class SqliteEngine(RgxlogEngineBase):
     and finally:
     very_cool_and_even(X) <- final_join_relations(X,Y)  # SQL project/rename
 
-    notice that all we need for those is a few SQL selects/unions, and running and IE function over an SQL table.
+    notice that all we need for those is a few SQL selects/unions, and running IE functions over an SQL table.
     """
 
-    def __init__(self, debug=False, database_name="blah"):
+    def __init__(self, debug=False, database_name=None):
         """
-        @param debug: print the commands that are loaded into pyDatalog
+        @param debug: print stuff related to the inner workings of the engine
+        @param database_name: open an existing database instead of a new one
+
+        creates/opens an SQL database file + connection
         """
         super().__init__()
         self.temp_relation_id_counter = count()
         self.debug = debug
         self.rules_history = dict()
 
-        # sql stuff
-        # TODO@niv: add option for non-temporary database
-        # TODO@niv: i've tried using a temporary directory but it caused some issues. this works for now
-        self.temporary_db_file = tempfile.NamedTemporaryFile(delete=False)
-        self.temporary_db_file.close()
-        self.sql_conn = sqlite.connect(self.temporary_db_file.name)
+        if database_name:
+            if not os.path.isfile(database_name):
+                raise IOError(f"database file: {database_name} was not found")
+            self.db_filename = database_name
+        else:
+            temp_db_file = tempfile.NamedTemporaryFile(delete=False)
+            temp_db_file.close()
+            self.db_filename = temp_db_file.name
+
+        if self.debug:
+            print(f"using database file: {self.db_filename}")
+
+        self.sql_conn = sqlite.connect(self.db_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
     def add_fact(self, fact: AddFact):
-        # this should be as simple as an `insert` statement
-        sql_terms = fact.term_list  # add quotes here
+        sql_command = f"INSERT INTO {fact.relation_name} ("
+        num_types = len(fact.type_list)
+        for i in range(num_types):
+            if i > 0:
+                sql_command += ", "
+            sql_command += f"t{i}"
+        sql_command += ") VALUES ("
+        sql_command += "?, " * (num_types - 1)
+        sql_command += "?)"
 
-        self.sql_cursor.execute(f"INSERT INTO {fact.relation_name} VALUES"
-                                f"(t1 '{sql_terms[0]}', t2 '{sql_terms[1]}')")
+        sql_term_list = [self._relation_term_to_sql_term(datatype, term) for datatype, term in
+                         zip(fact.type_list, fact.term_list)]
+        self.sql_cursor.execute(sql_command, sql_term_list)
 
     def remove_fact(self, fact: RemoveFact):
         # use a `DELETE` statement
@@ -270,7 +302,8 @@ class SqliteEngine(RgxlogEngineBase):
         # note: this is an engine query (which asks a single question),
         # not a session query (which can do anything).
         # so we only need a `SELECT` statement here.
-        pass
+        self.sql_cursor.execute(f"SELECT * from {query}")
+        return self.sql_cursor.fetchall()
 
     def compute_ie_relation(self, ie_relation, ie_func_data, bounding_relation):
         # this can probably be copied from pydatalogEngine
@@ -281,20 +314,26 @@ class SqliteEngine(RgxlogEngineBase):
         pass
 
     def declare_relation(self, relation_decl: RelationDeclaration):
-        # this should be done by using the `CREATE TABLE` command
+        """
+        :param relation_decl: the declaration info
 
-        # get types and convert to SQL types
-        # types = relation_decl.type_list
-        sql_types = ["text", "integer"]
+        declares a relation as an SQL table, whose types are named t0, t1, ...
+        """
+        # create the relation table. we don't use an id because it would allow inserting the same values twice
+        sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
+        for i, relation_type in enumerate(relation_decl.type_list):
+            if i > 0:
+                sql_command += ", "
+            sql_command += f"t{i} {self._datatype_to_sql_type(relation_type)}"
+        sql_command += ")"
 
-        # create the relation table
-        self.sql_cursor.execute(f"CREATE TABLE {relation_decl.relation_name} (t1 {sql_types[0]}, t2 {sql_types[1]})")
+        self.sql_cursor.execute(sql_command)
 
         # save to file
         self.sql_conn.commit()
 
     def operator_select(self):
-        # TODO: i'm talking about the relational algebra operator, which might be different from the sql operator
+        # TODO@niv: i'm talking about the relational algebra operator, which might be different from the sql operator
         pass
 
     def operator_project(self):
@@ -311,6 +350,19 @@ class SqliteEngine(RgxlogEngineBase):
 
     def operator_rename(self):
         pass
+
+    @staticmethod
+    def _datatype_to_sql_type(datatype: DataTypes):
+        return DATATYPE_TO_SQL_TYPE[datatype]
+
+    def _relation_term_to_sql_term(self, datatype: DataTypes, term):
+        if datatype == DataTypes.span:
+            return self._get_span_string(term)
+        else:
+            return term
+
+    def __del__(self):
+        self.sql_conn.close()
 
 
 class PydatalogEngine(RgxlogEngineBase):
@@ -510,7 +562,6 @@ class PydatalogEngine(RgxlogEngineBase):
             # there's at least one resulting tuple, get the list of resulting tuples by accessing the 'answers' field
             query_results = py_datalog_answer_object.answers
 
-        # TODO@niv: is this the right place for debug prints?
         if self.debug:
             print(" ~~~ flushing debug buffer ~~~")
             print(self.flush_prints_buffer())
@@ -742,13 +793,10 @@ class PydatalogEngine(RgxlogEngineBase):
     @staticmethod
     def _get_span_string(span: Span):
         """
-        the pyDatalog execution engine receives instructions via strings.
-        return a string representation of a span term in pyDatalog.
-        since there's no built in representation of a span in pyDatalog, and custom classes do not seem to work
-        as intended , so we represent a span using a tuple of length 2.
+        pydatalog version is without '['
 
-        @param span: a span
-        @return: a pyDatalog string representation of the span
+        @param span: a span object
+        @return: a string representation of the span
         """
 
         span_string = f'({span.span_start}, {span.span_end})'
@@ -1087,3 +1135,18 @@ class GenericExecution(ExecutionBase):
 
         # define the rule head in the rgxlog engine by filtering the tuples of the intermediate relation into it
         rgxlog_engine.add_and_save_rule(rule_head_relation, [intermediate_relation], body_relation_original_list)
+
+
+if __name__ == "__main__":
+    my_engine = SqliteEngine()
+    print("hello world")
+
+    # add relation
+    my_relation = RelationDeclaration("yoyo", [DataTypes.integer, DataTypes.string])
+    my_engine.declare_relation(my_relation)
+
+    # add fact
+    my_fact = AddFact("yoyo", [8, "hihi"], [DataTypes.integer, DataTypes.string])
+    my_engine.add_fact(my_fact)
+
+    print(my_engine.query("yoyo"))
