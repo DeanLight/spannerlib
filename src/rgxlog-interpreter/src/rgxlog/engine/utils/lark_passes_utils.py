@@ -69,7 +69,6 @@ def unravel_lark_node(func):
 
     def wrapped_method(visitor, lark_node):
         structured_node = lark_node.children[0]
-        ret = func(visitor, structured_node)
-        return ret
+        return func(visitor, structured_node)
 
     return wrapped_method

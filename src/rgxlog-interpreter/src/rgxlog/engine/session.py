@@ -12,7 +12,8 @@ from tabulate import tabulate
 import rgxlog
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration, Query
+from rgxlog.engine.execution import (GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration, Query,
+                                     RELATION_COLUMN_PREFIX, FALSE_VALUE, TRUE_VALUE)
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
@@ -38,10 +39,6 @@ SPAN_GROUP2 = "end"
 # as of now, we don't support negative/float numbers (for both spans and integers)
 SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
-
-# rgx constants
-FALSE_VALUE = []
-TRUE_VALUE = [tuple()]
 
 
 # @niv: add rust_rgx_*_from_file (ask dean)
@@ -100,12 +97,11 @@ def _text_to_typed_data(line, relation_types):
 
 
 def format_query_results(query: Query, query_results: List) -> Union[DataFrame, List]:
-    # TODO@tom: @niv add documentation to params
     """
     formats a single result from the engine into a usable format
-    @param query:
-    @param query_results:
-    @return:
+    @param query: the query that was executed, and outputted `query_results`
+    @param query_results: the results after executing the aforementioned query
+    @return: a false value, a true value, or a dataframe representing the query + its results
     """
     assert isinstance(query_results, list), "illegal results format"
 
@@ -120,8 +116,7 @@ def format_query_results(query: Query, query_results: List) -> Union[DataFrame, 
         # convert the resulting tuples to a more organized format
         results_matrix = []
         for result in query_results:
-            # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
-            # they will be printed as a span instead of a tuple
+            # span tuples are converted to Span objects
             converted_span_result = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
                                      else term
                                      for term in result]
@@ -257,7 +252,8 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
 
-    # TODO@niv: maybe change this to run_code or something, since the name `query` is already in use? (e.g. "?rel(X)")
+    # TODO@niv: @dean,
+    #  maybe change this to `run` or something, since the name `query` is already in use? (e.g. "?rel(X)")
     def run_query(self, query: str, print_results: bool = True, format_results=False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
@@ -411,7 +407,8 @@ class Session:
         symbol_table = self._symbol_table
         relation_schema = symbol_table.get_relation_schema(relation_name)
         relation_arity = len(relation_schema)
-        query = "?" + relation_name + "(" + ", ".join(f"T{i}" for i in range(relation_arity)) + ")"
+        query = ("?" + relation_name + "(" +
+                 ", ".join(f"{RELATION_COLUMN_PREFIX}{i}" for i in range(relation_arity)) + ")")
         return query
 
     def export_relation_into_df(self, relation_name: str):
@@ -457,8 +454,10 @@ if __name__ == "__main__":
     my_session = Session(True)
     my_query = '''
         new parent(str ,span)
+        x="bob"
         parent("bob", [1,2))
-        ?parent(X,Y)
+        parent("doc", [3,4))
+        ?parent("bob",[1,2))
         '''
 
     my_session.run_query(my_query)
