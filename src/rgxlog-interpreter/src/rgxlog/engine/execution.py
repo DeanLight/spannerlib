@@ -221,6 +221,10 @@ class RgxlogEngineBase(ABC):
         final_string = f"{relation.relation_name}({terms_string})"
         return final_string
 
+    @abstractmethod
+    def remove_all_rules(self, rule_head):
+        pass
+
     def operator_select(self):
         # TODO
         pass
@@ -366,7 +370,7 @@ class SqliteEngine(RgxlogEngineBase):
         pass
 
     def join_relations(self, relation_list, name=""):
-        # TODO: check if we still need this
+        # TODO: this should be similar to pydatalog's, add_rule however, needs to change to work with sql.
         pass
 
     def declare_relation(self, relation_decl: RelationDeclaration):
@@ -607,30 +611,6 @@ class PydatalogEngine(RgxlogEngineBase):
                 self.debug_buffer.append(remove_rule_statement)
             pyDatalog.load(remove_rule_statement)
 
-    # TODO@niv: remove this, put the docstring in `run_query` somehow
-    def print_query(self, query: Query):
-        """
-        queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
-        the resulting string is a table that contains all of the resulting tuples of the query.
-        the headers of the table are the free variables used in the query.
-        above the table there will be a title that contains the query as it was written by the user
-
-        for example:
-
-        printing results for query 'lecturer_of(X, "abigail")':
-          X
--       -------
-        linus
-        walter
-
-        there are two cases where a table cannot be printed:
-        1. the query returned no results. in this case '[]' will be printed
-        2. the query returned a single empty tuple, in this case '[()]' will be printed
-
-        @param query: a query for pyDatalog
-        """
-        raise NotImplementedError
-
     def query(self, query: Query):
         """
         @param query: a query for pyDatalog
@@ -672,7 +652,7 @@ class PydatalogEngine(RgxlogEngineBase):
         @return: a string that represents the rule in PyDatalog's/RGXlog's format.
         """
 
-        assert rule_format in ["PyDatalog", "RGXlog"]
+        assert rule_format in ["PyDatalog", "RGXlog"], "illegal rule format"
         arrow, delimiter = ("<=", " & ") if rule_format == "PyDatalog" else ("<-", ", ")
         rule_head_string = self._get_relation_string(rule_head)
         rule_body_relation_strings = [str(relation) for relation in rule_body_relation_list]

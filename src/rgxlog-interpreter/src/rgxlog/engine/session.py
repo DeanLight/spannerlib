@@ -131,6 +131,21 @@ def format_query_results(query: Query, query_results: List) -> Union[DataFrame, 
 
 
 def tabulate_result(result: Union[DataFrame, List]):
+    """
+    organize a query result in a table
+    for example:
+        printing results for query 'lecturer_of(X, "abigail")':
+          X
+       -------
+        linus
+        walter
+
+    there are two cases where a table will not be printed:
+    1. the query returned no results. in this case '[]' will be printed
+    2. the query returned a single empty tuple, in this case '[()]' will be printed
+    :param result: the query result (free variable names are the dataframe's column names)
+    :return: a tabulated string
+    """
     if isinstance(result, DataFrame):
         # query results can be printed as a table
         result_string = tabulate(result, headers="keys", tablefmt="presto", stralign="center", showindex=False)

@@ -28,7 +28,7 @@ def get_term_list_string(term_list, type_list):
 
 
 # TODO: understand why this causes a bug (rule safety something)
-# @dataclasses.dataclass(init=False)
+#  @dataclasses.dataclass(init=False)
 class Relation:
     """a representation of a normal relation"""
 
