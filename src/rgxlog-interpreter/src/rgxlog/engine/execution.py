@@ -328,6 +328,9 @@ class SqliteEngine(RgxlogEngineBase):
         # we just need to delete the table that the rule created
         pass
 
+    def remove_all_rules(self, rule_head):
+        pass
+
     def query(self, query: Query, allow_duplicates=False):
         """
         outputs a preformatted query result, e.g. [("a",5),("b",6)]
@@ -370,7 +373,19 @@ class SqliteEngine(RgxlogEngineBase):
         pass
 
     def join_relations(self, relation_list, name=""):
-        # TODO: this should be similar to pydatalog's, add_rule however, needs to change to work with sql.
+        # # TODO: this should be similar to pydatalog's. `add_rule` however, needs to change to work with sql.
+        # sql_command = "SELECT ..."
+        # for relation in relation_list:
+        #     sql_command += "INNER JOIN ... ON ... X=X"
+        # temp_relation = ... # execute sql command
+        # return Relation(temp_relation, ...)
+        pass
+
+    def compute_rule(self):
+        """
+        this performs the bottom-up traversal over the subtrees creates by the `Expand...` pass
+        :return:
+        """
         pass
 
     def declare_relation(self, relation_decl: RelationDeclaration):
@@ -679,8 +694,8 @@ class PydatalogEngine(RgxlogEngineBase):
 
         return rule_string
 
-    def add_and_save_rule(self, rule_head: Relation, rule_body_relation_list: List[Relation],
-                          rule_body_original_list: List):
+    def compute_rule(self, rule_head: Relation, rule_body_relation_list: List[Relation],
+                     rule_body_original_list: List):
         """
         A wrapper to add_rule. It adds the rule to PyDatalogs engine and save a binding between the original rule
         and the rule we actually passed to PyDatalog.
@@ -1050,7 +1065,6 @@ class GenericExecution(ExecutionBase):
 
         # execute each non computed statement in the term graph
         for term_id in term_ids:
-
             term_attrs = term_graph.get_term_attributes(term_id)
 
             if term_attrs['state'] is EvalState.COMPUTED:
@@ -1077,7 +1091,10 @@ class GenericExecution(ExecutionBase):
                 exec_result = (query, rgxlog_engine.query(query))
 
             elif term_type == "rule":
-                self._execute_rule_aux(term_id)
+                if isinstance(rgxlog_engine, PydatalogEngine):
+                    self._execute_rule_aux(term_id)
+                else:
+                    rgxlog_engine.compute_rule()
 
             # statement was executed, mark it as "computed"
             term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
@@ -1202,14 +1219,14 @@ class GenericExecution(ExecutionBase):
                     [intermediate_relation, result_relation], name="temp_join")
 
         # declare the rule head in the rgxlog engine
-        rule_head_attrs = term_graph.get_term_attributes(rule_head_id)
+        rule_head_attrs = term_graph[rule_head_id]
         rule_head_relation = rule_head_attrs['value']
         rule_head_declaration = RelationDeclaration(rule_head_relation.relation_name,
                                                     symbol_table.get_relation_schema(rule_head_relation.relation_name))
         rgxlog_engine.declare_relation(rule_head_declaration)
 
         # define the rule head in the rgxlog engine by filtering the tuples of the intermediate relation into it
-        rgxlog_engine.add_and_save_rule(rule_head_relation, [intermediate_relation], body_relation_original_list)
+        rgxlog_engine.compute_rule(rule_head_relation, [intermediate_relation], body_relation_original_list)
 
 
 if __name__ == "__main__":

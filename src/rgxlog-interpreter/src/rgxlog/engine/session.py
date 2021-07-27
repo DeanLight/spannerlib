@@ -21,7 +21,8 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences,
-                                              ExecuteAssignments, AddStatementsToNetxTermGraph)
+                                              ExecuteAssignments, AddStatementsToNetxTermGraph,
+                                              ExpandRuleNodes)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
@@ -222,6 +223,7 @@ class Session:
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxTermGraph,
+            ExpandRuleNodes,
             GenericExecution
         ]
 
@@ -241,23 +243,28 @@ class Session:
 
         if self.debug:
             print(f"initial tree:\n{tree.pretty()}")
-        for cur_pass in pass_list:
-            if issubclass(cur_pass, (Visitor, Visitor_Recursive, Interpreter)):
-                cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).visit(tree)
-            elif issubclass(cur_pass, Transformer):
-                tree = cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).transform(tree)
-            elif issubclass(cur_pass, ExecutionBase):
+
+        for curr_pass in pass_list:
+            if issubclass(curr_pass, (Visitor, Visitor_Recursive, Interpreter)):
+                curr_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).visit(tree)
+            elif issubclass(curr_pass, Transformer):
+                tree = curr_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).transform(tree)
+            elif issubclass(curr_pass, ExecutionBase):
                 # the execution is always the last pass, and there is always only one per statement, so there's
                 # no need to have a list of results here
-                exec_result = cur_pass(
+                exec_result = curr_pass(
                     term_graph=self._term_graph,
                     symbol_table=self._symbol_table,
                     rgxlog_engine=self._execution).execute()
+            elif curr_pass == ExpandRuleNodes:
+                tree = curr_pass(term_graph=self._term_graph,
+                                 symbol_table=self._symbol_table,
+                                 rgxlog_engine=self._execution).expand()
             else:
-                raise Exception(f'invalid pass: {cur_pass}')
+                raise Exception(f'invalid pass: {curr_pass}')
 
             if self.debug:
-                print(f"{cur_pass}\n{tree.pretty()}")
+                print(f"{curr_pass}\n{tree.pretty()}")
 
         return exec_result
 
@@ -468,11 +475,14 @@ if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
     my_query = '''
-        new parent(str ,span)
-        x="bob"
-        parent("bob", [1,2))
-        parent("doc", [3,4))
-        ?parent("bob",[1,2))
+        new a(int, int)
+        new b(int, int) 
         '''
 
     my_session.run_query(my_query)
+
+    my_query2 = """
+        d(X,Y) <- a(Z,X), b(X,Y)
+        """
+
+    my_session.run_query(my_query2)
