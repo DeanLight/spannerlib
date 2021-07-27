@@ -184,13 +184,16 @@ class NetxTermGraph(TermGraphBase):
         return nx.dfs_postorder_nodes(self._graph, self._root_id)
 
     def get_children(self, term_id):
-        return self._graph.successors(term_id)
+        return list(self._graph.successors(term_id))
 
     def set_term_attribute(self, term_id, attr_name, attr_value):
         self._graph.nodes[term_id][attr_name] = attr_value
 
     def get_term_attributes(self, term_id) -> dict:
         return self._graph.nodes[term_id].copy()
+
+    def __getitem__(self, term_id):
+        return self.get_term_attributes(term_id)
 
     def _get_term_string(self, term_id):
         """

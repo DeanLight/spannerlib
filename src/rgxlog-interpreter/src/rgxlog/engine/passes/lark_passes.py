@@ -29,6 +29,8 @@ https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 from lark import Transformer
 from lark.visitors import Interpreter, Visitor_Recursive
 from rgxlog.engine.datatypes.primitive_types import Span
+from rgxlog.engine.execution import SqliteEngine
+from rgxlog.engine.state.term_graph import NetxTermGraph
 from rgxlog.engine.utils.lark_passes_utils import *
 from rgxlog.engine.utils.general_utils import *
 
@@ -384,6 +386,7 @@ class CheckDefinedReferencedVariables(Interpreter):
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
+
 # We don't use this pass anymore.
 # We catch relation redefinitions in SymbolTable -> add_relation_schema.
 
@@ -678,8 +681,6 @@ class ReorderRuleBody(Visitor_Recursive):
         body_relation_list = rule.body_relation_list
         body_relation_type_list = rule.body_relation_type_list
 
-        # TODO@niv: what is this? a future plan?
-
         # in order to reorder the relations, we will use a similar fixed point algorithm to the one in
         # the 'CheckRuleSafety' pass.
         # when a safe relation is found, it will be inserted into a list. This way, an order in which each
@@ -861,7 +862,6 @@ class SaveDeclaredRelationsSchemas(Interpreter):
 
     @unravel_lark_node
     def rule(self, rule: Rule):
-
         # a rule head relation only contains free variable terms, meaning its schema is defined exclusively by the
         # types of said free variables. a free variable type in a rule can be found using the schemas of relations
         # in the rule body
@@ -1071,3 +1071,99 @@ class AddStatementsToNetxTermGraph(Interpreter):
             tg_body_relation_node = self.term_graph.add_term(type=relation_type, value=relation)
             # attach the relation to the rule body
             self.term_graph.add_edge(tg_rule_body_node, tg_body_relation_node)
+
+
+class ExpandRuleNodes:
+    """
+    this pass tranforms each rule node into a subtree which
+    """
+
+    def __init__(self, term_graph: NetxTermGraph, symbol_table, rgxlog_engine):
+        self.term_graph = term_graph
+        self.symbol_table = symbol_table
+        self.engine = rgxlog_engine
+
+    def _get_rule_node_ids(self):
+        """
+        convert nodes to subtrees recursively
+        :return:
+        """
+        term_ids = self.term_graph.post_order_dfs()
+        rule_node_ids = []
+
+        for term_id in term_ids:
+            term_attrs = self.term_graph.get_term_attributes(term_id)
+
+            # the term is not computed, get its type and compute it accordingly
+            term_type = term_attrs['type']
+
+            if term_type == "rule":
+                rule_node_ids.append(term_id)
+
+        return rule_node_ids
+
+    def _get_rule_variable_dict(self, rule_node_id):
+        """
+        for a single rule, get its variable dict (V->[(table,pos),]), which tells us for each variable,
+        which table it's in and in what position.
+        this should be called before `rule_node_id` was expanded
+        :param rule_node_id:
+        :return:
+        """
+        var_dict = {}
+        rule_children = self.term_graph.get_children(rule_node_id)
+        assert len(rule_children) == 2, "a rule that was not expanded must have exactly 2 children"
+
+        rule_head_id, rule_body_id = rule_children
+        body_relation_id_list = self.term_graph.get_children(rule_body_id)
+        rule_head_relation = self.term_graph[rule_head_id]
+        rule_head_relation['type'] = "relation"
+        all_relations_in_rule = [self.term_graph[term_id] for term_id in body_relation_id_list] + [rule_head_relation]
+
+        for relation_attrs in all_relations_in_rule:
+
+            relation_object: Relation = relation_attrs['value']
+            relation_type: str = relation_attrs['type']
+
+            free_vars_pairs = get_numbered_output_free_var_names(relation_object, relation_type)
+            for i, var in free_vars_pairs:
+                old_var_entry = var_dict.get(var, [])
+                old_var_entry.append((relation_object.relation_name, i))
+                var_dict[var] = old_var_entry
+
+        return var_dict
+
+    def expand_rule(self, rule_node_id):
+        """
+        convert a rule node into a subtree of commands, e.g.:
+        A(X,Y) <-- B(X),C(Z),D(Z)->(Y) becomes:
+
+        A <-- Project(X,Y) <-- Join(on=None) <-- get(B,vars=[X])
+                                             <-- Calc(D,out_vars=Y in_rel=C(Z) ) <-- get(C,[z])
+
+        :param rule_node_id:
+        :return:
+        """
+        var_dict = self._get_rule_variable_dict(rule_node_id)
+        # dfs
+        # for each node:
+        # if node_type == rule_head:
+        #   create project node (all vars -> rule vars)
+        # elif == :
+        #   blah
+        # elif
+        pass
+
+    def expand_all_rules(self):
+        # TODO@niv: we might have to create a difference pass stack
+        #  for each engine
+        if not isinstance(self.engine, SqliteEngine):
+            return self.term_graph
+
+        for rule_node_id in self._get_rule_node_ids():
+            self.expand_rule(rule_node_id)
+
+        return self.term_graph
+
+    def expand(self):
+        return self.expand_all_rules()

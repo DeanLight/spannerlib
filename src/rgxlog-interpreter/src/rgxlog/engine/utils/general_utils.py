@@ -4,7 +4,7 @@ general utilities that are not specific to any kind of pass, execution engine, e
 
 from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from typing import Union
+from typing import Union, Tuple
 from typing import Callable
 
 
@@ -31,6 +31,19 @@ def get_free_var_names(term_list: list, type_list: list) -> set:
     """
     free_var_names = set(term for term, term_type in zip(term_list, type_list)
                          if term_type is DataTypes.free_var_name)
+    return free_var_names
+
+
+def get_numbered_free_var_pairs(term_list: list, type_list: list) -> List[Tuple]:
+    """
+    Args:
+        term_list: a list of terms
+        type_list: a list of the term types
+
+    Returns: a list of all (free_var, index) pairs based on term_list
+    """
+    free_var_names = list(((i, term_pair[0]) for i, term_pair in enumerate(zip(term_list, type_list))
+                           if term_pair[1] is DataTypes.free_var_name))
     return free_var_names
 
 
@@ -67,7 +80,25 @@ def get_output_free_var_names(relation: Union[Relation, IERelation], relation_ty
         # return a set of the free variables in the output term list
         return get_free_var_names(relation.output_term_list, relation.output_type_list)
     else:
-        raise Exception(f'unexpected relation type: {relation_type}')
+        raise ValueError(f'unexpected relation type: {relation_type}')
+
+
+def get_numbered_output_free_var_names(relation: Union[Relation, IERelation], relation_type: str) -> List[Tuple]:
+    """
+    Args:
+        relation: a relation (either a normal relation or an ie relation)
+        relation_type: the type of the relation
+
+    Returns: a set of the free variable names used as output terms in the relation
+    """
+    if relation_type == "relation":
+        # the term list of a normal relation serves as the output term list, return its free variables
+        return get_numbered_free_var_pairs(relation.term_list, relation.type_list)
+    elif relation_type == "ie_relation":
+        # return a set of the free variables in the output term list
+        return get_numbered_free_var_pairs(relation.output_term_list, relation.output_type_list)
+    else:
+        raise ValueError(f'unexpected relation type: {relation_type}')
 
 
 def check_properly_typed_term_list(term_list: list, type_list: list,
