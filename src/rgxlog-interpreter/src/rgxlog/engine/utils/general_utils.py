@@ -14,12 +14,10 @@ def fixed_point(start, step: Callable, distance: Callable, thresh=0):
     some distance is zero or below a threshold
     """
     x = start
-    f = step
-    d = distance
-    y = f(x)
-    while d(x, y) > thresh:
+    y = step(x)
+    while distance(x, y) > thresh:
         x = y
-        y = f(x)
+        y = step(x)
     return x
 
 
@@ -172,8 +170,8 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
             # get the schema for the relation
             relation_schema = symbol_table.get_relation_schema(relation.relation_name)
             # perform the free variable type checking
-            type_check_rule_free_vars_aux(
-                relation.term_list, relation.type_list, relation_schema, free_var_to_type, conflicted_free_vars)
+            type_check_rule_free_vars_aux(relation.term_list, relation.type_list, relation_schema,
+                                          free_var_to_type, conflicted_free_vars)
 
         elif relation_type == "ie_relation":
 

@@ -28,5 +28,6 @@ jobs:
         pip install -e ./src/rgxlog-interpreter
         pip list
     - name: Test with pytest
+      # TODO@niv: remove the marker when the engine is ready
       run: |
         pytest -s -m "engine"

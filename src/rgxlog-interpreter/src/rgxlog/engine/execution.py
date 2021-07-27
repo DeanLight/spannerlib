@@ -4,7 +4,7 @@ and also implementations of 'ExecutionBase' which serves as an abstraction for a
 and an rgxlog engine.
 """
 
-# TODO remove import * where not needed
+# TODO@niv remove import * where not needed
 import os
 import sqlite3 as sqlite
 import tempfile
@@ -20,6 +20,13 @@ from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
 from rgxlog.engine.utils.general_utils import get_output_free_var_names
 
+DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
+RELATION_COLUMN_PREFIX = "col"
+
+# rgx constants
+FALSE_VALUE = []
+TRUE_VALUE = [tuple()]
+
 
 class RgxlogEngineBase(ABC):
     """
@@ -28,25 +35,17 @@ class RgxlogEngineBase(ABC):
 
     def __init__(self):
         super().__init__()
-        self.prints_buffer = []
+        self.debug_buffer = []
 
-    # TODO@niv: this is used only for debug - reformat it somehow
-    def flush_prints_buffer(self) -> str:
+    def flush_debug_buffer(self) -> str:
         """
-        some of the methods in this class should print their results, but since this project uses jupyter notebook's
-        magic system, printing inside the methods may cause the project to behave incorrectly (for example, the prints
-        may appear in the wrong cell).
+        clear and return the debug strings, only relevant when `debug=True`
 
-        so instead of printing, the methods of this class should append the strings they want to print to
-        self.prints_buffer, and the user of this class can get the string that he should print using this method
-
-        this method also clears the prints buffer
-
-        Returns: a single string that represents all of the prints buffer content. this string should be printed
+        Returns: a single string that represents all of the `debug_buffer` content. this string should be printed
         by the caller
         """
-        ret_string = '\n'.join(self.prints_buffer)
-        self.prints_buffer.clear()
+        ret_string = '\n'.join(self.debug_buffer)
+        self.debug_buffer.clear()
         return ret_string
 
     @abstractmethod
@@ -186,6 +185,46 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
+    @staticmethod
+    def _get_span_string(span: Span):
+        """
+        convert Span(start,end) to string("[start, end)")
+
+        @param span: a span object
+        @return: a string representation of the span
+        """
+
+        span_string = f'[{span.span_start}, {span.span_end})'
+        return span_string
+
+    @abstractmethod
+    def _convert_relation_term_to_string(self, datatype: DataTypes, term):
+        """
+        return the string representation of a relation term, e.g. "[1,4)"
+
+        :param datatype: the type of the term
+        :param term: the term object itself
+        :return: string representation
+        """
+        pass
+
+    def _get_relation_string(self, relation: Relation):
+        """
+        return the string representation of a relation which has terms, e.g. REL(3, "hello")
+
+        @param relation: a relation object
+        @return: a string representation of the relation
+        """
+        terms_string = ', '.join([self._convert_relation_term_to_string(term, term_type)
+                                  for term, term_type in zip(relation.term_list, relation.type_list)])
+
+        final_string = f"{relation.relation_name}({terms_string})"
+        return final_string
+
+    @abstractmethod
+    def remove_all_rules(self, rule_head):
+        pass
+
     def operator_select(self):
         # TODO
         pass
@@ -222,32 +261,55 @@ class SqliteEngine(RgxlogEngineBase):
     and finally:
     very_cool_and_even(X) <- final_join_relations(X,Y)  # SQL project/rename
 
-    notice that all we need for those is a few SQL selects/unions, and running and IE function over an SQL table.
+    notice that all we need for those is a few SQL selects/unions, and running IE functions over an SQL table.
     """
 
-    def __init__(self, debug=False, database_name="blah"):
+    def __init__(self, debug=False, database_name=None):
         """
-        @param debug: print the commands that are loaded into pyDatalog
+        @param debug: print stuff related to the inner workings of the engine
+        @param database_name: open an existing database instead of a new one
+
+        creates/opens an SQL database file + connection
         """
         super().__init__()
         self.temp_relation_id_counter = count()
         self.debug = debug
         self.rules_history = dict()
 
-        # sql stuff
-        # TODO@niv: add option for non-temporary database
-        # TODO@niv: i've tried using a temporary directory but it caused some issues. this works for now
-        self.temporary_db_file = tempfile.NamedTemporaryFile(delete=False)
-        self.temporary_db_file.close()
-        self.sql_conn = sqlite.connect(self.temporary_db_file.name)
+        if database_name:
+            if not os.path.isfile(database_name):
+                raise IOError(f"database file: {database_name} was not found")
+            self.db_filename = database_name
+        else:
+            temp_db_file = tempfile.NamedTemporaryFile(delete=False)
+            temp_db_file.close()
+            self.db_filename = temp_db_file.name
+
+        if self.debug:
+            print(f"using database file: {self.db_filename}")
+
+        self.sql_conn = sqlite.connect(self.db_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
     def add_fact(self, fact: AddFact):
-        # this should be as simple as an `insert` statement
-        sql_terms = fact.term_list  # add quotes here
+        """
+        add a
+        :param fact:
+        :return:
+        """
+        sql_command = f"INSERT INTO {fact.relation_name} ("
+        num_types = len(fact.type_list)
+        for i in range(num_types):
+            if i > 0:
+                sql_command += ", "
+            sql_command += f"{RELATION_COLUMN_PREFIX}{i}"
+        sql_command += ") VALUES ("
+        sql_command += ", ".join(["?"] * num_types)
+        sql_command += ")"
 
-        self.sql_cursor.execute(f"INSERT INTO {fact.relation_name} VALUES"
-                                f"(t1 '{sql_terms[0]}', t2 '{sql_terms[1]}')")
+        sql_term_list = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
+                         zip(fact.type_list, fact.term_list)]
+        self.sql_cursor.execute(sql_command, sql_term_list)
 
     def remove_fact(self, fact: RemoveFact):
         # use a `DELETE` statement
@@ -266,51 +328,138 @@ class SqliteEngine(RgxlogEngineBase):
         # we just need to delete the table that the rule created
         pass
 
-    def query(self, query):
+    def query(self, query: Query, allow_duplicates=False):
+        """
+        outputs a preformatted query result, e.g. [("a",5),("b",6)]
+        :param allow_duplicates: if True, query result may contain duplicate values
+        :param query: the query to be performed
+        :return: a query results which is True, False, or a list of tuples
+        """
         # note: this is an engine query (which asks a single question),
         # not a session query (which can do anything).
         # so we only need a `SELECT` statement here.
-        pass
+        query_relation = query.relation_name
+        query_where_conditions = self._get_where_string(query.term_list, query.type_list)
+        query_free_var_indexes = self._get_free_variable_indexes(query.type_list)
+        has_free_vars = bool(query_free_var_indexes)
+        unique_string = "" if allow_duplicates else "DISTINCT"
 
-    def compute_ie_relation(self, ie_relation, ie_func_data, bounding_relation):
+        if has_free_vars:
+            # free variables exist - return list/False
+            query_cols = [f"{RELATION_COLUMN_PREFIX}{free_var_index}" for free_var_index in query_free_var_indexes]
+            query_select_string = f"{', '.join(query_cols)}"
+            sql_command = f"SELECT {unique_string} {query_select_string} FROM {query_relation} {query_where_conditions}"
+        else:
+            # no free variables - only return True/False
+            sql_command = f"SELECT * FROM {query_relation} {query_where_conditions}"
+
+        if self.debug:
+            self.debug_buffer.append(f'query: {sql_command}')
+
+        self.sql_cursor.execute(sql_command)
+        query_result = self.sql_cursor.fetchall()
+        if (not has_free_vars) and query_result != FALSE_VALUE:
+            # if there are no free variables, we should just return a true/false value
+            query_result = TRUE_VALUE
+
+        return query_result
+
+    def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
+                            bounding_relation: Relation):
         # this can probably be copied from pydatalogEngine
         pass
 
     def join_relations(self, relation_list, name=""):
-        # TODO: check if we still need this
+        # TODO: this should be similar to pydatalog's, add_rule however, needs to change to work with sql.
         pass
 
     def declare_relation(self, relation_decl: RelationDeclaration):
-        # this should be done by using the `CREATE TABLE` command
+        """
+        :param relation_decl: the declaration info
 
-        # get types and convert to SQL types
-        # types = relation_decl.type_list
-        sql_types = ["text", "integer"]
+        declares a relation as an SQL table, whose types are named t0, t1, ...
+        """
+        # create the relation table. we don't use an id because it would allow inserting the same values twice
+        sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
 
-        # create the relation table
-        self.sql_cursor.execute(f"CREATE TABLE {relation_decl.relation_name} (t1 {sql_types[0]}, t2 {sql_types[1]})")
+        # TODO@niv: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
+        for i, relation_type in enumerate(relation_decl.type_list):
+            if i > 0:
+                sql_command += ", "
+            sql_command += f"{RELATION_COLUMN_PREFIX}{i}"
+        sql_command += ")"
+
+        self.sql_cursor.execute(sql_command)
 
         # save to file
         self.sql_conn.commit()
 
     def operator_select(self):
-        # TODO: i'm talking about the relational algebra operator, which might be different from the sql operator
+        # TODO@niv: i'm talking about the relational algebra operator, which is actually `WHERE`
         pass
 
     def operator_project(self):
+        # TODO@niv: this is basically `SELECT`
         pass
 
     def operator_union(self):
+        # TODO@niv: sqlite `INNER JOIN`
         pass
 
     def operator_difference(self):
         pass
 
     def operator_product(self):
+        # TODO@niv: sqlite `CROSS JOIN`
         pass
 
     def operator_rename(self):
+        # TODO@niv: might have to create a new table for this, using `ALTER`. example:
+        #  create table points_tmp as select id, lon as lat, lat as lon from points;
+        #  drop table points;
+        #  alter table points_tmp rename to points;
         pass
+
+    @staticmethod
+    def _datatype_to_sql_type(datatype: DataTypes):
+        return DATATYPE_TO_SQL_TYPE[datatype]
+
+    def _convert_relation_term_to_string(self, datatype: DataTypes, term):
+        if datatype == DataTypes.span:
+            return self._get_span_string(term)
+        else:
+            return term
+
+    def __del__(self):
+        self.sql_conn.close()
+
+    @staticmethod
+    def _get_where_string(term_list: List, type_list: List[DataTypes]):
+        """
+        `where` is an sql operator which filters rows from a table.
+        this method creates the string used to filter rows based on the `term_list`.
+        :param term_list:
+        :param type_list:
+        :return:
+        """
+        where_string = "WHERE "
+        where_conditions = []
+        for col_num, term_and_term_type in enumerate(zip(term_list, type_list)):
+            term, term_type = term_and_term_type
+            if term_type is DataTypes.free_var_name:
+                continue
+
+            where_conditions.append(f'{RELATION_COLUMN_PREFIX}{col_num} = "{term}"')
+
+        if not where_conditions:
+            return ""
+
+        where_string += " AND ".join(where_conditions)
+        return where_string
+
+    @staticmethod
+    def _get_free_variable_indexes(type_list):
+        return [i for i, term_type in enumerate(type_list) if (term_type is DataTypes.free_var_name)]
 
 
 class PydatalogEngine(RgxlogEngineBase):
@@ -378,7 +527,7 @@ class PydatalogEngine(RgxlogEngineBase):
         # the syntax for a 'add fact' statement in pyDatalog is '+some_relation(term_list)' create that statement
         add_fact_statement = f'+{relation_string}'
         if self.debug:
-            self.prints_buffer.append(add_fact_statement)
+            self.debug_buffer.append(add_fact_statement)
         # add the fact in pyDatalog
         pyDatalog.load(add_fact_statement)
 
@@ -392,7 +541,7 @@ class PydatalogEngine(RgxlogEngineBase):
         # the syntax for a 'remove fact' statement in pyDatalog is '-some_relation(term_list)' create that statement
         remove_fact_statement = f'-{relation_string}'
         if self.debug:
-            self.prints_buffer.append(remove_fact_statement)
+            self.debug_buffer.append(remove_fact_statement)
         # remove the fact in pyDatalog
         pyDatalog.load(remove_fact_statement)
 
@@ -425,7 +574,7 @@ class PydatalogEngine(RgxlogEngineBase):
                     if len(self.rules_history[rule_head]) == 0:
                         del self.rules_history[rule_head]
                     if self.debug:
-                        self.prints_buffer.append(remove_rule_statement)
+                        self.debug_buffer.append(remove_rule_statement)
                     break
             else:
                 # if we are here then the rule doesn't exist
@@ -459,32 +608,8 @@ class PydatalogEngine(RgxlogEngineBase):
         for (_, rule) in self.rules_history[rule_head]:
             remove_rule_statement = f'-({rule})'
             if self.debug:
-                self.prints_buffer.append(remove_rule_statement)
+                self.debug_buffer.append(remove_rule_statement)
             pyDatalog.load(remove_rule_statement)
-
-    # TODO: remove this, put the docstring in run_query somehow
-    def print_query(self, query: Query):
-        """
-        queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
-        the resulting string is a table that contains all of the resulting tuples of the query.
-        the headers of the table are the free variables used in the query.
-        above the table there will be a title that contains the query as it was written by the user
-
-        for example:
-
-        printing results for query 'lecturer_of(X, "abigail")':
-          X
--       -------
-        linus
-        walter
-
-        there are two cases where a table cannot be printed:
-        1. the query returned no results. in this case '[]' will be printed
-        2. the query returned a single empty tuple, in this case '[()]' will be printed
-
-        @param query: a query for pyDatalog
-        """
-        raise NotImplementedError
 
     def query(self, query: Query):
         """
@@ -497,7 +622,7 @@ class PydatalogEngine(RgxlogEngineBase):
         query_statement = self._get_relation_string(query)
 
         if self.debug:
-            self.prints_buffer.append(f'query: {query_statement}')
+            self.debug_buffer.append(f'query: {query_statement}')
 
         # loading the query into pyDatalog this way returns an object that contains a list of the resulting tuples
         py_datalog_answer_object = pyDatalog.ask(query_statement)
@@ -510,10 +635,9 @@ class PydatalogEngine(RgxlogEngineBase):
             # there's at least one resulting tuple, get the list of resulting tuples by accessing the 'answers' field
             query_results = py_datalog_answer_object.answers
 
-        # TODO@niv: is this the right place for debug prints?
         if self.debug:
             print(" ~~~ flushing debug buffer ~~~")
-            print(self.flush_prints_buffer())
+            print(self.flush_debug_buffer())
             print(" ~~~ end of buffer ~~~")
 
         return query_results
@@ -528,7 +652,7 @@ class PydatalogEngine(RgxlogEngineBase):
         @return: a string that represents the rule in PyDatalog's/RGXlog's format.
         """
 
-        assert rule_format in ["PyDatalog", "RGXlog"]
+        assert rule_format in ["PyDatalog", "RGXlog"], "illegal rule format"
         arrow, delimiter = ("<=", " & ") if rule_format == "PyDatalog" else ("<-", ", ")
         rule_head_string = self._get_relation_string(rule_head)
         rule_body_relation_strings = [str(relation) for relation in rule_body_relation_list]
@@ -548,7 +672,7 @@ class PydatalogEngine(RgxlogEngineBase):
         rule_string = self.rule_to_string(rule_head, rule_body_relation_list)
 
         if self.debug:
-            self.prints_buffer.append(rule_string)
+            self.debug_buffer.append(rule_string)
 
         # add the rule to pyDatalog
         pyDatalog.load(rule_string)
@@ -721,7 +845,7 @@ class PydatalogEngine(RgxlogEngineBase):
 
         return joined_relation
 
-    def _get_term_string(self, term, term_type):
+    def _convert_relation_term_to_string(self, term, term_type):
         """
         the pyDatalog execution engine receives instructions via strings.
         return a string representation of a term in pyDatalog.
@@ -742,13 +866,10 @@ class PydatalogEngine(RgxlogEngineBase):
     @staticmethod
     def _get_span_string(span: Span):
         """
-        the pyDatalog execution engine receives instructions via strings.
-        return a string representation of a span term in pyDatalog.
-        since there's no built in representation of a span in pyDatalog, and custom classes do not seem to work
-        as intended , so we represent a span using a tuple of length 2.
+        pydatalog version is without '['
 
-        @param span: a span
-        @return: a pyDatalog string representation of the span
+        @param span: a span object
+        @return: a string representation of the span
         """
 
         span_string = f'({span.span_start}, {span.span_end})'
@@ -766,7 +887,7 @@ class PydatalogEngine(RgxlogEngineBase):
         """
 
         # create a string representation of the relation's term list in pyDatalog
-        pydatalog_string_terms = [self._get_term_string(term, term_type)
+        pydatalog_string_terms = [self._convert_relation_term_to_string(term, term_type)
                                   for term, term_type in zip(relation.term_list, relation.type_list)]
         pydatalog_string_term_list = ', '.join(pydatalog_string_terms)
 
@@ -1039,7 +1160,10 @@ class GenericExecution(ExecutionBase):
         rgxlog_engine = self.rgxlog_engine
         symbol_table = self.symbol_table
 
-        rule_head_id, rule_body_id = term_graph.get_children(rule_term_id)
+        rule_children = term_graph.get_children(rule_term_id)
+        assert len(rule_children) == 2, "a rule must have exactly 2 children"
+
+        rule_head_id, rule_body_id = rule_children
         body_relation_id_list = term_graph.get_children(rule_body_id)
 
         body_relation_original_list = list()
@@ -1048,7 +1172,6 @@ class GenericExecution(ExecutionBase):
         # 'intermediate_relation'
         intermediate_relation = None
         for relation_id in body_relation_id_list:
-
             relation_term_attrs = term_graph.get_term_attributes(relation_id)
 
             relation = relation_term_attrs['value']
@@ -1081,9 +1204,25 @@ class GenericExecution(ExecutionBase):
         # declare the rule head in the rgxlog engine
         rule_head_attrs = term_graph.get_term_attributes(rule_head_id)
         rule_head_relation = rule_head_attrs['value']
-        rule_head_declaration = RelationDeclaration(
-            rule_head_relation.relation_name, symbol_table.get_relation_schema(rule_head_relation.relation_name))
+        rule_head_declaration = RelationDeclaration(rule_head_relation.relation_name,
+                                                    symbol_table.get_relation_schema(rule_head_relation.relation_name))
         rgxlog_engine.declare_relation(rule_head_declaration)
 
         # define the rule head in the rgxlog engine by filtering the tuples of the intermediate relation into it
         rgxlog_engine.add_and_save_rule(rule_head_relation, [intermediate_relation], body_relation_original_list)
+
+
+if __name__ == "__main__":
+    my_engine = SqliteEngine()
+    print("hello world")
+
+    # add relation
+    my_relation = RelationDeclaration("yoyo", [DataTypes.integer, DataTypes.string])
+    my_engine.declare_relation(my_relation)
+
+    # add fact
+    my_fact = AddFact("yoyo", [8, "hihi"], [DataTypes.integer, DataTypes.string])
+    my_engine.add_fact(my_fact)
+
+    my_query = Query("yoyo", ["X", "Y"], [DataTypes.free_var_name, DataTypes.free_var_name])
+    print(my_engine.query(my_query))

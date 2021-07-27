@@ -5,6 +5,7 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
+from typing import List
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
@@ -27,7 +28,7 @@ def get_term_list_string(term_list, type_list):
 
 
 # TODO: understand why this causes a bug (rule safety something)
-# @dataclasses.dataclass(init=False)
+#  @dataclasses.dataclass(init=False)
 class Relation:
     """a representation of a normal relation"""
 
@@ -103,8 +104,8 @@ class RelationDeclaration:
         @param type_list: a list of the types of the terms in the relation's tuples
         @raise Exception: if there is invalid term type in term list.
         """
-        self.relation_name = relation_name
-        self.type_list = type_list
+        self.relation_name: str = relation_name
+        self.type_list: List[DataTypes] = type_list
 
     def __str__(self):
         type_strings = []
