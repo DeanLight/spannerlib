@@ -25,12 +25,15 @@ https://lark-parser.readthedocs.io/en/stable/lark_cheatsheet.pdf
 A short tutorial on lark:
 https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
+from collections import OrderedDict
+
+from typing import Dict
 
 from lark import Transformer
 from lark.visitors import Interpreter, Visitor_Recursive
 from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.execution import SqliteEngine
-from rgxlog.engine.state.term_graph import NetxTermGraph
+from rgxlog.engine.execution import SqliteEngine, RgxlogEngineBase
+from rgxlog.engine.state.term_graph import NetxTermGraph, EvalState
 from rgxlog.engine.utils.lark_passes_utils import *
 from rgxlog.engine.utils.general_utils import *
 
@@ -387,49 +390,6 @@ class CheckDefinedReferencedVariables(Interpreter):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-# We don't use this pass anymore.
-# We catch relation redefinitions in SymbolTable -> add_relation_schema.
-
-# class CheckForRelationRedefinitions(Interpreter):
-#     """
-#     A lark tree semantic check.
-#     checks if a relation is being redefined, and raises an exception if this is the case.
-#     relations can be defined either by a relation declaration or by appearing in a rule head
-#     """
-#     """
-#     TODO: in a future version of rgxlog we might want to allow for a rule head to be "redefined", meaning
-#      a relation could be defined by multiple rule heads, allowing for recursion.
-#      This would mean changing this pass as it does not allow a relation to appear in multiple rule heads.
-#     """
-#
-#     def __init__(self, **kw):
-#         super().__init__()
-#         self.symbol_table = kw['symbol_table']
-#
-#     def _assert_relation_not_defined(self, relation_name):
-#         """
-#         a utility function that checks if a relation is already defined and raises an exception
-#         if it does.
-#
-#         Args:
-#             relation_name: the relation name to be checked for redefinition
-#         """
-#         if self.symbol_table.contains_relation(relation_name):
-#             raise Exception(f'relation "{relation_name}" is already defined. relation redefinitions are not allowed')
-#
-#     @unravel_lark_node
-#     def relation_declaration(self, relation_decl: RelationDeclaration):
-#         self._assert_relation_not_defined(relation_decl.relation_name)
-#
-#     @unravel_lark_node
-#     def rule(self, rule: Rule):
-#         """
-#         a rule is a definition of the relation that appears in the rule head.
-#         this function checks that the relation that appears in the rule head is not being redefined.
-#         """
-#         self._assert_relation_not_defined(rule.head_relation.relation_name)
-
-
 class CheckReferencedRelationsExistenceAndArity(Interpreter):
     """
     A lark tree semantic check.
@@ -590,9 +550,7 @@ class CheckRuleSafety(Visitor_Recursive):
         rule_head_free_vars = get_free_var_names(head_relation.term_list, head_relation.type_list)
 
         # get the free variables in the rule body that serve as output terms.
-        rule_body_output_free_var_sets = [get_output_free_var_names(relation, relation_type)
-                                          for relation, relation_type in
-                                          zip(body_relation_list, body_relation_type_list)]
+        rule_body_output_free_var_sets = [get_output_free_var_names(relation) for relation in body_relation_list]
         rule_body_output_free_vars = set().union(*rule_body_output_free_var_sets)
 
         # make sure that every free variable in the rule head appears at least once as an output term
@@ -635,11 +593,11 @@ class CheckRuleSafety(Visitor_Recursive):
 
             for relation, relation_type in zip(body_relation_list, body_relation_type_list):
                 # check if all of its input free variable terms of the relation are bound
-                input_free_vars = get_input_free_var_names(relation, relation_type)
+                input_free_vars = get_input_free_var_names(relation)
                 unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
                 if len(unbound_input_free_vars) == 0:
                     # all input free variables are bound, mark the relation's output free variables as bound
-                    output_free_vars = get_output_free_var_names(relation, relation_type)
+                    output_free_vars = get_output_free_var_names(relation)
                     known_bound_free_vars = known_bound_free_vars.union(output_free_vars)
 
             return known_bound_free_vars
@@ -648,7 +606,7 @@ class CheckRuleSafety(Visitor_Recursive):
         bound_free_vars = fixed_point(start=set(), step=get_bound_free_vars, distance=get_size_difference, thresh=0)
 
         # get all of the input free variables that were used in the rule body
-        rule_body_input_free_var_sets = [get_input_free_var_names(relation, relation_type)
+        rule_body_input_free_var_sets = [get_input_free_var_names(relation)
                                          for relation, relation_type in
                                          zip(body_relation_list, body_relation_type_list)]
         rule_body_input_free_vars = set().union(*rule_body_input_free_var_sets)
@@ -725,7 +683,7 @@ class ReorderRuleBody(Visitor_Recursive):
                 if relation not in reordered_relations_list:
                     # this relation was not marked as safe yet.
                     # check if all of its input free variable terms are bound
-                    input_free_vars = get_input_free_var_names(relation, relation_type)
+                    input_free_vars = get_input_free_var_names(relation)
                     unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
                     if len(unbound_input_free_vars) == 0:
                         # all input free variables are bound, mark the relation as safe by adding it to the
@@ -733,7 +691,7 @@ class ReorderRuleBody(Visitor_Recursive):
                         reordered_relations_list.append(relation)
                         reordered_relations_type_list.append(relation_type)
                         # mark the relation's output free variables as bound
-                        output_free_vars = get_output_free_var_names(relation, relation_type)
+                        output_free_vars = get_output_free_var_names(relation)
                         known_bound_free_vars = known_bound_free_vars.union(output_free_vars)
 
             return known_bound_free_vars
@@ -855,10 +813,12 @@ class SaveDeclaredRelationsSchemas(Interpreter):
     def __init__(self, **kw):
         super().__init__()
         self.symbol_table = kw['symbol_table']
+        self.term_graph = kw['term_graph']
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
         self.symbol_table.add_relation_schema(relation_decl.relation_name, relation_decl.type_list, False)
+        self.term_graph.add_relation(relation_decl, "base_rel")
 
     @unravel_lark_node
     def rule(self, rule: Rule):
@@ -1012,7 +972,7 @@ class AddStatementsToNetxTermGraph(Interpreter):
 
     def __init__(self, **kw):
         super().__init__()
-        self.term_graph = kw['term_graph']
+        self.parse_graph = kw['parse_graph']
 
     def _add_statement_to_term_graph(self, statement_type, statement_value):
         """
@@ -1024,8 +984,8 @@ class AddStatementsToNetxTermGraph(Interpreter):
                                name in the grammar. Will be set as the node's type attribute.
         @param statement_value: will be set as the value attribute of the node.
         """
-        new_statement_node = self.term_graph.add_term(type=statement_type, value=statement_value)
-        self.term_graph.add_edge(self.term_graph.get_root_id(), new_statement_node)
+        new_statement_node = self.parse_graph.add_term(type=statement_type, value=statement_value)
+        self.parse_graph.add_edge(self.parse_graph.get_root_id(), new_statement_node)
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
@@ -1047,123 +1007,310 @@ class AddStatementsToNetxTermGraph(Interpreter):
     def rule(self, rule: Rule):
         # create the root of the rule statement in the term graph. Note that this is an "empty" node (it does
         # not contain a value). This is because the rule statement will be defined by the children of this node.
-        tg_rule_node = self.term_graph.add_term(type="rule")
+        tg_rule_node = self.parse_graph.add_term(type="rule")
         # attach the rule node to the term graph root
-        self.term_graph.add_edge(self.term_graph.get_root_id(), tg_rule_node)
+        self.parse_graph.add_edge(self.parse_graph.get_root_id(), tg_rule_node)
 
         # create the rule head node for the term graph.
         # since a rule head is defined by a single relation, this node will contain a value which is that relation.
-        tg_head_relation_node = self.term_graph.add_term(type="rule_head", value=rule.head_relation)
+        tg_head_relation_node = self.parse_graph.add_term(type="rule_head", value=rule.head_relation)
         # attach the rule head node to the rule statement node
-        self.term_graph.add_edge(tg_rule_node, tg_head_relation_node)
+        self.parse_graph.add_edge(tg_rule_node, tg_head_relation_node)
 
         # create the rule body node. Unlike the rule head node, we can't define the rule body node
         # with a single value since a rule body can be defined by multiple relations.
         # Instead, each of the rule body relations will be represented by a term graph node
         # that is a child of the rule body node.
-        tg_rule_body_node = self.term_graph.add_term(type="rule_body")
+        tg_rule_body_node = self.parse_graph.add_term(type="rule_body")
         # attach the rule body node to the rule statement node
-        self.term_graph.add_edge(tg_rule_node, tg_rule_body_node)
+        self.parse_graph.add_edge(tg_rule_node, tg_rule_body_node)
 
         # add each rule body relation to the graph as a child node of the rule body node.
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
             # add the relation to the term graph
-            tg_body_relation_node = self.term_graph.add_term(type=relation_type, value=relation)
+            tg_body_relation_node = self.parse_graph.add_term(type=relation_type, value=relation)
             # attach the relation to the rule body
-            self.term_graph.add_edge(tg_rule_body_node, tg_body_relation_node)
+            self.parse_graph.add_edge(tg_rule_body_node, tg_body_relation_node)
+
+
+class BoundingGraph:
+    """
+    This class gets body relations of a rule and computes for each ie relation the relations that bound it.
+    @note: In some cases ie relation is bounded by other ie relation.
+            e.g. A(X) <- B(Y), C(Z) -> (X), D(Y) -> (Z); in this example C is bounded only by D.
+    """
+
+    def __init__(self, relations: Set[Relation], ie_relations: Set[IERelation]):
+        """
+        @param relations: set of the regular relations in the rule body
+        @param ie_relations: set of the ie relations in the rule body
+        """
+        self.relations = relations
+        self.ie_relations = ie_relations
+
+        # holds the ie relation that are bounded
+        self.bounded_ie_relations = set()
+
+        # maps each ie relation to it's bounding relations
+        self.bounding_graph = OrderedDict()
+
+    def find_bounding_relations_of_ie_function(self, ie_relation: IERelation) -> Set[Union[Relation, IERelation]]:
+        """
+        Finds all the relation that are already bounded that bind the ie relation.
+        @param ie_relation: the ie relation to bound.
+        @return: set of the bounding relations.
+        """
+
+        bounded_vars = set()
+        bounding_relations = set()
+        ie_input_terms = get_input_free_var_names(ie_relation)
+
+        # iterate over all the bounded relations
+        for relation in (self.relations | self.bounded_ie_relations):
+            rel_terms = get_output_free_var_names(relation)
+            # check if the relation and the ie relation have some common free vars
+            if len(rel_terms.intersection(ie_input_terms)) > 0:
+                bounding_relations.add(relation)
+                bounded_vars = bounded_vars.union(rel_terms)
+
+        # check whether all ie relation's free vars are bounded
+        if bounded_vars == ie_input_terms:
+            return bounding_relations
+        else:
+            # the ie relation can't be bounden yet
+            return None
+
+    def compute_graph(self) -> OrderedDict[IERelation, Set[Union[Relation, IERelation]]]:
+        """
+        See class description.
+        @return: a dictionary that maps each ie function to a set of it's bounding relations.
+        """
+
+        # The function will eventually stop since the rule is safe.
+        while True:
+            # find the unbounded ie relations
+            unbounded_ie_relations = self.ie_relations.difference(self.bounded_ie_relations)
+            if len(unbounded_ie_relations) == 0:
+                # all the ie relation are bounded
+                break
+
+            for ie_relation in unbounded_ie_relations:
+                bounding_relations = self.find_bounding_relations_of_ie_function(ie_relation)
+                if bounding_relations is not None:
+                    # we managed to bind the ie relation
+                    self.bounding_graph[ie_relation] = bounding_relations
+                    self.bounded_ie_relations.add(ie_relation)
+
+        return self.bounding_graph
+
+
+class AddRuleToTermGraph:
+    """
+    This class adds the execution graph of a rule to the global term graph.
+    Implements the following pseudo code:
+
+        def generate_inference_tree(self, head, body):
+            bounding_graph = find_bounding_graph(body)
+            build_root
+            connect_all_bodies_to_root_with_join
+            for each ie_function:
+            make calc_node
+            connect to join of all bounding bodies
+    """
+
+    def __init__(self, term_graph: NetxTermGraph, head_relation: Relation,
+                 relations: Set[Relation], ie_relations: Set[IERelation]):
+        """
+        @param term_graph: the global term graph (contains all the execution trees of all the rules).
+        @param head_relation: the relation head of the rule.
+        @param relations: set of relations in rule body.
+        @param ie_relations: set of ie_relations in rule body.
+        """
+        self.term_graph = term_graph
+
+        # a set of regular relations and a set of ie relations in the rule body.
+        self.head_relation = head_relation
+        self.relations = relations
+        self.ie_relations = ie_relations
+
+        # maps each ie relation to it's node id in the term graph.
+        self.ie_relation_to_id: Dict[IERelation, int] = dict()
+
+        # computes the bounding graph (it's actually an ordered dict).
+        self.bounding_graph = BoundingGraph(self.relations, self.ie_relations).compute_graph()
+
+    @staticmethod
+    def compute_joined_terms(relations: Set[Union[Relation, IERelation]]) -> Dict:
+        """
+        Finds for each free var of the relations all the relations thar contains it.
+
+        @param relations: a set of relations.
+        @return: a mapping between each free var to the relations and corresponding columns in which it appears.
+        """
+        var_dict = {}
+
+        for relation in relations:
+            free_vars_pairs = get_numbered_output_free_var_names(relation)
+            for i, var in free_vars_pairs:
+                old_var_entry = var_dict.get(var, [])
+                old_var_entry.append((relation.relation_name, i))
+                var_dict[var] = old_var_entry
+        var_dict = {var: relations for var, relations in var_dict.items() if len(relations) > 1}
+        return var_dict
+
+    def add_join_branch(self, head_id: int, relations: Set[Union[Relation, IERelation]]) -> int:
+        """
+        Connects all the relations to a join node. Connects th ehoin_node to head_id.
+
+        @param head_id: the node to which join node will be connected.
+        @param relations: a set of relations
+        @return: the id of the join node.
+        """
+
+        join_dict = self.compute_joined_terms(relations)
+        join_node_id = self.term_graph.add_term(type="join", value=join_dict)
+        self.term_graph.add_edge(head_id, join_node_id)
+
+        for relation in self.relations:
+            self.add_relation_branch(relation, join_node_id)
+
+        return join_node_id
+
+    def add_relation_to(self, relation: Union[Relation, IERelation], father_node_id: int) -> None:
+        """
+        Adds realtion to father id.
+
+        @param relation: a relation
+        @param father_node_id: the node to which the relation will be connected.
+        """
+        rel_id = self.term_graph.get_relation_id(relation)
+        if -1 == rel_id:
+            rel_id = self.ie_relation_to_id[relation]
+
+        self.term_graph.add_edge(father_node_id, rel_id)
+
+    def add_relation_branch(self, relation: Union[Relation, IERelation], join_node_id: int):
+        """
+        Adds relation to the join node.
+        Finds all the columns of the relation that needed to be filtered and Adds select branch if needed.
+
+        @param relation: a relation.
+        @param join_node_id: the join node to which the relation will be connected.
+        """
+
+        free_vars = get_output_free_var_names(relation)
+        if len(free_vars) == len(relation.get_term_list()):
+            # no need to filter
+            self.add_relation_to(relation, join_node_id)
+        else:
+            select_info = relation.get_select_cols_values_and_types()
+            select_node_id = self.term_graph.add_term(type="select", value=select_info)
+            self.term_graph.add_edge(join_node_id, select_node_id)
+            self.add_relation_to(relation, select_node_id)
+
+    def add_calc_branch(self, join_node_id: int, ie_relation: IERelation) -> int:
+        """
+        Adds a calc branch of the ie relation.
+
+        @param join_node_id: the join node to which the branch will be connected.
+        @param ie_relation: an ie relation
+        @return: the calc_node's id.
+        """
+        calc_node_id = self.term_graph.add_term(type="calc", value=ie_relation)
+
+        # join all the ie relation's bounding relations. The bounding relations already exists in the graph!
+        # (since we iterate on the ie relations in the same order they were bounded).
+        self.add_join_branch(calc_node_id, self.bounding_graph[ie_relation])
+        self.term_graph.add_edge(join_node_id, calc_node_id)
+        return calc_node_id
+
+    def generate_inference_graph(self) -> None:
+        """
+        Generates the execution tree of the rule and adds it to the term graph.
+        @return:
+        """
+        # make root
+        head_id = self.term_graph.add_relation(self.head_relation, "rule_rel")
+
+        # connect all regular relations to join node
+        join_node_id = self.add_join_branch(head_id, self.relations | self.ie_relations)
+
+        # iterate over ie relations in the same order they were bounded
+        for ie_relation in self.bounding_graph:
+            calc_node_id = self.add_calc_branch(join_node_id, ie_relation)
+            self.ie_relation_to_id[ie_relation] = calc_node_id
 
 
 class ExpandRuleNodes:
     """
-    this pass tranforms each rule node into a subtree which
+    This pass transforms each rule node into an execution tree and adds it to the term graph.
     """
 
-    def __init__(self, term_graph: NetxTermGraph, symbol_table, rgxlog_engine):
-        self.term_graph = term_graph
+    def __init__(self, parse_graph: NetxTermGraph, symbol_table: SymbolTableBase,
+                 rgxlog_engine: RgxlogEngineBase, term_graph: NetxTermGraph):
+        self.parse_graph = parse_graph
         self.symbol_table = symbol_table
         self.engine = rgxlog_engine
+        self.term_graph = term_graph
 
-    def _get_rule_node_ids(self):
+    def _get_rule_node_ids(self) -> List[int]:
         """
-        convert nodes to subtrees recursively
-        :return:
+        Finds all rule subtrees.
+
+        @return: a list of id's of the subtrees roots.
         """
-        term_ids = self.term_graph.post_order_dfs()
-        rule_node_ids = []
+        term_ids = self.parse_graph.post_order_dfs()
+        rule_node_ids: List[int] = list()
 
         for term_id in term_ids:
-            term_attrs = self.term_graph.get_term_attributes(term_id)
+            term_attrs = self.parse_graph.get_term_attributes(term_id)
 
             # the term is not computed, get its type and compute it accordingly
             term_type = term_attrs['type']
+            term_state = term_attrs['state']
 
-            if term_type == "rule":
+            if term_type == "rule" and term_state == EvalState.NOT_COMPUTED:
                 rule_node_ids.append(term_id)
 
         return rule_node_ids
 
-    def _get_rule_variable_dict(self, rule_node_id):
+    def get_relations(self, rule_id: int) -> Tuple[Relation, Set[Relation], Set[IERelation]]:
         """
-        for a single rule, get its variable dict (V->[(table,pos),]), which tells us for each variable,
-        which table it's in and in what position.
-        this should be called before `rule_node_id` was expanded
-        :param rule_node_id:
-        :return:
+        Extracts the head relation, the regular relations and the ie relations from the parse tree.
+
+        @param rule_id: the root of to subtree from which we extract the information.
+        @return: head relation, regular relations and ie relations inside the rule.
         """
-        var_dict = {}
-        rule_children = self.term_graph.get_children(rule_node_id)
+
+        rule_children = self.parse_graph.get_children(rule_id)
         assert len(rule_children) == 2, "a rule that was not expanded must have exactly 2 children"
 
         rule_head_id, rule_body_id = rule_children
-        body_relation_id_list = self.term_graph.get_children(rule_body_id)
-        rule_head_relation = self.term_graph[rule_head_id]
-        rule_head_relation['type'] = "relation"
-        all_relations_in_rule = [self.term_graph[term_id] for term_id in body_relation_id_list] + [rule_head_relation]
+        rule_head = self.parse_graph[rule_head_id]
+        head_relation: Relation = rule_head['value']
 
+        body_relation_id_list = self.parse_graph.get_children(rule_body_id)
+        all_relations_in_rule = [self.parse_graph[term_id] for term_id in body_relation_id_list]
+
+        relations, ie_relations = set(), set()
         for relation_attrs in all_relations_in_rule:
-
-            relation_object: Relation = relation_attrs['value']
+            relation_object: Union[Relation, IERelation] = relation_attrs['value']
             relation_type: str = relation_attrs['type']
 
-            free_vars_pairs = get_numbered_output_free_var_names(relation_object, relation_type)
-            for i, var in free_vars_pairs:
-                old_var_entry = var_dict.get(var, [])
-                old_var_entry.append((relation_object.relation_name, i))
-                var_dict[var] = old_var_entry
+            if relation_type == "relation":
+                relations.add(relation_object)
+            else:
+                ie_relations.add(relation_object)
 
-        return var_dict
+        return head_relation, relations, ie_relations
 
-    def expand_rule(self, rule_node_id):
+    def expand(self) -> None:
         """
-        convert a rule node into a subtree of commands, e.g.:
-        A(X,Y) <-- B(X),C(Z),D(Z)->(Y) becomes:
-
-        A <-- Project(X,Y) <-- Join(on=None) <-- get(B,vars=[X])
-                                             <-- Calc(D,out_vars=Y in_rel=C(Z) ) <-- get(C,[z])
-
-        :param rule_node_id:
-        :return:
+        Generates and adds all the execution trees to the term graph.
         """
-        var_dict = self._get_rule_variable_dict(rule_node_id)
-        # dfs
-        # for each node:
-        # if node_type == rule_head:
-        #   create project node (all vars -> rule vars)
-        # elif == :
-        #   blah
-        # elif
-        pass
 
-    def expand_all_rules(self):
-        # TODO@niv: we might have to create a difference pass stack
-        #  for each engine
-        if not isinstance(self.engine, SqliteEngine):
-            return self.term_graph
-
-        for rule_node_id in self._get_rule_node_ids():
-            self.expand_rule(rule_node_id)
-
-        return self.term_graph
-
-    def expand(self):
-        return self.expand_all_rules()
+        rule_node_ids = self._get_rule_node_ids()
+        for rule_node_id in rule_node_ids:
+            # modifies the term graph
+            head_relation, relations, ie_relations = self.get_relations(rule_node_id)
+            AddRuleToTermGraph(self.term_graph, head_relation, relations, ie_relations).generate_inference_graph()

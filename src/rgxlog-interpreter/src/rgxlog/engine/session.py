@@ -21,8 +21,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences,
-                                              ExecuteAssignments, AddStatementsToNetxTermGraph,
-                                              ExpandRuleNodes)
+                                              ExecuteAssignments, AddStatementsToNetxTermGraph, ExpandRuleNodes)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
@@ -203,8 +202,9 @@ class Session:
         self.debug = debug
         self._symbol_table = SymbolTable()
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
-        self._term_graph = NetxTermGraph()
+        self._parse_graph = NetxTermGraph()
         self._execution = execution.SqliteEngine(debug)
+        self._term_graph = NetxTermGraph()
 
         self._pass_stack = [
             RemoveTokens,
@@ -219,12 +219,12 @@ class Session:
             TypeCheckAssignments,
             TypeCheckRelations,
             SaveDeclaredRelationsSchemas,
-            ReorderRuleBody,
+            # ReorderRuleBody,
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxTermGraph,
-            ExpandRuleNodes,
-            GenericExecution
+            ExpandRuleNodes
+            # GenericExecution
         ]
 
         grammar_file_path = os.path.dirname(rgxlog.grammar.__file__)
@@ -246,33 +246,39 @@ class Session:
 
         for curr_pass in pass_list:
             if issubclass(curr_pass, (Visitor, Visitor_Recursive, Interpreter)):
-                curr_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).visit(tree)
+                curr_pass(symbol_table=self._symbol_table,
+                          parse_graph=self._parse_graph,
+                          term_graph=self._term_graph).visit(tree)
             elif issubclass(curr_pass, Transformer):
-                tree = curr_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).transform(tree)
+                tree = curr_pass(symbol_table=self._symbol_table).transform(tree)
             elif issubclass(curr_pass, ExecutionBase):
                 # the execution is always the last pass, and there is always only one per statement, so there's
                 # no need to have a list of results here
                 exec_result = curr_pass(
-                    term_graph=self._term_graph,
+                    parse_graph=self._parse_graph,
                     symbol_table=self._symbol_table,
                     rgxlog_engine=self._execution).execute()
+                print(self._parse_graph)
             elif curr_pass == ExpandRuleNodes:
-                tree = curr_pass(term_graph=self._term_graph,
+                tree = curr_pass(parse_graph=self._parse_graph,
                                  symbol_table=self._symbol_table,
-                                 rgxlog_engine=self._execution).expand()
+                                 rgxlog_engine=self._execution,
+                                 term_graph=self._term_graph).expand()
+                print("*************************")
+                print(self._term_graph)
             else:
                 raise Exception(f'invalid pass: {curr_pass}')
 
-            if self.debug:
-                print(f"{curr_pass}\n{tree.pretty()}")
+            # if self.debug:
+            #     print(f"{curr_pass}\n{tree.pretty()}")
 
         return exec_result
 
     def __repr__(self):
-        return [repr(self._symbol_table), repr(self._term_graph)]
+        return [repr(self._symbol_table), repr(self._parse_graph)]
 
     def __str__(self):
-        return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
+        return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
 
     # TODO@niv: @dean,
     #  maybe change this to `run` or something, since the name `query` is already in use? (e.g. "?rel(X)")
@@ -482,7 +488,7 @@ if __name__ == "__main__":
     my_session.run_query(my_query)
 
     my_query2 = """
-        d(X,Y) <- a(Z,X), b(X,Y)
+        d(X,Y) <- a(5,X), b(X,Y)
         """
 
     my_session.run_query(my_query2)

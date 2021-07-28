@@ -69,8 +69,8 @@ uncle("bob", "greg")
 ```
 
 ```python
-print(rgxlog.magic_session._term_graph)
-print(another_session._term_graph)
+print(rgxlog.magic_session._parse_graph)
+print(another_session._parse_graph)
 ```
 
 # Mixing magics with dynamic session calls

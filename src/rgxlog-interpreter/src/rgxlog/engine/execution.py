@@ -17,7 +17,7 @@ from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
+from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, NetxTermGraph
 from rgxlog.engine.utils.general_utils import get_output_free_var_names
 
 DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
@@ -1020,15 +1020,15 @@ class ExecutionBase(ABC):
     Abstraction for a class that gets a term graph and executes it
     """
 
-    def __init__(self, term_graph, symbol_table, rgxlog_engine):
+    def __init__(self, parse_graph: NetxTermGraph, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         """
-        @param term_graph: a term graph to execute
+        @param parse_graph: a term graph to execute
         @param symbol_table: a symbol table
         @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph
         """
 
         super().__init__()
-        self.term_graph = term_graph
+        self.parse_graph = parse_graph
         self.symbol_table = symbol_table
         self.rgxlog_engine = rgxlog_engine
 
@@ -1055,17 +1055,17 @@ class GenericExecution(ExecutionBase):
         super().__init__(term_graph, symbol_table, rgxlog_engine)
 
     def execute(self) -> Tuple[Query, List]:
-        term_graph = self.term_graph
+        parse_graph = self.parse_graph
         rgxlog_engine = self.rgxlog_engine
         exec_result = None
 
         # get the term ids. note that the order of the ids does not actually matter as long as the statements
         # are ordered the same way as they were in the original program
-        term_ids = term_graph.post_order_dfs()
+        term_ids = parse_graph.post_order_dfs()
 
         # execute each non computed statement in the term graph
         for term_id in term_ids:
-            term_attrs = term_graph.get_term_attributes(term_id)
+            term_attrs = parse_graph.get_term_attributes(term_id)
 
             if term_attrs['state'] is EvalState.COMPUTED:
                 continue
@@ -1097,7 +1097,7 @@ class GenericExecution(ExecutionBase):
                     rgxlog_engine.compute_rule()
 
             # statement was executed, mark it as "computed"
-            term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
+            parse_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
 
         return exec_result
 
@@ -1173,15 +1173,15 @@ class GenericExecution(ExecutionBase):
         * use temp3 to compute F, join the result and temp3 to temp4
         * filter temp4 into the rule head relation A(Z)
         """
-        term_graph = self.term_graph
+        parse_graph = self.parse_graph
         rgxlog_engine = self.rgxlog_engine
         symbol_table = self.symbol_table
 
-        rule_children = term_graph.get_children(rule_term_id)
+        rule_children = parse_graph.get_children(rule_term_id)
         assert len(rule_children) == 2, "a rule must have exactly 2 children"
 
         rule_head_id, rule_body_id = rule_children
-        body_relation_id_list = term_graph.get_children(rule_body_id)
+        body_relation_id_list = parse_graph.get_children(rule_body_id)
 
         body_relation_original_list = list()
 
@@ -1189,7 +1189,7 @@ class GenericExecution(ExecutionBase):
         # 'intermediate_relation'
         intermediate_relation = None
         for relation_id in body_relation_id_list:
-            relation_term_attrs = term_graph.get_term_attributes(relation_id)
+            relation_term_attrs = parse_graph.get_term_attributes(relation_id)
 
             relation = relation_term_attrs['value']
             relation_type = relation_term_attrs['type']
@@ -1209,7 +1209,7 @@ class GenericExecution(ExecutionBase):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
             # save the resulting relation in the term graph
-            term_graph.set_term_attribute(relation_id, 'value', result_relation)
+            parse_graph.set_term_attribute(relation_id, 'value', result_relation)
 
             # join the resulting relation with the intermediate relation
             if intermediate_relation is None:
@@ -1219,7 +1219,7 @@ class GenericExecution(ExecutionBase):
                     [intermediate_relation, result_relation], name="temp_join")
 
         # declare the rule head in the rgxlog engine
-        rule_head_attrs = term_graph[rule_head_id]
+        rule_head_attrs = parse_graph[rule_head_id]
         rule_head_relation = rule_head_attrs['value']
         rule_head_declaration = RelationDeclaration(rule_head_relation.relation_name,
                                                     symbol_table.get_relation_schema(rule_head_relation.relation_name))

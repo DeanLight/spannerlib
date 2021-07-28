@@ -9,6 +9,11 @@ from itertools import count
 
 
 # TODO@niv: change this to bool (`if x['computed'] == True`), it's redundant
+
+from typing import Union
+from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, RelationDeclaration
+
+
 class EvalState(Enum):
     """
     will be used to determine if a term is computed or not
@@ -133,6 +138,21 @@ class NetxTermGraph(TermGraphBase):
 
         # create the root of the term graph. it will be used as a source for dfs/bfs
         self._root_id = self.add_term(type="root")
+
+        self.relation_to_id = dict()
+
+    def add_relation(self, relation: Union[Relation, RelationDeclaration], relation_type: str):
+        relation_name = relation.relation_name
+        if relation_name in self.relation_to_id:
+            return self.relation_to_id[relation_name]
+
+        rel_id = self.add_term(type=relation_type, value=relation_name)
+        self.add_edge(self._root_id, rel_id)
+        self.relation_to_id[relation_name] = rel_id
+        return rel_id
+
+    def get_relation_id(self, relation: Union[Relation, IERelation]):
+        return self.relation_to_id.get(relation.relation_name, -1)
 
     def add_term(self, **attr):
         # assert the term has a type

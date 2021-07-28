@@ -51,6 +51,19 @@ class Relation:
         relation_string = f"{self.relation_name}({term_list_string})"
         return relation_string
 
+    def get_term_list(self):
+        return self.term_list
+
+    def get_type_list(self):
+        return self.type_list
+
+    def get_select_cols_values_and_types(self):
+        col_value_type = set()
+        for i, (var_type, value) in enumerate(zip(self.type_list, self.term_list)):
+            if var_type != DataTypes.free_var_name:
+                col_value_type.add((i, value, var_type))
+
+        return col_value_type
 
 class IERelation:
     """
@@ -93,6 +106,12 @@ class IERelation:
         output_term_list_string = get_term_list_string(self.output_term_list, self.output_type_list)
         ie_relation_string = f"{self.relation_name}({input_term_list_string}) -> ({output_term_list_string})"
         return ie_relation_string
+
+    def get_term_list(self):
+        return self.output_term_list
+
+    def get_type_list(self):
+        return self.output_type_list
 
 
 class RelationDeclaration:
