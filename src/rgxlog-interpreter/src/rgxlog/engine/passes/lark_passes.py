@@ -1147,7 +1147,7 @@ class AddRuleToTermGraph:
         self.ie_relations = ie_relations
 
         # maps each ie relation to it's node id in the term graph.
-        self.ie_relation_to_id: Dict[IERelation, int] = dict()
+        self.relation_to_branch_id: Dict[Union[Relation, IERelation, int]] = dict()
 
         # computes the bounding graph (it's actually an ordered dict).
         self.bounding_graph = BoundingGraph(self.relations, self.ie_relations).compute_graph()
@@ -1208,13 +1208,13 @@ class AddRuleToTermGraph:
         @param relation: a relation
         @param father_node_id: the node to which the relation will be connected.
         """
-        rel_id = self.term_graph.get_relation_id(relation)
-        if -1 == rel_id:
-            rel_id = self.ie_relation_to_id[relation]
 
+        rel_id = self.term_graph.get_relation_id(relation)
+        assert -1 != rel_id
+        self.relation_to_branch_id[relation] = rel_id
         self.term_graph.add_edge(father_node_id, rel_id)
 
-    def add_relation_branch(self, relation: Union[Relation, IERelation], join_node_id: int):
+    def add_relation_branch(self, relation: Union[Relation, IERelation], join_node_id: int) -> None:
         """
         Adds relation to the join node.
         Finds all the columns of the relation that needed to be filtered and Adds select branch if needed.
@@ -1222,6 +1222,9 @@ class AddRuleToTermGraph:
         @param relation: a relation.
         @param join_node_id: the join node to which the relation will be connected.
         """
+        if relation in self.relation_to_branch_id:
+            self.term_graph.add_edge(join_node_id, self.relation_to_branch_id[relation])
+            return
 
         free_vars = get_output_free_var_names(relation)
         if len(free_vars) == len(relation.get_term_list()):
@@ -1232,6 +1235,7 @@ class AddRuleToTermGraph:
             select_node_id = self.term_graph.add_term(type="select", value=select_info)
             self.term_graph.add_edge(join_node_id, select_node_id)
             self.add_relation_to(relation, select_node_id)
+            self.relation_to_branch_id[relation] = select_node_id
 
     def add_calc_branch(self, join_node_id: int, ie_relation: IERelation) -> int:
         """
@@ -1250,7 +1254,7 @@ class AddRuleToTermGraph:
         self.term_graph.add_edge(join_node_id, calc_node_id)
         return calc_node_id
 
-    def generate_inference_graph(self) -> None:
+    def generate_execution_graph(self) -> None:
         """
         Generates the execution tree of the rule and adds it to the term graph.
         @return:
@@ -1264,7 +1268,7 @@ class AddRuleToTermGraph:
         # iterate over ie relations in the same order they were bounded
         for ie_relation in self.bounding_graph:
             calc_node_id = self.add_calc_branch(join_node_id, ie_relation)
-            self.ie_relation_to_id[ie_relation] = calc_node_id
+            self.relation_to_branch_id[ie_relation] = calc_node_id
 
 
 class ExpandRuleNodes:
@@ -1339,4 +1343,4 @@ class ExpandRuleNodes:
         for rule_node_id in rule_node_ids:
             # modifies the term graph
             head_relation, relations, ie_relations = self.get_relations(rule_node_id)
-            AddRuleToTermGraph(self.term_graph, head_relation, relations, ie_relations).generate_inference_graph()
+            AddRuleToTermGraph(self.term_graph, head_relation, relations, ie_relations).generate_execution_graph()
