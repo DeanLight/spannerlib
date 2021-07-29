@@ -21,7 +21,8 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences,
-                                              ExecuteAssignments, AddStatementsToNetxTermGraph, ExpandRuleNodes)
+                                              ExecuteAssignments, AddStatementsToNetxTermGraph, ExpandRuleNodes,
+                                              AddDeclaredRelationsToTermGraph)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
@@ -223,6 +224,7 @@ class Session:
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxTermGraph,
+            AddDeclaredRelationsToTermGraph,
             ExpandRuleNodes
             # GenericExecution
         ]
@@ -481,14 +483,17 @@ if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
     my_query = '''
-        new a(int, int)
-        new b(int, int) 
+        new b(int)
+        new c(int)
         '''
 
     my_session.run_query(my_query)
 
+    my_session.register(lambda x: x, "d", [DataTypes.integer], [DataTypes.integer, DataTypes.integer])
+    my_session.register(lambda x: x, "f", [DataTypes.integer] * 3, [DataTypes.integer])
+
     my_query2 = """
-        d(X,Y) <- a(5,X), b(X,Y)
+        a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
         """
 
     my_session.run_query(my_query2)
