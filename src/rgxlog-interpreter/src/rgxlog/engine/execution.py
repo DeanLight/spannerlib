@@ -388,11 +388,12 @@ class SqliteEngine(RgxlogEngineBase):
         """
         pass
 
-    def declare_relation(self, relation_decl: RelationDeclaration):
+    def declare_relation(self, relation_decl: RelationDeclaration) -> None:
         """
-        :param relation_decl: the declaration info
-
         declares a relation as an SQL table, whose types are named t0, t1, ...
+
+        @param relation_decl: the declaration info
+        @return: None
         """
         # create the relation table. we don't use an id because it would allow inserting the same values twice
         sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
