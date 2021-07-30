@@ -4,7 +4,7 @@ general utilities that are not specific to any kind of pass, execution engine, e
 
 from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from typing import Union, Tuple, Set
+from typing import Union, Tuple, Set, Dict
 from typing import Callable
 
 
@@ -71,12 +71,34 @@ def get_numbered_output_free_var_names(relation: Union[Relation, IERelation]) ->
     """
     Args:
         relation: a relation (either a normal relation or an ie relation)
-        relation_type: the type of the relation
 
     Returns: a set of the free variable names used as output terms in the relation
     """
 
     return get_numbered_free_var_pairs(relation)
+
+
+def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) -> Dict:
+    """
+    Finds for each free var in any of the relations, all the relations that contain it.
+    also return the free vars' index in each relation (as pairs).
+    for example:
+        relation = [a(X,Y), b(Y)] ->
+        dict = {X:[(a,0)], Y:[(a,1),(b,0)]
+
+    @param relations: a set of relations.
+    @return: a mapping between each free var to the relations and corresponding columns in which it appears.
+    """
+    var_dict = {}
+
+    for relation in relations:
+        free_vars_pairs = get_numbered_output_free_var_names(relation)
+        for i, var in free_vars_pairs:
+            old_var_entry = var_dict.get(var, set())
+            old_var_entry.add((relation.relation_name, i))
+            var_dict[var] = old_var_entry
+    var_dict = {var: relations for var, relations in var_dict.items() if len(relations) > 1}
+    return var_dict
 
 
 def check_properly_typed_term_list(term_list: list, type_list: list,
@@ -87,8 +109,8 @@ def check_properly_typed_term_list(term_list: list, type_list: list,
 
     @param term_list: the term list to be type checked
     @param type_list: the types of the terms in term_list
-        correct_type_list: a list of the types that the terms must have to pass the type check
-        symbol_table: a symbol table (used to get the types of variables)
+    @param correct_type_list: a list of the types that the terms must have to pass the type check
+    @param symbol_table: a symbol table (used to get the types of variables)
 
     @return: True if the type check passed, else False
     """

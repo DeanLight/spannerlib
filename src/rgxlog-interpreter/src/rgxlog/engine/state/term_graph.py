@@ -13,6 +13,8 @@ from itertools import count
 from typing import Union
 from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, RelationDeclaration
 
+PRETTY_INDENT = ' ' * 4
+
 
 class EvalState(Enum):
     """
@@ -244,10 +246,8 @@ class NetxTermGraph(TermGraphBase):
 
         @return: a list of strings that represents the term and its children
         """
-        indent_str = '      '
-
         # get a representation of the term
-        ret = [indent_str * level, self._get_term_string(term_id), '\n']
+        ret = [PRETTY_INDENT * level, self._get_term_string(term_id), '\n']
 
         # get a representation of the term's children
         for child_id in self.get_children(term_id):

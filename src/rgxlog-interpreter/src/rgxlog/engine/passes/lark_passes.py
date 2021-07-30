@@ -27,12 +27,12 @@ https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
 from collections import OrderedDict
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Iterable
 
 from lark import Transformer
 from lark.visitors import Interpreter, Visitor_Recursive
 from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.execution import SqliteEngine, RgxlogEngineBase
+from rgxlog.engine.execution import SqliteEngine, RgxlogEngineBase, RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.term_graph import NetxTermGraph, EvalState
 from rgxlog.engine.utils.lark_passes_utils import *
 from rgxlog.engine.utils.general_utils import *
@@ -74,7 +74,7 @@ class RemoveTokens(Transformer):
 class CheckReservedRelationNames(Interpreter):
     """
     A lark tree semantic check.
-    Checks if there are relations in the program with a name that starts with "__rgxlog__"
+    Checks if there are relations in the program with a name that starts with `RESERVED_RELATION_PREFIX`
     if such relations exist, throw an exception as this is a reserved name for rgxlog.
     """
 
@@ -83,11 +83,10 @@ class CheckReservedRelationNames(Interpreter):
 
     @assert_expected_node_structure
     def relation_name(self, relation_name_node: LarkNode):
-        # get the name of the relation and check if it is not reserved (starts with '__rgxlog__')
         relation_name = relation_name_node.children[0]
-        if relation_name.startswith("__rgxlog__"):
+        if relation_name.startswith(RESERVED_RELATION_PREFIX):
             raise Exception(f'encountered relation name: {relation_name}. '
-                            f'names starting with __rgxlog__ are reserved')
+                            f'names starting with {RESERVED_RELATION_PREFIX} are reserved')
 
 
 class FixStrings(Visitor_Recursive):
@@ -1066,7 +1065,7 @@ class BoundingGraph:
         # maps each ie relation to it's bounding relations
         self.bounding_graph = OrderedDict()
 
-    def find_bounding_relations_of_ie_function(self, ie_relation: IERelation) -> Set[Union[Relation, IERelation]]:
+    def find_bounding_relations_of_ie_function(self, ie_relation: IERelation) -> Optional[Set[Union[Relation, IERelation]]]:
         """
         Finds all the relation that are already bounded that bind the ie relation.
         @param ie_relation: the ie relation to bound.
@@ -1090,10 +1089,10 @@ class BoundingGraph:
         if bounded_vars == ie_input_terms:
             return bounding_relations
         else:
-            # the ie relation can't be bounden yet
-            return None
+            # the ie relation can't be bounded yet
+            return
 
-    def compute_graph(self) -> OrderedDict[IERelation, Set[Union[Relation, IERelation]]]:
+    def compute_graph(self) -> Dict[IERelation, Set[Union[Relation, IERelation]]]:
         """
         See class description.
         @return: a dictionary that maps each ie function to a set of it's bounding relations.
@@ -1152,27 +1151,8 @@ class AddRuleToTermGraph:
         # computes the bounding graph (it's actually an ordered dict).
         self.bounding_graph = BoundingGraph(self.relations, self.ie_relations).compute_graph()
 
-    @staticmethod
-    def compute_joined_terms(relations: Set[Union[Relation, IERelation]]) -> Dict:
-        """
-        Finds for each free var of the relations all the relations thar contains it.
-
-        @param relations: a set of relations.
-        @return: a mapping between each free var to the relations and corresponding columns in which it appears.
-        """
-        var_dict = {}
-
-        for relation in relations:
-            free_vars_pairs = get_numbered_output_free_var_names(relation)
-            for i, var in free_vars_pairs:
-                old_var_entry = var_dict.get(var, set())
-                old_var_entry.add((relation.relation_name, i))
-                var_dict[var] = old_var_entry
-        var_dict = {var: relations for var, relations in var_dict.items() if len(relations) > 1}
-        return var_dict
-
     def add_join_branch(self, head_id: int, relations: Set[Union[Relation, IERelation]],
-                        future_ie_relations: Optional[IERelation] = None) -> int:
+                        future_ie_relations: Optional[Set[IERelation]] = None) -> int:
         """
         Connects all the relations to a join node. Connects th ehoin_node to head_id.
 
@@ -1190,7 +1170,7 @@ class AddRuleToTermGraph:
             self.add_relation_branch(next(iter(total_relations)), head_id)
             return -1
 
-        join_dict = self.compute_joined_terms(total_relations)
+        join_dict = get_free_var_to_relations_dict(total_relations)
         join_node_id = self.term_graph.add_term(type="join", value=join_dict)
         self.term_graph.add_edge(head_id, join_node_id)
 
