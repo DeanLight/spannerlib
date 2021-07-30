@@ -244,7 +244,7 @@ class NetxTermGraph(TermGraphBase):
 
         @return: a list of strings that represents the term and its children
         """
-        indent_str = '  '
+        indent_str = '      '
 
         # get a representation of the term
         ret = [indent_str * level, self._get_term_string(term_id), '\n']
