@@ -30,15 +30,53 @@ from collections import OrderedDict
 from typing import Dict, Optional, Iterable
 
 from lark import Transformer
-from lark.visitors import Interpreter, Visitor_Recursive
+from lark.visitors import Interpreter, Visitor_Recursive, Visitor
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import SqliteEngine, RgxlogEngineBase, RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.term_graph import NetxTermGraph, EvalState
 from rgxlog.engine.utils.lark_passes_utils import *
 from rgxlog.engine.utils.general_utils import *
+from abc import ABC, abstractmethod
 
 
-class RemoveTokens(Transformer):
+def get_tree(**kwargs):
+    tree = kwargs.get("tree", None)
+    if tree is None:
+        raise Exception("Expected tree parameter")
+    return tree
+
+
+class GenericPass(ABC):
+
+    @abstractmethod
+    def run_pass(self, **kwargs):
+        pass
+
+
+class VisitorPass(Visitor, GenericPass):
+
+    def run_pass(self, **kwargs):
+        self.visit(get_tree(**kwargs))
+
+
+class Visitor_RecursivePass(Visitor_Recursive, GenericPass):
+
+    def run_pass(self, **kwargs):
+        self.visit(get_tree(**kwargs))
+
+
+class InterpreterPass(Interpreter, GenericPass):
+
+    def run_pass(self, **kwargs):
+        self.visit(get_tree(**kwargs))
+
+
+class TransformerPass(Transformer, GenericPass):
+    def run_pass(self, **kwargs):
+        return self.transform(get_tree(**kwargs))
+
+
+class RemoveTokens(TransformerPass):
     """
     a lark pass that should be used before the semantic checks
     transforms the lark tree by removing the redundant tokens
@@ -71,7 +109,7 @@ class RemoveTokens(Transformer):
         return unquoted_string
 
 
-class CheckReservedRelationNames(Interpreter):
+class CheckReservedRelationNames(InterpreterPass):
     """
     A lark tree semantic check.
     Checks if there are relations in the program with a name that starts with `RESERVED_RELATION_PREFIX`
@@ -89,7 +127,7 @@ class CheckReservedRelationNames(Interpreter):
                             f'names starting with {RESERVED_RELATION_PREFIX} are reserved')
 
 
-class FixStrings(Visitor_Recursive):
+class FixStrings(Visitor_RecursivePass):
     """
      Fixes the strings in the lark tree.
      Removes the line overflow escapes from strings
@@ -109,7 +147,7 @@ class FixStrings(Visitor_Recursive):
         string_node.children[0] = fixed_string_value
 
 
-class ConvertSpanNodesToSpanInstances(Visitor_Recursive):
+class ConvertSpanNodesToSpanInstances(Visitor_RecursivePass):
     """
     Converts each span node in the ast to a span instance.
     This means that a span in the tree will be represented by a single value (a "DataTypes.Span" instance)
@@ -130,7 +168,7 @@ class ConvertSpanNodesToSpanInstances(Visitor_Recursive):
         span_node.children = [Span(span_start, span_end)]
 
 
-class ConvertStatementsToStructuredNodes(Visitor_Recursive):
+class ConvertStatementsToStructuredNodes(Visitor_RecursivePass):
     """
     converts each statement node in the tree to a structured node, making it easier to parse in future passes.
     a structured node is a class representation of a node in the abstract syntax tree.
@@ -315,7 +353,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         return structured_ie_relation_node
 
 
-class CheckDefinedReferencedVariables(Interpreter):
+class CheckDefinedReferencedVariables(InterpreterPass):
     """
     A lark tree semantic check.
     checks whether each variable reference refers to a defined variable.
@@ -389,7 +427,7 @@ class CheckDefinedReferencedVariables(Interpreter):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-class CheckReferencedRelationsExistenceAndArity(Interpreter):
+class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     """
     A lark tree semantic check.
     Checks whether each normal relation (that is not an ie relation) reference refers to a defined relation.
@@ -455,7 +493,7 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
-class CheckReferencedIERelationsExistenceAndArity(Visitor_Recursive):
+class CheckReferencedIERelationsExistenceAndArity(Visitor_RecursivePass):
     """
     A lark tree semantic check.
     Checks whether each ie relation reference refers to a defined ie function.
@@ -501,7 +539,7 @@ class CheckReferencedIERelationsExistenceAndArity(Visitor_Recursive):
                                     f' {used_output_arity} (should be {correct_output_arity})')
 
 
-class CheckRuleSafety(Visitor_Recursive):
+class CheckRuleSafety(Visitor_RecursivePass):
     """
     A lark tree semantic check.
     checks whether the rules in the programs are safe.
@@ -619,7 +657,7 @@ class CheckRuleSafety(Visitor_Recursive):
                             f'{unbound_free_vars}')
 
 
-class ReorderRuleBody(Visitor_Recursive):
+class ReorderRuleBody(Visitor_RecursivePass):
     """
     A lark tree optimization pass.
     Reorders each rule body relations list so that each relation in the list has its input free variables bound by
@@ -710,7 +748,7 @@ class ReorderRuleBody(Visitor_Recursive):
         rule.body_relation_type_list = reordered_relations_type_list
 
 
-class TypeCheckAssignments(Interpreter):
+class TypeCheckAssignments(InterpreterPass):
     """
     a lark semantic check
     performs type checking for assignments
@@ -737,7 +775,7 @@ class TypeCheckAssignments(Interpreter):
                             f'because the argument type for read() was {read_arg_type} (must be a string)')
 
 
-class TypeCheckRelations(Interpreter):
+class TypeCheckRelations(InterpreterPass):
     """
     A lark tree semantic check.
     This pass makes the following assumptions and might not work correctly if they are not met
@@ -800,7 +838,7 @@ class TypeCheckRelations(Interpreter):
                             f'{conflicted_free_vars}')
 
 
-class SaveDeclaredRelationsSchemas(Interpreter):
+class SaveDeclaredRelationsSchemas(InterpreterPass):
     """
     this pass writes the relation schemas that it finds in relation declarations and rule heads* to the
     symbol table.
@@ -831,7 +869,7 @@ class SaveDeclaredRelationsSchemas(Interpreter):
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
 
-class AddDeclaredRelationsToTermGraph(Interpreter):
+class AddDeclaredRelationsToTermGraph(InterpreterPass):
     """
     this pass adds the relation that it finds in relation declarations to the term graph.
     """
@@ -845,7 +883,7 @@ class AddDeclaredRelationsToTermGraph(Interpreter):
         self.term_graph.add_relation(relation_decl, "base_rel")
 
 
-class ResolveVariablesReferences(Interpreter):
+class ResolveVariablesReferences(InterpreterPass):
     """
     a lark execution pass
     this pass replaces variable references with their literal values.
@@ -925,7 +963,7 @@ class ResolveVariablesReferences(Interpreter):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-class ExecuteAssignments(Interpreter):
+class ExecuteAssignments(InterpreterPass):
     """
     a lark execution pass
     executes assignments by saving variables' values and types in the symbol table
@@ -958,7 +996,7 @@ class ExecuteAssignments(Interpreter):
         self.symbol_table.set_var_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
 
-class AddStatementsToNetxTermGraph(Interpreter):
+class AddStatementsToNetxTermGraph(InterpreterPass):
     # TODO@niv: what is `NetworkxExecution`?
     # TODO@niv: can we convert all `Token`s to strings here?
     """
@@ -1253,7 +1291,7 @@ class AddRuleToTermGraph:
             self.relation_to_branch_id[ie_relation] = calc_node_id
 
 
-class ExpandRuleNodes:
+class ExpandRuleNodes(GenericPass):
     """
     This pass transforms each rule node into an execution tree and adds it to the term graph.
     """
@@ -1326,3 +1364,7 @@ class ExpandRuleNodes:
             # modifies the term graph
             head_relation, relations, ie_relations = self.get_relations(rule_node_id)
             AddRuleToTermGraph(self.term_graph, head_relation, relations, ie_relations).generate_execution_graph()
+
+    def run_pass(self, **kwargs):
+        self.expand()
+        print(self.term_graph)

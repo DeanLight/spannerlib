@@ -254,37 +254,17 @@ class Session:
             print(f"initial term_tree:\n{self._term_graph}")
 
         for curr_pass in pass_list:
-            if issubclass(curr_pass, (Visitor, Visitor_Recursive, Interpreter)):
-                # visitors don't return the tree, because they don't edit it
-                curr_pass(symbol_table=self._symbol_table,
-                          parse_graph=self._parse_graph,
-                          term_graph=self._term_graph).visit(tree)
+            (new_tree, exec_result) = curr_pass(parse_graph=self._parse_graph,
+                                                symbol_table=self._symbol_table,
+                                                rgxlog_engine=self._execution,
+                                                term_graph=self._term_graph
+                                                ).run_pass(tree=tree)
+            if new_tree is not None:
+                tree = new_tree
                 if self.debug:
                     print(f"lark tree after {curr_pass.__name__}:\n{tree.pretty()}")
-            elif issubclass(curr_pass, Transformer):
-                tree = curr_pass(symbol_table=self._symbol_table).transform(tree)
-                if self.debug:
-                    print(f"lark tree after {curr_pass.__name__}:\n{tree.pretty()}")
-            elif issubclass(curr_pass, ExecutionBase):
-                # the execution is always the last pass, and there is always only one per statement, so there's
-                # no need to have a list of results here
-                exec_result = curr_pass(
-                    parse_graph=self._parse_graph,
-                    symbol_table=self._symbol_table,
-                    rgxlog_engine=self._execution).execute()
-                print(self._parse_graph)
-                if self.debug:
-                    print(f"term graph after {curr_pass.__name__}:\n{self._term_graph}")
-            elif curr_pass == ExpandRuleNodes:
-                curr_pass(parse_graph=self._parse_graph,
-                          symbol_table=self._symbol_table,
-                          rgxlog_engine=self._execution,
-                          term_graph=self._term_graph).expand()
-                if self.debug:
-                    print(f"term graph after {curr_pass.__name__}:\n{self._term_graph}")
-            else:
-                raise Exception(f'invalid pass: {curr_pass}')
 
+        # TODO@niv print(f"term graph after {curr_pass.__name__}:\n{self._term_graph}")
         return exec_result
 
     def __repr__(self):
