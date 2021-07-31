@@ -1278,10 +1278,12 @@ class AddRuleToTermGraph:
         @return:
         """
         # make root
-        head_id = self.term_graph.add_relation(self.head_relation, "rule_rel")
+        _, union_id = self.term_graph.add_relation(self.head_relation, "rule_rel", is_rule=True)
+        project_id = self.term_graph.add_term(type="project", value=self.head_relation.term_list)
+        self.term_graph.add_edge(union_id, project_id)
 
         # connect all regular relations to join node
-        join_node_id = self.add_join_branch(head_id, self.relations, self.ie_relations)
+        join_node_id = self.add_join_branch(project_id, self.relations, self.ie_relations)
 
         # iterate over ie relations in the same order they were bounded
         for ie_relation in self.bounding_graph:

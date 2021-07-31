@@ -10,7 +10,7 @@ from itertools import count
 
 # TODO@niv: change this to bool (`if x['computed'] == True`), it's redundant
 
-from typing import Union
+from typing import Union, Tuple
 from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, RelationDeclaration
 
 PRETTY_INDENT = ' ' * 4
@@ -143,18 +143,29 @@ class NetxTermGraph(TermGraphBase):
 
         self.relation_to_id = dict()
 
-    def add_relation(self, relation: Union[Relation, RelationDeclaration], relation_type: str):
+    def add_relation(self, relation: Union[Relation, RelationDeclaration], relation_type: str, is_rule: bool = False):
         relation_name = relation.relation_name
         if relation_name in self.relation_to_id:
-            return self.relation_to_id[relation_name]
+            return self.get_relation_id(relation, False)
 
         rel_id = self.add_term(type=relation_type, value=relation_name)
         self.add_edge(self._root_id, rel_id)
-        self.relation_to_id[relation_name] = rel_id
-        return rel_id
+        if is_rule:
+            union_id = self.add_term(type="union")
+            self.add_edge(rel_id, union_id)
+            self.relation_to_id[relation_name] = (rel_id, union_id)
+        else:
+            self.relation_to_id[relation_name] = (rel_id,)
 
-    def get_relation_id(self, relation: Union[Relation, IERelation]):
-        return self.relation_to_id.get(relation.relation_name, -1)
+        return self.get_relation_id(relation, False)
+
+    def add_edge_to_rule_node(self, relation: Relation, branch_id: int) -> None:
+        _, union_id = self.relation_to_id[relation.relation_name]
+        self.add_edge(union_id, branch_id)
+
+    def get_relation_id(self, relation: Union[Relation, IERelation], only_head: bool = True):
+        ids = self.relation_to_id[relation.relation_name]
+        return ids[0] if only_head else ids
 
     def add_term(self, **attr):
         # assert the term has a type
