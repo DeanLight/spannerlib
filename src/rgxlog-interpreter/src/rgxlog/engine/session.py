@@ -226,7 +226,6 @@ class Session:
             TypeCheckAssignments,
             TypeCheckRelations,
             SaveDeclaredRelationsSchemas,
-            # TODO@niv: remove ReorderRuleBody, or leave it to support pydatalog
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxTermGraph,
@@ -240,7 +239,6 @@ class Session:
             self._grammar = grammar_file.read()
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
-        # TODO@tom: self._register_default_functions()
 
     def _run_passes(self, tree: Tree, pass_list: list) -> None:
         """
@@ -474,20 +472,31 @@ class Session:
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
-    my_query = '''
-        new b(int)
-        new c(int)
-        new d(int, int)
-        '''
+    # my_query = '''
+    #     new b(int)
+    #     new c(int)
+    #     new d(int, int)
+    #     '''
+    #
+    # my_session.run_query(my_query)
+    #
+    # my_session.register(lambda x: x, "d", [DataTypes.integer], [DataTypes.integer, DataTypes.integer])
+    # my_session.register(lambda x: x, "f", [DataTypes.integer] * 3, [DataTypes.integer])
+    #
+    # # my_query2 = """
+    # #     a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
+    # #     """
+    # my_query2 = "a(X) <- d(X,Y)"
+    #
+    # my_session.run_query(my_query2)
 
-    my_session.run_query(my_query)
+    my_session.run_query(
+    """
+        new a(int,int)
+        a(3,5)
+        b(X) <- a(X,Y)
+        a(4,6)
+        """
+    )
 
-    my_session.register(lambda x: x, "d", [DataTypes.integer], [DataTypes.integer, DataTypes.integer])
-    my_session.register(lambda x: x, "f", [DataTypes.integer] * 3, [DataTypes.integer])
 
-    # my_query2 = """
-    #     a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
-    #     """
-    my_query2 = "a(X) <- d(X,Y)"
-
-    my_session.run_query(my_query2)
