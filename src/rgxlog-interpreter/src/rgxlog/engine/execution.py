@@ -11,7 +11,7 @@ import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from pyDatalog import pyDatalog
 from rgxlog.engine.datatypes.ast_node_types import *
@@ -20,6 +20,10 @@ from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, NetxTermGraph
 from rgxlog.engine.utils.general_utils import get_output_free_var_names
+
+RELATION_ATTRIBUTE = "value"
+
+SQL_TABLE_ATTRIBUTE = "table"
 
 RESERVED_RELATION_PREFIX = "__rgxlog__"
 
@@ -89,6 +93,7 @@ class RgxlogEngineBase(ABC):
 
         @param rule: the rule to be removed
         """
+        pass
 
     @abstractmethod
     def query(self, query):
@@ -191,6 +196,19 @@ class RgxlogEngineBase(ABC):
         removes all facts and clauses from the engine
         """
         pass
+
+    def get_base(self, parse_graph, base_id):
+        """
+        get an existing base (not IE) table from the engine, and store it in the graph
+        we assume the table's name is the same as the object's
+        @param parse_graph:
+        @param base_id:
+        @return:
+        """
+        term_attributes = parse_graph.get_term_attributes(base_id)
+        relation_object: Relation = term_attributes[RELATION_ATTRIBUTE]
+        relation_table = relation_object.relation_name
+        parse_graph.set_term_attribute(base_id, SQL_TABLE_ATTRIBUTE, relation_table)
 
     @staticmethod
     def _get_span_string(span: Span):
@@ -299,7 +317,7 @@ class SqliteEngine(RgxlogEngineBase):
 
     def add_fact(self, fact: AddFact):
         """
-        add a
+        add a row into an existing table
         :param fact:
         :return:
         """
@@ -373,6 +391,15 @@ class SqliteEngine(RgxlogEngineBase):
 
         return query_result
 
+    def get_base(self, parse_graph, base_id):
+        """
+        get an existing base (not IE) relation from the engine
+        @param parse_graph:
+        @param base_id:
+        @return:
+        """
+        pass
+
     def _create_new_temp_relation(self, arity, prefix=""):
         """
         declares a new temporary relation with the requested arity in SQL
@@ -397,7 +424,7 @@ class SqliteEngine(RgxlogEngineBase):
         return temp_relation_name
 
     def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
-                            bounding_relation: Relation) -> Relation:
+                            bounding_relation: Optional[Relation]) -> Relation:
         """
         computes an information extraction relation, returning the result as a normal relation.
         for more details see RgxlogEngineBase.compute_ie_relation.
@@ -411,11 +438,6 @@ class SqliteEngine(RgxlogEngineBase):
 
         ie_relation_name = ie_relation.relation_name
 
-        # create the input relation for the ie function, and also declare it inside SQL
-        input_relation_arity = len(ie_relation.input_term_list)
-        input_relation_name = self._create_new_temp_relation(input_relation_arity, prefix=f'{ie_relation_name}_input')
-        input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
-
         # create the output relation for the ie function, and also declare it inside SQL
         output_relation_arity = len(ie_relation.output_term_list)
         output_relation_name = self._create_new_temp_relation(output_relation_arity,
@@ -427,14 +449,19 @@ class SqliteEngine(RgxlogEngineBase):
             # special case where the ie relation is the first rule body relation
             # in this case, the ie input relation is defined exclusively by constant terms, i.e, by a single tuple
             # add that tuple as a fact to the input relation
+            # create the input relation for the ie function, and also declare it inside SQL
+            input_relation_arity = len(ie_relation.input_term_list)
+            input_relation_name = self._create_new_temp_relation(input_relation_arity,
+                                                                 prefix=f'{ie_relation_name}_input')
+            input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
             self.add_fact(AddFact(input_relation.relation_name, ie_relation.input_term_list,
                                   ie_relation.input_type_list))
         else:
             # filter the bounding relation into the input relation using a rule.
             # TODO@niv: i think we don't need to add_rule here because we connect the nodes in the graph
             #  when we parse the whole rule (and not just the ie_relation).
-            # self.add_rule(input_relation, [bounding_relation])
-            pass
+            input_relation = bounding_relation
+            # TODO@niv: might have to add constant columns here. we need a new operator for that
 
         # get a list of inputs to the ie function.
         ie_inputs = self._get_all_relation_tuples(input_relation)
@@ -580,12 +607,16 @@ class SqliteEngine(RgxlogEngineBase):
 
         return joined_relation
 
-    def compute_rule(self):
+    @staticmethod
+    def compute_rule(parse_graph: TermGraphBase, rule_id: int):
         """
-        this performs the bottom-up traversal over the subtrees created by the `Expand...` pass
+        saves the rule to rules_history (used for rule deletion) and copies the table from the
+        rule's child in the parse graph, which is the result of all the rule calculations
         :return:
         """
-        pass
+        rule_child_id = parse_graph.get_children(rule_id)
+        rule_child_table = parse_graph.get_term_attributes(rule_child_id)[SQL_TABLE_ATTRIBUTE]
+        parse_graph.set_term_attribute(rule_id, SQL_TABLE_ATTRIBUTE, rule_child_table)
 
     def declare_relation(self, relation_decl: RelationDeclaration) -> None:
         """
@@ -1215,94 +1246,7 @@ class PydatalogEngine(RgxlogEngineBase):
         """
         pyDatalog.clear()
 
-
-class ExecutionBase(ABC):
-    """
-    Abstraction for a class that gets a term graph and executes it
-    """
-
-    def __init__(self, parse_graph: NetxTermGraph, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
-        """
-        @param parse_graph: a term graph to execute
-        @param symbol_table: a symbol table
-        @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph
-        """
-
-        super().__init__()
-        self.parse_graph = parse_graph
-        self.symbol_table = symbol_table
-        self.rgxlog_engine = rgxlog_engine
-
-    @abstractmethod
-    def execute(self) -> Tuple[Query, List]:
-        """
-        executes the term graph
-        """
-        pass
-
-
-class GenericExecution(ExecutionBase):
-    """
-    Executes a term graph
-    this execution is generic, meaning it does not require any specific kind of term graph, symbol table or
-    rgxlog engine in order to work.
-    this execution performs no special optimization and merely serves as an interface between the term graph
-    and the rgxlog engine.
-    The only exception for this is the 'rule' execution, you can read more about it in the utility method:
-    GenericExecution.__execute_rule_aux()
-    """
-
-    def __init__(self, term_graph: TermGraphBase, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
-        super().__init__(term_graph, symbol_table, rgxlog_engine)
-
-    def execute(self) -> Tuple[Query, List]:
-        parse_graph = self.parse_graph
-        rgxlog_engine = self.rgxlog_engine
-        exec_result = None
-
-        # get the term ids. note that the order of the ids does not actually matter as long as the statements
-        # are ordered the same way as they were in the original program
-        term_ids = parse_graph.post_order_dfs()
-
-        # execute each non computed statement in the term graph
-        for term_id in term_ids:
-            term_attrs = parse_graph.get_term_attributes(term_id)
-
-            if term_attrs['state'] is EvalState.COMPUTED:
-                continue
-
-            # the term is not computed, get its type and compute it accordingly
-            term_type = term_attrs['type']
-
-            if term_type == "relation_declaration":
-                relation_decl = term_attrs['value']
-                rgxlog_engine.declare_relation(relation_decl)
-
-            elif term_type == "add_fact":
-                fact = term_attrs['value']
-                rgxlog_engine.add_fact(fact)
-
-            elif term_type == "remove_fact":
-                fact = term_attrs['value']
-                rgxlog_engine.remove_fact(fact)
-
-            elif term_type == "query":
-                query = term_attrs['value']
-                # TODO@niv: change this - enable returning the pre-formatted query (should be possible with sql engine)
-                exec_result = (query, rgxlog_engine.query(query))
-
-            elif term_type == "rule":
-                if isinstance(rgxlog_engine, PydatalogEngine):
-                    self._execute_rule_aux(term_id)
-                else:
-                    rgxlog_engine.compute_rule()
-
-            # statement was executed, mark it as "computed"
-            parse_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
-
-        return exec_result
-
-    def _execute_rule_aux(self, rule_term_id):
+    def execute_rule_aux(self, rule_term_id, parse_graph: TermGraphBase, symbol_table: SymbolTableBase):
         """
         rule_term_id is expected to be a root of a subtree in the term graph that represents a single rule
         the children of rule_term_id node should be:
@@ -1342,6 +1286,8 @@ class GenericExecution(ExecutionBase):
         note that in this implementation we don't actually compute normal relations, we will just use them
         as they are defined. (for example the step 'temp1(Z) <- B(Z)' is skipped and we just use B(Z) as the
         intermediate relation)
+        @param parse_graph:
+        @param symbol_table:
         """
         """
         TODO possible optimizations:
@@ -1374,9 +1320,6 @@ class GenericExecution(ExecutionBase):
         * use temp3 to compute F, join the result and temp3 to temp4
         * filter temp4 into the rule head relation A(Z)
         """
-        parse_graph = self.parse_graph
-        rgxlog_engine = self.rgxlog_engine
-        symbol_table = self.symbol_table
 
         rule_children = parse_graph.get_children(rule_term_id)
         assert len(rule_children) == 2, "a rule must have exactly 2 children"
@@ -1404,8 +1347,8 @@ class GenericExecution(ExecutionBase):
             elif relation_type == 'ie_relation':
                 # compute the ie relation
                 ie_func_data = symbol_table.get_ie_func_data(relation.relation_name)
-                result_relation = rgxlog_engine.compute_ie_relation(relation, ie_func_data,
-                                                                    intermediate_relation)
+                result_relation = self.compute_ie_relation(relation, ie_func_data,
+                                                           intermediate_relation)
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
@@ -1416,7 +1359,7 @@ class GenericExecution(ExecutionBase):
             if intermediate_relation is None:
                 intermediate_relation = result_relation
             else:
-                intermediate_relation = rgxlog_engine.join_relations(
+                intermediate_relation = self.join_relations(
                     [intermediate_relation, result_relation], name="temp_join")
 
         # declare the rule head in the rgxlog engine
@@ -1424,10 +1367,115 @@ class GenericExecution(ExecutionBase):
         rule_head_relation = rule_head_attrs['value']
         rule_head_declaration = RelationDeclaration(rule_head_relation.relation_name,
                                                     symbol_table.get_relation_schema(rule_head_relation.relation_name))
-        rgxlog_engine.declare_relation(rule_head_declaration)
+        self.declare_relation(rule_head_declaration)
 
         # define the rule head in the rgxlog engine by filtering the tuples of the intermediate relation into it
-        rgxlog_engine.compute_rule(rule_head_relation, [intermediate_relation], body_relation_original_list)
+        self.compute_rule(rule_head_relation, [intermediate_relation], body_relation_original_list)
+
+
+class ExecutionBase(ABC):
+    """
+    Abstraction for a class that gets a term graph and executes it
+    """
+
+    def __init__(self, parse_graph: TermGraphBase, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
+        """
+        @param parse_graph: a term graph to execute
+        @param symbol_table: a symbol table
+        @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph
+        """
+
+        super().__init__()
+        self.parse_graph = parse_graph
+        self.symbol_table = symbol_table
+        self.rgxlog_engine = rgxlog_engine
+
+    @abstractmethod
+    def execute(self) -> Tuple[Query, List]:
+        """
+        executes the term graph
+        """
+        pass
+
+
+class GenericExecution(ExecutionBase):
+    """
+    Executes a term graph
+    this execution is generic, meaning it does not require any specific kind of term graph, symbol table or
+    rgxlog engine in order to work.
+    this execution performs no special optimization and merely serves as an interface between the term graph
+    and the rgxlog engine.
+    The only exception for this is the 'rule' execution, you can read more about it in the utility method:
+    GenericExecution.__execute_rule_aux()
+    """
+
+    def __init__(self, parse_graph: TermGraphBase, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
+        super().__init__(parse_graph, symbol_table, rgxlog_engine)
+
+    def execute(self) -> Tuple[Query, List]:
+        parse_graph = self.parse_graph
+        rgxlog_engine = self.rgxlog_engine
+        exec_result = None
+
+        # get the term ids. note that the order of the ids does not actually matter as long as the statements
+        # are ordered the same way as they were in the original program
+        term_ids = parse_graph.post_order_dfs()
+
+        # execute each non computed statement in the term graph
+        for term_id in term_ids:
+            term_attrs = parse_graph.get_term_attributes(term_id)
+
+            if term_attrs['state'] is EvalState.COMPUTED:
+                continue
+
+            # the term is not computed, get its type and compute it accordingly
+            term_type = term_attrs['type']
+
+            if term_type == "relation_declaration":
+                relation_decl = term_attrs['value']
+                rgxlog_engine.declare_relation(relation_decl)
+
+            elif term_type == "add_fact":
+                fact = term_attrs['value']
+                rgxlog_engine.add_fact(fact)
+
+            elif term_type == "remove_fact":
+                fact = term_attrs['value']
+                rgxlog_engine.remove_fact(fact)
+
+            elif term_type == "query":
+                query = term_attrs['value']
+                # TODO@niv: change this - enable returning the pre-formatted query (should be possible with sql engine)
+                exec_result = (query, rgxlog_engine.query(query))
+
+            elif term_type == "rule_head":
+                # TODO@niv: there should be a single method here (refactor this)
+                if isinstance(rgxlog_engine, PydatalogEngine):
+                    rgxlog_engine.execute_rule_aux(term_id, parse_graph, self.symbol_table)
+                elif isinstance(rgxlog_engine, SqliteEngine):
+                    # TODO@niv: a rule should have a single child which contains the final table
+                    rgxlog_engine.compute_rule(parse_graph, term_id)
+                else:
+                    raise TypeError("illegal engine type")
+
+            elif term_type == "base_rel":
+                rgxlog_engine.get_base(parse_graph, term_id)
+            elif term_type == "root":
+                pass
+            elif term_type == "ie_rel":
+                pass
+            elif term_type == "join":
+                pass
+            else:
+                # TODO@niv: there shouldn't be any "rule_body" stuff in our terms. so we should handle everything
+                # raise ValueError(f"illegal term type in parse graph: {term_type}")
+                print(f"dunno this type:{term_type}")
+                pass
+
+            # statement was executed, mark it as "computed"
+            parse_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
+
+        return exec_result
 
 
 if __name__ == "__main__":

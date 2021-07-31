@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Tuple, List, Union
 
+from lark import Tree
 from lark.lark import Lark
 from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
 from pandas import DataFrame
@@ -200,6 +201,11 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 
 class Session:
     def __init__(self, debug=False):
+        """
+        parse_graph is the lark graph which contains is the result of parsing a single statement
+        term_graph is the combined tree of all statements so far, which describes the connection between relations
+        @param debug: print stuff
+        """
         self.debug = debug
         self._symbol_table = SymbolTable()
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
@@ -220,13 +226,13 @@ class Session:
             TypeCheckAssignments,
             TypeCheckRelations,
             SaveDeclaredRelationsSchemas,
-            # ReorderRuleBody,
+            # TODO@niv: remove ReorderRuleBody, or leave it to support pydatalog
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxTermGraph,
             AddDeclaredRelationsToTermGraph,
-            ExpandRuleNodes
-            # GenericExecution
+            ExpandRuleNodes,
+            # TODO@niv GenericExecution
         ]
 
         grammar_file_path = os.path.dirname(rgxlog.grammar.__file__)
@@ -237,7 +243,7 @@ class Session:
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
         # self._register_default_functions()
 
-    def _run_passes(self, tree, pass_list) -> Tuple[Query, List]:
+    def _run_passes(self, tree: Tree, pass_list: list) -> Tuple[Query, List]:
         """
         Runs the passes in pass_list on tree, one after another.
         """
@@ -245,14 +251,20 @@ class Session:
 
         if self.debug:
             print(f"initial tree:\n{tree.pretty()}")
+            print(f"initial term_tree:\n{self._term_graph}")
 
         for curr_pass in pass_list:
             if issubclass(curr_pass, (Visitor, Visitor_Recursive, Interpreter)):
+                # visitors don't return the tree, because they don't edit it
                 curr_pass(symbol_table=self._symbol_table,
                           parse_graph=self._parse_graph,
                           term_graph=self._term_graph).visit(tree)
+                if self.debug:
+                    print(f"lark tree after {curr_pass.__name__}:\n{tree.pretty()}")
             elif issubclass(curr_pass, Transformer):
                 tree = curr_pass(symbol_table=self._symbol_table).transform(tree)
+                if self.debug:
+                    print(f"lark tree after {curr_pass.__name__}:\n{tree.pretty()}")
             elif issubclass(curr_pass, ExecutionBase):
                 # the execution is always the last pass, and there is always only one per statement, so there's
                 # no need to have a list of results here
@@ -261,18 +273,17 @@ class Session:
                     symbol_table=self._symbol_table,
                     rgxlog_engine=self._execution).execute()
                 print(self._parse_graph)
+                if self.debug:
+                    print(f"term graph after {curr_pass.__name__}:\n{self._term_graph}")
             elif curr_pass == ExpandRuleNodes:
-                tree = curr_pass(parse_graph=self._parse_graph,
-                                 symbol_table=self._symbol_table,
-                                 rgxlog_engine=self._execution,
-                                 term_graph=self._term_graph).expand()
-                print("*************************")
-                print(self._term_graph)
+                curr_pass(parse_graph=self._parse_graph,
+                          symbol_table=self._symbol_table,
+                          rgxlog_engine=self._execution,
+                          term_graph=self._term_graph).expand()
+                if self.debug:
+                    print(f"term graph after {curr_pass.__name__}:\n{self._term_graph}")
             else:
                 raise Exception(f'invalid pass: {curr_pass}')
-
-            # if self.debug:
-            #     print(f"{curr_pass}\n{tree.pretty()}")
 
         return exec_result
 
@@ -485,6 +496,7 @@ if __name__ == "__main__":
     my_query = '''
         new b(int)
         new c(int)
+        new d(int, int)
         '''
 
     my_session.run_query(my_query)
@@ -492,8 +504,9 @@ if __name__ == "__main__":
     my_session.register(lambda x: x, "d", [DataTypes.integer], [DataTypes.integer, DataTypes.integer])
     my_session.register(lambda x: x, "f", [DataTypes.integer] * 3, [DataTypes.integer])
 
-    my_query2 = """
-        a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
-        """
+    # my_query2 = """
+    #     a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
+    #     """
+    my_query2 = "a(X) <- d(X,Y)"
 
     my_session.run_query(my_query2)
