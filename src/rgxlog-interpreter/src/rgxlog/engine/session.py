@@ -285,10 +285,10 @@ class Session:
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            exec_result=None
-            exec_result = GenericExecution(parse_graph=self._parse_graph,
-                                           symbol_table=self._symbol_table,
-                                           rgxlog_engine=self._execution).execute()
+            exec_result = None
+            # exec_result = GenericExecution(parse_graph=self._parse_graph,
+            #                                symbol_table=self._symbol_table,
+            #                                rgxlog_engine=self._execution).execute()
 
             if exec_result is not None:
                 exec_results.append(exec_result)
@@ -486,8 +486,5 @@ if __name__ == "__main__":
     # my_query2 = """
     #     a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
     #     """
-    my_query2 = """
-        a(Z,X) <- b(X,Y), c(Z,Y)
-        """
-    # my_query2 = "a(X) <- d(X,Y)"
+    my_query2 = "a(X) <- d(X,Y)"
     my_session.run_query(my_query2)
