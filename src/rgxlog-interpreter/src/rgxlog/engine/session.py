@@ -247,32 +247,11 @@ class Session:
             print(f"initial tree:\n{tree.pretty()}")
 
         for curr_pass in pass_list:
-            if issubclass(curr_pass, (Visitor, Visitor_Recursive, Interpreter)):
-                curr_pass(symbol_table=self._symbol_table,
-                          parse_graph=self._parse_graph,
-                          term_graph=self._term_graph).visit(tree)
-            elif issubclass(curr_pass, Transformer):
-                tree = curr_pass(symbol_table=self._symbol_table).transform(tree)
-            elif issubclass(curr_pass, ExecutionBase):
-                # the execution is always the last pass, and there is always only one per statement, so there's
-                # no need to have a list of results here
-                exec_result = curr_pass(
-                    parse_graph=self._parse_graph,
-                    symbol_table=self._symbol_table,
-                    rgxlog_engine=self._execution).execute()
-                print(self._parse_graph)
-            elif curr_pass == ExpandRuleNodes:
-                tree = curr_pass(parse_graph=self._parse_graph,
-                                 symbol_table=self._symbol_table,
-                                 rgxlog_engine=self._execution,
-                                 term_graph=self._term_graph).expand()
-                print("*************************")
-                print(self._term_graph)
-            else:
-                raise Exception(f'invalid pass: {curr_pass}')
-
-            # if self.debug:
-            #     print(f"{curr_pass}\n{tree.pretty()}")
+            tree = curr_pass(parse_graph=self._parse_graph,
+                             symbol_table=self._symbol_table,
+                             rgxlog_engine=self._execution,
+                             term_graph=self._term_graph
+                             ).run_pass(tree)
 
         return exec_result
 
