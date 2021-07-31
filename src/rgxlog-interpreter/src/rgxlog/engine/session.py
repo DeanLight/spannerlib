@@ -248,10 +248,10 @@ class Session:
 
         for curr_pass in pass_list:
             new_tree = curr_pass(parse_graph=self._parse_graph,
-                             symbol_table=self._symbol_table,
-                             rgxlog_engine=self._execution,
-                             term_graph=self._term_graph
-                             ).run_pass(tree=tree)
+                                 symbol_table=self._symbol_table,
+                                 rgxlog_engine=self._execution,
+                                 term_graph=self._term_graph
+                                 ).run_pass(tree=tree)
             if new_tree is not None:
                 tree = new_tree
 
