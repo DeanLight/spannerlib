@@ -231,8 +231,7 @@ class Session:
             ExecuteAssignments,
             AddStatementsToNetxTermGraph,
             AddDeclaredRelationsToTermGraph,
-            ExpandRuleNodes,
-            # TODO@niv GenericExecution
+            ExpandRuleNodes
         ]
 
         grammar_file_path = os.path.dirname(rgxlog.grammar.__file__)
@@ -241,31 +240,28 @@ class Session:
             self._grammar = grammar_file.read()
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
-        # self._register_default_functions()
+        # TODO@tom: self._register_default_functions()
 
-    def _run_passes(self, tree: Tree, pass_list: list) -> Tuple[Query, List]:
+    def _run_passes(self, tree: Tree, pass_list: list) -> None:
         """
         Runs the passes in pass_list on tree, one after another.
         """
-        exec_result = None
-
         if self.debug:
             print(f"initial tree:\n{tree.pretty()}")
             print(f"initial term_tree:\n{self._term_graph}")
 
         for curr_pass in pass_list:
-            (new_tree, exec_result) = curr_pass(parse_graph=self._parse_graph,
-                                                symbol_table=self._symbol_table,
-                                                rgxlog_engine=self._execution,
-                                                term_graph=self._term_graph
-                                                ).run_pass(tree=tree)
+            curr_pass_object = curr_pass(parse_graph=self._parse_graph,
+                                         symbol_table=self._symbol_table,
+                                         rgxlog_engine=self._execution,
+                                         term_graph=self._term_graph,
+                                         debug=self.debug)
+            new_tree = curr_pass_object.run_pass(tree=tree)
+
             if new_tree is not None:
                 tree = new_tree
                 if self.debug:
                     print(f"lark tree after {curr_pass.__name__}:\n{tree.pretty()}")
-
-        # TODO@niv print(f"term graph after {curr_pass.__name__}:\n{self._term_graph}")
-        return exec_result
 
     def __repr__(self):
         return [repr(self._symbol_table), repr(self._parse_graph)]
@@ -289,7 +285,12 @@ class Session:
         parse_tree = self._parser.parse(query)
 
         for statement in parse_tree.children:
-            exec_result = self._run_passes(statement, self._pass_stack)
+            self._run_passes(statement, self._pass_stack)
+            exec_result=None
+            # exec_result = GenericExecution(parse_graph=self._parse_graph,
+            #                                symbol_table=self._symbol_table,
+            #                                rgxlog_engine=self._execution).execute()
+
             if exec_result is not None:
                 exec_results.append(exec_result)
                 if print_results:

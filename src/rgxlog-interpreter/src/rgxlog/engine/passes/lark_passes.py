@@ -47,26 +47,22 @@ def get_tree(**kwargs):
 
 
 class GenericPass(ABC):
-
     @abstractmethod
     def run_pass(self, **kwargs):
         pass
 
 
 class VisitorPass(Visitor, GenericPass):
-
     def run_pass(self, **kwargs):
         self.visit(get_tree(**kwargs))
 
 
-class Visitor_RecursivePass(Visitor_Recursive, GenericPass):
-
+class VisitorRecursivePass(Visitor_Recursive, GenericPass):
     def run_pass(self, **kwargs):
         self.visit(get_tree(**kwargs))
 
 
 class InterpreterPass(Interpreter, GenericPass):
-
     def run_pass(self, **kwargs):
         self.visit(get_tree(**kwargs))
 
@@ -127,7 +123,7 @@ class CheckReservedRelationNames(InterpreterPass):
                             f'names starting with {RESERVED_RELATION_PREFIX} are reserved')
 
 
-class FixStrings(Visitor_RecursivePass):
+class FixStrings(VisitorRecursivePass):
     """
      Fixes the strings in the lark tree.
      Removes the line overflow escapes from strings
@@ -147,7 +143,7 @@ class FixStrings(Visitor_RecursivePass):
         string_node.children[0] = fixed_string_value
 
 
-class ConvertSpanNodesToSpanInstances(Visitor_RecursivePass):
+class ConvertSpanNodesToSpanInstances(VisitorRecursivePass):
     """
     Converts each span node in the ast to a span instance.
     This means that a span in the tree will be represented by a single value (a "DataTypes.Span" instance)
@@ -168,7 +164,7 @@ class ConvertSpanNodesToSpanInstances(Visitor_RecursivePass):
         span_node.children = [Span(span_start, span_end)]
 
 
-class ConvertStatementsToStructuredNodes(Visitor_RecursivePass):
+class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
     """
     converts each statement node in the tree to a structured node, making it easier to parse in future passes.
     a structured node is a class representation of a node in the abstract syntax tree.
@@ -493,7 +489,7 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
-class CheckReferencedIERelationsExistenceAndArity(Visitor_RecursivePass):
+class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     """
     A lark tree semantic check.
     Checks whether each ie relation reference refers to a defined ie function.
@@ -539,7 +535,7 @@ class CheckReferencedIERelationsExistenceAndArity(Visitor_RecursivePass):
                                     f' {used_output_arity} (should be {correct_output_arity})')
 
 
-class CheckRuleSafety(Visitor_RecursivePass):
+class CheckRuleSafety(VisitorRecursivePass):
     """
     A lark tree semantic check.
     checks whether the rules in the programs are safe.
@@ -657,7 +653,7 @@ class CheckRuleSafety(Visitor_RecursivePass):
                             f'{unbound_free_vars}')
 
 
-class ReorderRuleBody(Visitor_RecursivePass):
+class ReorderRuleBody(VisitorRecursivePass):
     """
     A lark tree optimization pass.
     Reorders each rule body relations list so that each relation in the list has its input free variables bound by
@@ -1173,6 +1169,8 @@ class AddRuleToTermGraph:
     def __init__(self, term_graph: NetxTermGraph, head_relation: Relation,
                  relations: Set[Relation], ie_relations: Set[IERelation]):
         """
+        note: term_graph is passed like a pointer, so it modifies
+
         @param term_graph: the global term graph (contains all the execution trees of all the rules).
         @param head_relation: the relation head of the rule.
         @param relations: set of relations in rule body.
@@ -1297,11 +1295,12 @@ class ExpandRuleNodes(GenericPass):
     """
 
     def __init__(self, parse_graph: NetxTermGraph, symbol_table: SymbolTableBase,
-                 rgxlog_engine: RgxlogEngineBase, term_graph: NetxTermGraph):
+                 rgxlog_engine: RgxlogEngineBase, term_graph: NetxTermGraph, debug:str):
         self.parse_graph = parse_graph
         self.symbol_table = symbol_table
         self.engine = rgxlog_engine
         self.term_graph = term_graph
+        self.debug = debug
 
     def _get_rule_node_ids(self) -> List[int]:
         """
@@ -1367,4 +1366,5 @@ class ExpandRuleNodes(GenericPass):
 
     def run_pass(self, **kwargs):
         self.expand()
-        print(self.term_graph)
+        if self.debug:
+            print(f"term graph after {self.__class__.__name__}:\n{self.term_graph}")
