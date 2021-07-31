@@ -23,7 +23,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxTermGraph, ExpandRuleNodes,
-                                              AddDeclaredRelationsToTermGraph)
+                                              AddDeclaredRelationsToTermGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
@@ -285,9 +285,9 @@ class Session:
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
             exec_result=None
-            # exec_result = GenericExecution(parse_graph=self._parse_graph,
-            #                                symbol_table=self._symbol_table,
-            #                                rgxlog_engine=self._execution).execute()
+            exec_result = GenericExecution(parse_graph=self._parse_graph,
+                                           symbol_table=self._symbol_table,
+                                           rgxlog_engine=self._execution).execute()
 
             if exec_result is not None:
                 exec_results.append(exec_result)
@@ -319,9 +319,8 @@ class Session:
         if type(user_stack) is not list:
             raise TypeError('user stack should be a list of passes')
         for pass_ in user_stack:
-            if not issubclass(pass_, (Visitor, Visitor_Recursive, Interpreter, Transformer, ExecutionBase)):
-                raise TypeError('user stack should be a subclass of '
-                                'Visitor/Visitor_Recursive/Interpreter/Transformer/ExecutionBase')
+            if not issubclass(pass_, GenericPass):
+                raise TypeError('user stack should be a subclass of `GenericPass`')
 
         self._pass_stack = user_stack.copy()
         return self.get_pass_stack()
