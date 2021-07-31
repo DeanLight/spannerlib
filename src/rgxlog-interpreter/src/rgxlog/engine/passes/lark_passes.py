@@ -39,43 +39,41 @@ from rgxlog.engine.utils.general_utils import *
 from abc import ABC, abstractmethod
 
 
-def get_tree(*args):
-    if len(args) == 0:
-        raise Exception("Expecting tree parameter")
-    return args[0]
+def get_tree(**kwargs):
+    tree = kwargs.get("tree", None)
+    if tree is None:
+        raise Exception("Expected tree parameter")
+    return tree
 
 
 class GenericPass(ABC):
 
     @abstractmethod
-    def run_pass(self, tree):
+    def run_pass(self, **kwargs):
         pass
 
 
 class VisitorPass(Visitor, GenericPass):
 
-    def run_pass(self, tree):
-        self.visit(tree)
-        return tree
+    def run_pass(self, **kwargs):
+        self.visit(get_tree(**kwargs))
 
 
 class Visitor_RecursivePass(Visitor_Recursive, GenericPass):
 
-    def run_pass(self, tree):
-        self.visit(tree)
-        return tree
+    def run_pass(self, **kwargs):
+        self.visit(get_tree(**kwargs))
 
 
 class InterpreterPass(Interpreter, GenericPass):
 
-    def run_pass(self, tree):
-        self.visit(tree)
-        return tree
+    def run_pass(self, **kwargs):
+        self.visit(get_tree(**kwargs))
 
 
 class TransformerPass(Transformer, GenericPass):
-    def run_pass(self, tree):
-        return self.transform(tree)
+    def run_pass(self, **kwargs):
+        return self.transform(get_tree(**kwargs))
 
 
 class RemoveTokens(TransformerPass):
@@ -1385,6 +1383,6 @@ class ExpandRuleNodes(GenericPass):
             head_relation, relations, ie_relations = self.get_relations(rule_node_id)
             AddRuleToTermGraph(self.term_graph, head_relation, relations, ie_relations).generate_execution_graph()
 
-    def run_pass(self, *args, **kwargs):
+    def run_pass(self, **kwargs):
         self.expand()
         print(self.term_graph)

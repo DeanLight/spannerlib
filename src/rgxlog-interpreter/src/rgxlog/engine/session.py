@@ -247,11 +247,13 @@ class Session:
             print(f"initial tree:\n{tree.pretty()}")
 
         for curr_pass in pass_list:
-            tree = curr_pass(parse_graph=self._parse_graph,
+            new_tree = curr_pass(parse_graph=self._parse_graph,
                              symbol_table=self._symbol_table,
                              rgxlog_engine=self._execution,
                              term_graph=self._term_graph
-                             ).run_pass(tree)
+                             ).run_pass(tree=tree)
+            if new_tree is not None:
+                tree = new_tree
 
         return exec_result
 
