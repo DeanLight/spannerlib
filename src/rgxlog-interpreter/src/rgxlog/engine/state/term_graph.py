@@ -22,6 +22,7 @@ class EvalState(Enum):
     """
 
     NOT_COMPUTED = "not_computed"
+    VISITED = "visited"
     COMPUTED = "computed"
 
     def __str__(self):
@@ -70,20 +71,34 @@ class TermGraphBase:
         pass
 
     @abstractmethod
-    def pre_order_dfs(self):
+    def pre_order_dfs_from(self, node_id: int):
         """
         @return: an iterable of the term ids generated from a depth-first-search pre-ordering starting at the root
         of the term graph
         """
         pass
 
+    def pre_order_dfs(self):
+        """
+        @return: an iterable of the term ids generated from a depth-first-search pre-ordering starting at the root
+        of the term graph
+        """
+        return self.pre_order_dfs_from(self.get_root_id())
+
     @abstractmethod
-    def post_order_dfs(self):
+    def post_order_dfs_form(self, node_id: int):
         """
         @return: an iterable of the term ids generated from a depth-first-search post-ordering starting at the root
         of the term graph
         """
         pass
+
+    def post_order_dfs(self):
+        """
+        @return: an iterable of the term ids generated from a depth-first-search post-ordering starting at the root
+        of the term graph
+        """
+        return self.post_order_dfs_from(self.get_root_id())
 
     @abstractmethod
     def get_children(self, term_id):
@@ -117,6 +132,9 @@ class TermGraphBase:
         """
         pass
 
+    def reset_graph(self):
+        pass
+
     def __str__(self):
         pass
 
@@ -148,7 +166,7 @@ class NetxTermGraph(TermGraphBase):
         if relation_name in self.relation_to_id:
             return self.get_relation_id(relation, False)
 
-        rel_id = self.add_term(type=relation_type, value=relation_name)
+        rel_id = self.add_term(type=relation_type, output_rel=relation)
         self.add_edge(self._root_id, rel_id)
         if is_rule:
             union_id = self.add_term(type="union")
@@ -210,11 +228,11 @@ class NetxTermGraph(TermGraphBase):
             for ancestor_id in ancestors_ids:
                 self._graph.nodes[ancestor_id]['state'] = EvalState.NOT_COMPUTED
 
-    def pre_order_dfs(self):
-        return nx.dfs_preorder_nodes(self._graph, self._root_id)
+    def pre_order_dfs_from(self, node_id: int):
+        return nx.dfs_preorder_nodes(self._graph, node_id)
 
-    def post_order_dfs(self):
-        return nx.dfs_postorder_nodes(self._graph, self._root_id)
+    def post_order_dfs_from(self, node_id: int):
+        return nx.dfs_postorder_nodes(self._graph, node_id)
 
     def get_children(self, term_id):
         return list(self._graph.successors(term_id))

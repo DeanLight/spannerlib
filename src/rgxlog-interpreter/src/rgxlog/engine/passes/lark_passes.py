@@ -1101,7 +1101,8 @@ class BoundingGraph:
         # maps each ie relation to it's bounding relations
         self.bounding_graph = OrderedDict()
 
-    def find_bounding_relations_of_ie_function(self, ie_relation: IERelation) -> Optional[Set[Union[Relation, IERelation]]]:
+    def find_bounding_relations_of_ie_function(self, ie_relation: IERelation) -> Optional[
+        Set[Union[Relation, IERelation]]]:
         """
         Finds all the relation that are already bounded that bind the ie relation.
         @param ie_relation: the ie relation to bound.
@@ -1297,7 +1298,7 @@ class ExpandRuleNodes(GenericPass):
     """
 
     def __init__(self, parse_graph: NetxTermGraph, symbol_table: SymbolTableBase,
-                 rgxlog_engine: RgxlogEngineBase, term_graph: NetxTermGraph, debug:str):
+                 rgxlog_engine: RgxlogEngineBase, term_graph: NetxTermGraph, debug: str):
         self.parse_graph = parse_graph
         self.symbol_table = symbol_table
         self.engine = rgxlog_engine
@@ -1313,17 +1314,28 @@ class ExpandRuleNodes(GenericPass):
         term_ids = self.parse_graph.post_order_dfs()
         rule_node_ids: List[int] = list()
 
+        print(self.parse_graph)
+
         for term_id in term_ids:
             term_attrs = self.parse_graph.get_term_attributes(term_id)
 
             # the term is not computed, get its type and compute it accordingly
             term_type = term_attrs['type']
-            term_state = term_attrs['state']
 
-            if term_type == "rule" and term_state == EvalState.NOT_COMPUTED:
-                rule_node_ids.append(term_id)
+            if term_type == "rule":
+                _, body_id = self.get_rule_head_and_body_ids(term_id)
+                body = self.parse_graph[body_id]
+                state = body['state']
+                if state == EvalState.NOT_COMPUTED:
+                    rule_node_ids.append(term_id)
+                    self.parse_graph.set_term_attribute(body_id, 'state', EvalState.VISITED)
 
         return rule_node_ids
+
+    def get_rule_head_and_body_ids(self, rule_id: int):
+        rule_children = self.parse_graph.get_children(rule_id)
+        assert len(rule_children) == 2, "a rule that was not expanded must have exactly 2 children"
+        return rule_children
 
     def get_relations(self, rule_id: int) -> Tuple[Relation, Set[Relation], Set[IERelation]]:
         """
@@ -1333,10 +1345,7 @@ class ExpandRuleNodes(GenericPass):
         @return: head relation, regular relations and ie relations inside the rule.
         """
 
-        rule_children = self.parse_graph.get_children(rule_id)
-        assert len(rule_children) == 2, "a rule that was not expanded must have exactly 2 children"
-
-        rule_head_id, rule_body_id = rule_children
+        rule_head_id, rule_body_id = self.get_rule_head_and_body_ids(rule_id)
         rule_head = self.parse_graph[rule_head_id]
         head_relation: Relation = rule_head['value']
 
