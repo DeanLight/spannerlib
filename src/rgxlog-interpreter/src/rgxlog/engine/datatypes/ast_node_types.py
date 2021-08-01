@@ -81,8 +81,6 @@ class Relation:
         self.relation_name = peel_token(self.relation_name)
 
 
-
-
 class IERelation:
     """
     a representation of an information extraction (ie) relation.

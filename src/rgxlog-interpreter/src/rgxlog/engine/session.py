@@ -13,7 +13,7 @@ from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import (GenericExecution, AddFact, DataTypes, RelationDeclaration, Query,
                                      RELATION_COLUMN_PREFIX, FALSE_VALUE, TRUE_VALUE)
-from rgxlog.engine.passes.ExpandRuleNodes import ExpandRuleNodes
+from rgxlog.engine.passes.expand_rule_nodes import ExpandRuleNodes
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
@@ -293,7 +293,7 @@ class Session:
             #     exec_results.append(exec_result)
             #     if print_results:
             #         print(queries_to_string([exec_result]))
-        #
+        print("")
         # if format_results:
         #     return [format_query_results(*exec_result) for exec_result in exec_results]
         # else:
@@ -481,10 +481,10 @@ if __name__ == "__main__":
 
     my_session.register(lambda x: x, "d", [DataTypes.integer], [DataTypes.integer, DataTypes.integer])
     my_session.register(lambda x: x, "f", [DataTypes.integer] * 3, [DataTypes.integer])
-
-    my_query2 = """
-        a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
-        """
+    #
+    # my_query2 = """
+    #     a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(1, 1, 1) -> (X)
+    # """
     # my_query = """
     #         new a(int,int)
     #         new c(int)
@@ -492,5 +492,9 @@ if __name__ == "__main__":
     #         b(X) <- a(X,5), c(X)
     #         a(4,6)
     #         """
-    # my_query2 = "a(X) <- d(X,Y)"
+    my_query2 = "a(X) <- d(X,X), b(X)"
     my_session.run_query(my_query2)
+
+    # A(X, X)
+    # A(X, 5)
+    # A(X, 5, X)

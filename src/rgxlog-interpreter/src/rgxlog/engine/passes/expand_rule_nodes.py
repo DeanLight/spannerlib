@@ -122,9 +122,9 @@ class AddRuleToTermGraph:
         self.bounding_graph = BoundingGraph(self.relations, self.ie_relations).compute_graph()
 
     def add_join_branch(self, head_id: int, relations: Set[Union[Relation, IERelation]],
-                        future_ie_relations: Optional[Set[IERelation]] = None) -> int:
+                        future_ie_relations: Optional[Set[IERelation]] = None) -> Optional[int]:
         """
-        Connects all the relations to a join node. Connects th ehoin_node to head_id.
+        Connects all the relations to a join node. Connects th join_node to head_id.
 
         @param head_id: the node to which join node will be connected.
         @param relations: a set of relations.
@@ -138,18 +138,16 @@ class AddRuleToTermGraph:
         # check if there is one relation (we don't need join)
         if len(total_relations) == 1:
             self.add_relation_branch(next(iter(total_relations)), head_id)
-            return -1
+            return
 
         join_dict = get_free_var_to_relations_dict(total_relations)
-        join_node_id = self.term_graph.add_term(type="join", value=join_dict)
-        self.term_graph.add_edge(head_id, join_node_id)
+        if join_dict:
+            join_node_id = self.term_graph.add_term(type="join", value=join_dict)
+            self.term_graph.add_edge(head_id, join_node_id)
+            for relation in relations:
+                self.add_relation_branch(relation, join_node_id)
 
-        for relation in relations:
-            # this can be optimized
-            # (save a dict between relation and relation branch id in order to avoid duplications of branches)
-            self.add_relation_branch(relation, join_node_id)
-
-        return join_node_id
+            return join_node_id
 
     def add_relation_to(self, relation: Union[Relation, IERelation], father_node_id: int) -> None:
         """
@@ -182,15 +180,17 @@ class AddRuleToTermGraph:
             return
 
         free_vars = get_output_free_var_names(relation)
-        if len(free_vars) == len(relation.get_term_list()):
-            # no need to filter
-            self.add_relation_to(relation, join_node_id)
-        else:
+        term_list = relation.get_term_list()
+
+        if len(free_vars) != len(term_list) or len(term_list) != len(set(term_list)):
             select_info = relation.get_select_cols_values_and_types()
             select_node_id = self.term_graph.add_term(type="select", value=select_info)
             self.term_graph.add_edge(join_node_id, select_node_id)
             self.add_relation_to(relation, select_node_id)
             self.relation_to_branch_id[relation] = select_node_id
+        else:
+            # no need to filter
+            self.add_relation_to(relation, join_node_id)
 
     def add_calc_branch(self, join_node_id: int, ie_relation: IERelation) -> int:
         """
