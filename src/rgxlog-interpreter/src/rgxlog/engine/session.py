@@ -486,5 +486,12 @@ if __name__ == "__main__":
     # my_query2 = """
     #     a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
     #     """
+    # my_query = """
+    #         new a(int,int)
+    #         new c(int)
+    #         a(3,5)
+    #         b(X) <- a(X,5), c(X)
+    #         a(4,6)
+    #         """
     my_query2 = "a(X) <- d(X,Y)"
     my_session.run_query(my_query2)

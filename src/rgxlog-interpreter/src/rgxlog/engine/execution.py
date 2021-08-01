@@ -11,7 +11,7 @@ import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Set, Union
 
 from pyDatalog import pyDatalog
 
@@ -239,17 +239,39 @@ class RgxlogEngineBase(ABC):
     def remove_all_rules(self, rule_head):
         pass
 
-    def operator_select(self):
-        # TODO
+    def operator_select(self, relation: Relation, select_info: Set[Tuple[int, int, DataTypes]]) -> Relation:
+        """
+
+        @param relation: the relation from which we select tuples
+        @param select_info: set of tuples. each tuple contains the index of the column, the value to select
+                            and the type of the column.
+
+        @return: a filtered relation
+        """
+        # TODO@niv: i'm talking about the relational algebra operator, which is actually `WHERE`
         pass
 
     def operator_join(self, relations: List[Relation]) -> Relation:
         pass
 
-    def operator_project(self, relation: Relation) -> Relation:
+    def operator_project(self, relation: Relation, project_vars: Set[str]) -> Relation:
+        """
+
+        @param relation: the relation on which we project.
+        @param project_vars: a set of variables on which we project.
+        @return: the projected relation
+        """
+        # TODO@niv: this is basically `SELECT`
         pass
 
     def operator_union(self, relations: List[Relation]) -> Relation:
+        """
+
+        @param relations: a list of relations to union.
+        @note: you can assume that all the relation have the same set of free_vars,
+               but not necessarily in the same order.
+        @return: the unionised relation.
+        """
         pass
 
     def operator_difference(self):
@@ -259,6 +281,9 @@ class RgxlogEngineBase(ABC):
         pass
 
     def operator_copy(self, old_rel) -> Relation:
+        """
+        Copies computed_relation to rule_relation.
+        """
         pass
 
 
@@ -667,15 +692,38 @@ class SqliteEngine(RgxlogEngineBase):
 
         return joined_relation
 
-    def operator_project(self, relation: Relation) -> Relation:
+    def operator_select(self, relation: Relation, select_info: Set[Tuple[int, int, DataTypes]]) -> Relation:
+        """
+
+        @param relation: the relation from which we select tuples
+        @param select_info: set of tuples. each tuple contains the index of the column, the value to select
+                            and the type of the column.
+
+        @return: a filtered relation
+        """
+        # TODO@niv: i'm talking about the relational algebra operator, which is actually `WHERE`
+        pass
+
+    def operator_project(self, relation: Relation, project_vars: Set[str]) -> Relation:
+        """
+
+        @param relation: the relation on which we project.
+        @param project_vars: a set of variables on which we project.
+        @return: the projected relation
+        """
         # TODO@niv: this is basically `SELECT`
         pass
 
     def operator_union(self, relations: List[Relation]) -> Relation:
-        # TODO@niv: sqlite `UNION`
-        pass
+        """
 
-    def operator_difference(self) -> Relation:
+        @param relations: a list of relations to union.
+        @note: you can assume that all the relation have the same set of free_vars,
+               but not necessarily in the same order.
+        @return: the unionised relation.
+        """
+
+        # TODO@niv: sqlite `UNION`
         pass
 
     def operator_product(self) -> Relation:
@@ -843,7 +891,7 @@ class GenericExecution(ExecutionBase):
 
         for term_id in term_ids:
             term_attrs = term_graph[term_id]
-            if term_attrs['state'] is EvalState.COMPUTED:
+            if term_attrs["state"] is EvalState.COMPUTED:
                 continue
 
             term_type = term_attrs['type']
@@ -878,25 +926,36 @@ class GenericExecution(ExecutionBase):
                 ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, ie_rel_out)
 
+            elif term_type == "select":
+                output_rel = self.get_child_relation(term_id)
+                select_info = term_attrs["value"]
+                select_rel = rgxlog_engine.operator_select(output_rel, select_info)
+                self.set_output_relation(term_id, select_rel)
+
             else:
                 raise TypeError("illegal engine type")
 
             # statement was executed, mark it as "computed"
             term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
 
-    # TODO@tom: change state of graph to not computed
+        self.reset_visited_nodes(term_ids)
 
-    @staticmethod
-    def get_children_relations(term_graph: NetxTermGraph, node_id: int):
+    def reset_visited_nodes(self, term_ids: List[int]) -> None:
+        for term_id in term_ids:
+            self.term_graph.set_term_attribute(term_id, "state", EvalState.NOT_COMPUTED)
+
+    def set_output_relation(self, term_id: int, relation: Relation) -> None:
+        self.term_graph.set_term_attribute(term_id, "output_rel", relation)
+
+    def get_children_relations(self, node_id: int) -> List[Relation]:
+        term_graph = self.term_graph
         relations_ids = term_graph.get_children(node_id)
         relations_nodes = [term_graph[rel_id] for rel_id in relations_ids]
         relations = [rel_node[OUT_REL_ATTRIBUTE] for rel_node in relations_nodes]
         return relations
 
-    @staticmethod
-    def remove_computed_from(term_graph: NetxTermGraph, node_id: int):
-        for term_id in term_graph.post_order_dfs():
-            pass
+    def get_child_relation(self, node_id: int) -> Relation:
+        return self.get_children_relations(node_id)[0]
 
 
 if __name__ == "__main__":
