@@ -160,32 +160,6 @@ class NetxTermGraph(TermGraphBase):
         # create the root of the term graph. it will be used as a source for dfs/bfs
         self._root_id = self.add_term(type="root")
 
-        self.relation_to_id = dict()
-
-    def add_relation(self, relation: Union[Relation, RelationDeclaration], relation_type: str, is_rule: bool = False):
-        relation_name = relation.relation_name
-        if relation_name in self.relation_to_id:
-            return self.get_relation_id(relation, False)
-
-        rel_id = self.add_term(type=relation_type, output_rel=relation)
-        self.add_edge(self._root_id, rel_id)
-        if is_rule:
-            union_id = self.add_term(type="union")
-            self.add_edge(rel_id, union_id)
-            self.relation_to_id[relation_name] = (rel_id, union_id)
-        else:
-            self.relation_to_id[relation_name] = (rel_id,)
-
-        return self.get_relation_id(relation, False)
-
-    def add_edge_to_rule_node(self, relation: Relation, branch_id: int) -> None:
-        _, union_id = self.relation_to_id[relation.relation_name]
-        self.add_edge(union_id, branch_id)
-
-    def get_relation_id(self, relation: Union[Relation, IERelation], only_head: bool = True):
-        ids = self.relation_to_id[relation.relation_name]
-        return ids[0] if only_head else ids
-
     def add_term(self, **attr):
         # assert the term has a type
         if 'type' not in attr:
@@ -295,3 +269,46 @@ class NetxTermGraph(TermGraphBase):
 
     def __str__(self):
         return self.pretty()
+
+
+class ExecutionTermGraph(NetxTermGraph):
+    """
+    a wrapper to NextTermGraph that adds support to relations and their corresponding nodes.
+    """
+    def __init__(self):
+        super().__init__()
+        self.relation_to_id = dict()
+
+    def add_relation(self, relation: Relation) -> int:
+        """
+        adds the relation to the graph. if it's already inside nothing is done.
+
+        @param relation: the relation to add.
+        @note: we assume the relation is rule relation and not declared relation.
+
+        @return: returns the relation node id if is_rule is false.
+                 otherwise returns the relation child node id (union node).
+        """
+        relation_name = relation.relation_name
+        if relation_name in self.relation_to_id:
+            return self.get_relation_id(relation, False)
+
+        rel_id = self.add_term(type="rule_rel", value=relation)
+        self.add_edge(self._root_id, rel_id)
+        union_id = self.add_term(type="union")
+        self.add_edge(rel_id, union_id)
+        self.relation_to_id[relation_name] = (rel_id, union_id)
+
+        return self.get_relation_id(relation, False)
+
+    def get_relation_id(self, relation: Union[Relation, IERelation], actual_node: bool = True) -> int:
+        """
+
+        @param relation: the relation to look for
+        @param actual_node: if true we return the relation node. otherwise we return it's union child node id.
+        """
+        ids = self.relation_to_id.get(relation.relation_name, -1)
+        if ids == -1:
+            return -1
+        return ids[0] if actual_node else ids[1]
+

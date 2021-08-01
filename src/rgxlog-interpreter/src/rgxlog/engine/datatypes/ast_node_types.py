@@ -28,6 +28,15 @@ def get_term_list_string(term_list, type_list):
     term_list_string = ', '.join(terms_with_quoted_strings)
     return term_list_string
 
+def peel_list(lst: List) -> List[str]:
+    return [peel_token(token) for token in lst]
+
+def peel_token(token) -> str:
+    if isinstance(token, Token):
+        return token.value
+    return token
+
+
 
 # TODO: understand why this causes a bug (rule safety something)
 #  @dataclasses.dataclass(init=False)
@@ -68,21 +77,8 @@ class Relation:
         return col_value_type
 
     def peel_off_token_wrappers(self) -> None:
-        peeled_term_list = []
-        original_relation_name = self.relation_name
-
-        for token in self.term_list:
-            if isinstance(token, Token):
-                peeled_term_list.append(token.value)
-            else:
-                peeled_term_list.append(token)
-
-        self.term_list = peeled_term_list
-
-        if isinstance(original_relation_name, Token):
-            self.relation_name = original_relation_name.value
-        else:
-            self.relation_name = original_relation_name
+        self.term_list = peel_list(self.term_list)
+        self.relation_name = peel_token(self.relation_name)
 
 
 
@@ -135,6 +131,11 @@ class IERelation:
     def get_type_list(self):
         return self.output_type_list
 
+    def peel_off_token_wrappers(self) -> None:
+        self.input_term_list = peel_list(self.input_term_list)
+        self.output_term_list = peel_list(self.output_term_list)
+        self.relation_name = peel_token(self.relation_name)
+
 
 class RelationDeclaration:
     """a representation of a relation_declaration statement"""
@@ -165,12 +166,7 @@ class RelationDeclaration:
         return relation_declaration_string
 
     def peel_off_token_wrappers(self) -> None:
-        original_relation_name = self.relation_name
-
-        if isinstance(original_relation_name, Token):
-            self.relation_name = original_relation_name.value
-        else:
-            self.relation_name = original_relation_name
+        self.relation_name = peel_token(self.relation_name)
 
 
 class AddFact(Relation):

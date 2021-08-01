@@ -19,7 +19,7 @@ from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, NetxTermGraph
+from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, NetxTermGraph, ExecutionTermGraph
 from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict
 
 VALUE_ATTRIBUTE = 'value'
@@ -846,7 +846,7 @@ class ExecutionBase(ABC):
     Abstraction for a class that gets a term graph and executes it
     """
 
-    def __init__(self, parse_graph: TermGraphBase, term_graph: NetxTermGraph,
+    def __init__(self, parse_graph: TermGraphBase, term_graph: ExecutionTermGraph,
                  symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         """
         @param parse_graph: a term graph to execute
@@ -879,7 +879,7 @@ class GenericExecution(ExecutionBase):
     GenericExecution.__execute_rule_aux()
     """
 
-    def __init__(self, parse_graph: TermGraphBase, term_graph: NetxTermGraph,
+    def __init__(self, parse_graph: TermGraphBase, term_graph: ExecutionTermGraph,
                  symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         super().__init__(parse_graph, term_graph, symbol_table, rgxlog_engine)
 
@@ -896,11 +896,11 @@ class GenericExecution(ExecutionBase):
         for term_id in term_ids:
             term_attrs = parse_graph[term_id]
 
-            if term_attrs['state'] is EvalState.COMPUTED:
+            if term_attrs["state"] is EvalState.COMPUTED:
                 continue
 
             # the term is not computed, get its type and compute it accordingly
-            term_type = term_attrs['type']
+            term_type = term_attrs["type"]
 
             if term_type in ("root",):
                 pass
@@ -929,7 +929,7 @@ class GenericExecution(ExecutionBase):
                 raise ValueError("illegal term type in parse graph")
 
             # statement was executed, mark it as "computed"
-            parse_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
+            parse_graph.set_term_attribute(term_id, "state", EvalState.COMPUTED)
 
         return exec_result
 
@@ -951,12 +951,18 @@ class GenericExecution(ExecutionBase):
             if term_attrs["state"] is EvalState.COMPUTED:
                 continue
 
-            term_type = term_attrs['type']
+            term_type = term_attrs["type"]
 
             if term_type == "base_rel":
-                # we assume that the database used in the base relation, is the one we add facts to
-                pass
-            elif term_type == "rel_root":
+                base_rel = rgxlog_engine.get_relation(term_attrs["value"])
+                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, base_rel)
+
+            if term_type == "get_rel":
+                base_rel = self.get_child_relation(term_id)
+                rel = rgxlog_engine.get_relation(base_rel)
+                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, rel)
+
+            elif term_type == "rule_rel":
                 rel_in: Relation = self.get_child_relation(term_id)
                 copy_rel = rgxlog_engine.operator_copy(rel_in)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, copy_rel)
@@ -972,7 +978,7 @@ class GenericExecution(ExecutionBase):
             elif term_type == "project":
                 # TODO@niv: check why this outputs a RelationDeclaration
                 output_rel: Relation = self.get_child_relation(term_id)
-                project_info = term_attrs['value']
+                project_info = term_attrs["value"]
                 project_rel = rgxlog_engine.operator_project(output_rel, project_info)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, project_rel)
 
@@ -980,7 +986,7 @@ class GenericExecution(ExecutionBase):
                 rel_in: Relation = self.get_child_relation(term_id)
                 # TODO@niv: we shouldn't use "value" for everything, change this ("in_rel").
                 #  same for all the other "value"s
-                ie_rel_in: IERelation = term_attrs['value']
+                ie_rel_in: IERelation = term_attrs["value"]
                 ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
                 ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, ie_rel_out)
@@ -992,7 +998,7 @@ class GenericExecution(ExecutionBase):
                 self.set_output_relation(term_id, select_rel)
 
             else:
-                raise ValueError("illegal term type in rule's execution graph")
+                raise ValueError(f"illegal term type in rule's execution graph. The bad type is {term_type}")
 
             # statement was executed, mark it as "computed"
             term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)

@@ -13,6 +13,7 @@ from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import (GenericExecution, AddFact, DataTypes, RelationDeclaration, Query,
                                      RELATION_COLUMN_PREFIX, FALSE_VALUE, TRUE_VALUE)
+from rgxlog.engine.passes.ExpandRuleNodes import ExpandRuleNodes
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
@@ -20,10 +21,9 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
-                                              ExecuteAssignments, AddStatementsToNetxTermGraph, ExpandRuleNodes,
-                                              AddDeclaredRelationsToTermGraph, GenericPass)
+                                              ExecuteAssignments, AddStatementsToNetxTermGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable
-from rgxlog.engine.state.term_graph import NetxTermGraph
+from rgxlog.engine.state.term_graph import NetxTermGraph, ExecutionTermGraph
 from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
@@ -210,7 +210,7 @@ class Session:
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
         self._parse_graph = NetxTermGraph()
         self._execution = execution.SqliteEngine(debug)
-        self._term_graph = NetxTermGraph()
+        self._term_graph = ExecutionTermGraph()
 
         self._pass_stack = [
             RemoveTokens,
@@ -229,7 +229,6 @@ class Session:
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxTermGraph,
-            AddDeclaredRelationsToTermGraph,
             ExpandRuleNodes
         ]
 
@@ -285,20 +284,20 @@ class Session:
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            exec_result = GenericExecution(parse_graph=self._parse_graph,
-                                           symbol_table=self._symbol_table,
-                                           rgxlog_engine=self._execution,
-                                           term_graph=self._term_graph).execute()
-
-            if exec_result is not None:
-                exec_results.append(exec_result)
-                if print_results:
-                    print(queries_to_string([exec_result]))
-
-        if format_results:
-            return [format_query_results(*exec_result) for exec_result in exec_results]
-        else:
-            return exec_results
+            # exec_result = GenericExecution(parse_graph=self._parse_graph,
+            #                                symbol_table=self._symbol_table,
+            #                                rgxlog_engine=self._execution,
+            #                                term_graph=self._term_graph).execute()
+            #
+            # if exec_result is not None:
+            #     exec_results.append(exec_result)
+            #     if print_results:
+            #         print(queries_to_string([exec_result]))
+        #
+        # if format_results:
+        #     return [format_query_results(*exec_result) for exec_result in exec_results]
+        # else:
+        #     return exec_results
 
     def register(self, ie_function, ie_function_name, in_rel, out_rel):
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
@@ -483,9 +482,9 @@ if __name__ == "__main__":
     my_session.register(lambda x: x, "d", [DataTypes.integer], [DataTypes.integer, DataTypes.integer])
     my_session.register(lambda x: x, "f", [DataTypes.integer] * 3, [DataTypes.integer])
 
-    # my_query2 = """
-    #     a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
-    #     """
+    my_query2 = """
+        a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(Z, Y, X) -> (X)
+        """
     # my_query = """
     #         new a(int,int)
     #         new c(int)
@@ -493,5 +492,5 @@ if __name__ == "__main__":
     #         b(X) <- a(X,5), c(X)
     #         a(4,6)
     #         """
-    my_query2 = "a(X) <- d(X,Y)"
+    # my_query2 = "a(X) <- d(X,Y)"
     my_session.run_query(my_query2)

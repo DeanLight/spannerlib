@@ -3,6 +3,8 @@ this module contains helper functions and function decorators that are used in l
 """
 
 from lark import Tree as LarkNode
+
+from rgxlog.engine.datatypes.ast_node_types import Relation, RelationDeclaration
 from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
 
 
@@ -71,3 +73,9 @@ def unravel_lark_node(func):
         return func(visitor, structured_node)
 
     return wrapped_method
+
+# def relation_declaration_to_relation(relation: RelationDeclaration) -> Relation:
+#     terms_len = len(relation.type_list)
+#     term_list = [f"col{i}" for i in range(terms_len)]
+#
+#     return Relation(relation.relation_name, term_list, relation.type_list)
