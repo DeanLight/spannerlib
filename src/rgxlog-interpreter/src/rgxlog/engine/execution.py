@@ -11,7 +11,7 @@ import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Set, Union
 
 from pyDatalog import pyDatalog
 from rgxlog.engine.datatypes.ast_node_types import *
@@ -250,23 +250,67 @@ class RgxlogEngineBase(ABC):
     def remove_all_rules(self, rule_head):
         pass
 
-    def operator_select(self):
-        # TODO
+    def operator_select(self, relation: Relation, select_info: Set[Tuple[int, int, DataTypes]]) -> Relation:
+        """
+
+        @param relation: the relation from which we select tuples
+        @param select_info: set of tuples. each tuple contains the index of the column, the value to select
+                            and the type of the column.
+
+        @return: a filtered relation
+        """
+        # TODO@niv: i'm talking about the relational algebra operator, which is actually `WHERE`
         pass
 
-    def operator_project(self):
+    def operator_project(self, relation: Relation, project_vars: Set[str]) -> Relation:
+        """
+
+        @param relation: the relation on which we project.
+        @param project_vars: a set of variables on which we project.
+        @return: the projected relation
+        """
+        # TODO@niv: this is basically `SELECT`
         pass
 
-    def operator_union(self):
+    def operator_union(self, relations: List[Relation]) -> Relation:
+        """
+
+        @param relations: a list of relations to union.
+        @note: you can assume that all the relation have the same set of free_vars,
+               but not necessarily in the same order.
+        @return: the unionised relation.
+        """
         pass
 
     def operator_difference(self):
+        # TODO: it can be deleted.
         pass
 
-    def operator_product(self):
+    def operator_join(self, relations: List[Relation],
+                      join_info: Dict[str, Set[Tuple[str, int]]]) -> Relation:
+        """
+
+        @param relations: a list of relations to join.
+        @param join_info: a dict that contains the variables to join on as keys. for each key the value is a set of
+                          tuples containing information about the relation in which the key appears.
+                          each tuple contains name of relation and column index.
+
+        @return: the joined relation.
+        """
+        pass
+
+    def operator_copy(self, rule_relation: Relation, computed_relation: Relation) -> None:
+        """
+        Copies computed_relation to rule_relation.
+
+        @param rule_relation: the head relation of the rule that was computed.
+        @param computed_relation: a the computed relation.
+        """
+
         pass
 
     def operator_rename(self):
+        # TODO: it can be deleted.
         pass
 
 
@@ -631,33 +675,76 @@ class SqliteEngine(RgxlogEngineBase):
         # save to file
         self.sql_conn.commit()
 
-    def operator_select(self):
+    def operator_select(self, relation: Relation, select_info: Set[Tuple[int, int, DataTypes]]) -> Relation:
+        """
+
+        @param relation: the relation from which we select tuples
+        @param select_info: set of tuples. each tuple contains the index of the column, the value to select
+                            and the type of the column.
+
+        @return: a filtered relation
+        """
         # TODO@niv: i'm talking about the relational algebra operator, which is actually `WHERE`
         pass
 
-    def operator_project(self):
+    def operator_project(self, relation: Relation, project_vars: Set[str]) -> Relation:
+        """
+
+        @param relation: the relation on which we project.
+        @param project_vars: a set of variables on which we project.
+        @return: the projected relation
+        """
         # TODO@niv: this is basically `SELECT`
         pass
 
-    def operator_union(self):
+    def operator_union(self, relations: List[Relation]) -> Relation:
+        """
+
+        @param relations: a list of relations to union.
+        @note: you can assume that all the relation have the same set of free_vars,
+               but not necessarily in the same order.
+        @return: the unionised relation.
+        """
+
         # TODO@niv: sqlite `INNER JOIN`
         pass
 
     def operator_difference(self):
-        pass
+        # TODO: it can be deleted.
 
-    def operator_product(self):
-        # TODO@niv: sqlite `CROSS JOIN`
-        pass
-
-    def operator_rename(self):
         # TODO@niv: might have to create a new table for this, using `ALTER`. example:
         #  create table points_tmp as select id, lon as lat, lat as lon from points;
         #  drop table points;
         #  alter table points_tmp rename to points;
         pass
 
-    def copy(self, new_rel, old_rel):
+    def operator_join(self, relations: List[Relation],
+                      join_info: Dict[str, Set[Tuple[str, int]]]) -> Relation:
+        """
+
+        @param relations: a list of relations to join.
+        @param join_info: a dict that contains the variables to join on as keys. for each key the value is a set of
+                          tuples containing information about the relation in which the key appears.
+                          each tuple contains name of relation and column index.
+
+        @return: the joined relation.
+        """
+
+        # TODO@niv: sqlite `CROSS JOIN`
+        pass
+
+    def operator_copy(self, rule_relation: Relation, computed_relation: Relation) -> None:
+        """
+        Copies computed_relation to rule_relation.
+
+        @param rule_relation: the head relation of the rule that was computed.
+        @param computed_relation: a the computed relation.
+        """
+
+        pass
+
+    def operator_rename(self):
+        # TODO: it can be deleted.
         pass
 
     def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
@@ -860,7 +947,6 @@ class GenericExecution(ExecutionBase):
             else:
                 raise TypeError("illegal engine type")
 
-
             # statement was executed, mark it as "computed"
             parse_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
 
@@ -880,52 +966,68 @@ class GenericExecution(ExecutionBase):
         for term_id in term_ids:
 
             term_attrs = term_graph[term_id]
-            if term_attrs['state'] is EvalState.COMPUTED:
+            if term_attrs["state"] is EvalState.COMPUTED:
                 continue
 
-            term_type = term_attrs['type']
+            term_type = term_attrs["type"]
             if term_type == "rel_base":
                 continue
 
             elif term_type == "rel_root":
-                rel_in: Relation = self.get_children_relations(term_graph, term_id)[0]
-                rgxlog_engine.copy(term_attrs['output_rel'], rel_in)
+                rel_in = self.get_child_relation(term_id)
+                rgxlog_engine.copy(term_attrs["output_rel"], rel_in)
 
             elif term_type == "union":
                 union_rel = rgxlog_engine.operator_union(self.get_children_relations(term_graph, term_id))
-                term_graph.set_term_attribute(term_id, "output_rel", union_rel)
+                self.set_output_relation(term_id, union_rel)
 
             elif term_type == "join":
                 join_rel = rgxlog_engine.operator_union(self.get_children_relations(term_graph, term_id))
-                term_graph.set_term_attribute(term_id, "output_rel", join_rel)
+                join_info = term_attrs["value"]
+                self.set_output_relation(term_id, join_rel, join_info)
 
             elif term_type == "project":
-                output_rel: Relation = self.get_children_relations(term_graph, term_id)[0]
+                output_rel = self.get_child_relation(term_id)
                 project_rel = rgxlog_engine.operator_project(output_rel)
-                term_graph.set_term_attribute(term_id, "output_rel", project_rel)
+                self.set_output_relation(term_id, project_rel)
 
             elif term_type == "calc":
-                rel_in: Relation = self.get_children_relations(term_graph, term_id)[0]
-                ie_rel_in: IERelation = term_attrs['value']
+                output_rel = self.get_child_relation(term_id)
+                ie_rel_in: IERelation = term_attrs["value"]
                 ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
-                ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
-                term_graph.set_term_attribute(term_id, "output_rel", ie_rel_out)
+                ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, output_rel)
+                self.set_output_relation(term_id, ie_rel_out)
+
+            elif term_type == "select":
+                output_rel = self.get_child_relation(term_id)
+                select_info = term_attrs["value"]
+                select_rel = rgxlog_engine.operator_select(output_rel, select_info)
+                self.set_output_relation(term_id, select_rel)
 
             else:
                 raise TypeError("illegal engine type")
 
         # statement was executed, mark it as "computed"
-        term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
+        term_graph.set_term_attribute(term_id, "state", EvalState.COMPUTED)
 
-    # TODO: change state of graph to not computed
+        self.reset_visited_nodes(term_ids)
 
+    def reset_visited_nodes(self, term_ids: List[int]) -> None:
+        for term_id in term_ids:
+            self.term_graph.set_term_attribute(term_id, "state", EvalState.NOT_COMPUTED)
 
-    @staticmethod
-    def get_children_relations(term_graph: NetxTermGraph, node_id: int):
+    def set_output_relation(self, term_id: int, relation: Relation) -> None:
+        self.term_graph.set_term_attribute(term_id, "output_rel", relation)
+
+    def get_children_relations(self, node_id: int) -> List[Relation]:
+        term_graph = self.term_graph
         relations_ids = term_graph.get_children(node_id)
         relations_nodes = [term_graph[rel_id] for rel_id in relations_ids]
         relations = [relation["output_rel"] for relation in relations_nodes]
         return relations
+
+    def get_child_relation(self, node_id: int) -> Relation:
+        return self.get_children_relations(node_id)[0]
 
 
 if __name__ == "__main__":

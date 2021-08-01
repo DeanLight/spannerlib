@@ -1280,7 +1280,7 @@ class AddRuleToTermGraph:
         """
         # make root
         _, union_id = self.term_graph.add_relation(self.head_relation, "rule_rel", is_rule=True)
-        project_id = self.term_graph.add_term(type="project", value=self.head_relation.term_list)
+        project_id = self.term_graph.add_term(type="project", value=set(self.head_relation.term_list))
         self.term_graph.add_edge(union_id, project_id)
 
         # connect all regular relations to join node
