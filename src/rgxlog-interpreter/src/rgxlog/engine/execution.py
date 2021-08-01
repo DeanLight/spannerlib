@@ -11,7 +11,7 @@ import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import List, Tuple, Optional, Dict, Set, Union
+from typing import Tuple, Optional, Dict, Set
 
 from pyDatalog import pyDatalog
 
@@ -25,8 +25,10 @@ from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_fre
 VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
 
+PROJECT_PREFIX = "project"
 JOIN_PREFIX = "join"
 COPY_PREFIX = "copy"
+SELECT_PREFIX = 'select'
 RESERVED_RELATION_PREFIX = "__rgxlog__"
 
 DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
@@ -168,30 +170,6 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    @abstractmethod
-    def join_relations(self, relation_list, name=""):
-        """
-        perform a join between all of the relations in the relation list and saves the result to a new relation.
-        the results of the join are filtered so they only include columns in the relations that were defined by
-        a free variable term.
-        all of the relation in relation_list must be normal (not ie relations)
-
-        for example, if the relations are [A(X,Y,3), B(X,Z,W,"some_str")], this function should return a relation
-        that is defined like this:
-        new_relation(X,Y,Z,W) <- A(X,Y,3), B(X,Z,W,"some_str")
-
-        note that "new_relation" is defined only by free variable terms and all of the free variable terms
-        that appear in the rule body, also appear in the rule head
-
-        this method is helpful for saving intermediate results while computing a rule body and also
-        for filtering the results of an ie function
-
-        @param relation_list: a list of normal relations
-        @param name: the name for the joined relation (to be used as a part of a temporary relation name)
-        @return: a new relation as described above
-        """
-        pass
-
     @staticmethod
     def clear_all():
         """
@@ -239,7 +217,7 @@ class RgxlogEngineBase(ABC):
     def remove_all_rules(self, rule_head):
         pass
 
-    def operator_select(self, relation: Relation, select_info: Set[Tuple[int, int, DataTypes]]) -> Relation:
+    def operator_select(self, relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
         """
 
         @param relation: the relation from which we select tuples
@@ -261,16 +239,16 @@ class RgxlogEngineBase(ABC):
         @param project_vars: a set of variables on which we project.
         @return: the projected relation
         """
-        # TODO@niv: this is basically `SELECT`
         pass
 
     def operator_union(self, relations: List[Relation]) -> Relation:
         """
+        relation union.
+        we assume that all the relations have the same set of free_vars,
+        but not necessarily in the same order.
 
-        @param relations: a list of relations to union.
-        @note: you can assume that all the relation have the same set of free_vars,
-               but not necessarily in the same order.
-        @return: the unionised relation.
+        @param relations: a list of relations to unite.
+        @return: the united relation.
         """
         pass
 
@@ -350,7 +328,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         sql_term_list = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
                          zip(fact.type_list, fact.term_list)]
-        self.sql_cursor.execute(sql_command, sql_term_list)
+        self.run_sql(sql_command, sql_term_list)
 
     def remove_fact(self, fact: RemoveFact):
         # use a `DELETE` statement
@@ -358,7 +336,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         sql_command = (f"DELETE FROM {fact.relation_name} WHERE"
                        f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
-        self.sql_cursor.execute(sql_command)
+        self.run_sql(sql_command)
 
     def add_rule(self, rule_head, rule_body_relation_list):
         # we need to maintain the tables that resulted from a rule, right? this means that
@@ -401,22 +379,13 @@ class SqliteEngine(RgxlogEngineBase):
         if self.debug:
             self.debug_buffer.append(f'query: {sql_command}')
 
-        self.sql_cursor.execute(sql_command)
-        query_result = self.sql_cursor.fetchall()
+        query_result = self.run_sql(sql_command)
+
         if (not has_free_vars) and query_result != FALSE_VALUE:
             # if there are no free variables, we should just return a true/false value
             query_result = TRUE_VALUE
 
         return query_result
-
-    def get_base(self, parse_graph, base_id):
-        """
-        get an existing base (not IE) relation from the engine
-        @param parse_graph:
-        @param base_id:
-        @return:
-        """
-        pass
 
     def _create_unique_relation(self, arity, prefix=""):
         """
@@ -605,21 +574,59 @@ class SqliteEngine(RgxlogEngineBase):
             sql_command += f"{RELATION_COLUMN_PREFIX}{i}"
         sql_command += ")"
 
-        self.sql_cursor.execute(sql_command)
+        self.run_sql(sql_command)
 
         # save to file
         self.sql_conn.commit()
 
-    def operator_select(self):
-        # TODO@niv: i'm talking about the relational algebra operator, which is actually `WHERE`
-        pass
+    def operator_select(self, src_relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
+        """
+        perform sql WHERE
+        @param src_relation: the relation from which we select tuples
+        @param select_info: set of tuples. each tuple contains the index of the column, the value to select
+                            and the type of the column.
+
+        @return: a filtered relation
+        """
+        # get the columns based on `select_info`
+        src_relation_name = src_relation.relation_name
+
+        new_arity = len(src_relation.term_list)
+        new_term_list = src_relation.term_list
+        new_type_list = src_relation.type_list
+
+        new_relation_name = self._create_unique_relation(new_arity, prefix=f"{SELECT_PREFIX}_{src_relation_name}")
+
+        selected_relation = Relation(new_relation_name, new_term_list, new_type_list)
+
+        # sql part
+        sql_command = f"INSERT INTO {new_relation_name} SELECT * FROM {src_relation_name}"
+        sql_args = []
+        if len(select_info) > 0:
+            sql_command += " WHERE "
+            sql_conditions = []
+            # add conditions based on `select_info`
+            for i, value, _ in select_info:
+                col_name = self._get_col_name(i)
+                sql_args.append(value)
+                sql_conditions.append(f"{col_name}=?")
+
+            # add conditions based on equal terms like a(X,X)
+            for free_var, pairs in get_free_var_to_relations_dict({src_relation}).items():
+                if len(pairs) > 1:
+                    first_pair, other_pairs = pairs[0], pairs[1:]
+                    first_index = first_pair[1]
+                    first_col_name = self._get_col_name(first_index)
+                    for _, second_index in other_pairs:
+                        second_col_name = self._get_col_name(second_index)
+                        sql_conditions.append(f"{first_col_name}={second_col_name}")
+
+            sql_command += " AND ".join(sql_conditions)
+
+        self.run_sql(sql_command, sql_args)
+        return selected_relation
 
     def operator_join(self, relations: List[Relation], prefix="") -> Relation:
-        # sql_command = "SELECT ..."
-        # for relation in relation_list:
-        #     sql_command += "INNER JOIN ... ON ... X=X"
-        # temp_relation = ... # execute sql command
-        # return Relation(temp_relation, ...)
         """
         perform a join between all of the relations in the relation list and saves the result to a new relation.
         the results of the join are filtered so they only include columns in the relations that were defined by
@@ -656,7 +663,8 @@ class SqliteEngine(RgxlogEngineBase):
         var_dict = get_free_var_to_relations_dict(set(relations))
 
         sql_command = f"INSERT INTO {joined_relation_name} SELECT "
-        on_conditions = "ON "
+        on_conditions_str = "ON "
+        on_conditions_list = []
 
         # iterate over the free_vars and do 2 things:
         for i, free_var in enumerate(joined_relation_terms):
@@ -672,12 +680,10 @@ class SqliteEngine(RgxlogEngineBase):
             # 1. name the new columns. the columns should be named col0, col1, etc.
             sql_command += f"{relation_that_contains_free_var_name}.{first_col_name} AS {new_col_name}"
             # 2. create the comparison between all of them, using `ON`
-            for j, (second_relation_name, second_index) in enumerate(other_pairs):
-                if j > 0:
-                    on_conditions += "AND "
+            for (second_relation_name, second_index) in other_pairs:
                 second_col_name = self._get_col_name(second_index)
-                on_conditions += (f"{relation_that_contains_free_var_name}.{first_col_name}="
-                                  f"{second_relation_name}.{second_col_name} ")
+                on_conditions_list.append(f"{relation_that_contains_free_var_name}.{first_col_name}="
+                                          f"{second_relation_name}.{second_col_name}")
 
         # first relation - just `FROM`
         first_relation, other_relations = relations[0], relations[1:]
@@ -688,47 +694,84 @@ class SqliteEngine(RgxlogEngineBase):
             sql_command += f"INNER JOIN {relation.relation_name} "
 
         # add the join conditions (`ON`)
-        sql_command += on_conditions
+        on_conditions_str += " AND ".join(on_conditions_list)
+        sql_command += on_conditions_str
 
         return joined_relation
 
-    def operator_select(self, relation: Relation, select_info: Set[Tuple[int, int, DataTypes]]) -> Relation:
+    def operator_project(self, src_relation: Relation, project_vars: List[str]) -> Relation:
         """
-
-        @param relation: the relation from which we select tuples
-        @param select_info: set of tuples. each tuple contains the index of the column, the value to select
-                            and the type of the column.
-
-        @return: a filtered relation
-        """
-        # TODO@niv: i'm talking about the relational algebra operator, which is actually `WHERE`
-        pass
-
-    def operator_project(self, relation: Relation, project_vars: Set[str]) -> Relation:
-        """
-
-        @param relation: the relation on which we project.
+        perform SQL select
+        @param src_relation: the relation on which we project.
         @param project_vars: a set of variables on which we project.
         @return: the projected relation
         """
-        # TODO@niv: this is basically `SELECT`
-        pass
+        # get the indexes to project from (in `src_relation`) based on `var_dict`
+        var_dict: Dict[str, List[Tuple[str, int]]] = get_free_var_to_relations_dict({src_relation})
+        project_indexes = []
+        for var in project_vars:
+            var_index_in_src = (var_dict[var][0][1])
+            project_indexes.append(var_index_in_src)
+
+        src_type_list = src_relation.type_list
+        new_type_list = [src_type_list[i] for i in project_indexes]
+
+        new_arity = len(project_vars)
+
+        src_relation_name = src_relation.relation_name
+        new_relation_name = self._create_unique_relation(new_arity, prefix=PROJECT_PREFIX)
+
+        new_relation = Relation(new_relation_name, project_vars, new_type_list)
+
+        sql_command = f"INSERT INTO {new_relation_name} SELECT "
+        for new_col_num, src_col_num in enumerate(project_indexes):
+            new_col = self._get_col_name(new_col_num)
+            src_col = self._get_col_name(src_col_num)
+            sql_command += f"{src_col} AS {new_col}"
+
+        sql_command += f" FROM {src_relation_name}"
+
+        self.run_sql(sql_command)
+        return new_relation
 
     def operator_union(self, relations: List[Relation]) -> Relation:
         """
+        relation union.
+        we assume that all the relations have the same set of free_vars,
+        but not necessarily in the same order.
 
-        @param relations: a list of relations to union.
-        @note: you can assume that all the relation have the same set of free_vars,
-               but not necessarily in the same order.
-        @return: the unionised relation.
+        @param relations: a list of relations to unite.
+        @return: the united relation.
         """
+        new_arity = len(relations)
+        assert new_arity > 0, "cannot perform union on an empty list"
+        if new_arity == 1:
+            return self.operator_copy(relations[0])
 
-        # TODO@niv: sqlite `UNION`
-        pass
+        new_relation_name = self._create_unique_relation(new_arity, prefix=PROJECT_PREFIX)
+        new_term_list = relations[0].term_list
+        new_type_list = relations[0].type_list
 
-    def operator_product(self) -> Relation:
-        # TODO@niv: sqlite `CROSS JOIN`
-        pass
+        new_relation = Relation(new_relation_name, new_term_list, new_type_list)
+
+        # create the union command by iterating over the relations and finding the index of each term
+        sql_command = f"INSERT INTO {new_relation_name} "
+        union_list = []
+        for relation in relations:
+            curr_relation_string = "SELECT "
+            selection_list = []
+            for new_col_index, term in enumerate(new_term_list):
+                term_col_index_in_curr_relation = relation.term_list.index(term)
+                src_col = self._get_col_name(term_col_index_in_curr_relation)
+                new_col = self._get_col_name(new_col_index)
+                selection_list.append(f"{src_col} AS {new_col}")
+            curr_relation_string += ", ".join(selection_list) + f" FROM {relation.relation_name}"
+            union_list.append(curr_relation_string)
+
+        sql_command += " UNION ".join(union_list)
+
+        self.run_sql(sql_command)
+        return new_relation
 
     def operator_copy(self, src_rel: Relation) -> Relation:
         src_rel_name = src_rel.relation_name
@@ -738,7 +781,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         # sql part
         sql_command = f"INSERT INTO {dest_rel_name} SELECT * FROM {src_rel_name}"
-        self.sql_cursor.execute(sql_command)
+        self.run_sql(sql_command)
 
         return dest_rel
 
@@ -785,6 +828,17 @@ class SqliteEngine(RgxlogEngineBase):
     @staticmethod
     def _get_free_variable_indexes(type_list):
         return [i for i, term_type in enumerate(type_list) if (term_type is DataTypes.free_var_name)]
+
+    def run_sql(self, command, command_args=None) -> list:
+        if self.debug:
+            print(f"sql {command=}")
+
+        if command_args:
+            self.sql_cursor.execute(command, command_args)
+        else:
+            self.sql_cursor.execute(command)
+
+        return self.sql_cursor.fetchall()
 
 
 class ExecutionBase(ABC):
@@ -848,7 +902,10 @@ class GenericExecution(ExecutionBase):
             # the term is not computed, get its type and compute it accordingly
             term_type = term_attrs['type']
 
-            if term_type == "relation_declaration":
+            if term_type in ("root",):
+                pass
+
+            elif term_type == "relation_declaration":
                 relation_decl = term_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.declare_relation(relation_decl)
 
@@ -869,7 +926,7 @@ class GenericExecution(ExecutionBase):
                 rule_head = term_attrs[VALUE_ATTRIBUTE]
                 self.compute_rule(rule_head)
             else:
-                raise TypeError("illegal engine type")
+                raise ValueError("illegal term type in parse graph")
 
             # statement was executed, mark it as "computed"
             parse_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
@@ -895,32 +952,34 @@ class GenericExecution(ExecutionBase):
                 continue
 
             term_type = term_attrs['type']
-            existing_rel = term_attrs.get(OUT_REL_ATTRIBUTE, None)
 
-            if term_type == "rel_base":
-                # TODO@niv: get_operator?
-                continue
-
+            if term_type == "base_rel":
+                # we assume that the database used in the base relation, is the one we add facts to
+                pass
             elif term_type == "rel_root":
-                rel_in: Relation = self.get_children_relations(term_graph, term_id)[0]
+                rel_in: Relation = self.get_child_relation(term_id)
                 copy_rel = rgxlog_engine.operator_copy(rel_in)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, copy_rel)
 
             elif term_type == "union":
-                union_rel = rgxlog_engine.operator_union(self.get_children_relations(term_graph, term_id))
+                union_rel = rgxlog_engine.operator_union(self.get_children_relations(term_id))
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, union_rel)
 
             elif term_type == "join":
-                join_rel = rgxlog_engine.operator_join(self.get_children_relations(term_graph, term_id))
+                join_rel = rgxlog_engine.operator_join(self.get_children_relations(term_id))
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, join_rel)
 
             elif term_type == "project":
-                output_rel: Relation = self.get_children_relations(term_graph, term_id)[0]
-                project_rel = rgxlog_engine.operator_project(output_rel)
+                # TODO@niv: check why this outputs a RelationDeclaration
+                output_rel: Relation = self.get_child_relation(term_id)
+                project_info = term_attrs['value']
+                project_rel = rgxlog_engine.operator_project(output_rel, project_info)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, project_rel)
 
             elif term_type == "calc":
-                rel_in: Relation = self.get_children_relations(term_graph, term_id)[0]
+                rel_in: Relation = self.get_child_relation(term_id)
+                # TODO@niv: we shouldn't use "value" for everything, change this ("in_rel").
+                #  same for all the other "value"s
                 ie_rel_in: IERelation = term_attrs['value']
                 ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
                 ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
@@ -933,11 +992,12 @@ class GenericExecution(ExecutionBase):
                 self.set_output_relation(term_id, select_rel)
 
             else:
-                raise TypeError("illegal engine type")
+                raise ValueError("illegal term type in rule's execution graph")
 
             # statement was executed, mark it as "computed"
             term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
 
+        # TODO@niv: a possible optimization is to leave this computed until we add_fact/rule/whatever
         self.reset_visited_nodes(term_ids)
 
     def reset_visited_nodes(self, term_ids: List[int]) -> None:
@@ -955,7 +1015,9 @@ class GenericExecution(ExecutionBase):
         return relations
 
     def get_child_relation(self, node_id: int) -> Relation:
-        return self.get_children_relations(node_id)[0]
+        children = self.get_children_relations(node_id)
+        assert len(children) == 1, "this node should have a single child"
+        return children[0]
 
 
 if __name__ == "__main__":
