@@ -69,6 +69,9 @@ _run_installation()
 
 
 def tokenize_wrapper(sentence: str):
+    # TODO@niv: if this affects efficiency, don't set `core_nlp_engine` as a global variable,
+    #  because that way, the java process will never shut down. instead, start `core_nlp_engine` inside `Session`,
+    #  and close it when the session dies.
     with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
         for token in core_nlp_engine.tokenize(sentence):
             yield token["token"], token["span"]

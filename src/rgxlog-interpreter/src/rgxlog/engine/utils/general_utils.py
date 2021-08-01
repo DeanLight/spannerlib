@@ -78,13 +78,13 @@ def get_numbered_output_free_var_names(relation: Union[Relation, IERelation]) ->
     return get_numbered_free_var_pairs(relation)
 
 
-def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) -> Dict:
+def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) -> Dict[str, List[Tuple[str, int]]]:
     # TODO@niv: maybe convert this to a class with `add_relation`
     """
     Finds for each free var in any of the relations, all the relations that contain it.
     also return the free vars' index in each relation (as pairs).
     for example:
-        relation = [a(X,Y), b(Y)] ->
+        relations = [a(X,Y), b(Y)] ->
         dict = {X:[(a,0)], Y:[(a,1),(b,0)]
 
     @param relations: a set of relations.

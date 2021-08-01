@@ -4,16 +4,14 @@ import re
 from pathlib import Path
 from typing import Tuple, List, Union
 
-from lark import Tree
 from lark.lark import Lark
-from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
 from pandas import DataFrame
 from tabulate import tabulate
 
 import rgxlog
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.execution import (GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration, Query,
+from rgxlog.engine.execution import (GenericExecution, AddFact, DataTypes, RelationDeclaration, Query,
                                      RELATION_COLUMN_PREFIX, FALSE_VALUE, TRUE_VALUE)
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
@@ -21,11 +19,12 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               CheckReferencedRelationsExistenceAndArity,
                                               CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
                                               TypeCheckAssignments, TypeCheckRelations,
-                                              SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences,
+                                              SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxTermGraph, ExpandRuleNodes,
                                               AddDeclaredRelationsToTermGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph
+from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
                                OpenIE, KBP, Quote, Sentiment, TrueCase)
@@ -241,12 +240,13 @@ class Session:
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
 
-    def _run_passes(self, tree: Tree, pass_list: list) -> None:
+    def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
+        # TODO@niv: shouldn't this method and term_graph be inside the engine?
         """
         Runs the passes in pass_list on tree, one after another.
         """
         if self.debug:
-            print(f"initial tree:\n{tree.pretty()}")
+            print(f"initial tree:\n{lark_tree.pretty()}")
             print(f"initial term_tree:\n{self._term_graph}")
 
         for curr_pass in pass_list:
@@ -255,12 +255,12 @@ class Session:
                                          rgxlog_engine=self._execution,
                                          term_graph=self._term_graph,
                                          debug=self.debug)
-            new_tree = curr_pass_object.run_pass(tree=tree)
+            new_tree = curr_pass_object.run_pass(tree=lark_tree)
 
             if new_tree is not None:
-                tree = new_tree
+                lark_tree = new_tree
                 if self.debug:
-                    print(f"lark tree after {curr_pass.__name__}:\n{tree.pretty()}")
+                    print(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
 
     def __repr__(self):
         return [repr(self._symbol_table), repr(self._parse_graph)]
@@ -270,7 +270,7 @@ class Session:
 
     # TODO@niv: @dean,
     #  maybe change this to `run` or something, since the name `query` is already in use? (e.g. "?rel(X)")
-    def run_query(self, query: str, print_results: bool = True, format_results=False) -> (
+    def run_query(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
         generates an AST and passes it through the pass stack
@@ -285,10 +285,10 @@ class Session:
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            exec_result = None
-            # exec_result = GenericExecution(parse_graph=self._parse_graph,
-            #                                symbol_table=self._symbol_table,
-            #                                rgxlog_engine=self._execution).execute()
+            exec_result = GenericExecution(parse_graph=self._parse_graph,
+                                           symbol_table=self._symbol_table,
+                                           rgxlog_engine=self._execution,
+                                           term_graph=self._term_graph).execute()
 
             if exec_result is not None:
                 exec_results.append(exec_result)

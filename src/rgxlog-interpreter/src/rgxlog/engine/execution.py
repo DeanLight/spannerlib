@@ -11,20 +11,22 @@ import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 
 from pyDatalog import pyDatalog
+
 from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, NetxTermGraph
-from rgxlog.engine.utils.general_utils import get_output_free_var_names
+from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict
 
-RELATION_ATTRIBUTE = "value"
+VALUE_ATTRIBUTE = 'value'
+OUT_REL_ATTRIBUTE = "output_rel"
 
-SQL_TABLE_ATTRIBUTE = "table"
-
+JOIN_PREFIX = "join"
+COPY_PREFIX = "copy"
 RESERVED_RELATION_PREFIX = "__rgxlog__"
 
 DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
@@ -197,19 +199,6 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    def get_base(self, parse_graph, base_id):
-        """
-        get an existing base (not IE) table from the engine, and store it in the graph
-        we assume the table's name is the same as the object's
-        @param parse_graph:
-        @param base_id:
-        @return:
-        """
-        term_attributes = parse_graph.get_term_attributes(base_id)
-        relation_object: Relation = term_attributes[RELATION_ATTRIBUTE]
-        relation_table = relation_object.relation_name
-        parse_graph.set_term_attribute(base_id, SQL_TABLE_ATTRIBUTE, relation_table)
-
     @staticmethod
     def _get_span_string(span: Span):
         """
@@ -254,10 +243,13 @@ class RgxlogEngineBase(ABC):
         # TODO
         pass
 
-    def operator_project(self):
+    def operator_join(self, relations: List[Relation]) -> Relation:
         pass
 
-    def operator_union(self):
+    def operator_project(self, relation: Relation) -> Relation:
+        pass
+
+    def operator_union(self, relations: List[Relation]) -> Relation:
         pass
 
     def operator_difference(self):
@@ -266,7 +258,7 @@ class RgxlogEngineBase(ABC):
     def operator_product(self):
         pass
 
-    def operator_rename(self):
+    def operator_copy(self, old_rel) -> Relation:
         pass
 
 
@@ -339,8 +331,9 @@ class SqliteEngine(RgxlogEngineBase):
         # use a `DELETE` statement
         sql_terms = fact.term_list  # add quotes here
 
-        self.sql_cursor.execute(f"DELETE FROM {fact.relation_name} WHERE"
-                                f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
+        sql_command = (f"DELETE FROM {fact.relation_name} WHERE"
+                       f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
+        self.sql_cursor.execute(sql_command)
 
     def add_rule(self, rule_head, rule_body_relation_list):
         # we need to maintain the tables that resulted from a rule, right? this means that
@@ -400,7 +393,7 @@ class SqliteEngine(RgxlogEngineBase):
         """
         pass
 
-    def _create_new_temp_relation(self, arity, prefix=""):
+    def _create_unique_relation(self, arity, prefix=""):
         """
         declares a new temporary relation with the requested arity in SQL
 
@@ -440,8 +433,8 @@ class SqliteEngine(RgxlogEngineBase):
 
         # create the output relation for the ie function, and also declare it inside SQL
         output_relation_arity = len(ie_relation.output_term_list)
-        output_relation_name = self._create_new_temp_relation(output_relation_arity,
-                                                              prefix=f'{ie_relation_name}_output')
+        output_relation_name = self._create_unique_relation(output_relation_arity,
+                                                            prefix=f'{ie_relation_name}_output')
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         # define the ie input relation
@@ -451,8 +444,8 @@ class SqliteEngine(RgxlogEngineBase):
             # add that tuple as a fact to the input relation
             # create the input relation for the ie function, and also declare it inside SQL
             input_relation_arity = len(ie_relation.input_term_list)
-            input_relation_name = self._create_new_temp_relation(input_relation_arity,
-                                                                 prefix=f'{ie_relation_name}_input')
+            input_relation_name = self._create_unique_relation(input_relation_arity,
+                                                               prefix=f'{ie_relation_name}_input')
             input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
             self.add_fact(AddFact(input_relation.relation_name, ie_relation.input_term_list,
                                   ie_relation.input_type_list))
@@ -497,7 +490,7 @@ class SqliteEngine(RgxlogEngineBase):
                     self.add_fact(output_fact)
 
         # create and return the result relation. it's a relation that is the join of the input and output relations
-        result_relation = self.join_relations([input_relation, output_relation], prefix=ie_relation_name)
+        result_relation = self.operator_join([input_relation, output_relation], prefix=ie_relation_name)
         return result_relation
 
     def _get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
@@ -568,45 +561,6 @@ class SqliteEngine(RgxlogEngineBase):
                             f'the output term types: {ie_output_term_types}\n'
                             f'the expected types: {ie_output_schema}')
 
-    def join_relations(self, relation_list, prefix=""):
-        # sql_command = "SELECT ..."
-        # for relation in relation_list:
-        #     sql_command += "INNER JOIN ... ON ... X=X"
-        # temp_relation = ... # execute sql command
-        # return Relation(temp_relation, ...)
-        """
-        perform a join between all of the relations in the relation list and saves the result to a new relation.
-        the results of the join are filtered so they only include columns in the relations that were defined by
-        a free variable term.
-        all of the relations in relation_list must be normal (not ie relations)
-
-        for an example and more details see RgxlogEngineBase.join_relations
-
-        @param relation_list: a list of normal relations
-        @param prefix: a prefix for the name of the joined relation
-        @return: a new relation as described above
-        """
-
-        # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
-        free_var_sets = [get_output_free_var_names(relation) for relation in relation_list]
-        free_vars = set().union(*free_var_sets)
-        joined_relation_terms = list(free_vars)
-
-        # get the type list of the joined relation (all of the terms are free variables)
-        joined_relation_arity = len(joined_relation_terms)
-        joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
-
-        # declare the joined relation in pyDatalog and get its name
-        joined_relation_name = self._create_new_temp_relation(joined_relation_arity, prefix=prefix)
-
-        # created a structured node of the joined relation
-        joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
-
-        # use a rule to filter the tuples of the relations in relation_list into the joined relation
-        self.add_rule(joined_relation, relation_list)
-
-        return joined_relation
-
     def declare_relation(self, relation_decl: RelationDeclaration) -> None:
         """
         declares a relation as an SQL table, whose types are named t0, t1, ...
@@ -635,104 +589,110 @@ class SqliteEngine(RgxlogEngineBase):
         # TODO@niv: i'm talking about the relational algebra operator, which is actually `WHERE`
         pass
 
-    def operator_project(self):
+    def operator_join(self, relations: List[Relation], prefix="") -> Relation:
+        # sql_command = "SELECT ..."
+        # for relation in relation_list:
+        #     sql_command += "INNER JOIN ... ON ... X=X"
+        # temp_relation = ... # execute sql command
+        # return Relation(temp_relation, ...)
+        """
+        perform a join between all of the relations in the relation list and saves the result to a new relation.
+        the results of the join are filtered so they only include columns in the relations that were defined by
+        a free variable term.
+        all of the relations in relation_list must be normal (not ie relations)
+
+        for an example and more details see RgxlogEngineBase.join_relations
+
+        @param relations: a list of normal relations
+        @param prefix: a prefix for the name of the joined relation
+        @return: a new relation as described above
+        """
+
+        assert len(relations) > 0, "can't join an empty list"
+        if len(relations) == 1:
+            return self.operator_copy(relations[0])
+
+        # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
+        free_var_sets = [get_output_free_var_names(relation) for relation in relations]
+        free_vars = set().union(*free_var_sets)
+        joined_relation_terms = list(free_vars)
+
+        # get the type list of the joined relation (all of the terms are free variables)
+        joined_relation_arity = len(joined_relation_terms)
+        joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
+
+        # declare the joined relation in sql and get its name
+        joined_relation_name = self._create_unique_relation(joined_relation_arity, prefix=f"{JOIN_PREFIX}_{prefix}")
+
+        # created a structured node of the joined relation
+        joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
+
+        # perform sql join
+        var_dict = get_free_var_to_relations_dict(set(relations))
+
+        sql_command = f"INSERT INTO {joined_relation_name} SELECT "
+        on_conditions = "ON "
+
+        # iterate over the free_vars and do 2 things:
+        for i, free_var in enumerate(joined_relation_terms):
+            free_var_pairs: List[Tuple[str, int]] = var_dict[free_var]
+            first_pair, other_pairs = free_var_pairs[0], free_var_pairs[1:]
+
+            if i > 0:
+                sql_command += ", "
+            relation_that_contains_free_var_name, first_index = first_pair
+            new_col_name = self._get_col_name(i)
+            first_col_name = self._get_col_name(first_index)
+
+            # 1. name the new columns. the columns should be named col0, col1, etc.
+            sql_command += f"{relation_that_contains_free_var_name}.{first_col_name} AS {new_col_name}"
+            # 2. create the comparison between all of them, using `ON`
+            for j, (second_relation_name, second_index) in enumerate(other_pairs):
+                if j > 0:
+                    on_conditions += "AND "
+                second_col_name = self._get_col_name(second_index)
+                on_conditions += (f"{relation_that_contains_free_var_name}.{first_col_name}="
+                                  f"{second_relation_name}.{second_col_name} ")
+
+        # first relation - just `FROM`
+        first_relation, other_relations = relations[0], relations[1:]
+        sql_command += f" FROM {first_relation.relation_name} "
+
+        # for every next relation: `INNER JOIN`
+        for relation in other_relations:
+            sql_command += f"INNER JOIN {relation.relation_name} "
+
+        # add the join conditions (`ON`)
+        sql_command += on_conditions
+
+        return joined_relation
+
+    def operator_project(self, relation: Relation) -> Relation:
         # TODO@niv: this is basically `SELECT`
         pass
 
-    def operator_union(self):
-        # TODO@niv: sqlite `INNER JOIN`
+    def operator_union(self, relations: List[Relation]) -> Relation:
+        # TODO@niv: sqlite `UNION`
         pass
 
-    def operator_difference(self):
+    def operator_difference(self) -> Relation:
         pass
 
-    def operator_product(self):
+    def operator_product(self) -> Relation:
         # TODO@niv: sqlite `CROSS JOIN`
         pass
 
-    def operator_rename(self):
-        # TODO@niv: might have to create a new table for this, using `ALTER`. example:
-        #  create table points_tmp as select id, lon as lat, lat as lon from points;
-        #  drop table points;
-        #  alter table points_tmp rename to points;
-        pass
+    def operator_copy(self, src_rel: Relation) -> Relation:
+        src_rel_name = src_rel.relation_name
+        dest_rel_name = self._create_unique_relation(arity=len(src_rel.type_list),
+                                                     prefix=f"{COPY_PREFIX}_{src_rel_name}")
+        dest_rel = Relation(dest_rel_name, src_rel.term_list, src_rel.type_list)
 
-    def copy(self, new_rel, old_rel):
-        pass
+        # sql part
+        sql_command = f"INSERT INTO {dest_rel_name} SELECT * FROM {src_rel_name}"
+        self.sql_cursor.execute(sql_command)
 
-    def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
-                            bounding_relation: Relation) -> Relation:
-        """
-        computes an information extraction relation, returning the result as a normal relation.
-        for more details see RgxlogEngineBase.compute_ie_relation.
-
-        @param ie_relation: an ie relation that determines the input and output terms of the ie function
-        @param ie_func: the ie function that will be used to compute the ie relation
-        @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
-                                  queried from it
-        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine
-        """
-
-        ie_relation_name = ie_relation.relation_name
-
-        # create the input relation for the ie function, and also declare it inside pyDatalog
-        input_relation_arity = len(ie_relation.input_term_list)
-        input_relation_name = self._create_new_temp_relation(input_relation_arity, name=f'{ie_relation_name}_input')
-        input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
-
-        # create the output relation for the ie function, and also declare it inside pyDatalog
-        output_relation_arity = len(ie_relation.output_term_list)
-        output_relation_name = self._create_new_temp_relation(output_relation_arity, name=f'{ie_relation_name}_output')
-        output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
-
-        # define the ie input relation
-        if bounding_relation is None:
-            # special case where the ie relation is the first rule body relation
-            # in this case, the ie input relation is defined exclusively by constant terms, i.e, by a single tuple
-            # add that tuple as a fact to the input relation
-            self.add_fact(
-                AddFact(input_relation.relation_name, ie_relation.input_term_list, ie_relation.input_type_list))
-        else:
-            # filter the bounding relation into the input relation using a rule.
-            self.add_rule(input_relation, [bounding_relation])
-
-        # get a list of inputs to the ie function.
-        ie_inputs = self._get_all_relation_tuples(input_relation)
-
-        # get the schema for the ie outputs
-        ie_output_schema = ie_func.get_output_types(output_relation_arity)
-
-        # run the ie function on each input and process the outputs
-        for ie_input in ie_inputs:
-
-            # run the ie function on the input, resulting in a list of tuples
-            ie_outputs = ie_func.ie_function(*ie_input)
-            # process each ie output and add it to the output relation
-            for ie_output in ie_outputs:
-                # the output should be a tuple, but if a single value is returned, we accept it as well
-                if isinstance(ie_output, str) or isinstance(ie_output, int) or isinstance(ie_output, Span):
-                    ie_output = [ie_output]
-                else:
-                    ie_output = list(ie_output)
-
-                # assert the ie output is properly typed
-                self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)
-
-                # the user is allowed to represent a span in an ie output as a tuple of length 2
-                # convert said tuples to spans
-                ie_output = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
-                             else term
-                             for term in ie_output]
-
-                # add the output as a fact to the output relation
-                # notice - repetitions are ignored here (results are in a set)
-                if len(ie_output) != 0:
-                    output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
-                    self.add_fact(output_fact)
-
-        # create and return the result relation. it's a relation that is the join of the input and output relations
-        result_relation = self.join_relations([input_relation, output_relation], name=ie_relation_name)
-        return result_relation
+        return dest_rel
 
     @staticmethod
     def _datatype_to_sql_type(datatype: DataTypes):
@@ -748,7 +708,10 @@ class SqliteEngine(RgxlogEngineBase):
         self.sql_conn.close()
 
     @staticmethod
-    def _get_where_string(term_list: List, type_list: List[DataTypes]):
+    def _get_col_name(col_id: int):
+        return f'{RELATION_COLUMN_PREFIX}{col_id}'
+
+    def _get_where_string(self, term_list: List, type_list: List[DataTypes]):
         """
         `where` is an sql operator which filters rows from a table.
         this method creates the string used to filter rows based on the `term_list`.
@@ -763,7 +726,7 @@ class SqliteEngine(RgxlogEngineBase):
             if term_type is DataTypes.free_var_name:
                 continue
 
-            where_conditions.append(f'{RELATION_COLUMN_PREFIX}{col_num} = "{term}"')
+            where_conditions.append(f'{self._get_col_name(col_num)} = "{term}"')
 
         if not where_conditions:
             return ""
@@ -838,28 +801,27 @@ class GenericExecution(ExecutionBase):
             term_type = term_attrs['type']
 
             if term_type == "relation_declaration":
-                relation_decl = term_attrs['value']
+                relation_decl = term_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.declare_relation(relation_decl)
 
             elif term_type == "add_fact":
-                fact = term_attrs['value']
+                fact = term_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.add_fact(fact)
 
             elif term_type == "remove_fact":
-                fact = term_attrs['value']
+                fact = term_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.remove_fact(fact)
 
             elif term_type == "query":
-                query = term_attrs['value']
+                query = term_attrs[VALUE_ATTRIBUTE]
                 # TODO@niv: change this - enable returning the pre-formatted query (should be possible with sql engine)
                 exec_result = (query, rgxlog_engine.query(query))
 
             elif term_type == "rule_head":
-                rule_head = term_attrs['value']
+                rule_head = term_attrs[VALUE_ATTRIBUTE]
                 self.compute_rule(rule_head)
             else:
                 raise TypeError("illegal engine type")
-
 
             # statement was executed, mark it as "computed"
             parse_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
@@ -876,56 +838,65 @@ class GenericExecution(ExecutionBase):
         rgxlog_engine = self.rgxlog_engine
         rule_head_id = term_graph.get_relation_id(rule_head)
         term_ids = term_graph.post_order_dfs_from(rule_head_id)
+        # TODO@niv: add var_dict here, or to term_graph
+        # TODO@niv: convert output_rel to const
 
         for term_id in term_ids:
-
             term_attrs = term_graph[term_id]
             if term_attrs['state'] is EvalState.COMPUTED:
                 continue
 
             term_type = term_attrs['type']
+            existing_rel = term_attrs.get(OUT_REL_ATTRIBUTE, None)
+
             if term_type == "rel_base":
+                # TODO@niv: get_operator?
                 continue
 
             elif term_type == "rel_root":
                 rel_in: Relation = self.get_children_relations(term_graph, term_id)[0]
-                rgxlog_engine.copy(term_attrs['output_rel'], rel_in)
+                copy_rel = rgxlog_engine.operator_copy(rel_in)
+                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, copy_rel)
 
             elif term_type == "union":
                 union_rel = rgxlog_engine.operator_union(self.get_children_relations(term_graph, term_id))
-                term_graph.set_term_attribute(term_id, "output_rel", union_rel)
+                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, union_rel)
 
             elif term_type == "join":
-                join_rel = rgxlog_engine.operator_union(self.get_children_relations(term_graph, term_id))
-                term_graph.set_term_attribute(term_id, "output_rel", join_rel)
+                join_rel = rgxlog_engine.operator_join(self.get_children_relations(term_graph, term_id))
+                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, join_rel)
 
             elif term_type == "project":
                 output_rel: Relation = self.get_children_relations(term_graph, term_id)[0]
                 project_rel = rgxlog_engine.operator_project(output_rel)
-                term_graph.set_term_attribute(term_id, "output_rel", project_rel)
+                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, project_rel)
 
             elif term_type == "calc":
                 rel_in: Relation = self.get_children_relations(term_graph, term_id)[0]
                 ie_rel_in: IERelation = term_attrs['value']
                 ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
                 ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
-                term_graph.set_term_attribute(term_id, "output_rel", ie_rel_out)
+                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, ie_rel_out)
 
             else:
                 raise TypeError("illegal engine type")
 
-        # statement was executed, mark it as "computed"
-        term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
+            # statement was executed, mark it as "computed"
+            term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
 
-    # TODO: change state of graph to not computed
-
+    # TODO@tom: change state of graph to not computed
 
     @staticmethod
     def get_children_relations(term_graph: NetxTermGraph, node_id: int):
         relations_ids = term_graph.get_children(node_id)
         relations_nodes = [term_graph[rel_id] for rel_id in relations_ids]
-        relations = [relation["output_rel"] for relation in relations_nodes]
+        relations = [rel_node[OUT_REL_ATTRIBUTE] for rel_node in relations_nodes]
         return relations
+
+    @staticmethod
+    def remove_computed_from(term_graph: NetxTermGraph, node_id: int):
+        for term_id in term_graph.post_order_dfs():
+            pass
 
 
 if __name__ == "__main__":
@@ -1235,12 +1206,12 @@ class PydatalogEngine(RgxlogEngineBase):
 
         # create the input relation for the ie function, and also declare it inside pyDatalog
         input_relation_arity = len(ie_relation.input_term_list)
-        input_relation_name = self._create_new_temp_relation(input_relation_arity, name=f'{ie_relation_name}_input')
+        input_relation_name = self._create_unique_relation(input_relation_arity, name=f'{ie_relation_name}_input')
         input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
 
         # create the output relation for the ie function, and also declare it inside pyDatalog
         output_relation_arity = len(ie_relation.output_term_list)
-        output_relation_name = self._create_new_temp_relation(output_relation_arity, name=f'{ie_relation_name}_output')
+        output_relation_name = self._create_unique_relation(output_relation_arity, name=f'{ie_relation_name}_output')
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         # define the ie input relation
@@ -1316,7 +1287,7 @@ class PydatalogEngine(RgxlogEngineBase):
         joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
 
         # declare the joined relation in pyDatalog and get its name
-        joined_relation_name = self._create_new_temp_relation(joined_relation_arity, name=name)
+        joined_relation_name = self._create_unique_relation(joined_relation_arity, name=name)
 
         # created a structured node of the joined relation
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
@@ -1397,7 +1368,7 @@ class PydatalogEngine(RgxlogEngineBase):
         all_relation_tuples = self.query(query)
         return all_relation_tuples
 
-    def _create_new_temp_relation(self, arity, name=""):
+    def _create_unique_relation(self, arity, name=""):
         """
         declares a new temporary relation with the requested arity in pyDatalog
         note that the relation's schema is not needed as there's no typechecking in pyDatalog

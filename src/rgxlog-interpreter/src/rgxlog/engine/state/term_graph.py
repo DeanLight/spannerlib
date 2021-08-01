@@ -3,14 +3,12 @@ this module contains the implementations of term graphs
 """
 
 from abc import abstractmethod
-import networkx as nx
 from enum import Enum
 from itertools import count
+from typing import Union
 
+import networkx as nx
 
-# TODO@niv: change this to bool (`if x['computed'] == True`), it's redundant
-
-from typing import Union, Tuple
 from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, RelationDeclaration
 
 PRETTY_INDENT = ' ' * 4
@@ -86,7 +84,7 @@ class TermGraphBase:
         return self.pre_order_dfs_from(self.get_root_id())
 
     @abstractmethod
-    def post_order_dfs_form(self, node_id: int):
+    def post_order_dfs_from(self, node_id: int):
         """
         @return: an iterable of the term ids generated from a depth-first-search post-ordering starting at the root
         of the term graph
@@ -124,13 +122,16 @@ class TermGraphBase:
         pass
 
     @abstractmethod
-    def get_term_attributes(self, term_id) -> dict:
+    def get_term_attributes(self, term_id: int) -> dict:
         """
         @param term_id: a term id
 
         @return: a dict containing the attributes of the term
         """
         pass
+
+    def __getitem__(self, term_id: int):
+        return self.get_term_attributes(term_id)
 
     def reset_graph(self):
         pass
@@ -148,9 +149,9 @@ class NetxTermGraph(TermGraphBase):
 
     def __init__(self):
 
-        # define the graph with 'OrderedDiGraph' to make sure the order of a reported node's children is the same
+        # define the graph with 'DiGraph' to make sure the order of a reported node's children is the same
         # as the order they were added to the graph.
-        self._graph = nx.OrderedDiGraph()
+        self._graph = nx.DiGraph()
 
         # when a new node is added to the graph, it needs to have an id that was not used before
         # this field will serve as a counter that will provide a new term id
@@ -242,9 +243,6 @@ class NetxTermGraph(TermGraphBase):
 
     def get_term_attributes(self, term_id) -> dict:
         return self._graph.nodes[term_id].copy()
-
-    def __getitem__(self, term_id):
-        return self.get_term_attributes(term_id)
 
     def _get_term_string(self, term_id):
         """

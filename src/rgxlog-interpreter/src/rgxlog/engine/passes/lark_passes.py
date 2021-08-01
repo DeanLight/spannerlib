@@ -72,6 +72,7 @@ class TransformerPass(Transformer, GenericPass):
         return self.transform(get_tree(**kwargs))
 
 
+# TODO@niv: this doesn't work completely - debug it
 class RemoveTokens(TransformerPass):
     """
     a lark pass that should be used before the semantic checks
