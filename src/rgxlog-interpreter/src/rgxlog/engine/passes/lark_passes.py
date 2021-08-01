@@ -25,18 +25,18 @@ https://lark-parser.readthedocs.io/en/stable/lark_cheatsheet.pdf
 A short tutorial on lark:
 https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
+from abc import ABC, abstractmethod
 from collections import OrderedDict
-
-from typing import Dict, Optional, Iterable
+from typing import Optional
 
 from lark import Transformer
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
+
 from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.execution import SqliteEngine, RgxlogEngineBase, RESERVED_RELATION_PREFIX
+from rgxlog.engine.execution import RgxlogEngineBase, RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.term_graph import NetxTermGraph, EvalState
-from rgxlog.engine.utils.lark_passes_utils import *
 from rgxlog.engine.utils.general_utils import *
-from abc import ABC, abstractmethod
+from rgxlog.engine.utils.lark_passes_utils import *
 
 
 def get_tree(**kwargs):
@@ -994,8 +994,7 @@ class ExecuteAssignments(InterpreterPass):
 
 
 class AddStatementsToNetxTermGraph(InterpreterPass):
-    # TODO@niv: what is `NetworkxExecution`?
-    # TODO@niv: can we convert all `Token`s to strings here?
+    # TODO@niv: @dean what is `NetworkxExecution`?
     """
     a lark execution pass.
     This pass adds each statement in the input parse tree to the term graph.
@@ -1037,22 +1036,27 @@ class AddStatementsToNetxTermGraph(InterpreterPass):
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
+        fact.peel_off_token_wrappers()
         self._add_statement_to_term_graph("add_fact", fact)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
+        fact.peel_off_token_wrappers()
         self._add_statement_to_term_graph("remove_fact", fact)
 
     @unravel_lark_node
     def query(self, query: Query):
+        query.peel_off_token_wrappers()
         self._add_statement_to_term_graph("query", query)
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
+        relation_decl.peel_off_token_wrappers()
         self._add_statement_to_term_graph("relation_declaration", relation_decl)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
+        rule.head_relation.peel_off_token_wrappers()
         # create the root of the rule statement in the term graph. Note that this is an "empty" node (it does
         # not contain a value). This is because the rule statement will be defined by the children of this node.
         main_rule_node = self.parse_graph.add_term(type="rule")
@@ -1075,6 +1079,7 @@ class AddStatementsToNetxTermGraph(InterpreterPass):
 
         # add each rule body relation to the graph as a child node of the rule body node.
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+            relation.peel_off_token_wrappers()
             # add the relation to the term graph
             rule_body_relation_node = self.parse_graph.add_term(type=relation_type, value=relation)
             # attach the relation to the rule body

@@ -7,6 +7,8 @@ thus simplifying the code required for semantic checks and manipulations of the 
 """
 from typing import List, Any
 
+from lark import Token
+
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 
@@ -64,6 +66,25 @@ class Relation:
                 col_value_type.add((i, value, var_type))
 
         return col_value_type
+
+    def peel_off_token_wrappers(self) -> None:
+        peeled_term_list = []
+        original_relation_name = self.relation_name
+
+        for token in self.term_list:
+            if isinstance(token, Token):
+                peeled_term_list.append(token.value)
+            else:
+                peeled_term_list.append(token)
+
+        self.term_list = peeled_term_list
+
+        if isinstance(original_relation_name, Token):
+            self.relation_name = original_relation_name.value
+        else:
+            self.relation_name = original_relation_name
+
+
 
 
 class IERelation:
@@ -137,10 +158,19 @@ class RelationDeclaration:
             elif term_type is DataTypes.integer:
                 type_strings.append('int')
             else:
-                raise Exception(f"invalid term type ({term_type})")
+                raise ValueError(f"invalid term type ({term_type})")
+
         type_list_string = ', '.join(type_strings)
         relation_declaration_string = f"{self.relation_name}({type_list_string})"
         return relation_declaration_string
+
+    def peel_off_token_wrappers(self) -> None:
+        original_relation_name = self.relation_name
+
+        if isinstance(original_relation_name, Token):
+            self.relation_name = original_relation_name.value
+        else:
+            self.relation_name = original_relation_name
 
 
 class AddFact(Relation):

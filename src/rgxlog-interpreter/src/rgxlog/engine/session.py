@@ -241,7 +241,7 @@ class Session:
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
 
     def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
-        # TODO@niv: shouldn't this method and term_graph be inside the engine?
+        # TODO@niv: @dean+@tom, shouldn't this method and term_graph be inside the engine?
         """
         Runs the passes in pass_list on tree, one after another.
         """
