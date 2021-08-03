@@ -13,8 +13,6 @@ from abc import ABC, abstractmethod
 from itertools import count
 from typing import Tuple, Optional, Dict, Set
 
-from pyDatalog import pyDatalog
-
 from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction

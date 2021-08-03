@@ -216,6 +216,7 @@ CleanXML = dict(ie_function=cleanxml_wrapper,
 def parse_wrapper(sentence):
     with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
         for res in core_nlp_engine.parse(sentence):
+            # TODO@niv: @tom, can we change this, since we don't support pydatalog?
             # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
             # notice - this yields a tuple
             yield res.replace("\n", "<nl>").replace("\r", ""),

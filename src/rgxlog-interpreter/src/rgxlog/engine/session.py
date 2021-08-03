@@ -2,7 +2,7 @@ import csv
 import os
 import re
 from pathlib import Path
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 
 from lark.lark import Lark
 from pandas import DataFrame
@@ -171,7 +171,7 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
     #  cons - more difficult to debug, perhaps less convenient for beginners, especially when running multiple commands
     #   in a single query
     """
-    takes in a list of results from PyDatalog and converts them into a single string, which contains
+    takes in a list of results from the engine and converts them into a single string, which contains
     either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.
 
     for example:
@@ -183,7 +183,7 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
     walter
 
 
-    @param query_results: List[the Query object used in execution, the execution's results (from PyDatalog)]
+    @param query_results: List[the Query object used in execution, the execution's results (from engine)]
     """
 
     all_result_strings = []
@@ -225,7 +225,6 @@ class Session:
             TypeCheckAssignments,
             TypeCheckRelations,
             SaveDeclaredRelationsSchemas,
-            # TODO@niv: remove ReorderRuleBody, or leave it to support pydatalog
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxTermGraph,
@@ -332,9 +331,9 @@ class Session:
         """
         self._execution.remove_rule(rule)
 
-    def remove_all_rules(self, rule_head: str = None):
+    def remove_all_rules(self, rule_head: Optional[str] = None):
         """
-        Removes all rules from PyDatalog's engine.
+        Removes all rules from the engine.
         @param rule_head: if rule head is not none we remove all rules with rule_head
         """
         self._execution.remove_all_rules(rule_head)

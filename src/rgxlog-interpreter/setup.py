@@ -55,7 +55,6 @@ setuptools.setup(
         'networkx',
         'docopt',
         'tabulate',
-        'pyDatalog',
         'pandas',
         'jsonpath-ng',
         'psutil',
