@@ -95,10 +95,9 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
     for relation in relations:
         free_vars_pairs = get_numbered_output_free_var_names(relation)
         for i, var in free_vars_pairs:
-            old_var_entry = var_dict.get(var, set())
-            old_var_entry.add((relation.relation_name, i))
+            old_var_entry: List[Tuple[str, int]] = var_dict.get(var, list())
+            old_var_entry.append((relation.relation_name, i))
             var_dict[var] = old_var_entry
-    var_dict = {var: relations for var, relations in var_dict.items() if len(relations) > 1}
     return var_dict
 
 

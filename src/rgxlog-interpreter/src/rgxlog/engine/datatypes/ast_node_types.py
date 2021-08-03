@@ -94,7 +94,7 @@ class IERelation:
     calls, and matches the values inside the tuples to free variables.
     """
 
-    def __init__(self, relation_name, input_term_list, input_type_list, output_term_list, output_type_list):
+    def __init__(self, relation_name, input_term_list: list, input_type_list, output_term_list: list, output_type_list):
         """
         @param relation_name: the name of the information extraction relation
         @param input_term_list: a list of the input terms for the ie function.
@@ -103,7 +103,7 @@ class IERelation:
         @param output_term_list: a list of the output terms for the ie function.
                                  must be either literal values or free variables
         @param output_type_list: a list of the term types in output_term_list
-        @raise Exception: if lenght of in/out term list doesn't match length of in/out type_list.
+        @raise Exception: if length of in/out term list doesn't match length of in/out type_list.
         """
         if len(input_term_list) != len(input_type_list):
             raise Exception(f"received different lengths of input_term_list ({len(input_term_list)}) "

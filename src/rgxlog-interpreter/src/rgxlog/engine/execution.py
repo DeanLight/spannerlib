@@ -266,7 +266,6 @@ class RgxlogEngineBase(ABC):
 
 
 class SqliteEngine(RgxlogEngineBase):
-    # TODO@niv:
     """
     general idea (i took this from `execution.py:970` we need to create intermediate tables for everything we do.
     for example, let's see this rule:
@@ -292,7 +291,7 @@ class SqliteEngine(RgxlogEngineBase):
         creates/opens an SQL database file + connection
         """
         super().__init__(debug=debug)
-        self.temp_relation_id_counter = count()
+        self.unique_relation_id_counter = count()
         self.rules_history = dict()
 
         if database_name:
@@ -389,32 +388,37 @@ class SqliteEngine(RgxlogEngineBase):
 
     def _create_unique_relation(self, arity, prefix=""):
         """
-        declares a new temporary relation with the requested arity in SQL
+        declares a new relation with the requested arity in SQL, the relation will have a unique name
 
-        @param arity: the temporary relation's arity
-        @param prefix: will be used as a part of the temporary relation's name.
+        @param arity: the relation's arity
+        @param prefix: will be used as a part of the relation's name.
                 for example: prefix='join' -> full name = __rgxlog__join{counter}
-        @return: the new temporary relation's name
+        @return: the new relation's name
         """
-        # create the name of the new temporary relation
-        temp_relation_id = next(self.temp_relation_id_counter)
-        temp_relation_name = f'{RESERVED_RELATION_PREFIX}{prefix}{temp_relation_id}'
+        # create the name of the new relation
+        unique_relation_id = next(self.unique_relation_id_counter)
+        if RESERVED_RELATION_PREFIX in prefix:
+            # we don't want relations to be called __rgxlog__rgxlog__rgxlog...
+            unique_relation_name = f'{prefix}{unique_relation_id}'
+        else:
+            unique_relation_name = f'{RESERVED_RELATION_PREFIX}{prefix}{unique_relation_id}'
 
         # in SQLite there's no typechecking so we just need to make sure that the schema has the correct arity
-        temp_relation_schema = [DataTypes.free_var_name] * arity
+        unique_relation_schema = [DataTypes.free_var_name] * arity
 
         # create the declaration
-        temp_relation_decl = RelationDeclaration(temp_relation_name, temp_relation_schema)
+        unique_relation_decl = RelationDeclaration(unique_relation_name, unique_relation_schema)
 
         # create the relation's SQL table, and return its name
-        self.declare_relation(temp_relation_decl)
-        return temp_relation_name
+        self.declare_relation(unique_relation_decl)
+        return unique_relation_name
 
     def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
                             bounding_relation: Optional[Relation]) -> Relation:
         """
         computes an information extraction relation, returning the result as a normal relation.
         for more details see RgxlogEngineBase.compute_ie_relation.
+        notice comments below regarding constants
 
         @param ie_relation: an ie relation that determines the input and output terms of the ie function
         @param ie_func: the ie function that will be used to compute the ie relation
@@ -422,6 +426,8 @@ class SqliteEngine(RgxlogEngineBase):
                                   queried from it
         @return: a normal relation that contains all of the resulting tuples in the rgxlog engine
         """
+        # TODO@niv: right now the outputs are not bound, e.g. a(X) <- b(X,Y), c(X)->(Y) is the same as a(X) <- b(X,Y),
+        #  because c's output(Y) is not bound to its input(X). we need to change that
 
         ie_relation_name = ie_relation.relation_name
 
@@ -437,21 +443,32 @@ class SqliteEngine(RgxlogEngineBase):
             # in this case, the ie input relation is defined exclusively by constant terms, i.e, by a single tuple
             # add that tuple as a fact to the input relation
             # create the input relation for the ie function, and also declare it inside SQL
-            input_relation_arity = len(ie_relation.input_term_list)
-            input_relation_name = self._create_unique_relation(input_relation_arity,
-                                                               prefix=f'{ie_relation_name}_input')
-            input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
-            self.add_fact(AddFact(input_relation.relation_name, ie_relation.input_term_list,
-                                  ie_relation.input_type_list))
+            # TODO@niv: this part can be deleted if we don't do join/project
+            # input_relation_arity = len(ie_relation.input_term_list)
+            # input_relation_name = self._create_unique_relation(input_relation_arity,
+            #                                                    prefix=f'{ie_relation_name}_input')
+            # input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
+            # self.add_fact(AddFact(input_relation.relation_name, ie_relation.input_term_list,
+            #                       ie_relation.input_type_list))
+            ie_inputs = [tuple(ie_relation.input_term_list)]
         else:
-            # filter the bounding relation into the input relation using a rule.
-            # TODO@niv: i think we don't need to add_rule here because we connect the nodes in the graph
-            #  when we parse the whole rule (and not just the ie_relation).
-            input_relation = bounding_relation
-            # TODO@niv: might have to add constant columns here. we need a new operator for that
+            # get a list of inputs to the ie function - some of them may be constants
+            inputs_without_constants = self._get_all_relation_tuples(bounding_relation)
+            ie_inputs = []
+            index_in_bounded_input = 0
+            for bounded_input in inputs_without_constants:
+                result_input_list = []
+                for term, datatype in zip(ie_relation.input_term_list, ie_relation.input_type_list):
+                    if datatype is DataTypes.free_var_name:
+                        # add value from `bounded_input`
+                        result_input_list.append(bounded_input[index_in_bounded_input])
+                        index_in_bounded_input += 1
+                    else:
+                        # add constant
+                        result_input_list.append(term)
 
-        # get a list of inputs to the ie function.
-        ie_inputs = self._get_all_relation_tuples(input_relation)
+                assert index_in_bounded_input == len(bounded_input), "parsing input relation failed"
+                ie_inputs.append(tuple(result_input_list))
 
         # get the schema for the ie outputs
         ie_output_schema = ie_func.get_output_types(output_relation_arity)
@@ -484,9 +501,12 @@ class SqliteEngine(RgxlogEngineBase):
                     self.add_fact(output_fact)
 
         # create and return the result relation. it's a relation that is the join of the input and output relations
-        result_relation = self.operator_join([input_relation, output_relation], prefix=ie_relation_name)
-        # TODO@niv: operator_project in output_relation's columns
-        return result_relation
+        # join_relations = [input_relation, output_relation]
+        # result_relation = self.operator_join(join_relations,
+        #                                      var_dict=get_free_var_to_relations_dict(set(join_relations)),
+        #                                      prefix=ie_relation_name)
+        # operator_project in output_relation's columns
+        return output_relation
 
     def _get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
         """
@@ -596,14 +616,19 @@ class SqliteEngine(RgxlogEngineBase):
         new_term_list = src_relation.term_list
         new_type_list = src_relation.type_list
 
-        new_relation_name = self._create_unique_relation(new_arity, prefix=f"{SELECT_PREFIX}_{src_relation_name}")
+        new_relation_name = self._create_unique_relation(new_arity, prefix=f"{src_relation_name}_{SELECT_PREFIX}")
 
         selected_relation = Relation(new_relation_name, new_term_list, new_type_list)
 
         # sql part
         sql_command = f'INSERT INTO {new_relation_name} SELECT * FROM {src_relation_name}'
         sql_args = []
-        if len(select_info) > 0:
+
+        # get variables in var_dict that repeat - used below to add conditions
+        src_relation_var_dict = get_free_var_to_relations_dict({src_relation})
+        repeating_vars_in_relation = ((free_var, pairs) for (free_var, pairs) in
+                                      src_relation_var_dict.items() if (len(pairs) > 1))
+        if (len(select_info) > 0) or repeating_vars_in_relation:
             sql_command += " WHERE "
             sql_conditions = []
             # add conditions based on `select_info`
@@ -612,15 +637,14 @@ class SqliteEngine(RgxlogEngineBase):
                 sql_args.append(value)
                 sql_conditions.append(f"{col_name}=?")
 
-            # add conditions based on equal terms like a(X,X)
-            for free_var, pairs in get_free_var_to_relations_dict({src_relation}).items():
-                if len(pairs) > 1:
-                    first_pair, other_pairs = pairs[0], pairs[1:]
-                    first_index = first_pair[1]
-                    first_col_name = self._get_col_name(first_index)
-                    for _, second_index in other_pairs:
-                        second_col_name = self._get_col_name(second_index)
-                        sql_conditions.append(f"{first_col_name}={second_col_name}")
+            # add conditions based on repeating free variables like a(X,X) - check if they are equal
+            for free_var, pairs in repeating_vars_in_relation:
+                first_pair, other_pairs = pairs[0], pairs[1:]
+                first_index = first_pair[1]
+                first_col_name = self._get_col_name(first_index)
+                for _, second_index in other_pairs:
+                    second_col_name = self._get_col_name(second_index)
+                    sql_conditions.append(f"{first_col_name}={second_col_name}")
 
             sql_command += " AND ".join(sql_conditions)
 
@@ -656,7 +680,7 @@ class SqliteEngine(RgxlogEngineBase):
         joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
 
         # declare the joined relation in sql and get its name
-        joined_relation_name = self._create_unique_relation(joined_relation_arity, prefix=f"{JOIN_PREFIX}_{prefix}")
+        joined_relation_name = self._create_unique_relation(joined_relation_arity, prefix=f"{prefix}_{JOIN_PREFIX}")
 
         # created a structured node of the joined relation
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
@@ -777,7 +801,7 @@ class SqliteEngine(RgxlogEngineBase):
     def operator_copy(self, src_rel: Relation) -> Relation:
         src_rel_name = src_rel.relation_name
         dest_rel_name = self._create_unique_relation(arity=len(src_rel.type_list),
-                                                     prefix=f"{COPY_PREFIX}_{src_rel_name}")
+                                                     prefix=f"{src_rel_name}_{COPY_PREFIX}")
         dest_rel = Relation(dest_rel_name, src_rel.term_list, src_rel.type_list)
 
         # sql part
@@ -903,7 +927,7 @@ class GenericExecution(ExecutionBase):
             # the term is not computed, get its type and compute it accordingly
             term_type = term_attrs["type"]
 
-            if term_type in ("root",):
+            if term_type in ("root", "relation", "rule_body", "rule"):
                 pass
 
             elif term_type == "relation_declaration":
@@ -944,8 +968,6 @@ class GenericExecution(ExecutionBase):
         rgxlog_engine = self.rgxlog_engine
         rule_head_id = term_graph.get_relation_id(rule_head)
         term_ids = term_graph.post_order_dfs_from(rule_head_id)
-        # TODO@niv: add var_dict here, or to term_graph
-        # TODO@niv: convert output_rel to const
 
         for term_id in term_ids:
             term_attrs = term_graph[term_id]
@@ -958,6 +980,9 @@ class GenericExecution(ExecutionBase):
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
 
             elif term_type == "rule_rel":
+                # TODO@niv: @tom - this needs to change:
+                #  the output relation's name should be the same as in the rule's relation.
+                #  `operator_copy` outputs a new relation name.
                 rel_in: Relation = self.get_child_relation(term_id)
                 copy_rel = rgxlog_engine.operator_copy(rel_in)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, copy_rel)
@@ -967,6 +992,8 @@ class GenericExecution(ExecutionBase):
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, union_rel)
 
             elif term_type == "join":
+                # TODO@niv: @tom, i think `join_info` is redundant here,
+                #  since we get it from the children which are passed anyways
                 join_info = term_attrs['value']
                 join_rel = rgxlog_engine.operator_join(self.get_children_relations(term_id), join_info)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, join_rel)
@@ -979,8 +1006,9 @@ class GenericExecution(ExecutionBase):
 
             elif term_type == "calc":
                 rel_in: Relation = self.get_child_relation(term_id)
-                # TODO@niv: we shouldn't use "value" for everything, change this ("in_rel").
-                #  same for all the other "value"s
+                # TODO@niv: @tom, we shouldn't use "value" for everything, change this (e.g. "in_rel" here).
+                #  same for all the other ["value"]s.
+                #  also, use constants
                 ie_rel_in: IERelation = term_attrs["value"]
                 ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
                 ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
@@ -1006,7 +1034,7 @@ class GenericExecution(ExecutionBase):
             self.term_graph.set_term_attribute(term_id, "state", EvalState.NOT_COMPUTED)
 
     def set_output_relation(self, term_id: int, relation: Relation) -> None:
-        self.term_graph.set_term_attribute(term_id, "output_rel", relation)
+        self.term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, relation)
 
     def get_children_relations(self, node_id: int) -> List[Relation]:
         term_graph = self.term_graph

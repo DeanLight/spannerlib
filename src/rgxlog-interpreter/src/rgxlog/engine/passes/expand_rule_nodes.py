@@ -124,7 +124,7 @@ class AddRuleToTermGraph:
     def add_join_branch(self, head_id: int, relations: Set[Union[Relation, IERelation]],
                         future_ie_relations: Optional[Set[IERelation]] = None) -> Optional[int]:
         """
-        Connects all the relations to a join node. Connects th join_node to head_id.
+        Connects all the relations to a join node. Connects the join_node to head_id.
 
         @param head_id: the node to which join node will be connected.
         @param relations: a set of relations.
@@ -159,6 +159,7 @@ class AddRuleToTermGraph:
 
         root_rel_id = self.term_graph.get_relation_id(relation)
         is_base_rel = root_rel_id == -1
+        # TODO@niv: @tom, is there any difference between those two?
         rel_type = "base_rel" if is_base_rel else "get_rel"
         rel_id = self.term_graph.add_term(type=rel_type, value=relation)
 

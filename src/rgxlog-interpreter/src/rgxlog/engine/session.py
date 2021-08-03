@@ -284,20 +284,19 @@ class Session:
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            # exec_result = GenericExecution(parse_graph=self._parse_graph,
-            #                                symbol_table=self._symbol_table,
-            #                                rgxlog_engine=self._execution,
-            #                                term_graph=self._term_graph).execute()
-            #
-            # if exec_result is not None:
-            #     exec_results.append(exec_result)
-            #     if print_results:
-            #         print(queries_to_string([exec_result]))
-        print("")
-        # if format_results:
-        #     return [format_query_results(*exec_result) for exec_result in exec_results]
-        # else:
-        #     return exec_results
+            exec_result = GenericExecution(parse_graph=self._parse_graph,
+                                           symbol_table=self._symbol_table,
+                                           rgxlog_engine=self._execution,
+                                           term_graph=self._term_graph).execute()
+            if exec_result is not None:
+                exec_results.append(exec_result)
+                if print_results:
+                    print(queries_to_string([exec_result]))
+
+        if format_results:
+            return [format_query_results(*exec_result) for exec_result in exec_results]
+        else:
+            return exec_results
 
     def register(self, ie_function, ie_function_name, in_rel, out_rel):
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
@@ -492,8 +491,14 @@ if __name__ == "__main__":
     #         b(X) <- a(X,5), c(X)
     #         a(4,6)
     #         """
-    my_query2 = "a(X) <- d(X,X), b(X)"
+    my_query2 = """
+    d(3,3)
+    d(4,4)
+    b(4)
+    b(5)
+    a(X) <- d(X,X), b(X)"""
     my_session.run_query(my_query2)
+
 
     # A(X, X)
     # A(X, 5)
