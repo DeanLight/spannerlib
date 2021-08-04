@@ -471,16 +471,50 @@ class Session:
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
-    my_query = '''
+
+    test_copy_table_rule = """
         new B(int, int)
         B(1, 1)
         B(1, 2)
         B(2, 3)
-        ?B(X, Y)
         A(X, Y) <- B(X, Y)
         ?A(X, Y)
-        '''
+    """
 
-    my_session.run_query(my_query)
+    test_join_two_tables = """
+        new B(int, int)
+        new C(int, int)
+        B(1, 1)
+        B(1, 2)
+        B(2, 3)
+        C(2, 2)
+        C(1, 1)
+        D(X, Y, Z) <- B(X, Y), C(Y, Z)
+        ?D(X, Y, Z)
+    """
 
+    test_relation_with_same_free_var = """
+        new B(int, int)
+        B(1, 1)
+        B(1, 2)
+        B(2, 2)
+        A(X) <- B(X, X)
+    """
+
+    test_union_rule = """
+        new B(int, int)
+        new C(int, int)
+        B(1, 1)
+        B(1, 2)
+        B(2, 3)
+        C(2, 2)
+        C(1, 1)
+        
+        A(X, Y) <- B(X, Y)
+        A(Z, W) <- C(Z, W)
+        ?A(X, Y)
+    """
+
+
+    my_session.run_query(test_union_rule)
 

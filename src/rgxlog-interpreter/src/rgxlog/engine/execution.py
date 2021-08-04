@@ -866,7 +866,7 @@ class SqliteEngine(RgxlogEngineBase):
         return self.sql_cursor.fetchall()
 
     def operator_delete_all(self, table_name):
-        sql_command = f"DELETE * FROM {table_name}"
+        sql_command = f"DELETE FROM {table_name}"
         self.run_sql(sql_command)
 
 
