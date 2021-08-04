@@ -283,10 +283,11 @@ class Session:
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            exec_result = GenericExecution(parse_graph=self._parse_graph,
-                                           symbol_table=self._symbol_table,
-                                           rgxlog_engine=self._execution,
-                                           term_graph=self._term_graph).execute()
+            # exec_result = GenericExecution(parse_graph=self._parse_graph,
+            #                                symbol_table=self._symbol_table,
+            #                                rgxlog_engine=self._execution,
+            #                                term_graph=self._term_graph).execute()
+            exec_result = None
             if exec_result is not None:
                 exec_results.append(exec_result)
                 if print_results:
@@ -470,32 +471,23 @@ if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
     my_query = '''
-        new b(int)
-        new c(int)
-        new d(int, int)
+        new b(int, int)
         '''
 
     my_session.run_query(my_query)
 
     my_session.register(lambda x: x, "d", [DataTypes.integer], [DataTypes.integer, DataTypes.integer])
-    my_session.register(lambda x: x, "f", [DataTypes.integer] * 3, [DataTypes.integer])
+    my_session.register(lambda x: x, "c", [DataTypes.integer], [DataTypes.integer])
     #
-    # my_query2 = """
-    #     a(X, Y) <- b(X), d(Z) -> (Y, Z), c(Z), f(1, 1, 1) -> (X)
-    # """
-    # my_query = """
-    #         new a(int,int)
-    #         new c(int)
-    #         a(3,5)
-    #         b(X) <- a(X,5), c(X)
-    #         a(4,6)
-    #         """
     my_query2 = """
-    d(3,3)
-    d(4,4)
-    b(4)
-    b(5)
-    a(X) <- d(X,X), b(X)"""
+        a(X,Y) <- b(Y, X), c(X) -> (Y)
+    """
+    # my_query2 = """
+    # d(3,3)
+    # d(4,4)
+    # b(4)
+    # b(5)
+    # a(X) <- d(X,X), b(X)"""
     my_session.run_query(my_query2)
 
 

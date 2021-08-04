@@ -215,6 +215,7 @@ class RgxlogEngineBase(ABC):
     def remove_all_rules(self, rule_head):
         pass
 
+    @abstractmethod
     def operator_select(self, relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
         """
 
@@ -224,12 +225,13 @@ class RgxlogEngineBase(ABC):
 
         @return: a filtered relation
         """
-        # TODO@niv: i'm talking about the relational algebra operator, which is actually `WHERE`
         pass
 
+    @abstractmethod
     def operator_join(self, relations: List[Relation], var_dict, prefix: str = "") -> Relation:
         pass
 
+    @abstractmethod
     def operator_project(self, relation: Relation, project_vars: Set[str]) -> Relation:
         """
 
@@ -239,6 +241,7 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
+    @abstractmethod
     def operator_union(self, relations: List[Relation]) -> Relation:
         """
         relation union.
@@ -250,15 +253,11 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    def operator_difference(self):
-        pass
-
-    def operator_product(self):
-        pass
-
-    def operator_copy(self, old_rel) -> Relation:
+    @abstractmethod
+    def operator_copy(self, src_rel, output_relation_name=None) -> Relation:
         """
         Copies computed_relation to rule_relation.
+        @param output_relation_name:
         """
         pass
 
@@ -436,7 +435,7 @@ class SqliteEngine(RgxlogEngineBase):
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         # define the ie input relation
-        if not bounding_relation:
+        if bounding_relation is None:
             # special case where the ie relation is the first rule body relation
             # in this case, the ie input relation is defined exclusively by constant terms, i.e, by a single tuple
             # add that tuple as a fact to the input relation
@@ -655,6 +654,7 @@ class SqliteEngine(RgxlogEngineBase):
         the results of the join are filtered so they only include columns in the relations that were defined by
         a free variable term.
         all of the relations in relation_list must be normal (not ie relations)
+        note: SQL's inner_join without `IN` is actually cross-join (product), so this covers product as well.
 
         for an example and more details see RgxlogEngineBase.join_relations
 
@@ -719,6 +719,8 @@ class SqliteEngine(RgxlogEngineBase):
         # add the join conditions (`ON`)
         on_conditions_str += " AND ".join(on_conditions_list)
         sql_command += on_conditions_str
+
+        self.run_sql(sql_command)
 
         return joined_relation
 
@@ -796,10 +798,16 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command)
         return new_relation
 
-    def operator_copy(self, src_rel: Relation) -> Relation:
+    def operator_copy(self, src_rel: Relation, output_relation_name=None) -> Relation:
+        # TODO@niv
         src_rel_name = src_rel.relation_name
-        dest_rel_name = self._create_unique_relation(arity=len(src_rel.type_list),
-                                                     prefix=f"{src_rel_name}_{COPY_PREFIX}")
+        if output_relation_name:
+            dest_rel_name = output_relation_name
+            self.operator_delete_all(output_relation_name)
+        else:
+            dest_rel_name = self._create_unique_relation(arity=len(src_rel.type_list),
+                                                         prefix=f"{src_rel_name}_{COPY_PREFIX}")
+
         dest_rel = Relation(dest_rel_name, src_rel.term_list, src_rel.type_list)
 
         # sql part
@@ -862,6 +870,10 @@ class SqliteEngine(RgxlogEngineBase):
             self.sql_cursor.execute(command)
 
         return self.sql_cursor.fetchall()
+
+    def operator_delete_all(self, table_name):
+        sql_command = f"DELETE * FROM {table_name}"
+        self.run_sql(sql_command)
 
 
 class ExecutionBase(ABC):
@@ -978,9 +990,7 @@ class GenericExecution(ExecutionBase):
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
 
             elif term_type == "rule_rel":
-                # TODO@niv: @tom - this needs to change:
-                #  the output relation's name should be the same as in the rule's relation.
-                #  `operator_copy` outputs a new relation name.
+                # TODO@niv: SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';
                 rel_in: Relation = self.get_child_relation(term_id)
                 copy_rel = rgxlog_engine.operator_copy(rel_in)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, copy_rel)
@@ -992,6 +1002,8 @@ class GenericExecution(ExecutionBase):
             elif term_type == "join":
                 # TODO@niv: @tom, i think `join_info` is redundant here,
                 #  since we get it from the children which are passed anyways
+
+                # TODO@niv: i have a bug here where `JOIN ON {ie_rel}` looks at the wrong table (c instead of __rgx...)
                 join_info = term_attrs['value']
                 join_rel = rgxlog_engine.operator_join(self.get_children_relations(term_id), join_info)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, join_rel)
@@ -1003,7 +1015,8 @@ class GenericExecution(ExecutionBase):
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, project_rel)
 
             elif term_type == "calc":
-                rel_in: Relation = self.get_child_relation(term_id)
+                children = self.get_children_relations(term_id)
+                rel_in = children[0] if children else None
                 # TODO@niv: @tom, we shouldn't use "value" for everything, change this (e.g. "in_rel" here).
                 #  same for all the other ["value"]s.
                 #  also, use constants
@@ -1043,9 +1056,7 @@ class GenericExecution(ExecutionBase):
 
     def get_child_relation(self, node_id: int) -> Relation:
         children = self.get_children_relations(node_id)
-        assert len(children) <= 1, "this node should have a single child"
-        if len(children) == 0:
-            return list()
+        assert len(children) <= 1, "this node should have exactly one child"
         return children[0]
 
 

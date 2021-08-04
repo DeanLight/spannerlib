@@ -92,6 +92,7 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
     """
     var_dict = {}
 
+    # note: don't filter only variables with >1 uses here, we need them as well
     for relation in relations:
         free_vars_pairs = get_numbered_output_free_var_names(relation)
         for i, var in free_vars_pairs:
