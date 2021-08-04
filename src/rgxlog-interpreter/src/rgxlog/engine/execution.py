@@ -743,8 +743,8 @@ class SqliteEngine(RgxlogEngineBase):
     def operator_union(self, relations: List[Relation]) -> Relation:
         """
         relation union.
-        we assume that all the relations have the same set of free_vars,
-        but not necessarily in the same order.
+        we assume that all the relations' terms are free variables, and they're all in the same order,
+        which is the order in which they appear in the output relation
 
         @param relations: a list of relations to unite.
         @return: the united relation.
@@ -760,7 +760,6 @@ class SqliteEngine(RgxlogEngineBase):
         new_relation_name = self._create_unique_relation(new_arity, prefix=PROJECT_PREFIX)
         new_term_list = relations[0].term_list
         new_type_list = relations[0].type_list
-
         new_relation = Relation(new_relation_name, new_term_list, new_type_list)
 
         # create the union command by iterating over the relations and finding the index of each term
@@ -769,11 +768,10 @@ class SqliteEngine(RgxlogEngineBase):
         for relation in relations:
             curr_relation_string = "SELECT "
             selection_list = []
-            for new_col_index, term in enumerate(new_term_list):
-                term_col_index_in_curr_relation = relation.term_list.index(term)
-                src_col = self._get_col_name(term_col_index_in_curr_relation)
-                new_col = self._get_col_name(new_col_index)
-                selection_list.append(f"{src_col} AS {new_col}")
+            for col_index, term in enumerate(new_term_list):
+                # we assume the same order in the source and the destination, so no need to use 'AS'
+                col_name = self._get_col_name(col_index)
+                selection_list.append(f"{col_name}")
             curr_relation_string += ", ".join(selection_list) + f" FROM {relation.relation_name}"
             union_list.append(curr_relation_string)
 
