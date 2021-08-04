@@ -47,12 +47,11 @@ STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 # TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
 
 def _infer_relation_type(row: iter):
-    # TODO@tom: @niv add documentation to row param
     """
     guess the relation type based on the data.
     we support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`)
-    @param row:
-    @raise Exception: if there is a cell inside the dataframe with illegal type.
+    @param row: an iterable of values, extracted from a csv file or a dataframe
+    @raise ValueError: if there is a cell inside `row` of an illegal type.
     """
     relation_types = []
     for cell in row:
@@ -68,7 +67,7 @@ def _infer_relation_type(row: iter):
         elif re.match(STRING_PATTERN, cell):
             relation_types.append(DataTypes.string)
         else:
-            raise Exception(f"illegal type in csv: {cell}")
+            raise ValueError(f"value doesn't match any datatype: {cell}")
 
     return relation_types
 
@@ -284,7 +283,7 @@ class Session:
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
             # TODO@tom: remove it
-            print(self._term_graph)
+            # print(self._term_graph)
             exec_result = GenericExecution(parse_graph=self._parse_graph,
                                            symbol_table=self._symbol_table,
                                            rgxlog_engine=self._execution,
@@ -471,7 +470,7 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(False)
+    my_session = Session(True)
     my_query = '''
         new B(int, int)
         B(1, 1)

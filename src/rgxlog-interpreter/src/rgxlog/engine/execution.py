@@ -20,6 +20,8 @@ from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, NetxTermGraph, ExecutionTermGraph
 from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict
 
+SQL_TABLE_OF_TABLES = 'sqlite_master'
+
 VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
 
@@ -45,21 +47,9 @@ class RgxlogEngineBase(ABC):
     def __init__(self, debug=False):
         super().__init__()
         self.debug = debug
-        self.debug_buffer = []
 
         if self.debug:
             print("debug mode is on - a lot of extra info will be printed")
-
-    def flush_debug_buffer(self) -> str:
-        """
-        clear and return the debug strings, only relevant when `debug=True`
-
-        Returns: a single string that represents all of the `debug_buffer` content. this string should be printed
-        by the caller
-        """
-        ret_string = '\n'.join(self.debug_buffer)
-        self.debug_buffer.clear()
-        return ret_string
 
     @abstractmethod
     def declare_relation(self, relation_decl):
@@ -254,10 +244,12 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def operator_copy(self, src_rel, output_relation_name=None) -> Relation:
+    def operator_copy(self, src_rel: Relation, output_relation_name: Optional[str] = None) -> Relation:
         """
         Copies computed_relation to rule_relation.
-        @param output_relation_name:
+        @param src_rel: the relation to copy from
+        @param output_relation_name: if this is None, create a unique name for the outpu relation.
+            otherwise, this will be the name of the output relation
         """
         pass
 
@@ -364,21 +356,17 @@ class SqliteEngine(RgxlogEngineBase):
         unique_string = "" if allow_duplicates else "DISTINCT"
 
         if has_free_vars:
-            # free variables exist - return list/False
+            # free variables exist - return tuples/`FALSE_VALUE`
             query_cols = [f"{RELATION_COLUMN_PREFIX}{free_var_index}" for free_var_index in query_free_var_indexes]
             query_select_string = f"{', '.join(query_cols)}"
             sql_command = f"SELECT {unique_string} {query_select_string} FROM {query_relation} {query_where_conditions}"
         else:
-            # no free variables - only return True/False
+            # no free variables - only return `TRUE_VALUE`/`FALSE_VALUE`
             sql_command = f"SELECT * FROM {query_relation} {query_where_conditions}"
-
-        if self.debug:
-            self.debug_buffer.append(f'query: {sql_command}')
 
         query_result = self.run_sql(sql_command)
 
         if (not has_free_vars) and query_result != FALSE_VALUE:
-            # if there are no free variables, we should just return a true/false value
             query_result = TRUE_VALUE
 
         return query_result
@@ -424,7 +412,7 @@ class SqliteEngine(RgxlogEngineBase):
         @return: a normal relation that contains all of the resulting tuples in the rgxlog engine
         """
         # TODO@niv: right now the outputs are not bound, e.g. a(X) <- b(X,Y), c(X)->(Y) is the same as a(X) <- b(X,Y),
-        #  because c's output(Y) is not bound to its input(X). we need to change that
+        #  because c's output(Y) is not bound to its input(X). understand if this is ok (wait for dean)
 
         ie_relation_name = ie_relation.relation_name
 
@@ -440,13 +428,6 @@ class SqliteEngine(RgxlogEngineBase):
             # in this case, the ie input relation is defined exclusively by constant terms, i.e, by a single tuple
             # add that tuple as a fact to the input relation
             # create the input relation for the ie function, and also declare it inside SQL
-            # TODO@niv: this part can be deleted if we don't do join/project
-            # input_relation_arity = len(ie_relation.input_term_list)
-            # input_relation_name = self._create_unique_relation(input_relation_arity,
-            #                                                    prefix=f'{ie_relation_name}_input')
-            # input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
-            # self.add_fact(AddFact(input_relation.relation_name, ie_relation.input_term_list,
-            #                       ie_relation.input_type_list))
             ie_inputs = [tuple(ie_relation.input_term_list)]
         else:
             # get a list of inputs to the ie function - some of them may be constants
@@ -461,7 +442,7 @@ class SqliteEngine(RgxlogEngineBase):
                         result_input_list.append(bounded_input[index_in_bounded_input])
                         index_in_bounded_input += 1
                     else:
-                        # add constant
+                        # add a constant from the ie_relation's input
                         result_input_list.append(term)
 
                 assert index_in_bounded_input == len(bounded_input), "parsing input relation failed"
@@ -497,12 +478,6 @@ class SqliteEngine(RgxlogEngineBase):
                     output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
                     self.add_fact(output_fact)
 
-        # create and return the result relation. it's a relation that is the join of the input and output relations
-        # join_relations = [input_relation, output_relation]
-        # result_relation = self.operator_join(join_relations,
-        #                                      var_dict=get_free_var_to_relations_dict(set(join_relations)),
-        #                                      prefix=ie_relation_name)
-        # operator_project in output_relation's columns
         return output_relation
 
     def _get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
@@ -749,19 +724,18 @@ class SqliteEngine(RgxlogEngineBase):
         new_relation = Relation(new_relation_name, project_vars, new_type_list)
 
         sql_command = f"INSERT INTO {new_relation_name} SELECT "
-        select_list = []
+        dest_col_list = []
         for new_col_num, src_col_num in enumerate(project_indexes):
             new_col = self._get_col_name(new_col_num)
             src_col = self._get_col_name(src_col_num)
             if new_col == src_col:
-                select_list.append(src_col)
+                # this prevents selecting "colX AS colX", for aesthetic reasons
+                dest_col_list.append(src_col)
             else:
-                select_list.append(f"{src_col} AS {new_col}")
+                dest_col_list.append(f"{src_col} AS {new_col}")
 
-        sql_command += ", ".join(select_list)
-
+        sql_command += ", ".join(dest_col_list)
         sql_command += f" FROM {src_relation_name}"
-        print(sql_command)
 
         self.run_sql(sql_command)
         return new_relation
@@ -778,9 +752,10 @@ class SqliteEngine(RgxlogEngineBase):
         new_arity = len(relations)
         assert new_arity > 0, "cannot perform union on an empty list"
         if new_arity == 1:
-            # return self.operator_copy(relations[0])
+            return self.operator_copy(relations[0])
             # TODO@tom: @niv, I think returning the original relation is enough
-            return relations[0]
+            # @niv: probably, but it might be considered an optimization ;/
+            # return relations[0]
 
         new_relation_name = self._create_unique_relation(new_arity, prefix=PROJECT_PREFIX)
         new_term_list = relations[0].term_list
@@ -808,11 +783,21 @@ class SqliteEngine(RgxlogEngineBase):
         return new_relation
 
     def operator_copy(self, src_rel: Relation, output_relation_name=None) -> Relation:
-        # TODO@niv
         src_rel_name = src_rel.relation_name
         if output_relation_name:
             dest_rel_name = output_relation_name
-            self.operator_delete_all(output_relation_name)
+
+            # check if the relation already exists
+            sql_check_if_exists = (f"SELECT name FROM {SQL_TABLE_OF_TABLES} WHERE "
+                                   f"type='table' AND name='{output_relation_name}'")
+            is_table_exists = self.run_sql(sql_check_if_exists)
+
+            if is_table_exists:
+                self.operator_delete_all(output_relation_name)
+            else:
+                dest_decl_rel = RelationDeclaration(dest_rel_name, src_rel.type_list)
+                self.declare_relation(dest_decl_rel)
+
         else:
             dest_rel_name = self._create_unique_relation(arity=len(src_rel.type_list),
                                                          prefix=f"{src_rel_name}_{COPY_PREFIX}")
@@ -999,9 +984,9 @@ class GenericExecution(ExecutionBase):
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
 
             elif term_type == "rule_rel":
-                # TODO@niv: SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';
+                rule_name = term_attrs["value"].relation_name
                 rel_in: Relation = self.get_child_relation(term_id)
-                copy_rel = rgxlog_engine.operator_copy(rel_in)
+                copy_rel = rgxlog_engine.operator_copy(rel_in, rule_name)
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, copy_rel)
 
             elif term_type == "union":

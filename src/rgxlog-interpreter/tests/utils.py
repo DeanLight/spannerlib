@@ -7,12 +7,11 @@ from rgxlog.engine.session import queries_to_string, Session
 
 
 def is_equal_stripped_sorted_tables(result_text, expected_text):
-    # TODO@tom: @niv add documentation to the function.
     """
-
-    @param result_text:
-    @param expected_text:
-    @return:
+    compares all lines in between two strings, ignoring the order of the lines
+    @param result_text: first string to compare, usually the output of a test
+    @param expected_text: second string to compare, usually the expected output of a test
+    @return: True if equal, else False
     """
     result_text = sorted([line.strip() for line in result_text.splitlines() if line.strip()])
     expected_text = sorted([line.strip() for line in expected_text.splitlines() if line.strip()])
@@ -20,12 +19,11 @@ def is_equal_stripped_sorted_tables(result_text, expected_text):
 
 
 def is_equal_dataframes_ignore_order(result_df, expected_df):
-    # TODO@tom: @niv add documentation to the function.
     """
-
-    @param result_df:
-    @param expected_df:
-    @return:
+    similarly to `is_equal_stripped_sorted_tables`, compares two dataframes while ignoring the order of the rows
+    @param result_df: first dataframe to compare
+    @param expected_df: second dataframe to compare
+    @return: True if equal, else False
     """
     result_df_sorted = DataFrame(np.sort(result_df.values, axis=0), index=result_df.index, columns=result_df.columns)
     expected_df_sorted = DataFrame(np.sort(expected_df.values, axis=0), index=expected_df.index,
