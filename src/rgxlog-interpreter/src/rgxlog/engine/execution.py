@@ -749,12 +749,19 @@ class SqliteEngine(RgxlogEngineBase):
         new_relation = Relation(new_relation_name, project_vars, new_type_list)
 
         sql_command = f"INSERT INTO {new_relation_name} SELECT "
+        select_list = []
         for new_col_num, src_col_num in enumerate(project_indexes):
             new_col = self._get_col_name(new_col_num)
             src_col = self._get_col_name(src_col_num)
-            sql_command += f"{src_col} AS {new_col}"
+            if new_col == src_col:
+                select_list.append(src_col)
+            else:
+                select_list.append(f"{src_col} AS {new_col}")
+
+        sql_command += ", ".join(select_list)
 
         sql_command += f" FROM {src_relation_name}"
+        print(sql_command)
 
         self.run_sql(sql_command)
         return new_relation
@@ -771,7 +778,9 @@ class SqliteEngine(RgxlogEngineBase):
         new_arity = len(relations)
         assert new_arity > 0, "cannot perform union on an empty list"
         if new_arity == 1:
-            return self.operator_copy(relations[0])
+            # return self.operator_copy(relations[0])
+            # TODO@tom: @niv, I think returning the original relation is enough
+            return relations[0]
 
         new_relation_name = self._create_unique_relation(new_arity, prefix=PROJECT_PREFIX)
         new_term_list = relations[0].term_list

@@ -283,11 +283,13 @@ class Session:
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            # exec_result = GenericExecution(parse_graph=self._parse_graph,
-            #                                symbol_table=self._symbol_table,
-            #                                rgxlog_engine=self._execution,
-            #                                term_graph=self._term_graph).execute()
-            exec_result = None
+            # TODO@tom: remove it
+            print(self._term_graph)
+            exec_result = GenericExecution(parse_graph=self._parse_graph,
+                                           symbol_table=self._symbol_table,
+                                           rgxlog_engine=self._execution,
+                                           term_graph=self._term_graph).execute()
+
             if exec_result is not None:
                 exec_results.append(exec_result)
                 if print_results:
@@ -469,28 +471,17 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(True)
+    my_session = Session(False)
     my_query = '''
-        new b(int, int)
+        new B(int, int)
+        B(1, 1)
+        B(1, 2)
+        B(2, 3)
+        ?B(X, Y)
+        A(X, Y) <- B(X, Y)
+        ?A(X, Y)
         '''
 
     my_session.run_query(my_query)
 
-    my_session.register(lambda x: x, "d", [DataTypes.integer], [DataTypes.integer, DataTypes.integer])
-    my_session.register(lambda x: x, "c", [DataTypes.integer], [DataTypes.integer])
-    #
-    my_query2 = """
-        a(X,Y) <- b(Y, X), c(X) -> (Y)
-    """
-    # my_query2 = """
-    # d(3,3)
-    # d(4,4)
-    # b(4)
-    # b(5)
-    # a(X) <- d(X,X), b(X)"""
-    my_session.run_query(my_query2)
 
-
-    # A(X, X)
-    # A(X, 5)
-    # A(X, 5, X)

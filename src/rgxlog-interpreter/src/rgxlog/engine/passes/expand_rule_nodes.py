@@ -251,8 +251,6 @@ class ExpandRuleNodes(GenericPass):
         term_ids = self.parse_graph.post_order_dfs()
         rule_node_ids: List[int] = list()
 
-        print(self.parse_graph)
-
         for term_id in term_ids:
             term_attrs = self.parse_graph.get_term_attributes(term_id)
 
