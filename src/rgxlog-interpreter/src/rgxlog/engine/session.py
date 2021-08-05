@@ -282,8 +282,6 @@ class Session:
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            # TODO@tom: remove it
-            # print(self._term_graph)
             exec_result = GenericExecution(parse_graph=self._parse_graph,
                                            symbol_table=self._symbol_table,
                                            rgxlog_engine=self._execution,
@@ -331,14 +329,20 @@ class Session:
 
         @param rule: the rule to be removed
         """
-        self._execution.remove_rule(rule)
+        is_last = self._term_graph.remove_rule(rule)
+        if is_last:
+            relation_name = rule.split('(')[0]
+            self._symbol_table.remove_rule_relation(relation_name)
+            # self._execution.remove_tables([relation_name])
 
     def remove_all_rules(self, rule_head: Optional[str] = None):
         """
         Removes all rules from the engine.
         @param rule_head: if rule head is not none we remove all rules with rule_head
         """
-        self._execution.remove_all_rules(rule_head)
+        self._term_graph = ExecutionTermGraph()
+        relations_names = self._symbol_table.remove_all_rule_relations()
+        # self._execution.remove_tables(relations_names)
 
     @staticmethod
     def _unknown_task_type():
@@ -458,27 +462,32 @@ class Session:
         """
         self._symbol_table.remove_all_ie_functions()
 
-    def print_all_rules(self, rule_head: str = None):
+    def print_all_rules(self):
         """
         prints all the rules that are registered.
 
-        @param rule_head: if rule head is not none we print all rules with rule_head
         """
 
-        self._execution.print_all_rules(rule_head)
+        self._term_graph.print_all_rules()
 
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(True)
+    my_session = Session(False)
 
     query = """
-        new B(int, int)
-        B(1, 1)
-        A(X, Y) <- B(X, Y)
-        B(1, 2)
-        ?A(Z, W)
-    """
+           new B(int, int)
+           new C(int, int)
+           B(1, 1)
+           B(1, 2)
+           B(2, 3)
+           C(2, 2)
+           C(1, 1)
 
+           A(X, Y) <- B(X, Y)
+           A(X, Y) <- C(X, Y)
+           ?A(X, Y)
+       """
     my_session.run_query(query)
+    my_session.print_all_rules()
 

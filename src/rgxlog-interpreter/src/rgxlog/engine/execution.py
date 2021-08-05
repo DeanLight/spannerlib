@@ -11,7 +11,7 @@ import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import Tuple, Optional, Dict, Set
+from typing import Tuple, Optional, Dict, Set, Iterable
 
 from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.datatypes.primitive_types import Span
@@ -78,14 +78,14 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    @abstractmethod
-    def remove_rule(self, rule: str):
-        """
-        remove a rule from the rgxlog engine
-
-        @param rule: the rule to be removed
-        """
-        pass
+    # @abstractmethod
+    # def remove_rule(self, rule: str):
+    #     """
+    #     remove a rule from the rgxlog engine
+    #
+    #     @param rule: the rule to be removed
+    #     """
+    #     pass
 
     @abstractmethod
     def query(self, query):
@@ -97,15 +97,24 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    @abstractmethod
-    def add_rule(self, rule_head, rule_body_relation_list):
-        """
-        add a rule to the rgxlog engine.
-        this method assumes that all the relations in the rule body are normal relations (non ie relations)
-        this means that the rule will be added as it is, without any micro operations (e.g. computing an ie relation)
+    # @abstractmethod
+    # def add_rule(self, rule_head, rule_body_relation_list):
+    #     """
+    #     add a rule to the rgxlog engine.
+    #     this method assumes that all the relations in the rule body are normal relations (non ie relations)
+    #     this means that the rule will be added as it is, without any micro operations (e.g. computing an ie relation)
+    #
+    #     @param rule_head: a relation that defines the rule head
+    #     @param rule_body_relation_list: a list of relations that defines the rule body
+    #     """
+    #     pass
 
-        @param rule_head: a relation that defines the rule head
-        @param rule_body_relation_list: a list of relations that defines the rule body
+    @abstractmethod
+    def remove_tables(self, tables_names: Iterable[str]) -> None:
+        """
+        Removes all the tables inside the input from sql.
+
+        @param tables_names: tables to remove.
         """
         pass
 
@@ -201,9 +210,9 @@ class RgxlogEngineBase(ABC):
         final_string = f"{relation.relation_name}({terms_string})"
         return final_string
 
-    @abstractmethod
-    def remove_all_rules(self, rule_head):
-        pass
+    # @abstractmethod
+    # def remove_all_rules(self, rule_heads):
+    #     pass
 
     @abstractmethod
     def operator_select(self, relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
@@ -261,10 +270,10 @@ class SqliteEngine(RgxlogEngineBase):
     `very_cool_and_even(X) <- cool(X), awesome(X),  get_number(X) -> (Y), even(Y)`
 
     we need to create a few tables:
-    very_cool(X) <- cool(X), awesome(X)  # SQL union
+    very_cool(X) <- cool(X), awesome(X)  # SQL join
     input_get_number(X) <- very_cool(X)  # SQL select
     get_number_pairs(X,Y) = run `get_number` on every X, output (X,Y)  # SQL select and then for loop with IE func
-    final_join_relations(X,Y) <- very_cool(X), get_number_pairs(X,Y), even(Y)  # SQL union and project/rename
+    final_join_relations(X,Y) <- very_cool(X), get_number_pairs(X,Y), even(Y)  # SQL join ,union and project/rename
 
     and finally:
     very_cool_and_even(X) <- final_join_relations(X,Y)  # SQL project/rename
@@ -326,18 +335,21 @@ class SqliteEngine(RgxlogEngineBase):
                        f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
         self.run_sql(sql_command)
 
-    def add_rule(self, rule_head, rule_body_relation_list):
-        # we need to maintain the tables that resulted from a rule, right? this means that
-        # we need to recalculate the rule table every time it is called. maybe we should store some
-        # metadata, like the last change to the tables we depend on.
-        pass
+    # def add_rule(self, rule_head, rule_body_relation_list):
+    #     # we need to maintain the tables that resulted from a rule, right? this means that
+    #     # we need to recalculate the rule table every time it is called. maybe we should store some
+    #     # metadata, like the last change to the tables we depend on.
+    #
+    #     # TODO@tom: @niv, this function is not relevant anymore. it was a wrapper to pydatalog. it can be deleted.
+    #     pass
 
-    def remove_rule(self, rule: str):
-        # we just need to delete the table that the rule created
-        pass
+    # def remove_rule(self, rule: str):
+    #     # we just need to delete the table that the rule created
+    #     # TODO@tom: I moved thus function to execution graph. it can be deleted.
+    #     pass
 
-    def remove_all_rules(self, rule_head):
-        pass
+    # def remove_all_rules(self, rule_heads):
+    #     pass
 
     def query(self, query: Query, allow_duplicates=False):
         """
@@ -370,6 +382,14 @@ class SqliteEngine(RgxlogEngineBase):
             query_result = TRUE_VALUE
 
         return query_result
+
+    def remove_tables(self, tables_names: Iterable[str]) -> None:
+        """
+        Removes all the tables inside the input from sql.
+
+        @param tables_names: tables to remove.
+        """
+        pass
 
     def _create_unique_relation(self, arity, prefix=""):
         """
@@ -929,7 +949,7 @@ class GenericExecution(ExecutionBase):
             # the term is not computed, get its type and compute it accordingly
             term_type = term_attrs["type"]
 
-            if term_type in ("root", "relation", "rule_body", "rule", "rule_head"):
+            if term_type in ("root", "relation", "rule"):
                 continue
 
             elif term_type == "relation_declaration":
@@ -967,6 +987,10 @@ class GenericExecution(ExecutionBase):
         term_graph = self.term_graph
         rgxlog_engine = self.rgxlog_engine
         rule_head_id = term_graph.get_relation_id(rule_head)
+
+        # check if the relation is declared relation
+        if rule_head_id == -1:
+            return
         term_ids = term_graph.post_order_dfs_from(rule_head_id)
 
         for term_id in term_ids:

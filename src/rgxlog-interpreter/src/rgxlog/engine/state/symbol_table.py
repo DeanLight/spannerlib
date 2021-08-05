@@ -154,11 +154,39 @@ class SymbolTableBase(ABC):
 
         @param name: the name of the ie function to remove
         """
+        pass
 
+    @abstractmethod
     def remove_all_ie_functions(self):
         """
         removes all the ie functions from the symbol table
         """
+        pass
+
+    @abstractmethod
+    def print_registered_ie_functions(self):
+        """
+        prints all the registered ie functions.
+        """
+        pass
+
+    @abstractmethod
+    def remove_rule_relation(self, relation_name: str):
+        """
+        Removes a rule relation from the symbol table.
+
+        @param relation_name: the name of the relation to remove.
+        """
+        pass
+
+    @abstractmethod
+    def remove_all_rule_relations(self) -> Iterable[str]:
+        """
+        Removes all the rule relations.
+
+        @return: iterable of all the relations name it removed.
+        """
+        pass
 
     def __str__(self):
         """
@@ -256,23 +284,9 @@ class SymbolTable(SymbolTableBase):
         return relation_name in self._relation_to_schema
 
     def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel):
-        # check if ie_function_name is available.
-        # if self.contains_ie_function(ie_function_name):
-        #     raise Exception(f"""Already exists ie function named {ie_function_name}.\n
-        #     {self._registered_ie_functions[ie_function_name].get_meta_data}""" )
-
-        # initialize ie_function_data instance.
-        # add a mapping between ie_function_name and ie_function_data instance.
         self._registered_ie_functions[ie_function_name] = IEFunction(ie_function, in_rel, out_rel)
 
     def register_ie_function_object(self, ie_function_object: IEFunction, ie_function_name):
-        # check if ie_function_name is available.
-        # if self.contains_ie_function(ie_function_name):
-        #     raise Exception(f"""Already exists ie function named {ie_function_name}.\n
-        #     {self._registered_ie_functions[ie_function_name].get_meta_data}""")
-
-        # initialize ie_function_data instance.
-        # add a mapping between ie_function_name and ie_function_data instance.
         self._registered_ie_functions[ie_function_name] = ie_function_object
 
     def contains_ie_function(self, ie_func_name):
@@ -299,3 +313,21 @@ class SymbolTable(SymbolTableBase):
         for ie_function_name, ie_function_obj in self._registered_ie_functions.items():
             print(f'{ie_function_name}\n{ie_function_obj.get_meta_data}\n{ie_function_obj}\n'
                   f'{ie_function_obj.ie_function_def.__doc__}\n\n')
+
+    def remove_rule_relation(self, relation_name: str):
+        relation_to_remove = None
+        for relation in self.rule_relations:
+            if relation_name == relation.relation_name:
+                relation_to_remove = relation
+                break
+
+        assert relation_to_remove is not None
+        self.rule_relations.remove(relation_to_remove)
+        del self._relation_to_schema[relation_name]
+
+    def remove_all_rule_relations(self):
+        relations_names = self.rule_relations
+        self._relation_to_schema = dict(filter(lambda pair: pair[0] not in relations_names,
+                                               self._relation_to_schema.items()))
+        self.rule_relations = set()
+        return relations_names

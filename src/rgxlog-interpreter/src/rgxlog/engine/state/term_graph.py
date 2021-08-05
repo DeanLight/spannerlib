@@ -5,11 +5,11 @@ this module contains the implementations of term graphs
 from abc import abstractmethod
 from enum import Enum
 from itertools import count
-from typing import Union
+from typing import Union, Set
 
 import networkx as nx
 
-from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, RelationDeclaration
+from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, RelationDeclaration, Rule
 
 PRETTY_INDENT = ' ' * 4
 
@@ -275,9 +275,53 @@ class ExecutionTermGraph(NetxTermGraph):
     """
     a wrapper to NextTermGraph that adds support to relations and their corresponding nodes.
     """
+
     def __init__(self):
         super().__init__()
         self.relation_to_id = dict()
+        self.rule_to_nodes = dict()
+
+    def add_rule(self, rule: Rule, nodes: Set[int]) -> None:
+        """
+        Adds rule to term graph dict.
+
+        @param rule: the rule to add.
+        @param nodes: all the nodes in the graph that are unique to the rule
+                      (and thus should be removed if the rule is removed)
+        """
+
+        self.rule_to_nodes[str(rule)] = nodes
+
+    def remove_rule(self, rule: str) -> bool:
+        """
+        Removes rule from term graph.
+
+        @param rule: the rule to remove. unlike add_rule, here rule should be string as it is a user input.
+        @raise Exception if the rule doesn't exist in the term graph
+        @return: true if the head relation was deleted, false otherwise.
+        """
+        # TODO@tom: we delete the table only we removed the last rule (the union node has no children left).
+        # TODO@tom: what if the rule we try to deleted is used by other rules?
+
+        if rule not in self.rule_to_nodes:
+            raise Exception(f"The rule '{rule}' was never registered "
+                            f"(you can run 'print_all_rules' to see all the registered rules)")
+
+        self._graph.remove_nodes_from(self.rule_to_nodes[rule])
+        del self.rule_to_nodes[rule]
+
+        rule_name = rule.split('(')[0]
+        rel_node, union_node = self.relation_to_id[rule_name]
+        children = self.get_children(union_node)
+        if len(children) == 0:
+            self._graph.remove_nodes_from((rel_node, union_node))
+            return True
+        return False
+
+    def print_all_rules(self):
+        print("Printing all the rules:")
+        for i, rule in enumerate(self.rule_to_nodes):
+            print(f"\t{i + 1}. {rule}")
 
     def add_relation(self, relation: Relation) -> int:
         """
@@ -311,4 +355,3 @@ class ExecutionTermGraph(NetxTermGraph):
         if ids == -1:
             return -1
         return ids[0] if actual_node else ids[1]
-

@@ -5,7 +5,7 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
-from typing import List, Any
+from typing import List, Any, Tuple, Set
 
 from lark import Token
 
@@ -231,6 +231,20 @@ class Rule:
         rule_string = f'{head_relation_string} <- {rule_body_string}'
         return rule_string
 
+    def peel_off_token_wrappers(self) -> None:
+        self.head_relation.peel_off_token_wrappers()
+        for relation in self.body_relation_list:
+            relation.peel_off_token_wrappers()
+
+    def get_relations_by_type(self) -> Tuple[Set[Relation], Set[IERelation]]:
+        relations, ie_relations = set(), set()
+        for rel, rel_type in zip(self.body_relation_list, self.body_relation_type_list):
+            if rel_type == "relation":
+                relations.add(rel)
+            else:
+                ie_relations.add(rel)
+
+        return relations, ie_relations
 
 class Assignment:
     """

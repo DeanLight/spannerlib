@@ -1038,46 +1038,34 @@ class AddStatementsToNetxTermGraph(InterpreterPass):
 
     @unravel_lark_node
     def rule(self, rule: Rule):
-        rule.head_relation.peel_off_token_wrappers()
-        # create the root of the rule statement in the term graph. Note that this is an "empty" node (it does
-        # not contain a value). This is because the rule statement will be defined by the children of this node.
-        main_rule_node = self.parse_graph.add_term(type="rule")
-        # attach the rule node to the term graph root
-        self.parse_graph.add_edge(self.parse_graph.get_root_id(), main_rule_node)
+        rule.peel_off_token_wrappers()
+        self._add_statement_to_term_graph("rule", rule)
 
-        # create the rule head node for the term graph.
-        # since a rule head is defined by a single relation, this node will contain a value which is that relation.
-        rule_head_relation_node = self.parse_graph.add_term(type="rule_head", value=rule.head_relation)
-        # attach the rule head node to the rule statement node
-        self.parse_graph.add_edge(main_rule_node, rule_head_relation_node)
+        # # create the root of the rule statement in the term graph. Note that this is an "empty" node (it does
+        # # not contain a value). This is because the rule statement will be defined by the children of this node.
+        # main_rule_node = self.parse_graph.add_term(type="rule")
+        # # attach the rule node to the term graph root
+        # self.parse_graph.add_edge(self.parse_graph.get_root_id(), main_rule_node)
+        #
+        # # create the rule head node for the term graph.
+        # # since a rule head is defined by a single relation, this node will contain a value which is that relation.
+        # rule_head_relation_node = self.parse_graph.add_term(type="rule_head", value=rule.head_relation)
+        # # attach the rule head node to the rule statement node
+        # self.parse_graph.add_edge(main_rule_node, rule_head_relation_node)
+        #
+        # # create the rule body node. Unlike the rule head node, we can't define the rule body node
+        # # with a single value since a rule body can be defined by multiple relations.
+        # # Instead, each of the rule body relations will be represented by a term graph node
+        # # that is a child of the rule body node.
+        # rule_body_node = self.parse_graph.add_term(type="rule_body")
+        # # attach the rule body node to the rule statement node
+        # self.parse_graph.add_edge(main_rule_node, rule_body_node)
+        #
+        # # add each rule body relation to the graph as a child node of the rule body node.
+        # for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+        #     # add the relation to the term graph
+        #     rule_body_relation_node = self.parse_graph.add_term(type=relation_type, value=relation)
+        #     # attach the relation to the rule body
+        #     self.parse_graph.add_edge(rule_body_node, rule_body_relation_node)
 
-        # create the rule body node. Unlike the rule head node, we can't define the rule body node
-        # with a single value since a rule body can be defined by multiple relations.
-        # Instead, each of the rule body relations will be represented by a term graph node
-        # that is a child of the rule body node.
-        rule_body_node = self.parse_graph.add_term(type="rule_body")
-        # attach the rule body node to the rule statement node
-        self.parse_graph.add_edge(main_rule_node, rule_body_node)
-
-        # add each rule body relation to the graph as a child node of the rule body node.
-        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            relation.peel_off_token_wrappers()
-            # add the relation to the term graph
-            rule_body_relation_node = self.parse_graph.add_term(type=relation_type, value=relation)
-            # attach the relation to the rule body
-            self.parse_graph.add_edge(rule_body_node, rule_body_relation_node)
-
-
-# class AddDeclaredRelationsToTermGraph(InterpreterPass):
-#     """
-#     this pass adds the relation that it finds in relation declarations to the term graph.
-#     """
-#
-#     def __init__(self, **kw):
-#         super().__init__()
-#         self.term_graph = kw['term_graph']
-#
-#     @unravel_lark_node
-#     def relation_declaration(self, relation_decl: RelationDeclaration):
-#         self.term_graph.add_relation(relation_declaration_to_relation(relation_decl))
 

@@ -163,7 +163,7 @@ def test_add_fact_after_rule():
         B(1, 1)
         A(X, Y) <- B(X, Y)
         B(1, 2)
-        ?A(X, Y)
+        ?A(Z, W)
     """
 
     run_test(query, expected_result)
@@ -183,3 +183,32 @@ def test_datatypes():
     """
 
     run_test(query, expected_result)
+
+
+def test_remove_rule():
+    expected_result = """printing results for query 'A(X, Y)':
+       X |   Y
+    -----+-----
+       1 |   1
+       1 |   2
+       2 |   3
+     """
+
+    query = """
+           new B(int, int)
+           new C(int, int)
+           B(1, 1)
+           B(1, 2)
+           B(2, 3)
+           C(2, 2)
+           C(1, 1)
+
+           A(X, Y) <- B(X, Y)
+           A(X, Y) <- C(X, Y)
+           
+        """
+    session = run_test(query)
+
+    session.remove_rule("A(X, Y) <- C(X, Y)")
+
+    run_test("?A(X, Y)", expected_result, test_session=session)
