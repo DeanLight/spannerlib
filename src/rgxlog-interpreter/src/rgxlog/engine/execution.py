@@ -929,8 +929,8 @@ class GenericExecution(ExecutionBase):
             # the term is not computed, get its type and compute it accordingly
             term_type = term_attrs["type"]
 
-            if term_type in ("root", "relation", "rule_body", "rule"):
-                pass
+            if term_type in ("root", "relation", "rule_body", "rule", "rule_head"):
+                continue
 
             elif term_type == "relation_declaration":
                 relation_decl = term_attrs[VALUE_ATTRIBUTE]
@@ -947,11 +947,9 @@ class GenericExecution(ExecutionBase):
             elif term_type == "query":
                 query = term_attrs[VALUE_ATTRIBUTE]
                 # TODO@niv: change this - enable returning the pre-formatted query (should be possible with sql engine)
+                self.compute_rule(query)
                 exec_result = (query, rgxlog_engine.query(query))
 
-            elif term_type == "rule_head":
-                rule_head = term_attrs[VALUE_ATTRIBUTE]
-                self.compute_rule(rule_head)
             else:
                 raise ValueError("illegal term type in parse graph")
 
@@ -960,7 +958,7 @@ class GenericExecution(ExecutionBase):
 
         return exec_result
 
-    def compute_rule(self, rule_head: Relation) -> None:
+    def compute_rule(self, rule_head: Query) -> None:
         """
         saves the rule to rules_history (used for rule deletion) and copies the table from the
         rule's child in the parse graph, which is the result of all the rule calculations

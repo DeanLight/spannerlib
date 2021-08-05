@@ -473,10 +473,12 @@ if __name__ == "__main__":
     my_session = Session(True)
 
     query = """
-            new B(int, str, span)
-            B(1, "2", [1, 2))
-            ?B(X, Y, Z)
-        """
+        new B(int, int)
+        B(1, 1)
+        A(X, Y) <- B(X, Y)
+        B(1, 2)
+        ?A(Z, W)
+    """
 
     my_session.run_query(query)
 

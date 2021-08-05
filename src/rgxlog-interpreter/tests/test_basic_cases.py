@@ -130,6 +130,45 @@ def test_union_rule_with_different_vars():
 
     run_test(query, expected_result)
 
+
+def test_project():
+    expected_result = """printing results for query 'A(X)':
+       X
+    -----
+       1 
+    """
+
+    query = """
+        new B(int, int)
+        B(1, 1)
+        B(1, 2)
+
+        A(X) <- B(X, Y)
+        ?A(X)
+    """
+
+    run_test(query, expected_result)
+
+
+def test_add_fact_after_rule():
+    expected_result = """printing results for query 'A(Z, W)':
+       Z |   W
+    -----+-----
+       1 |   1
+       1 |   2
+    """
+
+    query = """
+        new B(int, int)
+        B(1, 1)
+        A(X, Y) <- B(X, Y)
+        B(1, 2)
+        ?A(X, Y)
+    """
+
+    run_test(query, expected_result)
+
+
 def test_datatypes():
     expected_result = """printing results for query 'B(X, Y, Z)':
        X |   Y |   Z
