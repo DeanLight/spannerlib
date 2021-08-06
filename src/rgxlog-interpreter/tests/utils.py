@@ -1,4 +1,4 @@
-from typing import List, Optional, Iterable
+from typing import List, Optional, Iterable, Dict
 
 import numpy as np
 from pandas import DataFrame
@@ -86,7 +86,7 @@ def compare_strings(expected: str, output: str) -> bool:
     return True
 
 
-def run_test(query: str, expected_output: Optional[str] = None, functions_to_import: Iterable[dict] = tuple(),
+def run_test(query: str, expected_output: Optional[str] = None, functions_to_import: Iterable[Dict] = tuple(),
              test_session: Optional[Session] = None) -> Session:
     """
     A function that executes a test.

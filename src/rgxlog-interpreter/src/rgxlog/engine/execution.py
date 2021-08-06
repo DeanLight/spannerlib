@@ -1000,7 +1000,7 @@ class GenericExecution(ExecutionBase):
 
             term_type = term_attrs["type"]
 
-            if term_type in ("base_rel", "get_rel"):
+            if term_type in "get_rel":
                 term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
 
             elif term_type == "rule_rel":

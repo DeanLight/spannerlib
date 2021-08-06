@@ -163,13 +163,15 @@ class AddRuleToTermGraph:
         # TODO@niv: @tom, is there any difference between those two?
         # @tom: yes! base rel means we already have the relation. get_rel means we need to continues the dfs in order
         #       to compute it.
-        rel_type = "base_rel" if is_base_rel else "get_rel"
-        rel_id = self.term_graph.add_term(type=rel_type, value=relation)
+        # @tom: i removed base_rel, there wasn't difference between them.
+
+        rel_id = self.term_graph.add_term(type="get_rel", value=relation)
         self.add_node(rel_id)
 
         self.relation_to_branch_id[relation] = rel_id
         self.term_graph.add_edge(father_node_id, rel_id)
         if not is_base_rel:
+            # TODO@tom: add comment
             self.term_graph.add_edge(rel_id, root_rel_id)
 
     def add_relation_branch(self, relation: Union[Relation, IERelation], join_node_id: int) -> None:

@@ -36,8 +36,6 @@ def peel_token(token) -> str:
         return token.value
     return token
 
-
-
 # TODO: understand why this causes a bug (rule safety something)
 #  @dataclasses.dataclass(init=False)
 class Relation:

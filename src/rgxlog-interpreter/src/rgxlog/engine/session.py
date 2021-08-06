@@ -286,7 +286,7 @@ class Session:
                                            symbol_table=self._symbol_table,
                                            rgxlog_engine=self._execution,
                                            term_graph=self._term_graph).execute()
-
+            print(self._term_graph)
             if exec_result is not None:
                 exec_results.append(exec_result)
                 if print_results:
@@ -430,7 +430,7 @@ class Session:
         symbol_table = self._symbol_table
         relation_schema = symbol_table.get_relation_schema(relation_name)
         relation_arity = len(relation_schema)
-        query = ("?" + relation_name + "(" +
+        query = (f"?{relation_name}(" +
                  ", ".join(f"{RELATION_COLUMN_PREFIX}{i}" for i in range(relation_arity)) + ")")
         return query
 
@@ -476,18 +476,6 @@ if __name__ == "__main__":
     my_session = Session(False)
 
     query = """
-           new B(int, int)
-           new C(int, int)
-           B(1, 1)
-           B(1, 2)
-           B(2, 3)
-           C(2, 2)
-           C(1, 1)
-
-           A(X, Y) <- B(X, Y)
-           A(X, Y) <- C(X, Y)
-           ?A(X, Y)
        """
     my_session.run_query(query)
-    my_session.print_all_rules()
 
