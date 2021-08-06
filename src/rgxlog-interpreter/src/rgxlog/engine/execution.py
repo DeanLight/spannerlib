@@ -371,10 +371,13 @@ class SqliteEngine(RgxlogEngineBase):
             # free variables exist - return tuples/`FALSE_VALUE`
             query_cols = [f"{RELATION_COLUMN_PREFIX}{free_var_index}" for free_var_index in query_free_var_indexes]
             query_select_string = f"{', '.join(query_cols)}"
-            sql_command = f"SELECT {unique_string} {query_select_string} FROM {query_relation} {query_where_conditions}"
+            sql_command = f"SELECT {unique_string} {query_select_string} FROM {query_relation}"
         else:
             # no free variables - only return `TRUE_VALUE`/`FALSE_VALUE`
-            sql_command = f"SELECT * FROM {query_relation} {query_where_conditions}"
+            sql_command = f"SELECT * FROM {query_relation}"
+
+        if query_where_conditions:
+            sql_command += " " + query_where_conditions
 
         query_result = self.run_sql(sql_command)
 
@@ -383,13 +386,23 @@ class SqliteEngine(RgxlogEngineBase):
 
         return query_result
 
-    def remove_tables(self, tables_names: Iterable[str]) -> None:
+    def remove_tables(self, table_names: Iterable[str]) -> None:
         """
-        Removes all the tables inside the input from sql.
+        Removes the given tables from sql.
 
-        @param tables_names: tables to remove.
+        @param table_names: tables to remove.
         """
-        pass
+        for table_name in table_names:
+            self.remove_table(table_name)
+
+    def remove_table(self, table_name: str) -> None:
+        """
+        removes a table from the sql database, assuming that it exists
+        @param table_name: the table to remove
+        @return:
+        """
+        sql_command = f"DROP TABLE {table_name}"
+        self.run_sql(sql_command)
 
     def _create_unique_relation(self, arity, prefix=""):
         """
@@ -950,7 +963,8 @@ class GenericExecution(ExecutionBase):
             term_type = term_attrs["type"]
 
             if term_type in ("root", "relation", "rule"):
-                continue
+                # pass and not continue, because we want to mark them as computed
+                pass
 
             elif term_type == "relation_declaration":
                 relation_decl = term_attrs[VALUE_ATTRIBUTE]
@@ -965,8 +979,8 @@ class GenericExecution(ExecutionBase):
                 rgxlog_engine.remove_fact(fact)
 
             elif term_type == "query":
+                # we return the query as well as the result, because we print as part of the output
                 query = term_attrs[VALUE_ATTRIBUTE]
-                # TODO@niv: change this - enable returning the pre-formatted query (should be possible with sql engine)
                 self.compute_rule(query)
                 exec_result = (query, rgxlog_engine.query(query))
 
