@@ -243,8 +243,8 @@ class Session:
         Runs the passes in pass_list on tree, one after another.
         """
         if self.debug:
-            print(f"initial tree:\n{lark_tree.pretty()}")
-            print(f"initial term_tree:\n{self._term_graph}")
+            print(f"initial lark tree:\n{lark_tree.pretty()}")
+            print(f"initial term graph:\n{self._term_graph}")
 
         for curr_pass in pass_list:
             curr_pass_object = curr_pass(parse_graph=self._parse_graph,
@@ -333,16 +333,17 @@ class Session:
         if is_last:
             relation_name = rule.split('(')[0]
             self._symbol_table.remove_rule_relation(relation_name)
-            # self._execution.remove_tables([relation_name])
+            self._execution.remove_table(relation_name)
 
     def remove_all_rules(self, rule_head: Optional[str] = None):
         """
         Removes all rules from the engine.
         @param rule_head: if rule head is not none we remove all rules with rule_head
         """
+        # TODO@tom: rule_head thingy
         self._term_graph = ExecutionTermGraph()
         relations_names = self._symbol_table.remove_all_rule_relations()
-        # self._execution.remove_tables(relations_names)
+        self._execution.remove_tables(relations_names)
 
     @staticmethod
     def _unknown_task_type():

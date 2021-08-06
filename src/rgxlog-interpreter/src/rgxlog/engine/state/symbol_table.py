@@ -273,8 +273,9 @@ class SymbolTable(SymbolTableBase):
         if is_rule:
             self.rule_relations.add(relation_name)
 
-    def get_relation_schema(self, relation_name):
-        # TODO@niv: maybe add error checking here?
+    def get_relation_schema(self, relation_name:str):
+        if relation_name not in self._relation_to_schema:
+            raise NameError(f"relation {relation_name} does not exist in the symbol table")
         return self._relation_to_schema[relation_name]
 
     def get_all_relations(self):

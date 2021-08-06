@@ -1,6 +1,5 @@
 from collections import OrderedDict
-
-from typing import Tuple, Set, Optional, Union, Dict, List
+from typing import Set, Optional, Union, Dict, List
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, Rule
 from rgxlog.engine.execution import RgxlogEngineBase
@@ -60,7 +59,7 @@ class BoundingGraph:
             # the ie relation can't be bounded yet
             return
 
-    def compute_graph(self) -> Dict[IERelation, Set[Union[Relation, IERelation]]]:
+    def compute_graph(self) -> OrderedDict[IERelation, Set[Union[Relation, IERelation]]]:
         """
         See class description.
         @return: a dictionary that maps each ie function to a set of it's bounding relations.
@@ -104,9 +103,6 @@ class AddRuleToTermGraph:
 
         @param term_graph: the global term graph (contains all the execution trees of all the rules).
         @param rule: the rule we expand
-        @param head_relation: the relation head of the rule.
-        @param relations: set of relations in rule body.
-        @param ie_relations: set of ie_relations in rule body.
         """
         self.term_graph = term_graph
         self.rule = rule
@@ -160,10 +156,6 @@ class AddRuleToTermGraph:
 
         root_rel_id = self.term_graph.get_relation_id(relation)
         is_base_rel = root_rel_id == -1
-        # TODO@niv: @tom, is there any difference between those two?
-        # @tom: yes! base rel means we already have the relation. get_rel means we need to continues the dfs in order
-        #       to compute it.
-        # @tom: i removed base_rel, there wasn't difference between them.
 
         rel_id = self.term_graph.add_term(type="get_rel", value=relation)
         self.add_node(rel_id)
@@ -171,7 +163,7 @@ class AddRuleToTermGraph:
         self.relation_to_branch_id[relation] = rel_id
         self.term_graph.add_edge(father_node_id, rel_id)
         if not is_base_rel:
-            # TODO@tom: add comment
+            # TODO@niv: @tom: comments here (or rename stuff)
             self.term_graph.add_edge(rel_id, root_rel_id)
 
     def add_relation_branch(self, relation: Union[Relation, IERelation], join_node_id: int) -> None:
