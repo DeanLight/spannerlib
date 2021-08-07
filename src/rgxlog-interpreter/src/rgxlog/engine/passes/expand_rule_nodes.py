@@ -1,13 +1,13 @@
 from collections import OrderedDict
-from typing import Set, Optional, Union, Dict, List
+from typing import Set, Optional, Union, Dict, List, OrderedDict as OrderedDictType
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, Rule
 from rgxlog.engine.execution import RgxlogEngineBase
 from rgxlog.engine.passes.lark_passes import GenericPass
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, ExecutionTermGraph, NetxTermGraph
-from rgxlog.engine.utils.general_utils import get_input_free_var_names, get_output_free_var_names, \
-    get_free_var_to_relations_dict
+from rgxlog.engine.utils.general_utils import (get_input_free_var_names, get_output_free_var_names,
+                                               get_free_var_to_relations_dict)
 
 
 class BoundingGraph:
@@ -31,8 +31,8 @@ class BoundingGraph:
         # maps each ie relation to it's bounding relations
         self.bounding_graph = OrderedDict()
 
-    def find_bounding_relations_of_ie_function(self, ie_relation: IERelation) -> \
-            Optional[Set[Union[Relation, IERelation]]]:
+    def find_bounding_relations_of_ie_function(self, ie_relation: IERelation) -> (
+            Optional[Set[Union[Relation, IERelation]]]):
         """
         Finds all the relation that are already bounded that bind the ie relation.
         @param ie_relation: the ie relation to bound.
@@ -59,7 +59,7 @@ class BoundingGraph:
             # the ie relation can't be bounded yet
             return
 
-    def compute_graph(self) -> OrderedDict[IERelation, Set[Union[Relation, IERelation]]]:
+    def compute_graph(self) -> OrderedDictType[IERelation, Set[Union[Relation, IERelation]]]:
         """
         See class description.
         @return: a dictionary that maps each ie function to a set of it's bounding relations.
