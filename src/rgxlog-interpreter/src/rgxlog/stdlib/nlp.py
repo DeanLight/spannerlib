@@ -269,8 +269,8 @@ def openie_wrapper(sentence):
     with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
         for lst in core_nlp_engine.openie(sentence):
             for res in lst:
-                yield res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']), \
-                      res['object'], tuple(res['objectSpan'])
+                yield (res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']),
+                       res['object'], tuple(res['objectSpan']))
 
 
 OpenIE = dict(ie_function=openie_wrapper,
@@ -287,8 +287,8 @@ def kbp_wrapper(sentence):
     with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
         for lst in core_nlp_engine.kbp(sentence):
             for res in lst:
-                yield res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']), \
-                      res['object'], tuple(res['objectSpan'])
+                yield (res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']),
+                       res['object'], tuple(res['objectSpan']))
 
 
 KBP = dict(ie_function=kbp_wrapper,
