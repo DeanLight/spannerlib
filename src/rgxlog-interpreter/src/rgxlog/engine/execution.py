@@ -11,7 +11,7 @@ import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import Tuple, Optional, Dict, Set, Iterable
+from typing import Tuple, Optional, Dict, Set, Iterable, Union
 
 from rgxlog.engine.datatypes.ast_node_types import *
 from rgxlog.engine.datatypes.primitive_types import Span
@@ -96,18 +96,6 @@ class RgxlogEngineBase(ABC):
         @return: a list of tuples that are the query's results
         """
         pass
-
-    # @abstractmethod
-    # def add_rule(self, rule_head, rule_body_relation_list):
-    #     """
-    #     add a rule to the rgxlog engine.
-    #     this method assumes that all the relations in the rule body are normal relations (non ie relations)
-    #     this means that the rule will be added as it is, without any micro operations (e.g. computing an ie relation)
-    #
-    #     @param rule_head: a relation that defines the rule head
-    #     @param rule_body_relation_list: a list of relations that defines the rule body
-    #     """
-    #     pass
 
     @abstractmethod
     def remove_tables(self, tables_names: Iterable[str]) -> None:
@@ -334,22 +322,6 @@ class SqliteEngine(RgxlogEngineBase):
         sql_command = (f"DELETE FROM {fact.relation_name} WHERE"
                        f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
         self.run_sql(sql_command)
-
-    # def add_rule(self, rule_head, rule_body_relation_list):
-    #     # we need to maintain the tables that resulted from a rule, right? this means that
-    #     # we need to recalculate the rule table every time it is called. maybe we should store some
-    #     # metadata, like the last change to the tables we depend on.
-    #
-    #     # TODO@tom: @niv, this function is not relevant anymore. it was a wrapper to pydatalog. it can be deleted.
-    #     pass
-
-    # def remove_rule(self, rule: str):
-    #     # we just need to delete the table that the rule created
-    #     # TODO@tom: I moved thus function to execution graph. it can be deleted.
-    #     pass
-
-    # def remove_all_rules(self, rule_heads):
-    #     pass
 
     def query(self, query: Query, allow_duplicates=False):
         """
@@ -656,10 +628,6 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command, sql_args)
         return selected_relation
 
-    # TODO@tom: @niv, var dict contains the acyual relations rather than the name.
-    #           the function should support multiple relations with same name.
-    #           for example, A(X, Y) <- B(X, Z), B(Z, Y)
-
     def operator_join(self, relations: List[Relation], var_dict, prefix: str = "") -> Relation:
         """
         perform a join between all of the relations in the relation list and saves the result to a new relation.
@@ -670,7 +638,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         for an example and more details see RgxlogEngineBase.join_relations
 
-        @param var_dict:
+        @param var_dict: a mapping of free variables. see `get_free_var_to_relations_dict`
         @param relations: a list of normal relations
         @param prefix: a prefix for the name of the joined relation
         @return: a new relation as described above
@@ -679,6 +647,9 @@ class SqliteEngine(RgxlogEngineBase):
         assert len(relations) > 0, "can't join an empty list"
         if len(relations) == 1:
             return self.operator_copy(relations[0])
+
+        # create a mapping between the relations and their temporary names for sql
+        relation_sql_names = {relation: f"table{i}" for (i, relation) in enumerate(relations)}
 
         # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
         free_var_sets = [get_output_free_var_names(relation) for relation in relations]
@@ -695,8 +666,7 @@ class SqliteEngine(RgxlogEngineBase):
         # created a structured node of the joined relation
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
 
-        # perform sql join
-
+        # construct the sql join command
         sql_command = f"INSERT INTO {joined_relation_name} SELECT "
         on_conditions_str = "ON "
         on_conditions_list = []
@@ -708,25 +678,32 @@ class SqliteEngine(RgxlogEngineBase):
 
             if i > 0:
                 sql_command += ", "
-            relation_that_contains_free_var_name, first_index = first_pair
+            relation_with_free_var, first_index = first_pair
+            assert relation_with_free_var in relation_sql_names, (f"`relations` and `var_dict` do not match -"
+                                                                  f" {relation_with_free_var} is not inside"
+                                                                  f" `relations`")
+            name_of_relation_with_free_var = relation_sql_names[relation_with_free_var]
             new_col_name = self._get_col_name(i)
             first_col_name = self._get_col_name(first_index)
 
             # 1. name the new columns. the columns should be named col0, col1, etc.
-            sql_command += f"{relation_that_contains_free_var_name}.{first_col_name} AS {new_col_name}"
+            sql_command += f"{name_of_relation_with_free_var}.{first_col_name} AS {new_col_name}"
             # 2. create the comparison between all of them, using `ON`
-            for (second_relation_name, second_index) in other_pairs:
+            for (second_relation, second_index) in other_pairs:
+                assert second_relation in relation_sql_names, (f"`relations` and `var_dict` do not match -"
+                                                               f" {second_relation} is not inside `relations`")
                 second_col_name = self._get_col_name(second_index)
-                on_conditions_list.append(f"{relation_that_contains_free_var_name}.{first_col_name}="
-                                          f"{second_relation_name}.{second_col_name}")
+                name_of_second_relation = relation_sql_names[second_relation]
+                on_conditions_list.append(f"{name_of_relation_with_free_var}.{first_col_name}="
+                                          f"{name_of_second_relation}.{second_col_name}")
 
         # first relation - just `FROM`
         first_relation, other_relations = relations[0], relations[1:]
-        sql_command += f" FROM {first_relation.relation_name} "
+        sql_command += f" FROM {first_relation.relation_name} AS {relation_sql_names[first_relation]} "
 
         # for every next relation: `INNER JOIN`
         for relation in other_relations:
-            sql_command += f"INNER JOIN {relation.relation_name} "
+            sql_command += f"INNER JOIN {relation.relation_name} AS {relation_sql_names[relation]} "
 
         # add the join conditions (`ON`)
         on_conditions_str += " AND ".join(on_conditions_list)
@@ -744,7 +721,8 @@ class SqliteEngine(RgxlogEngineBase):
         @return: the projected relation
         """
         # get the indexes to project from (in `src_relation`) based on `var_dict`
-        var_dict: Dict[str, List[Tuple[str, int]]] = get_free_var_to_relations_dict({src_relation})
+        var_dict: Dict[str, List[Tuple[Union[Relation, IERelation], int]]] = get_free_var_to_relations_dict(
+            {src_relation})
         project_indexes = []
         for var in project_vars:
             var_index_in_src = (var_dict[var][0][1])

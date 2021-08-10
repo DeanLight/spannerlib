@@ -28,13 +28,16 @@ def get_term_list_string(term_list, type_list):
     term_list_string = ', '.join(terms_with_quoted_strings)
     return term_list_string
 
+
 def peel_list(lst: List) -> List[str]:
     return [peel_token(token) for token in lst]
+
 
 def peel_token(token) -> str:
     if isinstance(token, Token):
         return token.value
     return token
+
 
 # TODO: understand why this causes a bug (rule safety something)
 #  @dataclasses.dataclass(init=False)
@@ -59,6 +62,9 @@ class Relation:
         term_list_string = get_term_list_string(self.term_list, self.type_list)
         relation_string = f"{self.relation_name}({term_list_string})"
         return relation_string
+
+    def __repr__(self):
+        return str(self)
 
     def get_term_list(self):
         return self.term_list
@@ -121,6 +127,9 @@ class IERelation:
         ie_relation_string = f"{self.relation_name}({input_term_list_string}) -> ({output_term_list_string})"
         return ie_relation_string
 
+    def __repr__(self):
+        return str(self)
+
     def get_term_list(self):
         return self.output_term_list
 
@@ -160,6 +169,9 @@ class RelationDeclaration:
         type_list_string = ', '.join(type_strings)
         relation_declaration_string = f"{self.relation_name}({type_list_string})"
         return relation_declaration_string
+
+    def __repr__(self):
+        return str(self)
 
     def peel_off_token_wrappers(self) -> None:
         self.relation_name = peel_token(self.relation_name)
@@ -229,6 +241,9 @@ class Rule:
         rule_string = f'{head_relation_string} <- {rule_body_string}'
         return rule_string
 
+    def __repr__(self):
+        return str(self)
+
     def peel_off_token_wrappers(self) -> None:
         self.head_relation.peel_off_token_wrappers()
         for relation in self.body_relation_list:
@@ -243,6 +258,7 @@ class Rule:
                 ie_relations.add(rel)
 
         return relations, ie_relations
+
 
 class Assignment:
     """
@@ -266,6 +282,9 @@ class Assignment:
         else:
             value_string = str(self.value)
         return f'{self.var_name} = {value_string}'
+
+    def __repr__(self):
+        return str(self)
 
 
 class ReadAssignment:
@@ -294,3 +313,6 @@ class ReadAssignment:
         else:
             read_arg_string = str(self.read_arg)
         return f'{self.var_name} = read({read_arg_string})'
+
+    def __repr__(self):
+        return str(self)

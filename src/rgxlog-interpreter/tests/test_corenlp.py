@@ -112,9 +112,6 @@ def test_ner():
     run_test(query, expected_result)
 
 
-# @niv: this sometimes raises `raise RuntimeError('Java not found.')` (inside `spanner-nlp`)
-# @dean: wierd, have you checked why? is it only this test, or only this annotator?
-# TODO@niv: @dean, read the top of this file
 @pytest.mark.long
 def test_entity_mentions():
     expected_result = ("""printing results for query 'em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text,"""

@@ -78,9 +78,8 @@ def get_numbered_output_free_var_names(relation: Union[Relation, IERelation]) ->
     return get_numbered_free_var_pairs(relation)
 
 
-def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) -> \
-        Dict[str, List[Tuple[Union[Relation, IERelation], int]]]:
-    # TODO@niv: maybe convert this to a class with `add_relation`
+def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) -> (
+        Dict[str, List[Tuple[Union[Relation, IERelation], int]]]):
     """
     Finds for each free var in any of the relations, all the relations that contain it.
     also return the free vars' index in each relation (as pairs).
@@ -93,7 +92,7 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
     """
     var_dict = {}
 
-    # note: don't filter only variables with >1 uses here, we need them as well
+    # note: don't remove variables with less than 2 uses here, we need them as well
     for relation in relations:
         free_vars_pairs = get_numbered_output_free_var_names(relation)
         for i, var in free_vars_pairs:

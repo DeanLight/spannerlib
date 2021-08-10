@@ -474,7 +474,7 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(False)
+    my_session = Session(True)
 
     query = """
         new Parent(str, str)
@@ -487,6 +487,7 @@ if __name__ == "__main__":
         
         GrandParent(G, C) <- Parent(G, M), Parent(M, C)
         ?GrandParent(X, "Tom")
+        ?GrandParent(X, "Marina")
     """
     my_session.run_query(query)
 

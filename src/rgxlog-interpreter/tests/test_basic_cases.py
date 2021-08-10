@@ -16,6 +16,7 @@ def test_introduction():
 
     run_test(query, expected_result_intro)
 
+
 def test_copy_table_rule():
     expected_result = """printing results for query 'A(X, Y)':
        X |   Y
@@ -35,6 +36,7 @@ def test_copy_table_rule():
         """
 
     run_test(query, expected_result)
+
 
 def test_join_two_tables():
     expected_result = """printing results for query 'D(X, Y, Z)':
@@ -57,6 +59,7 @@ def test_join_two_tables():
     """
 
     run_test(query, expected_result)
+
 
 def test_relation_with_same_free_var():
     expected_result = """printing results for query 'A(X)':
@@ -103,6 +106,7 @@ def test_union_rule_with_same_vars():
     """
 
     run_test(query, expected_result)
+
 
 def test_union_rule_with_different_vars():
     expected_result = """printing results for query 'A(X, Y)':
