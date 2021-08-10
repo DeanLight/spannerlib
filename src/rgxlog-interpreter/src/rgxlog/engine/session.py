@@ -477,6 +477,16 @@ if __name__ == "__main__":
     my_session = Session(False)
 
     query = """
-       """
+        new Parent(str, str)
+        Parent("Svetlana", "Shelly")
+        Parent("Faina", "Svetlana")
+        Parent("Marina", "Tom")
+        Parent("Faina", "Marina")
+        Parent("God", "Faina")
+        ?Parent(X, "Shelly")
+        
+        GrandParent(G, C) <- Parent(G, M), Parent(M, C)
+        ?GrandParent(X, "Tom")
+    """
     my_session.run_query(query)
 

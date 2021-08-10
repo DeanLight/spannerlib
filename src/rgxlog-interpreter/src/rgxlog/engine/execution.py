@@ -656,6 +656,10 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command, sql_args)
         return selected_relation
 
+    # TODO@tom: @niv, var dict contains the acyual relations rather than the name.
+    #           the function should support multiple relations with same name.
+    #           for example, A(X, Y) <- B(X, Z), B(Z, Y)
+
     def operator_join(self, relations: List[Relation], var_dict, prefix: str = "") -> Relation:
         """
         perform a join between all of the relations in the relation list and saves the result to a new relation.
