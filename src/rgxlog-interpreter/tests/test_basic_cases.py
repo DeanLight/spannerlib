@@ -188,6 +188,25 @@ def test_datatypes():
 
     run_test(query, expected_result)
 
+def test_join_same_relation():
+    expected_result = """printing results for query 'GrandParent(X, "Isaac")':
+      X
+    -----
+     God
+    """
+
+    query = """
+        new Parent(str, str)
+        Parent("God", "Abraham")
+        Parent("Abraham", "Isaac")
+        Parent("Isaac", "Benny")
+
+        
+        GrandParent(G, C) <- Parent(G, M), Parent(M, C)
+        ?GrandParent(X, "Isaac")
+    """
+    run_test(query, expected_result)
+
 
 def test_remove_rule():
     expected_result = """printing results for query 'A(X, Y)':
