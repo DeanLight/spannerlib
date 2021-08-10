@@ -367,6 +367,7 @@ class SqliteEngine(RgxlogEngineBase):
         for table_name in table_names:
             self.remove_table(table_name)
 
+    # TODO@tom: @niv, before removing the table check if it exits (if it doesn't you can exit the function)
     def remove_table(self, table_name: str) -> None:
         """
         removes a table from the sql database, assuming that it exists

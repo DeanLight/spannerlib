@@ -5,11 +5,12 @@ this module contains the implementations of term graphs
 from abc import abstractmethod
 from enum import Enum
 from itertools import count
-from typing import Union, Set
+from typing import Union, Set, List
 
 import networkx as nx
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, RelationDeclaration, Rule
+from rgxlog.engine.utils.general_utils import rule_to_relation_name
 
 PRETTY_INDENT = ' ' * 4
 
@@ -292,6 +293,50 @@ class ExecutionTermGraph(NetxTermGraph):
 
         self.rule_to_nodes[str(rule)] = nodes
 
+    def _is_node_in_use(self, node_id: int) -> bool:
+        """
+        Checks if id node has parents or it's the root node.
+
+        @param node_id: id of a node
+        @return: true if the node is has parents (if node is root the we also return true).
+        """
+        if node_id == self.get_root_id():
+            return True
+
+        # all the nodes are connected to global root
+        return len(list(self._graph.predecessors(node_id))) > 1
+
+    def _get_all_rules_with_head(self, relation_name: str) -> List[str]:
+        """
+        Find all the rule with rule head.
+
+        @raise Exception: if relation name doesn't exist in the graph.
+        @param relation_name: name of the relation.
+        @return: a list of rules with rule head.
+        """
+
+        rules = [rule for rule in self.rule_to_nodes if rule.startswith(relation_name)]
+
+        if len(rules) == 0:
+            # if we are here than we didn't find the given relation
+            raise Exception(f"There are no relation with head '{relation_name}' in the term graph.")
+
+        return rules
+
+    def remove_rules_with_head(self, rule_head: str) -> None:
+        """
+        Removes all rules with given rule head from the term graph.
+        @param rule_head: a relation name
+        """
+
+        rules = self._get_all_rules_with_head(rule_head)
+        rel_node, union_node = self.relation_to_id[rule_head]
+        if self._is_node_in_use(rel_node):
+            raise Exception(f"The rule head'{rule_head}' can't be deleted since it's used in another existing rule.")
+
+        for rule in rules:
+            self.remove_rule(rule)
+
     def remove_rule(self, rule: str) -> bool:
         """
         Removes rule from term graph.
@@ -300,22 +345,28 @@ class ExecutionTermGraph(NetxTermGraph):
         @raise Exception if the rule doesn't exist in the term graph
         @return: true if the head relation was deleted, false otherwise.
         """
-        # TODO@tom: we delete the table only we removed the last rule (the union node has no children left).
-        # TODO@tom: what if the rule we try to deleted is used by other rules?
 
         if rule not in self.rule_to_nodes:
             raise Exception(f"The rule '{rule}' was never registered "
                             f"(you can run 'print_all_rules' to see all the registered rules)")
 
+        rule_name = rule_to_relation_name(rule)
+        rel_node, union_node = self.relation_to_id[rule_name]
+
+        is_last_rule_path = len(self.get_children(union_node)) == 1
+        is_rule_used = self._is_node_in_use(rel_node)
+
+        # check if something is connected to the root and the root is going to be deleted (this shouldn't happen)
+        if is_last_rule_path and is_rule_used:
+            raise Exception(f"The rule '{rule}' can't be deleted since '{rule_name}' is used in another existing rule.")
+
         self._graph.remove_nodes_from(self.rule_to_nodes[rule])
         del self.rule_to_nodes[rule]
 
-        rule_name = rule.split('(')[0]
-        rel_node, union_node = self.relation_to_id[rule_name]
-        children = self.get_children(union_node)
-        if len(children) == 0:
+        if is_last_rule_path:
             self._graph.remove_nodes_from((rel_node, union_node))
             return True
+
         return False
 
     def print_all_rules(self):

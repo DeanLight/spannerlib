@@ -24,6 +24,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               ExecuteAssignments, AddStatementsToNetxTermGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph, ExecutionTermGraph
+from rgxlog.engine.utils.general_utils import rule_to_relation_name
 from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
@@ -286,7 +287,6 @@ class Session:
                                            symbol_table=self._symbol_table,
                                            rgxlog_engine=self._execution,
                                            term_graph=self._term_graph).execute()
-            print(self._term_graph)
             if exec_result is not None:
                 exec_results.append(exec_result)
                 if print_results:
@@ -323,6 +323,15 @@ class Session:
         self._pass_stack = user_stack.copy()
         return self.get_pass_stack()
 
+    def _remove_rule_relation_from_symbols_and_engine(self, relation_name: str) -> None:
+        """
+        Removes the relation from the symbol table and the execution tables.
+
+        @param relation_name: the name of the relation ot remove.
+        """
+        self._symbol_table.remove_rule_relation(relation_name)
+        self._execution.remove_table(relation_name)
+
     def remove_rule(self, rule: str):
         """
         remove a rule from the rgxlog engine
@@ -331,19 +340,22 @@ class Session:
         """
         is_last = self._term_graph.remove_rule(rule)
         if is_last:
-            relation_name = rule.split('(')[0]
-            self._symbol_table.remove_rule_relation(relation_name)
-            self._execution.remove_table(relation_name)
+            relation_name = rule_to_relation_name(rule)
+            self._remove_rule_relation_from_symbols_and_engine(relation_name)
 
     def remove_all_rules(self, rule_head: Optional[str] = None):
         """
         Removes all rules from the engine.
         @param rule_head: if rule head is not none we remove all rules with rule_head
         """
-        # TODO@tom: rule_head thingy
-        self._term_graph = ExecutionTermGraph()
-        relations_names = self._symbol_table.remove_all_rule_relations()
-        self._execution.remove_tables(relations_names)
+
+        if rule_head is None:
+            self._term_graph = ExecutionTermGraph()
+            relations_names = self._symbol_table.remove_all_rule_relations(rule_head)
+            self._execution.remove_tables(relations_names)
+        else:
+            self._term_graph.remove_rules_with_head(rule_head)
+            self._remove_rule_relation_from_symbols_and_engine(rule_head)
 
     @staticmethod
     def _unknown_task_type():
@@ -477,14 +489,23 @@ if __name__ == "__main__":
     my_session = Session(False)
 
     query = """
-        new Parent(str, str)
-        Parent("God", "Abraham")
-        Parent("Abraham", "Isaac")
-        Parent("Isaac", "Benny")
+           new B(int, int)
+           new C(int, int)
+           B(1, 1)
+           B(1, 2)
+           B(2, 3)
+           C(2, 2)
+           C(1, 1)
 
-        
-        GrandParent(G, C) <- Parent(G, M), Parent(M, C)
-        ?GrandParent(X, "Isaac")
-    """
+           A(X, Y) <- B(X, Y)
+           A(X, Y) <- C(X, Y)
+           ?A(X, X)
+           D(X, Y) <- B(X, Y)
+
+        """
     my_session.run_query(query)
+
+    my_session.print_all_rules()
+    my_session.remove_all_rules("A")
+    my_session.print_all_rules()
 

@@ -5,7 +5,7 @@ this module contains the implementations of symbol tables
 from abc import ABC, abstractmethod
 
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
-from typing import Iterable, Dict
+from typing import Iterable, Dict, Optional
 
 
 class SymbolTableBase(ABC):
@@ -316,14 +316,7 @@ class SymbolTable(SymbolTableBase):
                   f'{ie_function_obj.ie_function_def.__doc__}\n\n')
 
     def remove_rule_relation(self, relation_name: str):
-        relation_to_remove = None
-        for relation in self.rule_relations:
-            if relation_name == relation.relation_name:
-                relation_to_remove = relation
-                break
-
-        assert relation_to_remove is not None
-        self.rule_relations.remove(relation_to_remove)
+        self.rule_relations.remove(relation_name)
         del self._relation_to_schema[relation_name]
 
     def remove_all_rule_relations(self):

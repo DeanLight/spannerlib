@@ -253,3 +253,14 @@ def type_check_rule_free_vars_aux(term_list: list, type_list: list, correct_type
             else:
                 # free var does not currently have a type, map it to the correct type
                 free_var_to_type[free_var] = correct_type
+
+
+def rule_to_relation_name(rule: str) -> str:
+    """
+    extracts the relation name from the rule string.
+
+    @param rule: a string that represents a rule.
+    @return:  the name of the rule relation
+    """
+
+    return rule.split('(')[0]
