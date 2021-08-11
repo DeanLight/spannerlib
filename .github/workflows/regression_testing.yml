@@ -29,9 +29,8 @@ jobs:
           pip install -e ./src/rgxlog-interpreter
           pip list
       - name: Test with pytest
-        # TODO@niv: remove the marker when the engine is ready
+        # TODO@niv: remove the extra arguments when the engine is ready
         # TODO@niv: add mypy tests
         run: |
           echo "printing markers:"
-          pytest ./src/rgxlog-interpreter/tests --markers
           pytest ./src/rgxlog-interpreter/tests -s -k "engine or basic_cases"
