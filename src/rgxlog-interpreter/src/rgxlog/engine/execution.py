@@ -80,15 +80,6 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    # @abstractmethod
-    # def remove_rule(self, rule: str):
-    #     """
-    #     remove a rule from the rgxlog engine
-    #
-    #     @param rule: the rule to be removed
-    #     """
-    #     pass
-
     @abstractmethod
     def query(self, query):
         """
@@ -199,10 +190,6 @@ class RgxlogEngineBase(ABC):
 
         final_string = f"{relation.relation_name}({terms_string})"
         return final_string
-
-    # @abstractmethod
-    # def remove_all_rules(self, rule_heads):
-    #     pass
 
     @abstractmethod
     def operator_select(self, relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
