@@ -17,7 +17,10 @@ from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, ExecutionTermGraph
-from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict
+from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, \
+    get_free_var_names
+
+SQL_SELECT = 'SELECT DISTINCT'
 
 SQL_TABLE_OF_TABLES = 'sqlite_master'
 
@@ -331,26 +334,23 @@ class SqliteEngine(RgxlogEngineBase):
         """
         # note: this is an engine query (which asks a single question),
         # not a session query (which can do anything).
-        # so we only need a `SELECT` statement here.
-        query_relation = query.relation_name
-        query_where_conditions = self._get_where_string(query.term_list, query.type_list)
+        # so we only need to select + project here
         query_free_var_indexes = self._get_free_variable_indexes(query.type_list)
         has_free_vars = bool(query_free_var_indexes)
-        unique_string = "" if allow_duplicates else "DISTINCT"
+        select_info = query.get_select_cols_values_and_types()
 
-        if has_free_vars:
-            # free variables exist - return tuples/`FALSE_VALUE`
-            query_cols = [f"{RELATION_COLUMN_PREFIX}{free_var_index}" for free_var_index in query_free_var_indexes]
-            query_select_string = f"{', '.join(query_cols)}"
-            sql_command = f"SELECT {unique_string} {query_select_string} FROM {query_relation}"
-        else:
-            # no free variables - only return `TRUE_VALUE`/`FALSE_VALUE`
-            sql_command = f"SELECT * FROM {query_relation}"
+        # create temporary tables for the select/project, and delete them
+        selected_relation = self.operator_select(query, select_info)
+        selected_relation_name = selected_relation.relation_name
 
-        if query_where_conditions:
-            sql_command += " " + query_where_conditions
+        free_var_names_for_project = [term for term, term_type in zip(query.term_list, query.type_list)
+                                      if term_type is DataTypes.free_var_name]
+        projected_relation_name = self.operator_project(selected_relation, free_var_names_for_project).relation_name
 
-        query_result = self.run_sql(sql_command)
+        query_result = self.run_sql(f"{SQL_SELECT} * FROM {projected_relation_name}")
+
+        self.remove_table(selected_relation_name)
+        self.remove_table(projected_relation_name)
 
         if (not has_free_vars) and query_result != FALSE_VALUE:
             query_result = TRUE_VALUE
@@ -598,13 +598,13 @@ class SqliteEngine(RgxlogEngineBase):
         selected_relation = Relation(new_relation_name, new_term_list, new_type_list)
 
         # sql part
-        sql_command = f'INSERT INTO {new_relation_name} SELECT * FROM {src_relation_name}'
+        sql_command = f'INSERT INTO {new_relation_name} {SQL_SELECT} * FROM {src_relation_name}'
         sql_args = []
 
         # get variables in var_dict that repeat - used below to add conditions
         src_relation_var_dict = get_free_var_to_relations_dict({src_relation})
-        repeating_vars_in_relation = ((free_var, pairs) for (free_var, pairs) in
-                                      src_relation_var_dict.items() if (len(pairs) > 1))
+        repeating_vars_in_relation = [(free_var, pairs) for (free_var, pairs) in
+                                      src_relation_var_dict.items() if (len(pairs) > 1)]
         if (len(select_info) > 0) or repeating_vars_in_relation:
             sql_command += " WHERE "
             sql_conditions = []
@@ -667,8 +667,7 @@ class SqliteEngine(RgxlogEngineBase):
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
 
         # construct the sql join command
-        sql_command = f"INSERT INTO {joined_relation_name} SELECT "
-        on_conditions_str = "ON "
+        sql_command = f"INSERT INTO {joined_relation_name} {SQL_SELECT} "
         on_conditions_list = []
 
         # iterate over the free_vars and do 2 things:
@@ -706,8 +705,10 @@ class SqliteEngine(RgxlogEngineBase):
             sql_command += f"INNER JOIN {relation.relation_name} AS {relation_sql_names[relation]} "
 
         # add the join conditions (`ON`)
-        on_conditions_str += " AND ".join(on_conditions_list)
-        sql_command += on_conditions_str
+        if on_conditions_list:
+            on_conditions_str = "ON "
+            on_conditions_str += " AND ".join(on_conditions_list)
+            sql_command += on_conditions_str
 
         self.run_sql(sql_command)
 
@@ -717,7 +718,7 @@ class SqliteEngine(RgxlogEngineBase):
         """
         perform SQL select
         @param src_relation: the relation on which we project.
-        @param project_vars: a set of variables on which we project.
+        @param project_vars: a list of variables on which we project.
         @return: the projected relation
         """
         # get the indexes to project from (in `src_relation`) based on `var_dict`
@@ -738,7 +739,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         new_relation = Relation(new_relation_name, project_vars, new_type_list)
 
-        sql_command = f"INSERT INTO {new_relation_name} SELECT "
+        sql_command = f"INSERT INTO {new_relation_name} {SQL_SELECT} "
         dest_col_list = []
         for new_col_num, src_col_num in enumerate(project_indexes):
             new_col = self._get_col_name(new_col_num)
@@ -767,10 +768,7 @@ class SqliteEngine(RgxlogEngineBase):
         new_arity = len(relations)
         assert new_arity > 0, "cannot perform union on an empty list"
         if new_arity == 1:
-            return self.operator_copy(relations[0])
-            # TODO@tom: @niv, I think returning the original relation is enough
-            # @niv: probably, but it might be considered an optimization ;/
-            # return relations[0]
+            return relations[0]
 
         new_relation_name = self._create_unique_relation(new_arity, prefix=PROJECT_PREFIX)
         new_term_list = relations[0].term_list
@@ -781,7 +779,7 @@ class SqliteEngine(RgxlogEngineBase):
         sql_command = f"INSERT INTO {new_relation_name} "
         union_list = []
         for relation in relations:
-            curr_relation_string = "SELECT "
+            curr_relation_string = "{SQL_SELECT} "
             selection_list = []
             for col_index, term in enumerate(new_term_list):
                 # we assume the same order in the source and the destination, so no need to use 'AS'
@@ -814,7 +812,7 @@ class SqliteEngine(RgxlogEngineBase):
         dest_rel = Relation(dest_rel_name, src_rel.term_list, src_rel.type_list)
 
         # sql part
-        sql_command = f"INSERT INTO {dest_rel_name} SELECT * FROM {src_rel_name}"
+        sql_command = f"INSERT INTO {dest_rel_name} {SQL_SELECT} * FROM {src_rel_name}"
         self.run_sql(sql_command)
 
         return dest_rel
@@ -825,7 +823,7 @@ class SqliteEngine(RgxlogEngineBase):
         @param table_name: the table which is checked for existence
         @return: True if it exists, else False
         """
-        sql_check_if_exists = (f"SELECT name FROM {SQL_TABLE_OF_TABLES} WHERE "
+        sql_check_if_exists = (f"{SQL_SELECT} name FROM {SQL_TABLE_OF_TABLES} WHERE "
                                f"type='table' AND name='{table_name}'")
         return bool(self.run_sql(sql_check_if_exists))
 
@@ -846,29 +844,6 @@ class SqliteEngine(RgxlogEngineBase):
     def _get_col_name(col_id: int):
         return f'{RELATION_COLUMN_PREFIX}{col_id}'
 
-    def _get_where_string(self, term_list: List, type_list: List[DataTypes]):
-        """
-        `where` is an sql operator which filters rows from a table.
-        this method creates the string used to filter rows based on the `term_list`.
-        @param term_list:
-        @param type_list:
-        @return:
-        """
-        where_string = "WHERE "
-        where_conditions = []
-        for col_num, term_and_term_type in enumerate(zip(term_list, type_list)):
-            term, term_type = term_and_term_type
-            if term_type is DataTypes.free_var_name:
-                continue
-
-            where_conditions.append(f'{self._get_col_name(col_num)} = "{term}"')
-
-        if not where_conditions:
-            return ""
-
-        where_string += " AND ".join(where_conditions)
-        return where_string
-
     @staticmethod
     def _get_free_variable_indexes(type_list):
         return [i for i, term_type in enumerate(type_list) if (term_type is DataTypes.free_var_name)]
@@ -876,6 +851,8 @@ class SqliteEngine(RgxlogEngineBase):
     def run_sql(self, command, command_args=None) -> list:
         if self.debug:
             print(f"sql {command=}")
+            if command_args:
+                print(f"...with args: {command_args}")
 
         if command_args:
             self.sql_cursor.execute(command, command_args)
