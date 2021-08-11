@@ -77,15 +77,6 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    # @abstractmethod
-    # def remove_rule(self, rule: str):
-    #     """
-    #     remove a rule from the rgxlog engine
-    #
-    #     @param rule: the rule to be removed
-    #     """
-    #     pass
-
     @abstractmethod
     def query(self, query):
         """
@@ -196,10 +187,6 @@ class RgxlogEngineBase(ABC):
 
         final_string = f"{relation.relation_name}({terms_string})"
         return final_string
-
-    # @abstractmethod
-    # def remove_all_rules(self, rule_heads):
-    #     pass
 
     @abstractmethod
     def operator_select(self, relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
@@ -767,7 +754,7 @@ class SqliteEngine(RgxlogEngineBase):
         new_arity = len(relations)
         assert new_arity > 0, "cannot perform union on an empty list"
         if new_arity == 1:
-            return self.operator_copy(relations[0])
+            return relations[0]
             # TODO@tom: @niv, I think returning the original relation is enough
             # @niv: probably, but it might be considered an optimization ;/
             # return relations[0]

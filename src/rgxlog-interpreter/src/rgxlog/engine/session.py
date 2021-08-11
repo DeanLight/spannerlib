@@ -485,7 +485,7 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(False)
+    my_session = Session(True)
 
     query = """
            new B(int, int)
@@ -496,15 +496,9 @@ if __name__ == "__main__":
            C(2, 2)
            C(1, 1)
 
-           A(X, Y) <- B(X, Y)
-           A(X, Y) <- C(X, Y)
-           ?A(X, X)
-           D(X, Y) <- B(X, Y)
-
+           A(X, Y) <- B(X, Y), C(1, 1)
+           A(X, Y) <- B(X, Y), C(0, 0)
+           ?A(X, Y)
         """
     my_session.run_query(query)
-
-    my_session.print_all_rules()
-    my_session.remove_all_rules()
-    my_session.print_all_rules()
 
