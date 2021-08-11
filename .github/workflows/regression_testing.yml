@@ -31,4 +31,4 @@ jobs:
       # TODO@niv: remove the marker when the engine is ready
       # TODO@niv: add mypy tests
       run: |
-        pytest -s -m "engine"
+        pytest -s -k "engine or basic_cases"

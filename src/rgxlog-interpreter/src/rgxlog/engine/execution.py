@@ -766,7 +766,7 @@ class SqliteEngine(RgxlogEngineBase):
         sql_command = f"INSERT INTO {new_relation_name} "
         union_list = []
         for relation in relations:
-            curr_relation_string = "{SQL_SELECT} "
+            curr_relation_string = f"{SQL_SELECT} "
             selection_list = []
             for col_index, term in enumerate(new_term_list):
                 # we assume the same order in the source and the destination, so no need to use 'AS'

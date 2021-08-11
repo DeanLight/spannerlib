@@ -188,6 +188,7 @@ def test_datatypes():
 
     run_test(query, expected_result)
 
+
 def test_join_same_relation():
     expected_result = """printing results for query 'GrandParent(X, "Isaac")':
       X
@@ -206,6 +207,7 @@ def test_join_same_relation():
         ?GrandParent(X, "Isaac")
     """
     run_test(query, expected_result)
+
 
 def test_rule_with_constant():
     expected_result = """printing results for query 'A(X)':
@@ -230,9 +232,14 @@ def test_rule_with_constant():
 
     run_test(query, expected_result)
 
-# TODO
-def rule_with_true_value():
-    expected_result = """
+
+def test_rule_with_true_value():
+    expected_result = """printing results for query 'A(X, Y)':
+       X |   Y
+    -----+-----
+       1 |   1
+       1 |   2
+       2 |   3
     """
 
     query = """
@@ -251,9 +258,9 @@ def rule_with_true_value():
     run_test(query, expected_result)
 
 
-# TODO
 def test_rule_with_false_value():
-    expected_result = """
+    expected_result = """printing results for query 'A(X, Y)':
+    []
     """
 
     query = """
@@ -271,9 +278,13 @@ def test_rule_with_false_value():
 
     run_test(query, expected_result)
 
-# TODO
+
+# TODO@niv: @tom, is this ok? or should it be one X?
 def test_query_with_same_var():
-    expected_result = """
+    expected_result = """printing results for query 'A(X, X)':
+       X |   X
+    -----+-----
+       1 |   1
     """
 
     query = """
@@ -288,9 +299,13 @@ def test_query_with_same_var():
 
     run_test(query, expected_result)
 
-# TODO
+
 def test_query_with_constant_value():
-    expected_result = """
+    expected_result = """printing results for query 'A(1, X)':
+       X
+    -----
+       1
+       2
     """
 
     query = """
