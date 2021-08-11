@@ -32,4 +32,6 @@ jobs:
         # TODO@niv: remove the marker when the engine is ready
         # TODO@niv: add mypy tests
         run: |
-          pytest -s -k "engine or basic_cases"
+          echo "printing markers:"
+          pytest ./src/rgxlog-interpreter/tests --markers
+          pytest ./src/rgxlog-interpreter/tests -s -k "engine or basic_cases"
