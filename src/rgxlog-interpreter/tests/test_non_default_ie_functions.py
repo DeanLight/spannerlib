@@ -92,7 +92,7 @@ def test_range_str_no_tuple():
 def test_range_int_with_tuple():
     """
     in this test, a tuple of an integer is treated as an integer
-    :return:
+    @return:
     """
 
     def yield_range_int_with_tuple(num):

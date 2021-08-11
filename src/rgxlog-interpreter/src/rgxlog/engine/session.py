@@ -46,7 +46,6 @@ STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 # @niv: add rust_rgx_*_from_file (ask dean)
 # @dean: i dont understand this question. Please elaborate
 # TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
-
 def _infer_relation_type(row: iter):
     """
     guess the relation type based on the data.
@@ -144,8 +143,8 @@ def tabulate_result(result: Union[DataFrame, List]):
     there are two cases where a table will not be printed:
     1. the query returned no results. in this case '[]' will be printed
     2. the query returned a single empty tuple, in this case '[()]' will be printed
-    :param result: the query result (free variable names are the dataframe's column names)
-    :return: a tabulated string
+    @param result: the query result (free variable names are the dataframe's column names)
+    @return: a tabulated string
     """
     if isinstance(result, DataFrame):
         # query results can be printed as a table
@@ -351,7 +350,7 @@ class Session:
 
         if rule_head is None:
             self._term_graph = ExecutionTermGraph()
-            relations_names = self._symbol_table.remove_all_rule_relations(rule_head)
+            relations_names = self._symbol_table.remove_all_rule_relations()
             self._execution.remove_tables(relations_names)
         else:
             self._term_graph.remove_rules_with_head(rule_head)
@@ -506,6 +505,6 @@ if __name__ == "__main__":
     my_session.run_query(query)
 
     my_session.print_all_rules()
-    my_session.remove_all_rules("A")
+    my_session.remove_all_rules()
     my_session.print_all_rules()
 

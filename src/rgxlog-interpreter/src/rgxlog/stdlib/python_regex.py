@@ -4,6 +4,7 @@ from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 def py_rgx_string(text, regex_pattern):
     """
+    an IE function which runs regex using python's `re` and yields tuples of strings
     @param text: The input text for the regex operation
     @param regex_pattern: the pattern of the regex operation
 
@@ -31,6 +32,7 @@ PYRGX_STRING = dict(ie_function=py_rgx_string,
 
 def py_rgx(text, regex_pattern):
     """
+    an IE function which runs regex using python's `re` and yields tuples of spans
     @param text: The input text for the regex operation
     @param regex_pattern: the pattern of the regex operation
 

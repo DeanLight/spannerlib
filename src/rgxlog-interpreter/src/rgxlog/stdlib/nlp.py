@@ -24,7 +24,7 @@ _USER_DIR = path.expanduser("~")
 INSTALLATION_PATH = path.join(_USER_DIR, ".jre")
 
 
-# @span_with, why is enum_spanner_regex and stanford-corenlp in the git tree, did you forget to add them to gitignore?
+# @dean: why is enum_spanner_regex and stanford-corenlp in the git tree, did you forget to add them to gitignore?
 # TODO@niv: @dean, no - i use enum_spanner_regex for the installation (convenient because we don't have to mess with
 #  temporary folders and stuff like that), and stanford-corenlp isn't in the tree
 

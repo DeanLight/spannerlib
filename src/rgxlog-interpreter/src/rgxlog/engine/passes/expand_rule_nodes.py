@@ -166,8 +166,9 @@ class AddRuleToTermGraph:
             """usually root in graph means that no edges enter the node.
                 in this case root_rel is the node that gathers all the rule's computation paths.
                 yet, if another rule uses this rule relation, the new rule will be connected to root_rel.
-                e.g. A(X, Y) <- ....
-                     B(X, Y) <- A(X, y) than B will be connected to the root rel of A."""
+                e.g. if A(X, Y) <- ...
+                        B(X, Y) <- A(X, Y) 
+                then B will be connected to the root rel of A."""
             self.term_graph.add_edge(rel_id, root_rel_id)
 
     def add_relation_branch(self, relation: Union[Relation, IERelation], join_node_id: int) -> None:

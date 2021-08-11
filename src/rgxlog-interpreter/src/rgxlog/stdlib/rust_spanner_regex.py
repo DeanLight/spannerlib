@@ -119,7 +119,14 @@ def _format_spanner_span_output(output: Iterable[str]):
     return output_lists
 
 
-def rgx(text, regex_pattern, out_type):
+def rgx(text, regex_pattern, out_type:str):
+    """
+    an IE function which runs regex using rust's `enum-spanner-rs` and yields tuples of strings/spans (not both)
+    @param text: the string on which regex is run
+    @param regex_pattern: the pattern to run
+    @param out_type: string/span - decides which one will be returned
+    @return: a tuple of strings/spans
+    """
     with tempfile.TemporaryDirectory() as temp_dir:
         rgx_temp_file_name = os.path.join(temp_dir, TEMP_FILE_NAME)
         with open(rgx_temp_file_name, "w+") as f:

@@ -30,10 +30,14 @@ from abc import ABC, abstractmethod
 from lark import Transformer
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
 
-from rgxlog.engine.datatypes.primitive_types import Span
+from rgxlog.engine.datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule,
+                                                    IERelation, RelationDeclaration, Relation)
+from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
 from rgxlog.engine.execution import RESERVED_RELATION_PREFIX
-from rgxlog.engine.utils.general_utils import *
-from rgxlog.engine.utils.lark_passes_utils import *
+from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
+                                               fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
+from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node
+from lark import Tree as LarkNode
 
 
 def get_tree(**kwargs):
@@ -69,7 +73,6 @@ class TransformerPass(Transformer, GenericPass):
         return self.transform(get_tree(**kwargs))
 
 
-# TODO@niv: this doesn't work completely - debug it
 class RemoveTokens(TransformerPass):
     """
     a lark pass that should be used before the semantic checks
@@ -862,6 +865,7 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
         rule_head_schema = [free_var_to_type[term] for term in head_relation.term_list]
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
+
 class ResolveVariablesReferences(InterpreterPass):
     """
     a lark execution pass
@@ -1067,5 +1071,3 @@ class AddStatementsToNetxTermGraph(InterpreterPass):
         #     rule_body_relation_node = self.parse_graph.add_term(type=relation_type, value=relation)
         #     # attach the relation to the rule body
         #     self.parse_graph.add_edge(rule_body_node, rule_body_relation_node)
-
-

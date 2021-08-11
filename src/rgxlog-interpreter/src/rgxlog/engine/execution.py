@@ -4,20 +4,19 @@ and also implementations of 'ExecutionBase' which serves as an abstraction for a
 and an rgxlog engine.
 """
 
-# TODO@niv: convert all docstring to epytext (@param)
-# TODO@niv remove import * where not needed
 import os
 import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import Tuple, Optional, Dict, Set, Iterable, Union
+from typing import (Tuple, Optional, Dict, Set, Iterable, Union, Any, List)
 
-from rgxlog.engine.datatypes.ast_node_types import *
+from rgxlog.engine.datatypes.ast_node_types import (DataTypes, Relation, AddFact, RemoveFact, Query,
+                                                    RelationDeclaration, IERelation)
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, NetxTermGraph, ExecutionTermGraph
+from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, ExecutionTermGraph
 from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict
 
 SQL_TABLE_OF_TABLES = 'sqlite_master'
@@ -179,9 +178,9 @@ class RgxlogEngineBase(ABC):
         """
         return the string representation of a relation term, e.g. "[1,4)"
 
-        :param datatype: the type of the term
-        :param term: the term object itself
-        :return: string representation
+        @param datatype: the type of the term
+        @param term: the term object itself
+        @return: string representation
         """
         pass
 
@@ -298,8 +297,8 @@ class SqliteEngine(RgxlogEngineBase):
     def add_fact(self, fact: AddFact):
         """
         add a row into an existing table
-        :param fact:
-        :return:
+        @param fact:
+        @return:
         """
         sql_command = f"INSERT INTO {fact.relation_name} ("
         num_types = len(fact.type_list)
@@ -326,9 +325,9 @@ class SqliteEngine(RgxlogEngineBase):
     def query(self, query: Query, allow_duplicates=False):
         """
         outputs a preformatted query result, e.g. [("a",5),("b",6)]
-        :param allow_duplicates: if True, query result may contain duplicate values
-        :param query: the query to be performed
-        :return: a query results which is True, False, or a list of tuples
+        @param allow_duplicates: if True, query result may contain duplicate values
+        @param query: the query to be performed
+        @return: a query results which is True, False, or a list of tuples
         """
         # note: this is an engine query (which asks a single question),
         # not a session query (which can do anything).
@@ -367,15 +366,15 @@ class SqliteEngine(RgxlogEngineBase):
         for table_name in table_names:
             self.remove_table(table_name)
 
-    # TODO@tom: @niv, before removing the table check if it exits (if it doesn't you can exit the function)
     def remove_table(self, table_name: str) -> None:
         """
-        removes a table from the sql database, assuming that it exists
+        removes a table from the sql database, if it exists
         @param table_name: the table to remove
-        @return:
+        @return: None
         """
-        sql_command = f"DROP TABLE {table_name}"
-        self.run_sql(sql_command)
+        if self.is_table_exists(table_name):
+            sql_command = f"DROP TABLE {table_name}"
+            self.run_sql(sql_command)
 
     def _create_unique_relation(self, arity, prefix=""):
         """
@@ -562,11 +561,11 @@ class SqliteEngine(RgxlogEngineBase):
         @return: None
         """
         # create the relation table. we don't use an id because it would allow inserting the same values twice
-        # TODO@niv: to ignore duplicates, we can either use UNIQUE when creating the table, or DISTINCT when selecting.
-        #  we should pick one.
+        # note: to ignore duplicates, we can either use UNIQUE when creating the table, or DISTINCT when selecting.
+        #  right now we use DISTINCT
         sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
 
-        # TODO@niv: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
+        # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
         for i, relation_type in enumerate(relation_decl.type_list):
             if i > 0:
                 sql_command += ", "
@@ -802,11 +801,7 @@ class SqliteEngine(RgxlogEngineBase):
             dest_rel_name = output_relation_name
 
             # check if the relation already exists
-            sql_check_if_exists = (f"SELECT name FROM {SQL_TABLE_OF_TABLES} WHERE "
-                                   f"type='table' AND name='{output_relation_name}'")
-            is_table_exists = self.run_sql(sql_check_if_exists)
-
-            if is_table_exists:
+            if self.is_table_exists(output_relation_name):
                 self.operator_delete_all(output_relation_name)
             else:
                 dest_decl_rel = RelationDeclaration(dest_rel_name, src_rel.type_list)
@@ -823,6 +818,16 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command)
 
         return dest_rel
+
+    def is_table_exists(self, table_name) -> bool:
+        """
+        checks whether a table exists in the database
+        @param table_name: the table which is checked for existence
+        @return: True if it exists, else False
+        """
+        sql_check_if_exists = (f"SELECT name FROM {SQL_TABLE_OF_TABLES} WHERE "
+                               f"type='table' AND name='{table_name}'")
+        return bool(self.run_sql(sql_check_if_exists))
 
     @staticmethod
     def _datatype_to_sql_type(datatype: DataTypes):
@@ -845,9 +850,9 @@ class SqliteEngine(RgxlogEngineBase):
         """
         `where` is an sql operator which filters rows from a table.
         this method creates the string used to filter rows based on the `term_list`.
-        :param term_list:
-        :param type_list:
-        :return:
+        @param term_list:
+        @param type_list:
+        @return:
         """
         where_string = "WHERE "
         where_conditions = []
@@ -979,7 +984,7 @@ class GenericExecution(ExecutionBase):
         """
         saves the rule to rules_history (used for rule deletion) and copies the table from the
         rule's child in the parse graph, which is the result of all the rule calculations
-        :return:
+        @return:
         """
         term_graph = self.term_graph
         rgxlog_engine = self.rgxlog_engine

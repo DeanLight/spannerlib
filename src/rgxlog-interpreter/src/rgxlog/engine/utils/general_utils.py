@@ -2,9 +2,10 @@
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
 
-from rgxlog.engine.datatypes.ast_node_types import *
+from rgxlog.engine.datatypes.ast_node_types import (Relation, IERelation, Rule)
+from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from typing import Union, Tuple, Set, Dict
+from typing import (Union, Tuple, Set, Dict, List)
 from typing import Callable
 
 
@@ -236,6 +237,9 @@ def type_check_rule_free_vars_aux(term_list: list, type_list: list, correct_type
                       this function updates this mapping if it finds new free variables in term_list
                       conflicted_free_vars: a set of the free variables that are found to have conflicting types
                       this function adds conflicting free variables that it finds to this set
+    @param correct_type_list:
+    @param free_var_to_type:
+    @param conflicted_free_vars:
     """
     if len(term_list) != len(type_list) or len(term_list) != len(correct_type_list):
         raise Exception("the length of term_list, type_list and correct_type_list should be the same")
