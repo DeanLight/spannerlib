@@ -230,7 +230,7 @@ def test_rule_with_constant():
 
     run_test(query, expected_result)
 
-
+# TODO
 def rule_with_true_value():
     expected_result = """
     """
@@ -251,6 +251,7 @@ def rule_with_true_value():
     run_test(query, expected_result)
 
 
+# TODO
 def test_rule_with_false_value():
     expected_result = """
     """
@@ -270,7 +271,7 @@ def test_rule_with_false_value():
 
     run_test(query, expected_result)
 
-
+# TODO
 def test_query_with_same_var():
     expected_result = """
     """
@@ -287,7 +288,7 @@ def test_query_with_same_var():
 
     run_test(query, expected_result)
 
-
+# TODO
 def test_query_with_constant_value():
     expected_result = """
     """
