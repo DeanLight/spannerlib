@@ -2,6 +2,7 @@ from jsonpath_ng import parse
 import json
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
+
 def parse_match(match) -> str:
     """
     @param match: a match result of json path query

@@ -279,7 +279,6 @@ def test_rule_with_false_value():
     run_test(query, expected_result)
 
 
-# TODO@niv: @tom, is this ok? or should it be one X?
 def test_query_with_same_var():
     expected_result = """printing results for query 'A(X, X)':
        X |   X

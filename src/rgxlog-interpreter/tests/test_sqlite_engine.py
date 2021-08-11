@@ -20,4 +20,4 @@ def test_add_fact_twice():
     my_query = Query("yoyo", ["X", "Y"], [DataTypes.free_var_name, DataTypes.free_var_name])
 
     my_result = my_engine.query(my_query)
-    assert expected_output==my_result
+    assert expected_output == my_result

@@ -119,7 +119,7 @@ def _format_spanner_span_output(output: Iterable[str]):
     return output_lists
 
 
-def rgx(text, regex_pattern, out_type:str):
+def rgx(text, regex_pattern, out_type: str):
     """
     an IE function which runs regex using rust's `enum-spanner-rs` and yields tuples of strings/spans (not both)
     @param text: the string on which regex is run

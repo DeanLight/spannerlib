@@ -11,3 +11,4 @@ psutil
 install-jdk
 parse
 spanner-nlp
+pytest

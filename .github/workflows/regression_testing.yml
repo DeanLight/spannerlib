@@ -1,34 +1,35 @@
 # This workflow will install python dependencies, run tests and lint with a single version of python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+# For more information see:
+#  https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
 name: Python application
 
 on:
-  [push, pull_request]
+  [ push, pull_request ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-    - name: get rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install -e ./src/rgxlog-interpreter
-        pip list
-    - name: Test with pytest
-      # TODO@niv: remove the marker when the engine is ready
-      # TODO@niv: add mypy tests
-      run: |
-        pytest -s -k "engine or basic_cases"
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: get rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install -e ./src/rgxlog-interpreter
+          pip list
+      - name: Test with pytest
+        # TODO@niv: remove the marker when the engine is ready
+        # TODO@niv: add mypy tests
+        run: |
+          pytest -s -k "engine or basic_cases"
