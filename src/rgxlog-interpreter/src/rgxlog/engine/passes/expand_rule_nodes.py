@@ -242,6 +242,8 @@ class AddRuleToTermGraph:
             self.relation_to_branch_id[ie_relation] = calc_node_id
 
         self.term_graph.add_rule(self.rule, self.nodes)
+        self.term_graph.add_dependencies(head_relation, relations)
+
 
 
 class ExpandRuleNodes(GenericPass):

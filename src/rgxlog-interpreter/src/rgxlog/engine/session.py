@@ -482,19 +482,29 @@ class Session:
 
         self._term_graph.print_all_rules()
 
+# TODO@tom: implement the dependency graph (make sure to support delete rule)
+# TODO@tom: implement the dfs walk on the execution graph
+# TODO@tom: make sure recursive rules are represented correctly in the execution graph
+# TODO@tom: test and debug ie relations
+# TODO@tom: add pass that adds declared relation to term graph
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
 
     query = """
-           new B(int, int)
-           B(1, 1)
-           B(1, 2)
-           B(2, 3)
+               new B(int, int)
+               new C(int, int)
+               B(1, 1)
+               B(1, 2)
+               B(2, 3)
+               C(2, 2)
+               C(1, 1)
 
-           A(X, Y) <- B(X, Y)
-           ?A(X, X)
-        """
-
+               A(X, Y) <- B(X, Y)
+               D(X, Y) <- B(X, Y)
+               E(X, Y) <- B(X, Y), A(X, Y), D(X, Y)
+            """
     my_session.run_query(query)
+    my_session.remove_rule("E(X, Y) <- B(X, Y), A(X, Y), D(X, Y)")
+    my_session.run_query("?A(X, Y)")

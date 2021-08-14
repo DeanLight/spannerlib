@@ -10,6 +10,7 @@ from typing import Union, Set, List
 import networkx as nx
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, RelationDeclaration, Rule
+from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.utils.general_utils import rule_to_relation_name
 
 PRETTY_INDENT = ' ' * 4
@@ -279,8 +280,9 @@ class ExecutionTermGraph(NetxTermGraph):
 
     def __init__(self):
         super().__init__()
-        self.relation_to_id = dict()
-        self.rule_to_nodes = dict()
+        self._relation_to_id = dict()
+        self._rule_to_nodes = dict()
+        self._dependency_graph = ExecutionTermGraph.DependencyGraph()
 
     def add_rule(self, rule: Rule, nodes: Set[int]) -> None:
         """
@@ -291,7 +293,7 @@ class ExecutionTermGraph(NetxTermGraph):
                       (and thus should be removed if the rule is removed)
         """
 
-        self.rule_to_nodes[str(rule)] = nodes
+        self._rule_to_nodes[str(rule)] = (rule, nodes)
 
     def _is_node_in_use(self, node_id: int) -> bool:
         """
@@ -315,7 +317,7 @@ class ExecutionTermGraph(NetxTermGraph):
         @return: a list of rules with rule head.
         """
 
-        rules = [rule for rule in self.rule_to_nodes if rule.startswith(relation_name)]
+        rules = [rule for rule in self._rule_to_nodes if rule.startswith(relation_name)]
 
         if len(rules) == 0:
             # if we are here than we didn't find the given relation
@@ -330,7 +332,7 @@ class ExecutionTermGraph(NetxTermGraph):
         """
 
         rules = self._get_all_rules_with_head(rule_head)
-        rel_node, union_node = self.relation_to_id[rule_head]
+        rel_node, union_node = self._relation_to_id[rule_head]
         if self._is_node_in_use(rel_node):
             raise Exception(f"The rule head'{rule_head}' can't be deleted since it's used in another existing rule.")
 
@@ -346,12 +348,13 @@ class ExecutionTermGraph(NetxTermGraph):
         @return: true if the head relation was deleted, false otherwise.
         """
 
-        if rule not in self.rule_to_nodes:
+        if rule not in self._rule_to_nodes:
             raise Exception(f"The rule '{rule}' was never registered "
                             f"(you can run 'print_all_rules' to see all the registered rules)")
 
-        rule_name = rule_to_relation_name(rule)
-        rel_node, union_node = self.relation_to_id[rule_name]
+        actual_rule, nodes = self._rule_to_nodes[rule]
+        rule_name = actual_rule.head_relation.relation_name
+        rel_node, union_node = self._relation_to_id[rule_name]
 
         is_last_rule_path = len(self.get_children(union_node)) == 1
         is_rule_used = self._is_node_in_use(rel_node)
@@ -360,18 +363,21 @@ class ExecutionTermGraph(NetxTermGraph):
         if is_last_rule_path and is_rule_used:
             raise Exception(f"The rule '{rule}' can't be deleted since '{rule_name}' is used in another existing rule.")
 
-        self._graph.remove_nodes_from(self.rule_to_nodes[rule])
-        del self.rule_to_nodes[rule]
+        self._graph.remove_nodes_from(nodes)
+        del self._rule_to_nodes[rule]
+
+        self._dependency_graph.remove_rule(actual_rule)
 
         if is_last_rule_path:
             self._graph.remove_nodes_from((rel_node, union_node))
+            self._dependency_graph.remove_relation(rule_name)
             return True
 
         return False
 
     def print_all_rules(self):
         print("Printing all the rules:")
-        for i, rule in enumerate(self.rule_to_nodes):
+        for i, rule in enumerate(self._rule_to_nodes):
             print(f"\t{i + 1}. {rule}")
 
     def add_relation(self, relation: Relation) -> int:
@@ -385,14 +391,14 @@ class ExecutionTermGraph(NetxTermGraph):
                  otherwise returns the relation child node id (union node).
         """
         relation_name = relation.relation_name
-        if relation_name in self.relation_to_id:
+        if relation_name in self._relation_to_id:
             return self.get_relation_id(relation, False)
 
         rel_id = self.add_term(type="rule_rel", value=relation)
         self.add_edge(self._root_id, rel_id)
         union_id = self.add_term(type="union")
         self.add_edge(rel_id, union_id)
-        self.relation_to_id[relation_name] = (rel_id, union_id)
+        self._relation_to_id[relation_name] = (rel_id, union_id)
 
         return self.get_relation_id(relation, False)
 
@@ -402,7 +408,99 @@ class ExecutionTermGraph(NetxTermGraph):
         @param relation: the relation to look for
         @param actual_node: if true we return the relation node. otherwise we return it's union child node id.
         """
-        ids = self.relation_to_id.get(relation.relation_name, -1)
+        ids = self._relation_to_id.get(relation.relation_name, -1)
         if ids == -1:
             return -1
         return ids[0] if actual_node else ids[1]
+
+    def add_dependencies(self, head_relation: Relation, body_relations: set[Relation]) -> None:
+        """@see documentation of add_dependencies in DependencyGraph"""
+        self._dependency_graph.add_dependencies(head_relation, body_relations)
+
+    def __str__(self):
+        return super().__str__() + "\n" + str(self._dependency_graph)
+
+    class DependencyGraph(NetxTermGraph):
+        """
+        a class that represents the dependencies between rules
+        """
+
+        def __init__(self):
+            super().__init__()
+            self.relation_to_id = dict()
+
+        def _add_relation(self, relation: Relation) -> int:
+            """
+            Adds relation to dependency graph.
+            @param relation: the relation to add (should be rule relation)
+            @return: the id of the relation node
+            """
+            relation_name = relation.relation_name
+            if relation_name in self.relation_to_id:
+                return self.relation_to_id[relation_name]
+
+            rel_id = self.add_term(type="rel", value=relation_name)
+            self.add_edge(self._root_id, rel_id)
+            self.relation_to_id[relation_name] = rel_id
+            return rel_id
+
+        def is_dependent(self, head_rel: Relation, body_rel: Relation) -> bool:
+            """
+            Finds out whether the head relation is dependent in body relation.
+            @param head_rel: the head relation.
+            @param body_rel: a body relation.
+            @return: True if they are dependent False otherwise
+            """
+
+            common_free_vars = set(head_rel.term_list).intersection(body_rel.term_list)
+            return body_rel.relation_name in self.relation_to_id and len(common_free_vars) > 0
+
+        def add_dependencies(self, head_relation: Relation, body_relations: set[Relation]) -> None:
+            """
+            Adds all the dependencies of the rule to the graph
+            @param head_relation: the head relation of the rule
+            @param body_relations: a set of rule's body relations.
+            """
+
+            head_id = self._add_relation(head_relation)
+
+            for relation in body_relations:
+                # add edge only if there is at least one free var in relation
+                relation_name = relation.relation_name
+                if self.is_dependent(head_relation, relation):
+                    rel_id = self.relation_to_id[relation_name]
+                    edge = (head_id, rel_id)
+                    num_of_edges = 1 + self._graph.get_edge_data(*edge, default={"amount": 0})["amount"]
+                    self.add_edge(*edge, amount=num_of_edges)
+
+        def remove_relation(self, relation_name: str) -> None:
+            """
+            Removes the relation node from the dependency graph
+            @param relation_name: the name of the relation to remove
+            """
+
+            self._graph.remove_node(self.relation_to_id[relation_name])
+
+        def remove_rule(self, rule: Rule) -> None:
+            """
+            Removes the dependencies of the rule from the graph
+            @param rule: the rule to remove
+            """
+
+            head_relation = rule.head_relation
+            head_id = self.relation_to_id[head_relation.relation_name]
+
+            body_relations, _ = rule.get_relations_by_type()
+            for relation in body_relations:
+                if self.is_dependent(head_relation, relation):
+                    rel_id = self.relation_to_id[relation.relation_name]
+                    edge = (head_id, rel_id)
+                    num_of_edges = self._graph.get_edge_data(*edge)["amount"]
+                    if num_of_edges == 1:
+                        self._graph.remove_edge(*edge)
+                    else:
+                        self.add_edge(*edge, amount=num_of_edges - 1)
+
+        def __str__(self):
+            return self.__class__.__name__ + " is:\n" + super().__str__()
+
