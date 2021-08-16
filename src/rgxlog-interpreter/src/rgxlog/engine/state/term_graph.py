@@ -11,7 +11,6 @@ import networkx as nx
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, Rule
 
-
 PRETTY_INDENT = ' ' * 4
 
 
@@ -245,15 +244,18 @@ class NetxTermGraph(TermGraphBase):
 
         @return: a list of strings that represents the term and its children
         """
-        self.visited_nodes.add(term_id)
 
         # get a representation of the term
         ret = [PRETTY_INDENT * level, self._get_term_string(term_id), '\n']
 
+        if term_id in self._visited_nodes:
+            return ret
+
+        self._visited_nodes.add(term_id)
+
         # get a representation of the term's children
         for child_id in self.get_children(term_id):
-            if child_id not in self.visited_nodes:
-                ret += self._pretty_aux(child_id, level + 1)
+            ret += self._pretty_aux(child_id, level + 1)
 
         return ret
 
@@ -267,7 +269,7 @@ class NetxTermGraph(TermGraphBase):
         (4) (computed) query: A(X)
         """
 
-        self.visited_nodes = set()
+        self._visited_nodes = set()
         return ''.join(self._pretty_aux(self._root_id, 0))
 
     def __str__(self):
@@ -418,6 +420,10 @@ class ExecutionTermGraph(NetxTermGraph):
         """@see documentation of add_dependencies in DependencyGraph"""
         self._dependency_graph.add_dependencies(head_relation, body_relations)
 
+    def get_mutually_recursive_relations(self, relation_name: str) -> Set[str]:
+        """@see documentation of get_mutually_recursive_relations in DependencyGraph"""
+        return self._dependency_graph.get_mutually_recursive_relations(relation_name)
+
     def __str__(self):
         return super().__str__() + "\n" + str(self._dependency_graph)
 
@@ -429,6 +435,7 @@ class ExecutionTermGraph(NetxTermGraph):
         def __init__(self):
             super().__init__()
             self.relation_to_id = dict()
+            self.id_to_relation = dict()
 
         def _add_relation(self, relation: Relation) -> int:
             """
@@ -443,6 +450,7 @@ class ExecutionTermGraph(NetxTermGraph):
             rel_id = self.add_term(type="rel", value=relation_name)
             self.add_edge(self._root_id, rel_id)
             self.relation_to_id[relation_name] = rel_id
+            self.id_to_relation[rel_id] = relation_name
             return rel_id
 
         def is_dependent(self, head_rel: Relation, body_rel: Relation) -> bool:
@@ -501,6 +509,21 @@ class ExecutionTermGraph(NetxTermGraph):
                         self._graph.remove_edge(*edge)
                     else:
                         self.add_edge(*edge, amount=num_of_edges - 1)
+
+        def get_mutually_recursive_relations(self, relation_name: str) -> Set[str]:
+            """
+            Finds all relations that are mutually recursive with the input relation.
+            @param relation_name: the name of the relation.
+            @return: a set of relations names (including the input relation).
+            """
+            rel_id = self.relation_to_id[relation_name]
+            scc = nx.strongly_connected_components(self._graph)
+
+            for component in scc:
+                if rel_id in component:
+                    names_component = set(map(lambda x: self.id_to_relation[x], component))
+                    return names_component
+
 
         def __str__(self):
             return self.__class__.__name__ + " is:\n" + super().__str__()

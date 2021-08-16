@@ -114,6 +114,10 @@ class AddRuleToTermGraph:
         self.nodes = set()
 
     def add_node(self, node_id: int) -> None:
+        """
+        Saves all the nodes that were added due to the rule.
+        @param node_id: a new node that was added.
+        """
         self.nodes.add(node_id)
 
     def add_join_branch(self, head_id: int, relations: Set[Union[Relation, IERelation]],
@@ -137,6 +141,7 @@ class AddRuleToTermGraph:
 
         join_dict = get_free_var_to_relations_dict(total_relations)
         if join_dict:
+            # add join node
             join_node_id = self.term_graph.add_term(type="join", value=join_dict)
             self.add_node(join_node_id)
 
@@ -154,22 +159,19 @@ class AddRuleToTermGraph:
         @param father_node_id: the node to which the relation will be connected.
         """
 
-        root_rel_id = self.term_graph.get_relation_id(relation)
-        is_base_rel = root_rel_id == -1
+        rel_id = self.term_graph.get_relation_id(relation)
+        is_base_rel = rel_id == -1
 
-        rel_id = self.term_graph.add_term(type="get_rel", value=relation)
-        self.add_node(rel_id)
+        get_rel_id = self.term_graph.add_term(type="get_rel", value=relation)
+        self.add_node(get_rel_id)
 
-        self.relation_to_branch_id[relation] = rel_id
-        self.term_graph.add_edge(father_node_id, rel_id)
+        # cache the branch
+        self.relation_to_branch_id[relation] = get_rel_id
+        self.term_graph.add_edge(father_node_id, get_rel_id)
+
+        # if relation is a rule relation we connect it to the root of the relation (rel_id)
         if not is_base_rel:
-            """usually root in graph means that no edges enter the node.
-                in this case root_rel is the node that gathers all the rule's computation paths.
-                yet, if another rule uses this rule relation, the new rule will be connected to root_rel.
-                e.g. if A(X, Y) <- ...
-                        B(X, Y) <- A(X, Y) 
-                then B will be connected to the root rel of A."""
-            self.term_graph.add_edge(rel_id, root_rel_id)
+            self.term_graph.add_edge(get_rel_id, rel_id)
 
     def add_relation_branch(self, relation: Union[Relation, IERelation], join_node_id: int) -> None:
         """
@@ -179,6 +181,8 @@ class AddRuleToTermGraph:
         @param relation: a relation.
         @param join_node_id: the join node to which the relation will be connected.
         """
+
+        # check if the branch already exists
         if relation in self.relation_to_branch_id:
             self.term_graph.add_edge(join_node_id, self.relation_to_branch_id[relation])
             return
@@ -186,15 +190,18 @@ class AddRuleToTermGraph:
         free_vars = get_output_free_var_names(relation)
         term_list = relation.get_term_list()
 
+        # check if there is a constant (A("4")), or there is a free var that appears multiple times (A(X, X))
         if len(free_vars) != len(term_list) or len(term_list) != len(set(term_list)):
+            # create select node and connect relation branch to it
             select_info = relation.get_select_cols_values_and_types()
+            # TODO@tom: change value to relation
             select_node_id = self.term_graph.add_term(type="select", value=select_info)
             self.add_node(select_node_id)
             self.term_graph.add_edge(join_node_id, select_node_id)
             self.add_relation_to(relation, select_node_id)
             self.relation_to_branch_id[relation] = select_node_id
         else:
-            # no need to filter
+            # no need to add select node
             self.add_relation_to(relation, join_node_id)
 
     def add_calc_branch(self, join_node_id: int, ie_relation: IERelation, bounding_graph: OrderedDict) -> int:
@@ -274,6 +281,7 @@ class ExpandRuleNodes(GenericPass):
             term_type = term_attrs['type']
 
             if term_type == "rule":
+                # make sure that the rule wasn't expanded before
                 if term_attrs['state'] == EvalState.NOT_COMPUTED:
                     rule_nodes.append(term_attrs['value'])
                     self.parse_graph.set_term_attribute(term_id, 'state', EvalState.VISITED)

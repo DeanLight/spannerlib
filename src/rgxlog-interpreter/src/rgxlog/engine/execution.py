@@ -99,6 +99,25 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
+    # TODO@tom: @niv, implement this function
+    @abstractmethod
+    def clear_tables(self, tables_names: Iterable[str]) -> None:
+        """
+        Resets all the tables inside the input (deletes all their tuples).
+
+        @param tables_names: tables to reset.
+        """
+        pass
+
+    # TODO@tom: @niv, implement this function
+    @abstractmethod
+    def get_len(self, table: str) -> int:
+        """
+        @param table: name of a table
+        @return: number of tuple inside the table
+        """
+        pass
+
     @abstractmethod
     def compute_ie_relation(self, ie_relation, ie_func_data, bounding_relation):
         """
@@ -894,6 +913,9 @@ class GenericExecution(ExecutionBase):
     def __init__(self, parse_graph: TermGraphBase, term_graph: ExecutionTermGraph,
                  symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         super().__init__(parse_graph, term_graph, symbol_table, rgxlog_engine)
+        GenericExecution.ComputeRule.term_graph = term_graph
+        GenericExecution.ComputeRule.rgxlog_engine = rgxlog_engine
+        GenericExecution.ComputeRule.symbol_table = symbol_table
 
     def execute(self) -> Tuple[Query, List]:
         parse_graph = self.parse_graph
@@ -944,11 +966,194 @@ class GenericExecution(ExecutionBase):
 
         return exec_result
 
+    class ComputeRule:
+        """
+        this class traverses the term graph and computes a rule (along side with it's mutual recursive rules).
+        """
+        term_graph: ExecutionTermGraph = None
+        rgxlog_engine: RgxlogEngineBase = None
+        symbol_table: SymbolTableBase = None
+
+        def __init__(self, relation: Relation):
+            self.relation = relation
+            self.mutually_recursive = self.term_graph.get_mutually_recursive_relations(relation.relation_name)
+            self.initial_len = self.rgxlog_engine.get_len(relation.relation_name)
+
+        def get_relation_node(self, relation: Relation) -> int:
+            """
+            @param relation: a relation
+            @return: the node that represents the relation.
+            """
+            return self.term_graph.get_relation_id(relation)
+
+        def __call__(self) -> None:
+            """
+            Computes the rule (including the mutual recursive rules)
+            """
+            self.rgxlog_engine.clear_tables(self.mutually_recursive)
+
+            # computes all the rules that are independent of the current rule
+            self.compute_iteration()
+
+            fixed_point = False
+            while not fixed_point:
+                # computes one iteration for all of the mutually recursive rules
+                stopped = [GenericExecution.ComputeRule(relation).compute_iteration()
+                           for relation in self.mutually_recursive]
+                # we stop iterating when all the rules converged at the same step
+                fixed_point = all(stopped)
+
+            # TODO@tom: reset graph
+
+        def compute_iteration(self) -> bool:
+            """
+            Computes one iteration. if reaches a mutually recursive relation it uses the relation current state
+            (rather than computing it).
+
+            @return: whether the rule we computed converged (no new tuples).
+            """
+            self.compute_dfs(self.get_relation_node(self.relation))
+            return self.rgxlog_engine.get_len(self.relation.relation_name) == self.initial_len
+
+        @classmethod
+        def compute_independent_rule(cls, relation: Relation) -> None:
+            """
+            Computes rule that is independent of the current rule.
+            @param relation: the rule head relation to compute.
+            """
+            compute_instance = cls(relation)
+            compute_instance()
+
+        def compute_dfs(self, node_id: int) -> None:
+            """
+            Runs postorder dfs over the term graph and evaluates the tree.
+            @param node_id: the current node.
+            """
+            if self.stop_dfs(node_id):
+                return
+
+            children = self.term_graph.get_children(node_id)
+            for child in children:
+                self.compute_dfs(child)
+
+            self.compute_node(node_id)
+
+        def stop_dfs(self, node_id: int) -> bool:
+            """
+            Catches the cases of rule rel
+            @param node_id: the current node
+            @return: True if we can continue the DFS, False otherwise
+            """
+            term_attrs = self.term_graph[node_id]
+            if term_attrs["state"] is EvalState.COMPUTED:
+                return True
+
+            if term_attrs["type"] != "rule_rel":
+                return False
+
+            rule_rel = term_attrs["value"]
+            if rule_rel.relation_name not in self.mutually_recursive:
+                GenericExecution.ComputeRule.compute_independent_rule(rule_rel)
+                return True
+
+            if rule_rel.relation_name == self.relation.relation_name:
+                return False
+
+            # case of dependent rule (we use the current state)
+            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, rule_rel)
+            return True
+
+
+        def compute_node(self, node_id: int) -> None:
+            """
+            Computes the current node based on it's type.
+            @param node_id: the current node
+            """
+            term_graph = self.term_graph
+            rgxlog_engine = self.rgxlog_engine
+
+            term_attrs = term_graph[node_id]
+            if term_attrs["state"] is EvalState.COMPUTED:
+                return
+
+            term_type = term_attrs["type"]
+
+            if term_type in "get_rel":
+                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
+
+            elif term_type == "rule_rel":
+                rule_rel = term_attrs["value"]
+                rule_name = rule_rel.relation_name
+                rel_in: Relation = self.get_child_relation(node_id)
+                copy_rel = rgxlog_engine.operator_copy(rel_in, rule_name)
+                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, copy_rel)
+
+
+            elif term_type == "union":
+                union_rel = rgxlog_engine.operator_union(self.get_children_relations(node_id))
+                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, union_rel)
+
+            elif term_type == "join":
+                # TODO@niv: @tom, i think `join_info` is redundant here,
+                #  since we get it from the children which are passed anyways
+
+                # TODO@niv: i have a bug here where `JOIN ON {ie_rel}` looks at the wrong table (c instead of __rgx...)
+                join_info = term_attrs['value']
+                join_rel = rgxlog_engine.operator_join(self.get_children_relations(node_id), join_info)
+                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)
+
+            elif term_type == "project":
+                output_rel: Relation = self.get_child_relation(node_id)
+                project_info = term_attrs["value"]
+                project_rel = rgxlog_engine.operator_project(output_rel, project_info)
+                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, project_rel)
+
+            elif term_type == "calc":
+                children = self.get_children_relations(node_id)
+                rel_in = children[0] if children else None
+                # TODO@niv: @tom, we shouldn't use "value" for everything, change this (e.g. "in_rel" here).
+                #  same for all the other ["value"]s.
+                #  also, use constants
+                ie_rel_in: IERelation = term_attrs["value"]
+                ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
+                ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
+                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, ie_rel_out)
+
+            elif term_type == "select":
+                output_rel = self.get_child_relation(node_id)
+                select_info = term_attrs["value"]
+                select_rel = rgxlog_engine.operator_select(output_rel, select_info)
+                self.set_output_relation(node_id, select_rel)
+
+            else:
+                raise ValueError(f"illegal term type in rule's execution graph. The bad type is {term_type}")
+
+            # statement was executed, mark it as "computed"
+            term_graph.set_term_attribute(node_id, 'state', EvalState.VISITED)
+
+        def reset_visited_nodes(self, term_ids: List[int]) -> None:
+            for term_id in term_ids:
+                self.term_graph.set_term_attribute(term_id, "state", EvalState.NOT_COMPUTED)
+
+        def set_output_relation(self, term_id: int, relation: Relation) -> None:
+            self.term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, relation)
+
+        def get_children_relations(self, node_id: int) -> List[Relation]:
+            term_graph = self.term_graph
+            relations_ids = term_graph.get_children(node_id)
+            relations_nodes = [term_graph[rel_id] for rel_id in relations_ids]
+            relations = [rel_node[OUT_REL_ATTRIBUTE] for rel_node in relations_nodes]
+            return relations
+
+        def get_child_relation(self, node_id: int) -> Relation:
+            children = self.get_children_relations(node_id)
+            assert len(children) <= 1, "this node should have exactly one child"
+            return children[0]
+
     def compute_rule(self, rule_head: Query) -> None:
         """
         saves the rule to rules_history (used for rule deletion) and copies the table from the
         rule's child in the parse graph, which is the result of all the rule calculations
-        @return:
         """
         term_graph = self.term_graph
         rgxlog_engine = self.rgxlog_engine
@@ -957,87 +1162,9 @@ class GenericExecution(ExecutionBase):
         # check if the relation is declared relation
         if rule_head_id == -1:
             return
-        term_ids = term_graph.post_order_dfs_from(rule_head_id)
 
-        for term_id in term_ids:
-            term_attrs = term_graph[term_id]
-            if term_attrs["state"] is EvalState.COMPUTED:
-                continue
-
-            term_type = term_attrs["type"]
-
-            if term_type in "get_rel":
-                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
-
-            elif term_type == "rule_rel":
-                rule_name = term_attrs["value"].relation_name
-                rel_in: Relation = self.get_child_relation(term_id)
-                copy_rel = rgxlog_engine.operator_copy(rel_in, rule_name)
-                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, copy_rel)
-
-            elif term_type == "union":
-                union_rel = rgxlog_engine.operator_union(self.get_children_relations(term_id))
-                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, union_rel)
-
-            elif term_type == "join":
-                # TODO@niv: @tom, i think `join_info` is redundant here,
-                #  since we get it from the children which are passed anyways
-
-                # TODO@niv: i have a bug here where `JOIN ON {ie_rel}` looks at the wrong table (c instead of __rgx...)
-                join_info = term_attrs['value']
-                join_rel = rgxlog_engine.operator_join(self.get_children_relations(term_id), join_info)
-                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, join_rel)
-
-            elif term_type == "project":
-                output_rel: Relation = self.get_child_relation(term_id)
-                project_info = term_attrs["value"]
-                project_rel = rgxlog_engine.operator_project(output_rel, project_info)
-                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, project_rel)
-
-            elif term_type == "calc":
-                children = self.get_children_relations(term_id)
-                rel_in = children[0] if children else None
-                # TODO@niv: @tom, we shouldn't use "value" for everything, change this (e.g. "in_rel" here).
-                #  same for all the other ["value"]s.
-                #  also, use constants
-                ie_rel_in: IERelation = term_attrs["value"]
-                ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
-                ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
-                term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, ie_rel_out)
-
-            elif term_type == "select":
-                output_rel = self.get_child_relation(term_id)
-                select_info = term_attrs["value"]
-                select_rel = rgxlog_engine.operator_select(output_rel, select_info)
-                self.set_output_relation(term_id, select_rel)
-
-            else:
-                raise ValueError(f"illegal term type in rule's execution graph. The bad type is {term_type}")
-
-            # statement was executed, mark it as "computed"
-            term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
-
-        # TODO@niv: a possible optimization is to leave this computed until we add_fact/rule/whatever
-        self.reset_visited_nodes(term_ids)
-
-    def reset_visited_nodes(self, term_ids: List[int]) -> None:
-        for term_id in term_ids:
-            self.term_graph.set_term_attribute(term_id, "state", EvalState.NOT_COMPUTED)
-
-    def set_output_relation(self, term_id: int, relation: Relation) -> None:
-        self.term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, relation)
-
-    def get_children_relations(self, node_id: int) -> List[Relation]:
-        term_graph = self.term_graph
-        relations_ids = term_graph.get_children(node_id)
-        relations_nodes = [term_graph[rel_id] for rel_id in relations_ids]
-        relations = [rel_node[OUT_REL_ATTRIBUTE] for rel_node in relations_nodes]
-        return relations
-
-    def get_child_relation(self, node_id: int) -> Relation:
-        children = self.get_children_relations(node_id)
-        assert len(children) <= 1, "this node should have exactly one child"
-        return children[0]
+        compute_rule_object = GenericExecution.ComputeRule(rule_head)
+        compute_rule_object()
 
 
 if __name__ == "__main__":
