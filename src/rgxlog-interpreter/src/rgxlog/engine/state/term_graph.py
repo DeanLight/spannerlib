@@ -5,13 +5,12 @@ this module contains the implementations of term graphs
 from abc import abstractmethod
 from enum import Enum
 from itertools import count
-from typing import Union, Set, List
+from typing import Union, Set, List, Dict
 
 import networkx as nx
 
-from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, RelationDeclaration, Rule
-from rgxlog.engine.datatypes.primitive_types import DataTypes
-from rgxlog.engine.utils.general_utils import rule_to_relation_name
+from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, Rule
+
 
 PRETTY_INDENT = ' ' * 4
 
@@ -135,9 +134,6 @@ class TermGraphBase:
     def __getitem__(self, term_id: int):
         return self.get_term_attributes(term_id)
 
-    def reset_graph(self):
-        pass
-
     def __str__(self):
         pass
 
@@ -162,7 +158,7 @@ class NetxTermGraph(TermGraphBase):
         # create the root of the term graph. it will be used as a source for dfs/bfs
         self._root_id = self.add_term(type="root")
 
-    def add_term(self, **attr):
+    def add_term(self, **attr) -> int:
         # assert the term has a type
         if 'type' not in attr:
             raise Exception("cannot add a term without a type")
@@ -178,13 +174,13 @@ class NetxTermGraph(TermGraphBase):
         self._graph.add_node(node_for_adding=term_id, **attr)
         return term_id
 
-    def get_root_id(self):
+    def get_root_id(self) -> int:
         return self._root_id
 
-    def remove_term(self, term_id):
+    def remove_term(self, term_id: int) -> None:
         self._graph.remove_node(term_id)
 
-    def add_edge(self, father_id, son_id, **attr):
+    def add_edge(self, father_id: int, son_id: int, **attr) -> None:
 
         # assert that both terms are in the term graph
         if father_id not in self._graph.nodes:
@@ -205,22 +201,22 @@ class NetxTermGraph(TermGraphBase):
             for ancestor_id in ancestors_ids:
                 self._graph.nodes[ancestor_id]['state'] = EvalState.NOT_COMPUTED
 
-    def pre_order_dfs_from(self, node_id: int):
+    def pre_order_dfs_from(self, node_id: int) -> List[int]:
         return nx.dfs_preorder_nodes(self._graph, node_id)
 
-    def post_order_dfs_from(self, node_id: int):
+    def post_order_dfs_from(self, node_id: int) -> List[int]:
         return nx.dfs_postorder_nodes(self._graph, node_id)
 
-    def get_children(self, term_id):
+    def get_children(self, term_id: int) -> List[int]:
         return list(self._graph.successors(term_id))
 
-    def set_term_attribute(self, term_id, attr_name, attr_value):
+    def set_term_attribute(self, term_id: int, attr_name: str, attr_value) -> None:
         self._graph.nodes[term_id][attr_name] = attr_value
 
-    def get_term_attributes(self, term_id) -> dict:
+    def get_term_attributes(self, term_id: int) -> Dict:
         return self._graph.nodes[term_id].copy()
 
-    def _get_term_string(self, term_id):
+    def _get_term_string(self, term_id: int) -> str:
         """
         a utility function for pretty()
         @param term_id: a term id
@@ -240,7 +236,7 @@ class NetxTermGraph(TermGraphBase):
         term_string = f"({term_id}) ({term_attrs['state']}) {term_attrs['type']}{term_value_string}"
         return term_string
 
-    def _pretty_aux(self, term_id, level):
+    def _pretty_aux(self, term_id: int, level: int) -> List[str]:
         """
         a helper function for pretty()
 
@@ -249,12 +245,15 @@ class NetxTermGraph(TermGraphBase):
 
         @return: a list of strings that represents the term and its children
         """
+        self.visited_nodes.add(term_id)
+
         # get a representation of the term
         ret = [PRETTY_INDENT * level, self._get_term_string(term_id), '\n']
 
         # get a representation of the term's children
         for child_id in self.get_children(term_id):
-            ret += self._pretty_aux(child_id, level + 1)
+            if child_id not in self.visited_nodes:
+                ret += self._pretty_aux(child_id, level + 1)
 
         return ret
 
@@ -267,6 +266,8 @@ class NetxTermGraph(TermGraphBase):
         for a computed query term of id 4 "?A(X)", this method will print
         (4) (computed) query: A(X)
         """
+
+        self.visited_nodes = set()
         return ''.join(self._pretty_aux(self._root_id, 0))
 
     def __str__(self):
@@ -503,4 +504,3 @@ class ExecutionTermGraph(NetxTermGraph):
 
         def __str__(self):
             return self.__class__.__name__ + " is:\n" + super().__str__()
-

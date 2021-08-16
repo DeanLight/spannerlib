@@ -245,7 +245,6 @@ class AddRuleToTermGraph:
         self.term_graph.add_dependencies(head_relation, relations)
 
 
-
 class ExpandRuleNodes(GenericPass):
     """
     This pass transforms each rule node into an execution tree and adds it to the term graph.
