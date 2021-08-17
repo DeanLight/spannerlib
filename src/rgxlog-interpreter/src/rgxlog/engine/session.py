@@ -486,7 +486,7 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(True)
+    my_session = Session(False)
 
     query = """
         new parent(str, str)

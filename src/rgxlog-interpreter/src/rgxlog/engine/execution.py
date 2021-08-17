@@ -1015,21 +1015,21 @@ class GenericExecution(ExecutionBase):
             # computes all the rules that are independent of the current rule
             self.compute_iteration()
 
-            print(self.rgxlog_engine.query(
-                Query("ancestor", ["X", "Y"], [DataTypes.free_var_name, DataTypes.free_var_name])))
-
             fixed_point = False
             while not fixed_point:
                 # computes one iteration for all of the mutually recursive rules
                 stopped = [GenericExecution.ComputeRule(relation).compute_iteration()
                            for relation in self.mutually_recursive]
 
-                print(self.rgxlog_engine.query(
-                    Query("ancestor", ["X", "Y"], [DataTypes.free_var_name, DataTypes.free_var_name])))
                 # we stop iterating when all the rules converged at the same step
                 fixed_point = all(stopped)
 
-            # TODO@tom: reset graph
+            self.reset_visited_nodes()
+
+        def reset_visited_nodes(self) -> None:
+            rel_id = self.get_relation_node(self.relation)
+            for term_id in self.term_graph.post_order_dfs_from(rel_id):
+                self.term_graph.set_term_attribute(term_id, "state", EvalState.NOT_COMPUTED)
 
         def compute_iteration(self) -> bool:
             """
@@ -1104,7 +1104,6 @@ class GenericExecution(ExecutionBase):
             term_graph = self.term_graph
             rgxlog_engine = self.rgxlog_engine
 
-
             term_attrs = term_graph[node_id]
             if term_attrs["state"] is EvalState.COMPUTED:
                 return
@@ -1172,10 +1171,6 @@ class GenericExecution(ExecutionBase):
             children_statuses_is_computed = [self.term_graph[child_id]["state"] is EvalState.COMPUTED
                                              for child_id in children]
             return all(children_statuses_is_computed)
-
-        def reset_visited_nodes(self, term_ids: List[int]) -> None:
-            for term_id in term_ids:
-                self.term_graph.set_term_attribute(term_id, "state", EvalState.NOT_COMPUTED)
 
         def set_output_relation(self, term_id: int, relation: Relation) -> None:
             self.term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, relation)
