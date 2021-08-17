@@ -56,7 +56,9 @@ class RgxlogEngineBase(ABC):
     @abstractmethod
     def declare_relation(self, relation_decl):
         """
-        declares a relation in the rgxlog engine
+        declares a relation in the rgxlog engine.
+        if the relation is already declared does nothing.
+
 
         @param relation_decl: a relation declaration
         """
@@ -99,19 +101,26 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    # TODO@tom: @niv, implement this function
     @abstractmethod
+    def clear_table(self, table: str) -> None:
+        """
+        Resets the table (deletes all its tuples).
+
+        @param table: tables to reset.
+        """
+        pass
+
     def clear_tables(self, tables_names: Iterable[str]) -> None:
         """
         Resets all the tables inside the input (deletes all their tuples).
 
         @param tables_names: tables to reset.
         """
-        pass
+        for table in tables_names:
+            self.clear_table(table)
 
-    # TODO@tom: @niv, implement this function
     @abstractmethod
-    def get_len(self, table: str) -> int:
+    def get_table_len(self, table: str) -> int:
         """
         @param table: name of a table
         @return: number of tuple inside the table
@@ -562,13 +571,16 @@ class SqliteEngine(RgxlogEngineBase):
     def declare_relation(self, relation_decl: RelationDeclaration) -> None:
         """
         declares a relation as an SQL table, whose types are named t0, t1, ...
+        if the relation is already declared does nothing.
 
         @param relation_decl: the declaration info
-        @return: None
         """
         # create the relation table. we don't use an id because it would allow inserting the same values twice
         # note: to ignore duplicates, we can either use UNIQUE when creating the table, or DISTINCT when selecting.
         #  right now we use DISTINCT
+        if self.is_table_exists(relation_decl.relation_name):
+            return
+
         sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
 
         # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
@@ -806,7 +818,7 @@ class SqliteEngine(RgxlogEngineBase):
 
             # check if the relation already exists
             if self.is_table_exists(output_relation_name):
-                self.operator_delete_all(output_relation_name)
+                self.clear_table(output_relation_name)
             else:
                 dest_decl_rel = RelationDeclaration(dest_rel_name, src_rel.type_list)
                 self.declare_relation(dest_decl_rel)
@@ -854,7 +866,7 @@ class SqliteEngine(RgxlogEngineBase):
     def _get_free_variable_indexes(type_list):
         return [i for i, term_type in enumerate(type_list) if (term_type is DataTypes.free_var_name)]
 
-    def run_sql(self, command, command_args=None) -> list:
+    def run_sql(self, command, command_args=None) -> List:
         if self.debug:
             print(f"sql {command=}")
             if command_args:
@@ -867,9 +879,14 @@ class SqliteEngine(RgxlogEngineBase):
 
         return self.sql_cursor.fetchall()
 
-    def operator_delete_all(self, table_name):
+    def clear_table(self, table_name):
         sql_command = f"DELETE FROM {table_name}"
         self.run_sql(sql_command)
+
+    def get_table_len(self, table: str) -> int:
+        sql_command = f"SELECT COUNT(*) FROM {table}"
+        table_len, = self.run_sql(sql_command)[0]
+        return table_len
 
 
 class ExecutionBase(ABC):
@@ -936,9 +953,13 @@ class GenericExecution(ExecutionBase):
             # the term is not computed, get its type and compute it accordingly
             term_type = term_attrs["type"]
 
-            if term_type in ("root", "relation", "rule"):
+            if term_type in ("root", "relation"):
                 # pass and not continue, because we want to mark them as computed
                 pass
+
+            elif term_type == "rule":
+                rule = term_attrs[VALUE_ATTRIBUTE]
+                rgxlog_engine.declare_relation(rule.head_relation.as_relation_declaration())
 
             elif term_type == "relation_declaration":
                 relation_decl = term_attrs[VALUE_ATTRIBUTE]
@@ -974,12 +995,11 @@ class GenericExecution(ExecutionBase):
         rgxlog_engine: RgxlogEngineBase = None
         symbol_table: SymbolTableBase = None
 
-        def __init__(self, relation: Relation):
+        def __init__(self, relation: str):
             self.relation = relation
-            self.mutually_recursive = self.term_graph.get_mutually_recursive_relations(relation.relation_name)
-            self.initial_len = self.rgxlog_engine.get_len(relation.relation_name)
+            self.mutually_recursive = self.term_graph.get_mutually_recursive_relations(relation)
 
-        def get_relation_node(self, relation: Relation) -> int:
+        def get_relation_node(self, relation: str) -> int:
             """
             @param relation: a relation
             @return: the node that represents the relation.
@@ -995,11 +1015,17 @@ class GenericExecution(ExecutionBase):
             # computes all the rules that are independent of the current rule
             self.compute_iteration()
 
+            print(self.rgxlog_engine.query(
+                Query("ancestor", ["X", "Y"], [DataTypes.free_var_name, DataTypes.free_var_name])))
+
             fixed_point = False
             while not fixed_point:
                 # computes one iteration for all of the mutually recursive rules
                 stopped = [GenericExecution.ComputeRule(relation).compute_iteration()
                            for relation in self.mutually_recursive]
+
+                print(self.rgxlog_engine.query(
+                    Query("ancestor", ["X", "Y"], [DataTypes.free_var_name, DataTypes.free_var_name])))
                 # we stop iterating when all the rules converged at the same step
                 fixed_point = all(stopped)
 
@@ -1012,11 +1038,13 @@ class GenericExecution(ExecutionBase):
 
             @return: whether the rule we computed converged (no new tuples).
             """
+            self.visited_nodes = set()
+            initial_len = self.rgxlog_engine.get_table_len(self.relation)
             self.compute_dfs(self.get_relation_node(self.relation))
-            return self.rgxlog_engine.get_len(self.relation.relation_name) == self.initial_len
+            return self.rgxlog_engine.get_table_len(self.relation) == initial_len
 
         @classmethod
-        def compute_independent_rule(cls, relation: Relation) -> None:
+        def compute_independent_rule(cls, relation: str) -> None:
             """
             Computes rule that is independent of the current rule.
             @param relation: the rule head relation to compute.
@@ -1032,6 +1060,7 @@ class GenericExecution(ExecutionBase):
             if self.stop_dfs(node_id):
                 return
 
+            self.visited_nodes.add(node_id)
             children = self.term_graph.get_children(node_id)
             for child in children:
                 self.compute_dfs(child)
@@ -1044,6 +1073,10 @@ class GenericExecution(ExecutionBase):
             @param node_id: the current node
             @return: True if we can continue the DFS, False otherwise
             """
+
+            if node_id in self.visited_nodes:
+                return True
+
             term_attrs = self.term_graph[node_id]
             if term_attrs["state"] is EvalState.COMPUTED:
                 return True
@@ -1056,13 +1089,12 @@ class GenericExecution(ExecutionBase):
                 GenericExecution.ComputeRule.compute_independent_rule(rule_rel)
                 return True
 
-            if rule_rel.relation_name == self.relation.relation_name:
+            if rule_rel.relation_name == self.relation:
                 return False
 
             # case of dependent rule (we use the current state)
             self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, rule_rel)
             return True
-
 
         def compute_node(self, node_id: int) -> None:
             """
@@ -1071,6 +1103,7 @@ class GenericExecution(ExecutionBase):
             """
             term_graph = self.term_graph
             rgxlog_engine = self.rgxlog_engine
+
 
             term_attrs = term_graph[node_id]
             if term_attrs["state"] is EvalState.COMPUTED:
@@ -1087,7 +1120,6 @@ class GenericExecution(ExecutionBase):
                 rel_in: Relation = self.get_child_relation(node_id)
                 copy_rel = rgxlog_engine.operator_copy(rel_in, rule_name)
                 term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, copy_rel)
-
 
             elif term_type == "union":
                 union_rel = rgxlog_engine.operator_union(self.get_children_relations(node_id))
@@ -1128,8 +1160,18 @@ class GenericExecution(ExecutionBase):
             else:
                 raise ValueError(f"illegal term type in rule's execution graph. The bad type is {term_type}")
 
-            # statement was executed, mark it as "computed"
-            term_graph.set_term_attribute(node_id, 'state', EvalState.VISITED)
+            # statement was executed, mark it as "computed" or "visited"
+            compute_status = EvalState.COMPUTED if self.get_compute_status(node_id) else EvalState.VISITED
+            term_graph.set_term_attribute(node_id, 'state', compute_status)
+
+        def get_compute_status(self, node_id: int) -> bool:
+            children = self.term_graph.get_children(node_id)
+            if not children:
+                return True
+
+            children_statuses_is_computed = [self.term_graph[child_id]["state"] is EvalState.COMPUTED
+                                             for child_id in children]
+            return all(children_statuses_is_computed)
 
         def reset_visited_nodes(self, term_ids: List[int]) -> None:
             for term_id in term_ids:
@@ -1156,14 +1198,13 @@ class GenericExecution(ExecutionBase):
         rule's child in the parse graph, which is the result of all the rule calculations
         """
         term_graph = self.term_graph
-        rgxlog_engine = self.rgxlog_engine
-        rule_head_id = term_graph.get_relation_id(rule_head)
+        rule_head_id = term_graph.get_relation_id(rule_head.relation_name)
 
         # check if the relation is declared relation
         if rule_head_id == -1:
             return
 
-        compute_rule_object = GenericExecution.ComputeRule(rule_head)
+        compute_rule_object = GenericExecution.ComputeRule(rule_head.relation_name)
         compute_rule_object()
 
 
@@ -1181,3 +1222,5 @@ if __name__ == "__main__":
 
     my_query = Query("yoyo", ["X", "Y"], [DataTypes.free_var_name, DataTypes.free_var_name])
     print(my_engine.query(my_query))
+
+    print(my_engine.get_table_len("yoyo"))

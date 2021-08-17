@@ -395,7 +395,7 @@ class ExecutionTermGraph(NetxTermGraph):
         """
         relation_name = relation.relation_name
         if relation_name in self._relation_to_id:
-            return self.get_relation_id(relation, False)
+            return self.get_relation_id(relation_name, False)
 
         rel_id = self.add_term(type="rule_rel", value=relation)
         self.add_edge(self._root_id, rel_id)
@@ -403,15 +403,15 @@ class ExecutionTermGraph(NetxTermGraph):
         self.add_edge(rel_id, union_id)
         self._relation_to_id[relation_name] = (rel_id, union_id)
 
-        return self.get_relation_id(relation, False)
+        return self.get_relation_id(relation_name, False)
 
-    def get_relation_id(self, relation: Union[Relation, IERelation], actual_node: bool = True) -> int:
+    def get_relation_id(self, relation: str, actual_node: bool = True) -> int:
         """
 
         @param relation: the relation to look for
         @param actual_node: if true we return the relation node. otherwise we return it's union child node id.
         """
-        ids = self._relation_to_id.get(relation.relation_name, -1)
+        ids = self._relation_to_id.get(relation, -1)
         if ids == -1:
             return -1
         return ids[0] if actual_node else ids[1]

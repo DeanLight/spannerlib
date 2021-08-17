@@ -159,7 +159,7 @@ class AddRuleToTermGraph:
         @param father_node_id: the node to which the relation will be connected.
         """
 
-        rel_id = self.term_graph.get_relation_id(relation)
+        rel_id = self.term_graph.get_relation_id(relation.relation_name)
         is_base_rel = rel_id == -1
 
         get_rel_id = self.term_graph.add_term(type="get_rel", value=relation)

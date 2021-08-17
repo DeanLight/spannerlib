@@ -38,6 +38,40 @@ def peel_token(token) -> str:
         return token.value
     return token
 
+class RelationDeclaration:
+    """a representation of a relation_declaration statement"""
+
+    def __init__(self, relation_name, type_list):
+        """
+        @param relation_name: the name of the relation
+        @param type_list: a list of the types of the terms in the relation's tuples
+        @raise Exception: if there is invalid term type in term list.
+        """
+        self.relation_name: str = relation_name
+        self.type_list: List[DataTypes] = type_list
+
+    def __str__(self):
+        type_strings = []
+        for term_type in self.type_list:
+            if term_type is DataTypes.string:
+                type_strings.append('str')
+            elif term_type is DataTypes.span:
+                type_strings.append('span')
+            elif term_type is DataTypes.integer:
+                type_strings.append('int')
+            else:
+                raise ValueError(f"invalid term type ({term_type})")
+
+        type_list_string = ', '.join(type_strings)
+        relation_declaration_string = f"{self.relation_name}({type_list_string})"
+        return relation_declaration_string
+
+    def __repr__(self):
+        return str(self)
+
+    def peel_off_token_wrappers(self) -> None:
+        self.relation_name = peel_token(self.relation_name)
+
 
 # TODO: understand why this causes a bug (rule safety something)
 #  @dataclasses.dataclass(init=False)
@@ -83,6 +117,9 @@ class Relation:
     def peel_off_token_wrappers(self) -> None:
         self.term_list = peel_list(self.term_list)
         self.relation_name = peel_token(self.relation_name)
+
+    def as_relation_declaration(self) -> RelationDeclaration:
+        return RelationDeclaration(self.relation_name, self.type_list)
 
 
 class IERelation:
@@ -139,41 +176,6 @@ class IERelation:
     def peel_off_token_wrappers(self) -> None:
         self.input_term_list = peel_list(self.input_term_list)
         self.output_term_list = peel_list(self.output_term_list)
-        self.relation_name = peel_token(self.relation_name)
-
-
-class RelationDeclaration:
-    """a representation of a relation_declaration statement"""
-
-    def __init__(self, relation_name, type_list):
-        """
-        @param relation_name: the name of the relation
-        @param type_list: a list of the types of the terms in the relation's tuples
-        @raise Exception: if there is invalid term type in term list.
-        """
-        self.relation_name: str = relation_name
-        self.type_list: List[DataTypes] = type_list
-
-    def __str__(self):
-        type_strings = []
-        for term_type in self.type_list:
-            if term_type is DataTypes.string:
-                type_strings.append('str')
-            elif term_type is DataTypes.span:
-                type_strings.append('span')
-            elif term_type is DataTypes.integer:
-                type_strings.append('int')
-            else:
-                raise ValueError(f"invalid term type ({term_type})")
-
-        type_list_string = ', '.join(type_strings)
-        relation_declaration_string = f"{self.relation_name}({type_list_string})"
-        return relation_declaration_string
-
-    def __repr__(self):
-        return str(self)
-
-    def peel_off_token_wrappers(self) -> None:
         self.relation_name = peel_token(self.relation_name)
 
 

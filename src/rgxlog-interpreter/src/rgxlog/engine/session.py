@@ -482,8 +482,6 @@ class Session:
 
         self._term_graph.print_all_rules()
 
-
-# TODO@tom: implement the dfs walk on the execution graph
 # TODO@tom: test and debug ie relations
 
 if __name__ == "__main__":
@@ -491,11 +489,14 @@ if __name__ == "__main__":
     my_session = Session(True)
 
     query = """
-                    new B(int, int)
-                    B(1, 1)
-                    B(1, 2)
-                    B(2, 3)
-                    A(X, Y) <- B(X, Y)
-                    ?A(X, Y)
-                """
+        new parent(str, str)
+        parent("Liam", "Noah")
+        parent("Noah", "Oliver")
+        parent("James", "Lucas")
+        parent("Noah", "Benjamin")
+        parent("Benjamin", "Mason")
+        ancestor(X,Y) <- parent(X,Y)
+        ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
+        ?ancestor(X,Y)
+        """
     my_session.run_query(query)
