@@ -1006,10 +1006,14 @@ class GenericExecution(ExecutionBase):
             """
             return self.term_graph.get_relation_id(relation)
 
-        def __call__(self) -> None:
+        def __call__(self, to_reset: bool = False) -> None:
             """
             Computes the rule (including the mutual recursive rules)
+
+            @param to_reset: if set to True we reset the nodes after the computation.
             """
+
+            # cleat all the mutually recursive tables.
             self.rgxlog_engine.clear_tables(self.mutually_recursive)
 
             # computes all the rules that are independent of the current rule
@@ -1024,9 +1028,16 @@ class GenericExecution(ExecutionBase):
                 # we stop iterating when all the rules converged at the same step
                 fixed_point = all(stopped)
 
-            self.reset_visited_nodes()
+
+            if to_reset:
+                # mark all nodes as not computed
+                self.reset_visited_nodes()
 
         def reset_visited_nodes(self) -> None:
+            """
+            Marks all the nodes that were visited during the computation as not computed.
+            """
+
             rel_id = self.get_relation_node(self.relation)
             for term_id in self.term_graph.post_order_dfs_from(rel_id):
                 self.term_graph.set_term_attribute(term_id, "state", EvalState.NOT_COMPUTED)
@@ -1038,9 +1049,12 @@ class GenericExecution(ExecutionBase):
 
             @return: whether the rule we computed converged (no new tuples).
             """
+            # stores all the nodes that were visited during the dfs
             self.visited_nodes = set()
+
             initial_len = self.rgxlog_engine.get_table_len(self.relation)
             self.compute_dfs(self.get_relation_node(self.relation))
+
             return self.rgxlog_engine.get_table_len(self.relation) == initial_len
 
         @classmethod
@@ -1081,18 +1095,21 @@ class GenericExecution(ExecutionBase):
             if term_attrs["state"] is EvalState.COMPUTED:
                 return True
 
+            # if type is not rule_rel it's fine to continue the dfs
             if term_attrs["type"] != "rule_rel":
                 return False
 
             rule_rel = term_attrs["value"]
             if rule_rel.relation_name not in self.mutually_recursive:
+                # computes the independent rule and stop
                 GenericExecution.ComputeRule.compute_independent_rule(rule_rel)
                 return True
 
+            # if rule rel is the rule we currently computing continue the dfs
             if rule_rel.relation_name == self.relation:
                 return False
 
-            # case of dependent rule (we use the current state)
+            # in case of dependent rule we use the current state of that rule
             self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, rule_rel)
             return True
 
@@ -1160,10 +1177,17 @@ class GenericExecution(ExecutionBase):
                 raise ValueError(f"illegal term type in rule's execution graph. The bad type is {term_type}")
 
             # statement was executed, mark it as "computed" or "visited"
-            compute_status = EvalState.COMPUTED if self.get_compute_status(node_id) else EvalState.VISITED
+            compute_status = EvalState.COMPUTED if self.is_node_computed(node_id) else EvalState.VISITED
             term_graph.set_term_attribute(node_id, 'state', compute_status)
 
-        def get_compute_status(self, node_id: int) -> bool:
+        def is_node_computed(self, node_id: int) -> bool:
+            """
+            Finds out whether the node is computed.
+
+            @param node_id: the node for which we check the status
+            @return: True if all the children of the node are computed or it has no children, False otherwise
+            """
+
             children = self.term_graph.get_children(node_id)
             if not children:
                 return True
@@ -1173,9 +1197,21 @@ class GenericExecution(ExecutionBase):
             return all(children_statuses_is_computed)
 
         def set_output_relation(self, term_id: int, relation: Relation) -> None:
+            """
+            sets the output relation of a node in term graph
+
+            @param term_id: the id of the node
+            @param relation: the output relation
+            """
             self.term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, relation)
 
         def get_children_relations(self, node_id: int) -> List[Relation]:
+            """
+            Gets the node's children output relations.
+
+            @param node_id: a node
+            @return: a list containing the children output relations
+            """
             term_graph = self.term_graph
             relations_ids = term_graph.get_children(node_id)
             relations_nodes = [term_graph[rel_id] for rel_id in relations_ids]
@@ -1183,6 +1219,13 @@ class GenericExecution(ExecutionBase):
             return relations
 
         def get_child_relation(self, node_id: int) -> Relation:
+            """
+            Gets the node's child output relation
+            @note: this method is called when we know that the node has at most one child.
+
+            @param node_id: a node
+            @return: the output relation of the node's child.
+            """
             children = self.get_children_relations(node_id)
             assert len(children) <= 1, "this node should have exactly one child"
             return children[0]
@@ -1200,7 +1243,7 @@ class GenericExecution(ExecutionBase):
             return
 
         compute_rule_object = GenericExecution.ComputeRule(rule_head.relation_name)
-        compute_rule_object()
+        compute_rule_object(to_reset=True)
 
 
 if __name__ == "__main__":

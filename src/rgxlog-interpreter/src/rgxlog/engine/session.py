@@ -495,8 +495,10 @@ if __name__ == "__main__":
         parent("James", "Lucas")
         parent("Noah", "Benjamin")
         parent("Benjamin", "Mason")
-        ancestor(X,Y) <- parent(X,Y)
-        ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
+        ancestor(X, Y) <- parent(X, Y)
+        ancestor(X, Y) <- parent(X, Z), ancestor(Z, Y)
         ?ancestor(X,Y)
         """
     my_session.run_query(query)
+    my_session.remove_rule("ancestor(X, Y) <- parent(X, Z), ancestor(Z, Y)")
+    my_session.run_query("?ancestor(X, Y)")
