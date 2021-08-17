@@ -1028,7 +1028,6 @@ class GenericExecution(ExecutionBase):
                 # we stop iterating when all the rules converged at the same step
                 fixed_point = all(stopped)
 
-
             if to_reset:
                 # mark all nodes as not computed
                 self.reset_visited_nodes()
@@ -1119,7 +1118,6 @@ class GenericExecution(ExecutionBase):
             @param node_id: the current node
             """
             term_graph = self.term_graph
-            rgxlog_engine = self.rgxlog_engine
 
             term_attrs = term_graph[node_id]
             if term_attrs["state"] is EvalState.COMPUTED:
@@ -1131,47 +1129,22 @@ class GenericExecution(ExecutionBase):
                 term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
 
             elif term_type == "rule_rel":
-                rule_rel = term_attrs["value"]
-                rule_name = rule_rel.relation_name
-                rel_in: Relation = self.get_child_relation(node_id)
-                copy_rel = rgxlog_engine.operator_copy(rel_in, rule_name)
-                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, copy_rel)
+                self.compute_rule_rel_node(node_id, term_attrs)
 
             elif term_type == "union":
-                union_rel = rgxlog_engine.operator_union(self.get_children_relations(node_id))
-                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, union_rel)
+                self.compute_union_node(node_id, term_attrs)
 
             elif term_type == "join":
-                # TODO@niv: @tom, i think `join_info` is redundant here,
-                #  since we get it from the children which are passed anyways
-
-                # TODO@niv: i have a bug here where `JOIN ON {ie_rel}` looks at the wrong table (c instead of __rgx...)
-                join_info = term_attrs['value']
-                join_rel = rgxlog_engine.operator_join(self.get_children_relations(node_id), join_info)
-                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)
+                self.compute_join_node(node_id, term_attrs)
 
             elif term_type == "project":
-                output_rel: Relation = self.get_child_relation(node_id)
-                project_info = term_attrs["value"]
-                project_rel = rgxlog_engine.operator_project(output_rel, project_info)
-                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, project_rel)
+                self.compute_project_node(node_id, term_attrs)
 
             elif term_type == "calc":
-                children = self.get_children_relations(node_id)
-                rel_in = children[0] if children else None
-                # TODO@niv: @tom, we shouldn't use "value" for everything, change this (e.g. "in_rel" here).
-                #  same for all the other ["value"]s.
-                #  also, use constants
-                ie_rel_in: IERelation = term_attrs["value"]
-                ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
-                ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
-                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, ie_rel_out)
+                self.compute_calc_node(node_id, term_attrs)
 
             elif term_type == "select":
-                output_rel = self.get_child_relation(node_id)
-                select_info = term_attrs["value"]
-                select_rel = rgxlog_engine.operator_select(output_rel, select_info)
-                self.set_output_relation(node_id, select_rel)
+                self.compute_select_node(node_id, term_attrs)
 
             else:
                 raise ValueError(f"illegal term type in rule's execution graph. The bad type is {term_type}")
@@ -1179,6 +1152,84 @@ class GenericExecution(ExecutionBase):
             # statement was executed, mark it as "computed" or "visited"
             compute_status = EvalState.COMPUTED if self.is_node_computed(node_id) else EvalState.VISITED
             term_graph.set_term_attribute(node_id, 'state', compute_status)
+
+        def compute_rule_rel_node(self, node_id: int, term_attrs: Dict) -> None:
+            """
+            Computes a rule rel node
+            @param node_id: the node
+            @param term_attrs: the attributes of the node.
+            """
+
+            rule_rel = term_attrs["value"]
+            rule_name = rule_rel.relation_name
+            rel_in: Relation = self.get_child_relation(node_id)
+            copy_rel = self.rgxlog_engine.operator_copy(rel_in, rule_name)
+            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, copy_rel)
+
+        def compute_join_node(self, node_id: int, term_attrs: Dict) -> None:
+            """
+            Computes a join node
+            @param node_id: the node
+            @param term_attrs: the attributes of the node.
+            """
+            # TODO@niv: @tom, i think `join_info` is redundant here,
+            #  since we get it from the children which are passed anyways
+
+            # TODO@niv: i have a bug here where `JOIN ON {ie_rel}` looks at the wrong table (c instead of __rgx...)
+            join_info = term_attrs['value']
+            join_rel = self.rgxlog_engine.operator_join(self.get_children_relations(node_id), join_info)
+            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)
+
+        def compute_project_node(self, node_id: int, term_attrs: Dict) -> None:
+            """
+            Computes a project node
+            @param node_id: the node
+            @param term_attrs: the attributes of the node.
+            """
+
+            output_rel: Relation = self.get_child_relation(node_id)
+            project_info = term_attrs["value"]
+            project_rel = self.rgxlog_engine.operator_project(output_rel, project_info)
+            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, project_rel)
+
+        def compute_calc_node(self, node_id: int, term_attrs: Dict) -> None:
+            """
+            Computes a calc node
+            @param node_id: the node
+            @param term_attrs: the attributes of the node.
+            """
+
+            children = self.get_children_relations(node_id)
+            rel_in = children[0] if children else None
+            # TODO@niv: @tom, we shouldn't use "value" for everything, change this (e.g. "in_rel" here).
+            #  same for all the other ["value"]s.
+            #  also, use constants
+            ie_rel_in: IERelation = term_attrs["value"]
+            ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
+            ie_rel_out = self.rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
+            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, ie_rel_out)
+
+        def compute_union_node(self, node_id: int, term_attrs: Dict) -> None:
+            """
+            Computes a union node
+            @param node_id: the node
+            @param term_attrs: the attributes of the node.
+            """
+
+            union_rel = self.rgxlog_engine.operator_union(self.get_children_relations(node_id))
+            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, union_rel)
+
+        def compute_select_node(self, node_id: int, term_attrs: Dict) -> None:
+            """
+            Computes a select node
+            @param node_id: the node
+            @param term_attrs: the attributes of the node.
+            """
+
+            output_rel = self.get_child_relation(node_id)
+            select_info = term_attrs["value"]
+            select_rel = self.rgxlog_engine.operator_select(output_rel, select_info)
+            self.set_output_relation(node_id, select_rel)
 
         def is_node_computed(self, node_id: int) -> bool:
             """
