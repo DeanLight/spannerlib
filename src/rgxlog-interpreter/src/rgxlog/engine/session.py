@@ -2,7 +2,7 @@ import csv
 import os
 import re
 from pathlib import Path
-from typing import Tuple, List, Union, Optional
+from typing import Tuple, List, Union, Optional, Callable
 
 from lark.lark import Lark
 from pandas import DataFrame
@@ -48,9 +48,10 @@ STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 # TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
 def _infer_relation_type(row: iter):
     """
-    guess the relation type based on the data.
-    we support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`)
-    @param row: an iterable of values, extracted from a csv file or a dataframe
+    Guess the relation type based on the data.
+    We support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`).
+
+    @param row: an iterable of values, extracted from a csv file or a dataframe.
     @raise ValueError: if there is a cell inside `row` of an illegal type.
     """
     relation_types = []
@@ -98,10 +99,11 @@ def _text_to_typed_data(line, relation_types):
 
 def format_query_results(query: Query, query_results: List) -> Union[DataFrame, List]:
     """
-    formats a single result from the engine into a usable format
-    @param query: the query that was executed, and outputted `query_results`
-    @param query_results: the results after executing the aforementioned query
-    @return: a false value, a true value, or a dataframe representing the query + its results
+    Formats a single result from the engine into a usable format.
+
+    @param query: the query that was executed, and outputted `query_results`.
+    @param query_results: the results after executing the aforementioned query.
+    @return: a false value, a true value, or a dataframe representing the query + its results.
     """
     assert isinstance(query_results, list), "illegal results format"
 
@@ -132,7 +134,7 @@ def format_query_results(query: Query, query_results: List) -> Union[DataFrame, 
 
 def tabulate_result(result: Union[DataFrame, List]):
     """
-    organize a query result in a table
+    Organizes a query result in a table
     for example:
         printing results for query 'lecturer_of(X, "abigail")':
           X
@@ -143,8 +145,9 @@ def tabulate_result(result: Union[DataFrame, List]):
     there are two cases where a table will not be printed:
     1. the query returned no results. in this case '[]' will be printed
     2. the query returned a single empty tuple, in this case '[()]' will be printed
-    @param result: the query result (free variable names are the dataframe's column names)
-    @return: a tabulated string
+
+    @param result: the query result (free variable names are the dataframe's column names).
+    @return: a tabulated string.
     """
     if isinstance(result, DataFrame):
         # query results can be printed as a table
@@ -170,7 +173,7 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
     #  cons - more difficult to debug, perhaps less convenient for beginners, especially when running multiple commands
     #   in a single query
     """
-    takes in a list of results from the engine and converts them into a single string, which contains
+    Takes in a list of results from the engine and converts them into a single string, which contains
     either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.
 
     for example:
@@ -182,7 +185,7 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
     walter
 
 
-    @param query_results: List[the Query object used in execution, the execution's results (from engine)]
+    @param query_results: List[the Query object used in execution, the execution's results (from engine)].
     """
 
     all_result_strings = []
@@ -200,9 +203,10 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 class Session:
     def __init__(self, debug=False):
         """
-        parse_graph is the lark graph which contains is the result of parsing a single statement
-        term_graph is the combined tree of all statements so far, which describes the connection between relations
-        @param debug: print stuff
+        parse_graph is the lark graph which contains is the result of parsing a single statement,
+        term_graph is the combined tree of all statements so far, which describes the connection between relations.
+
+        @param debug: print stuff.
         """
         self.debug = debug
         self._symbol_table = SymbolTable()
@@ -270,12 +274,12 @@ class Session:
     def run_query(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
-        generates an AST and passes it through the pass stack
+        Generates an AST and passes it through the pass stack.
 
-        @param format_results: if this is true, return the formatted result instead of the `[Query, List]` pair
-        @param query: the user's input
-        @param print_results: whether to print the results to stdout or not
-        @return the results of every query, in a list
+        @param format_results: if this is true, return the formatted result instead of the `[Query, List]` pair.
+        @param query: the user's input.
+        @param print_results: whether to print the results to stdout or not.
+        @return: the results of every query, in a list.
         """
         exec_results = []
         parse_tree = self._parser.parse(query)
@@ -296,21 +300,26 @@ class Session:
         else:
             return exec_results
 
-    def register(self, ie_function, ie_function_name, in_rel, out_rel):
+    def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes], out_rel) -> None:
+        """
+        Registers an ie function.
+
+        @see params in IEFunction's __init__.
+        """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    def get_pass_stack(self):
+    def get_pass_stack(self) -> List[str]:
         """
         @return: the current pass stack
         """
         return [pass_.__name__ for pass_ in self._pass_stack]
 
-    def set_pass_stack(self, user_stack: List):
+    def set_pass_stack(self, user_stack: List[GenericPass]):
         """
-        sets a new pass stack instead of the current one
-        @param user_stack: a user supplied pass stack
+        Sets a new pass stack instead of the current one.
 
-        @return: success message with the new pass stack
+        @param user_stack: a user supplied pass stack.
+        @return: success message with the new pass stack.
         """
 
         if type(user_stack) is not list:
@@ -333,9 +342,9 @@ class Session:
 
     def remove_rule(self, rule: str):
         """
-        remove a rule from the rgxlog engine
+        Remove a rule from the rgxlog's engine.
 
-        @param rule: the rule to be removed
+        @param rule: the rule to be removed.
         """
         is_last = self._term_graph.remove_rule(rule)
         if is_last:
@@ -345,7 +354,8 @@ class Session:
     def remove_all_rules(self, rule_head: Optional[str] = None):
         """
         Removes all rules from the engine.
-        @param rule_head: if rule head is not none we remove all rules with rule_head
+
+        @param rule_head: if rule head is not none we remove all rules with rule_head.
         """
 
         if rule_head is None:
@@ -456,27 +466,27 @@ class Session:
 
     def print_registered_ie_functions(self):
         """
-            Prints information about the registered ie functions
+        Prints information about the registered ie functions.
         """
         self._symbol_table.print_registered_ie_functions()
 
     def remove_ie_function(self, name: str):
         """
-        removes a function from the symbol table
+        Removes a function from the symbol table.
 
-        @param name: the name of the ie function to remove
+        @param name: the name of the ie function to remove.
         """
         self._symbol_table.remove_ie_function(name)
 
     def remove_all_ie_functions(self):
         """
-        removes all the ie functions from the symbol table
+        Removes all the ie functions from the symbol table.
         """
         self._symbol_table.remove_all_ie_functions()
 
     def print_all_rules(self):
         """
-        prints all the rules that are registered.
+        Prints all the rules that are registered.
 
         """
 

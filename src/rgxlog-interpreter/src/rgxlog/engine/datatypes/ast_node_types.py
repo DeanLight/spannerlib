@@ -137,13 +137,13 @@ class IERelation:
 
     def __init__(self, relation_name, input_term_list: list, input_type_list, output_term_list: list, output_type_list):
         """
-        @param relation_name: the name of the information extraction relation
+        @param relation_name: the name of the information extraction relation.
         @param input_term_list: a list of the input terms for the ie function.
                                 must be either literal values or free variables
-        @param input_type_list: a list of the term types in input_term_list
+        @param input_type_list: a list of the term types in input_term_list.
         @param output_term_list: a list of the output terms for the ie function.
-                                 must be either literal values or free variables
-        @param output_type_list: a list of the term types in output_term_list
+                                 must be either literal values or free variables.
+        @param output_type_list: a list of the term types in output_term_list.
         @raise Exception: if length of in/out term list doesn't match length of in/out type_list.
         """
         if len(input_term_list) != len(input_type_list):
@@ -182,12 +182,12 @@ class IERelation:
 class AddFact(Relation):
     """
     a representation of an add_fact statement
-    inherits from relation as a fact can be defined by a relation
+    inherits from relation as a fact can be defined by a relation.
     """
 
     def __init__(self, relation_name, term_list, type_list):
         """
-        see documentation of Relation's __init__.
+        @see documentation of Relation's __init__.
         """
         super().__init__(relation_name, term_list, type_list)
 
@@ -195,12 +195,12 @@ class AddFact(Relation):
 class RemoveFact(Relation):
     """
     a representation of a remove_fact statement
-    inherits from relation as a fact can be defined by a relation
+    inherits from relation as a fact can be defined by a relation.
     """
 
     def __init__(self, relation_name, term_list, type_list):
         """
-        see documentation of Relation's __init__.
+        @see documentation of Relation's __init__.
         """
         super().__init__(relation_name, term_list, type_list)
 
@@ -213,21 +213,21 @@ class Query(Relation):
 
     def __init__(self, relation_name, term_list, type_list):
         """
-        see documentation of Relation's __init__.
+        @see documentation of Relation's __init__.
         """
         super().__init__(relation_name, term_list, type_list)
 
 
 class Rule:
     """
-    a representation of a rule statement
+    a representation of a rule statement.
     """
 
     def __init__(self, head_relation: Relation, body_relation_list, body_relation_type_list):
         """
-        @param head_relation: the rule head, which is represented by a single relation
-        @param body_relation_list: a list of the rule body relations
-        @param body_relation_type_list: a list of the rule body relations types (e.g. "relation", "ie_relation")
+        @param head_relation: the rule head, which is represented by a single relation.
+        @param body_relation_list: a list of the rule body relations.
+        @param body_relation_type_list: a list of the rule body relations types (e.g. "relation", "ie_relation").
         """
         self.head_relation = head_relation
         self.body_relation_list = body_relation_list
@@ -264,14 +264,14 @@ class Rule:
 
 class Assignment:
     """
-    a representation of an assignment statement
+    a representation of an assignment statement.
     """
 
     def __init__(self, var_name, value, value_type):
         """
-        @param var_name: the variable name to be assigned a value
-        @param value: the assigned value
-        @param value_type: the assigned value's type
+        @param var_name: the variable name to be assigned a value.
+        @param value: the assigned value.
+        @param value_type: the assigned value's type.
         """
         self.var_name = var_name
         self.value = value
@@ -291,14 +291,14 @@ class Assignment:
 
 class ReadAssignment:
     """
-    a representation of a read_assignment statement
+    a representation of a read_assignment statement.
     """
 
     def __init__(self, var_name, read_arg, read_arg_type):
         """
-        @param var_name: the variable name to be assigned a value
-        @param read_arg: the argument that is passed to the read() function (e.g. "some_file" in 's = read("some_file")')
-        @param read_arg_type: the type of the argument that is passed to the read function
+        @param var_name: the variable name to be assigned a value.
+        @param read_arg: the argument that is passed to the read() function (e.g. "some_file" in 's = read("some_file")').
+        @param read_arg_type: the type of the argument that is passed to the read function.
         """
         if read_arg_type not in [DataTypes.string, DataTypes.var_name]:
             raise Exception(

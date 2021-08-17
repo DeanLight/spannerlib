@@ -31,20 +31,18 @@ class IEFunction:
         a span could be returned either as a tuple of length 2, or as a datatypes.Span instance
         """
         output = self.ie_function_def(*args)
-        # if not isinstance(output, collections.Iterable):
-        #     return (output,)
         return output
 
     def get_input_types(self) -> List[DataTypes]:
         """
-        returns an iterable of the input types to the function
+        @return: an iterable of the input types to the function
         This function must be defined as it is used for type checking in semantic passes and execution.
         """
         return self.in_types
 
     def get_output_types(self, output_arity: int) -> List[DataTypes]:
         """
-        given an expected output arity returns an iterable of the output types to the function.
+        @return: given an expected output arity returns an iterable of the output types to the function.
         if the ie function cannot return an output of length output_arity, should return None.
         This function must be defined as it is used for type checking in semantic passes and execution.
         """
@@ -58,5 +56,8 @@ class IEFunction:
         return self.out_types
 
     def get_meta_data(self) -> str:
+        """
+        @return: metadata about the ie function.
+        """
         metadata = f"""Input types: {self.in_types}.\nOutput types: {self.out_types}"""
         return metadata

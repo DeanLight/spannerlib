@@ -19,8 +19,8 @@ class BoundingGraph:
 
     def __init__(self, relations: Set[Relation], ie_relations: Set[IERelation]):
         """
-        @param relations: set of the regular relations in the rule body
-        @param ie_relations: set of the ie relations in the rule body
+        @param relations: set of the regular relations in the rule body.
+        @param ie_relations: set of the ie relations in the rule body.
         """
         self.relations = relations
         self.ie_relations = ie_relations
@@ -35,6 +35,7 @@ class BoundingGraph:
             Optional[Set[Union[Relation, IERelation]]]):
         """
         Finds all the relation that are already bounded that bind the ie relation.
+
         @param ie_relation: the ie relation to bound.
         @return: set of the bounding relations.
         """
@@ -61,7 +62,8 @@ class BoundingGraph:
 
     def compute_graph(self) -> OrderedDictType[IERelation, Set[Union[Relation, IERelation]]]:
         """
-        See class description.
+        @see class description.
+
         @return: a dictionary that maps each ie function to a set of it's bounding relations.
         """
 
@@ -99,10 +101,10 @@ class AddRuleToTermGraph:
 
     def __init__(self, term_graph: ExecutionTermGraph, rule: Rule):
         """
-        note: term_graph is passed like a pointer, so it modifies
+        @note: term_graph is passed like a pointer, so it modifies.
 
         @param term_graph: the global term graph (contains all the execution trees of all the rules).
-        @param rule: the rule we expand
+        @param rule: the rule we expand.
         """
         self.term_graph = term_graph
         self.rule = rule
@@ -116,6 +118,7 @@ class AddRuleToTermGraph:
     def add_node(self, node_id: int) -> None:
         """
         Saves all the nodes that were added due to the rule.
+
         @param node_id: a new node that was added.
         """
         self.nodes.add(node_id)
@@ -155,7 +158,7 @@ class AddRuleToTermGraph:
         """
         Adds relation to father id.
 
-        @param relation: a relation
+        @param relation: a relation.
         @param father_node_id: the node to which the relation will be connected.
         """
 
@@ -226,7 +229,6 @@ class AddRuleToTermGraph:
     def generate_execution_graph(self) -> None:
         """
         Generates the execution tree of the rule and adds it to the term graph.
-        @return:
         """
 
         head_relation = self.rule.head_relation

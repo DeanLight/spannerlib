@@ -25,6 +25,8 @@ https://lark-parser.readthedocs.io/en/stable/lark_cheatsheet.pdf
 A short tutorial on lark:
 https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
+from typing import List, Set
+
 from abc import ABC, abstractmethod
 
 from lark import Transformer
@@ -77,7 +79,7 @@ class RemoveTokens(TransformerPass):
     """
     a lark pass that should be used before the semantic checks
     transforms the lark tree by removing the redundant tokens
-    note that we inherit from 'Transformer' in order to be able to visit token nodes
+    note that we inherit from 'Transformer' in order to be able to visit token nodes.
     """
 
     def __init__(self, **kw):
@@ -127,7 +129,7 @@ class CheckReservedRelationNames(InterpreterPass):
 class FixStrings(VisitorRecursivePass):
     """
      Fixes the strings in the lark tree.
-     Removes the line overflow escapes from strings
+     Removes the line overflow escapes from strings.
      """
 
     def __init__(self, **kw):
@@ -170,7 +172,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
     converts each statement node in the tree to a structured node, making it easier to parse in future passes.
     a structured node is a class representation of a node in the abstract syntax tree.
     note that after using this pass, non statement nodes will no longer appear in the tree, so passes that
-    should work on said nodes need to be used before this pass in the passes pipeline (e.g. FixString)
+    should work on said nodes need to be used before this pass in the passes pipeline (e.g. FixString).
     """
 
     def __init__(self, **kw):
@@ -298,13 +300,12 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         while a relation node isn't a statement in and of itself, it is useful for defining
         a structured rule node (which is constructed from multiple relations).
         This is also a useful method for getting the attributes of a relation that defines a fact or a query
-        (as facts and queries are actions that are defined by a relation)
+        (as facts and queries are actions that are defined by a relation).
 
-        Args:
-            relation_node: a lark node that is structured like a relation (e.g. relation, add_fact, query)
-
-        Returns: a structured node that represents the relation (structured_nodes.Relation instance)
+        @param relation_node: a lark node that is structured like a relation (e.g. relation, add_fact, query).
+        @return: a structured node that represents the relation (structured_nodes.Relation instance).
         """
+
         relation_name_node = relation_node.children[0]
         term_list_node = relation_node.children[1]
 
@@ -324,11 +325,10 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         while an ie relation node isn't a statement in and of itself, it is useful for defining
         a structured rule node (which is constructed from multiple relations which may include ie relations).
 
-        Args:
-            ie_relation_node: an ie_relation lark node
-
-        Returns: a structured node that represents the ie relation (a structured_nodes.IERelation instance)
+        @param ie_relation_node: an ie_relation lark node.
+        @return: a structured node that represents the ie relation (a structured_nodes.IERelation instance).
         """
+
         relation_name_node = ie_relation_node.children[0]
         input_term_list_node = ie_relation_node.children[1]
         output_term_list_node = ie_relation_node.children[2]
@@ -360,25 +360,23 @@ class CheckDefinedReferencedVariables(InterpreterPass):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def _assert_var_defined(self, var_name):
+    def _assert_var_defined(self, var_name: str) -> None:
         """
-        a utility function that checks if a variable is a defined variable in the symbol table.
+        A utility function that checks if a variable is a defined variable in the symbol table.
         if not, raises an exception
 
-        Args:
-            var_name: the name of the variable that will be checked
+        @param var_name: the name of the variable that will be checked
         """
         if not self.symbol_table.contains_variable(var_name):
             raise Exception(f'variable "{var_name}" is not defined')
 
-    def _assert_var_terms_defined(self, term_list, type_list):
+    def _assert_var_terms_defined(self, term_list: List[str], type_list: List[DataTypes]) -> None:
         """
-        a utility function that checks if the non free variables in a term list are defined
-        if one of them is not defined, raises an exception
+        A utility function that checks if the non free variables in a term list are defined
+        if one of them is not defined, raises an exception.
 
-        Args:
-            term_list: a list of terms
-            type_list: the type of terms in term_list
+        @param term_list: a list of terms.
+        @param type_list: the type of terms in term_list.
         """
         for term, term_type in zip(term_list, type_list):
             if term_type is DataTypes.var_name:
@@ -435,10 +433,10 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def _assert_relation_exists_and_correct_arity(self, relation: Relation):
+    def _assert_relation_exists_and_correct_arity(self, relation: Relation) -> None:
         """
         A utility function that checks if a relation exists in the symbol table
-        and if the correct arity was used
+        and if the correct arity was used.
 
         @param relation: the relation that will be checked.
         """
@@ -479,7 +477,7 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     @unravel_lark_node
     def rule(self, rule: Rule):
         """
-        a rule is a definition of the relation in the rule head. Therefore the rule head reference does not
+        A rule is a definition of the relation in the rule head. Therefore the rule head reference does not
         need to be checked.
         The rule body references relations that should already exist. Those will be checked in this method.
         """
@@ -497,7 +495,7 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     Also checks if the correct input arity and output arity for the ie function were used.
 
     currently, an ie relation can only be found in a rule's body, so this is the only place where this
-    check will be performed
+    check will be performed.
     """
 
     def __init__(self, **kw):
@@ -605,24 +603,23 @@ class CheckRuleSafety(VisitorRecursivePass):
         # b. if a relation is safe, mark its output free variables as bound.
         # c. repeat step 'a' until no new bound free variables are found.
 
-        def get_size_difference(set1: set, set2: set):
+        def get_size_difference(set1: Set, set2: Set) -> int:
             """
-            a utility function to be used as the distance function of the fixed point algorithm
+            A utility function to be used as the distance function of the fixed point algorithm.
 
-            @return: the size difference of set1 and set2
+            @return: the size difference of set1 and set2.
             """
             size_difference = abs(len(set1) - len(set2))
             return size_difference
 
-        def get_bound_free_vars(known_bound_free_vars: set) -> set:
+        def get_bound_free_vars(known_bound_free_vars: Set) -> Set:
             """
             a utility function to be used as the step function of the fixed point algorithm.
             this function iterates over all of the rule body relations, checking if each one of them is safe.
-            if a rule is found to be safe, this function will mark its output free variables as bound
+            if a rule is found to be safe, this function will mark its output free variables as bound.
 
-            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound
-
-            @return: a union of 'known_bound_free_vars' with the bound free variables that were found
+            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound.
+            @return: a union of 'known_bound_free_vars' with the bound free variables that were found.
             """
 
             for relation, relation_type in zip(body_relation_list, body_relation_type_list):
@@ -662,7 +659,7 @@ class ReorderRuleBody(VisitorRecursivePass):
     for example: the rule "B(Z) <- RGX(X,Y)->(Z), A(X), A(Y)"
            will change to "B(Z) <- A(X), A(Y), RGX(X,Y)->(Z)"
     This way it is possible to easily compute the rule body relations from the start of the list to its end.
-    for more details on the execution of rules see execution.GenericExecution
+    for more details on the execution of rules see execution.GenericExecution.
     """
 
     def __init__(self, **kw):
@@ -691,25 +688,24 @@ class ReorderRuleBody(VisitorRecursivePass):
         reordered_relations_list = []
         reordered_relations_type_list = []  # note that we also need to update the type list of the relations
 
-        def get_size_difference(set1: set, set2: set):
+        def get_size_difference(set1: Set, set2: Set) -> int:
             """
-            a utility function to be used as the distance function of the fixed point algorithm
+            A utility function to be used as the distance function of the fixed point algorithm.
 
-            @return: the size difference of set1 and set2
+            @return: the size difference of set1 and set2.
             """
             size_difference = abs(len(set1) - len(set2))
             return size_difference
 
-        def get_bound_free_vars(known_bound_free_vars: set):
+        def get_bound_free_vars(known_bound_free_vars: Set):
             """
-            a utility function to be used as the step function of the fixed point algorithm.
+            A utility function to be used as the step function of the fixed point algorithm.
             this function iterates over all of the rule body relations, checking if each one of them is safe.
             if a rule is found to be safe, this function will mark its output free variables as bound, and
             add it to the reordered relations list (thus finding a valid body relations order).
 
-            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound
-
-            @return: a union of 'known_bound_free_vars' with the bound free variables that were found
+            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound.
+            @return: a union of 'known_bound_free_vars' with the bound free variables that were found.
             """
 
             # try to find new safe relations
@@ -749,7 +745,7 @@ class TypeCheckAssignments(InterpreterPass):
     """
     a lark semantic check
     performs type checking for assignments
-    in the current version of lark, this type checking is only required for read assignments
+    in the current version of lark, this type checking is only required for read assignments.
     """
 
     def __init__(self, **kw):
@@ -788,7 +784,7 @@ class TypeCheckRelations(InterpreterPass):
     example for the semantic check failing on check no. 3:
     new A(str)
     new B(int)
-    C(X) <- A(X), B(X) # error since X is expected to be both an int and a string
+    C(X) <- A(X), B(X) # error since X is expected to be both an int and a string.
     """
 
     def __init__(self, **kw):
@@ -841,7 +837,7 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
     symbol table.
     * note that a rule is a relation declaration of the rule head relation and a definition of its contents
 
-    this pass assumes that type checking was already performed on its input
+    this pass assumes that type checking was already performed on its input.
     """
 
     def __init__(self, **kw):
@@ -870,7 +866,7 @@ class ResolveVariablesReferences(InterpreterPass):
     """
     a lark execution pass
     this pass replaces variable references with their literal values.
-    also replaces DataTypes.var_name types with the real type of the variable
+    also replaces DataTypes.var_name types with the real type of the variable.
     """
 
     def __init__(self, **kw):
@@ -893,15 +889,15 @@ class ResolveVariablesReferences(InterpreterPass):
             assignment.read_arg = self.symbol_table.get_variable_value(read_arg_var_name)
             assignment.read_arg_type = self.symbol_table.get_variable_type(read_arg_var_name)
 
-    def _resolve_var_terms(self, term_list, type_list):
+    def _resolve_var_terms(self, term_list, type_list) -> None:
         """
-        a utility function for resolving variables in term lists
+        A utility function for resolving variables in term lists
         for each variable term in term_list, replace its value in term_list with its literal value, and
         its DataTypes.var_name type in type_list with its real type
-        the changes to the lists are done in-place
+        the changes to the lists are done in-place.
 
-        @param term_list: a list of terms
-        @param type_list: the type of terms in term_list
+        @param term_list: a list of terms.
+        @param type_list: the type of terms in term_list.
         """
 
         # get the list of terms with resolved variable values
@@ -951,7 +947,7 @@ class ExecuteAssignments(InterpreterPass):
     a lark execution pass
     executes assignments by saving variables' values and types in the symbol table
     should be used only after variable references are resolved, meaning the assigned values and read() arguments
-    are guaranteed to be literals
+    are guaranteed to be literals.
     """
 
     def __init__(self, **kw):
@@ -1007,11 +1003,11 @@ class AddStatementsToNetxTermGraph(InterpreterPass):
         super().__init__()
         self.parse_graph = kw['parse_graph']
 
-    def _add_statement_to_term_graph(self, statement_type, statement_value):
+    def _add_statement_to_term_graph(self, statement_type, statement_value) -> None:
         """
         A utility function that adds a statement to the term graph, meaning it adds a node that
         represents the statement to the term graph, then attach the node to the term graph's root.
-        Should only be used for simple statements (i.e. can be described by a single node)
+        Should only be used for simple statements (i.e. can be described by a single node).
 
         @param statement_type: the type of the statement, (e.g. add_fact). should be the same as the statement's
                                name in the grammar. Will be set as the node's type attribute.
@@ -1044,30 +1040,3 @@ class AddStatementsToNetxTermGraph(InterpreterPass):
     def rule(self, rule: Rule):
         rule.peel_off_token_wrappers()
         self._add_statement_to_term_graph("rule", rule)
-
-        # # create the root of the rule statement in the term graph. Note that this is an "empty" node (it does
-        # # not contain a value). This is because the rule statement will be defined by the children of this node.
-        # main_rule_node = self.parse_graph.add_term(type="rule")
-        # # attach the rule node to the term graph root
-        # self.parse_graph.add_edge(self.parse_graph.get_root_id(), main_rule_node)
-        #
-        # # create the rule head node for the term graph.
-        # # since a rule head is defined by a single relation, this node will contain a value which is that relation.
-        # rule_head_relation_node = self.parse_graph.add_term(type="rule_head", value=rule.head_relation)
-        # # attach the rule head node to the rule statement node
-        # self.parse_graph.add_edge(main_rule_node, rule_head_relation_node)
-        #
-        # # create the rule body node. Unlike the rule head node, we can't define the rule body node
-        # # with a single value since a rule body can be defined by multiple relations.
-        # # Instead, each of the rule body relations will be represented by a term graph node
-        # # that is a child of the rule body node.
-        # rule_body_node = self.parse_graph.add_term(type="rule_body")
-        # # attach the rule body node to the rule statement node
-        # self.parse_graph.add_edge(main_rule_node, rule_body_node)
-        #
-        # # add each rule body relation to the graph as a child node of the rule body node.
-        # for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-        #     # add the relation to the term graph
-        #     rule_body_relation_node = self.parse_graph.add_term(type=relation_type, value=relation)
-        #     # attach the relation to the rule body
-        #     self.parse_graph.add_edge(rule_body_node, rule_body_relation_node)

@@ -10,9 +10,9 @@ from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_
 
 def assert_expected_node_structure_aux(lark_node):
     """
-    checks whether a lark node has a structure that the lark passes expect
+    Checks whether a lark node has a structure that the lark passes expect.
 
-    @param: lark_node: the lark node to be checked
+    @param: lark_node: the lark node to be checked.
     """
 
     # check if lark_node is really a lark node. this is done because applying the check recursively might result in
@@ -41,14 +41,14 @@ def assert_expected_node_structure_aux(lark_node):
 
 def assert_expected_node_structure(func):
     """
-    use this decorator to check whether a method's input lark node has a structure that is expected by the lark passes
+    Use this decorator to check whether a method's input lark node has a structure that is expected by the lark passes
     the lark node and its children are checked recursively
 
-    note that this decorator should only be used on methods that expect lark nodes that weren't converted to
-    structured nodes
+    @note that this decorator should only be used on methods that expect lark nodes that weren't converted to
+    structured nodes.
 
     some lark nodes may have multiple structures (e.g. assignment). in this case this check will succeed if the lark
-    node has one of those structures
+    node has one of those structures.
     """
 
     def wrapped_method(visitor, lark_node):
@@ -61,11 +61,11 @@ def assert_expected_node_structure(func):
 
 def unravel_lark_node(func):
     """
-    even after converting a lark tree to use structured nodes, the methods in lark passes will still receive a lark
+    Even after converting a lark tree to use structured nodes, the methods in lark passes will still receive a lark
     node as an input, and the child of said lark node will be the actual structured node that the method will work
     with.
 
-    use this decorator to replace a method's lark node input with its child structured node
+    use this decorator to replace a method's lark node input with its child structured node.
     """
 
     def wrapped_method(visitor, lark_node):
@@ -73,9 +73,3 @@ def unravel_lark_node(func):
         return func(visitor, structured_node)
 
     return wrapped_method
-
-# def relation_declaration_to_relation(relation: RelationDeclaration) -> Relation:
-#     terms_len = len(relation.type_list)
-#     term_list = [f"col{i}" for i in range(terms_len)]
-#
-#     return Relation(relation.relation_name, term_list, relation.type_list)

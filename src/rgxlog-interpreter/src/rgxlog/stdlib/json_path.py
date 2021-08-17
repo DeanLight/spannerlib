@@ -5,8 +5,8 @@ from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 def parse_match(match) -> str:
     """
-    @param match: a match result of json path query
-    @return: a string that reprisents the match in string format
+    @param match: a match result of json path query.
+    @return: a string that reprisents the match in string format.
     """
     json_result = match.value
     if type(json_result) != str:
@@ -17,10 +17,9 @@ def parse_match(match) -> str:
 
 def json_path(json_document: str, path_expression: str):
     """
-    @param json_document: The document on which we will run the path expression
+    @param json_document: The document on which we will run the path expression.
     @param path_expression: The query to execute.
-
-    @return: json documents
+    @return: json documents.
     """
     # covert string to actual json
     # json library demands the input string to be enclosed in double quotes, therefore we replace...
@@ -40,9 +39,8 @@ JsonPath = dict(ie_function=json_path,
 
 def json_path_full(json_document: str, path_expression: str):
     """
-    @param json_document: The document on which we will run the path expression
+    @param json_document: The document on which we will run the path expression.
     @param path_expression: The query to execute.
-
     @return: json documents with the full results paths.
     """
 

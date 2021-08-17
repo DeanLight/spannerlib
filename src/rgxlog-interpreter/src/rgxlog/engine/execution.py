@@ -43,7 +43,7 @@ TRUE_VALUE = [tuple()]
 
 class RgxlogEngineBase(ABC):
     """
-    An abstraction for a rgxlog execution engine
+    An abstraction for a rgxlog execution engine.
     """
 
     def __init__(self, debug=False):
@@ -54,41 +54,41 @@ class RgxlogEngineBase(ABC):
             print("debug mode is on - a lot of extra info will be printed")
 
     @abstractmethod
-    def declare_relation(self, relation_decl):
+    def declare_relation(self, relation_decl: RelationDeclaration) -> None:
         """
-        declares a relation in the rgxlog engine.
-        if the relation is already declared does nothing.
+        Declares a relation in the rgxlog engine.
+        @note: if the relation is already declared does nothing.
 
 
-        @param relation_decl: a relation declaration
-        """
-        pass
-
-    @abstractmethod
-    def add_fact(self, fact):
-        """
-        add a fact to the rgxlog engine
-
-        @param fact: the fact to be added
+        @param relation_decl: a relation declaration.
         """
         pass
 
     @abstractmethod
-    def remove_fact(self, fact):
+    def add_fact(self, fact: AddFact) -> None:
         """
-        remove a fact from the rgxlog engine
+        Adds a fact to the rgxlog engine.
 
-        @param fact: the fact to be removed
+        @param fact: the fact to be added.
         """
         pass
 
     @abstractmethod
-    def query(self, query):
+    def remove_fact(self, fact: RemoveFact) -> None:
         """
-        queries the rgxlog engine
+        Removes a fact from the rgxlog engine.
 
-        @param query: a query for the rgxlog engine
-        @return: a list of tuples that are the query's results
+        @param fact: the fact to be removed.
+        """
+        pass
+
+    @abstractmethod
+    def query(self, query: Query):
+        """
+        Queries the rgxlog engine.
+
+        @param query: a query for the rgxlog engine.
+        @return: a list of tuples that are the query's results.
         """
         pass
 
@@ -122,15 +122,16 @@ class RgxlogEngineBase(ABC):
     @abstractmethod
     def get_table_len(self, table: str) -> int:
         """
-        @param table: name of a table
-        @return: number of tuple inside the table
+        @param table: name of a table.
+        @return: number of tuple inside the table.
         """
         pass
 
     @abstractmethod
-    def compute_ie_relation(self, ie_relation, ie_func_data, bounding_relation):
+    def compute_ie_relation(self, ie_relation: IERelation, ie_func_data,
+                            bounding_relation: Optional[Relation]) -> Relation:
         """
-        computes an information extraction relation, returning the result as a normal relation.
+        Computes an information extraction relation, returning the result as a normal relation.
 
         since ie relations may have input free variables, we need to use another relation to determine the inputs
         for ie_relation.
@@ -168,50 +169,50 @@ class RgxlogEngineBase(ABC):
         a part of a rule body, which serves to define the rule head relation. the rule head only "cares" about
         free variables, so we can throw away all of the columns defined by constant terms.
 
-        @param ie_relation: an ie relation that determines the input and output terms of the ie function
-        @param ie_func_data: the data for the ie function that will be used to compute the ie relation
+        @param ie_relation: an ie relation that determines the input and output terms of the ie function.
+        @param ie_func_data: the data for the ie function that will be used to compute the ie relation.
         @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
-                                  queried from it
-        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine
+                                  queried from it2
+        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine.
         """
         pass
 
     @staticmethod
-    def clear_all():
+    def clear_all() -> None:
         """
-        removes all facts and clauses from the engine
+        Removes all facts and clauses from the engine.
         """
         pass
 
     @staticmethod
-    def _get_span_string(span: Span):
+    def _get_span_string(span: Span) -> str:
         """
-        convert Span(start,end) to string("[start, end)")
+        Converts Span(start,end) to string("[start, end)").
 
-        @param span: a span object
-        @return: a string representation of the span
+        @param span: a span object.
+        @return: a string representation of the span.
         """
 
         span_string = f'[{span.span_start}, {span.span_end})'
         return span_string
 
     @abstractmethod
-    def _convert_relation_term_to_string(self, datatype: DataTypes, term):
+    def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
         """
-        return the string representation of a relation term, e.g. "[1,4)"
+        Return the string representation of a relation term, e.g. "[1,4)"
 
-        @param datatype: the type of the term
-        @param term: the term object itself
-        @return: string representation
+        @param datatype: the type of the term.
+        @param term: the term object itself.
+        @return: string representation.
         """
         pass
 
-    def _get_relation_string(self, relation: Relation):
+    def _get_relation_string(self, relation: Relation) -> str:
         """
-        return the string representation of a relation which has terms, e.g. REL(3, "hello")
+        Returns the string representation of a relation which has terms, e.g. REL(3, "hello").
 
-        @param relation: a relation object
-        @return: a string representation of the relation
+        @param relation: a relation object.
+        @return: a string representation of the relation.
         """
         terms_string = ', '.join([self._convert_relation_term_to_string(term, term_type)
                                   for term, term_type in zip(relation.term_list, relation.type_list)])
@@ -222,15 +223,14 @@ class RgxlogEngineBase(ABC):
     @abstractmethod
     def operator_select(self, relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
         """
-
-        @param relation: the relation from which we select tuples
+        @param relation: the relation from which we select tuples.
         @param select_info: set of tuples. each tuple contains the index of the column, the value to select
                             and the type of the column.
-
-        @return: a filtered relation
+        @return: a filtered relation.
         """
         pass
 
+    # TODO@tom: add docstring.
     @abstractmethod
     def operator_join(self, relations: List[Relation], var_dict, prefix: str = "") -> Relation:
         pass
@@ -238,19 +238,18 @@ class RgxlogEngineBase(ABC):
     @abstractmethod
     def operator_project(self, relation: Relation, project_vars: Set[str]) -> Relation:
         """
-
         @param relation: the relation on which we project.
         @param project_vars: a set of variables on which we project.
-        @return: the projected relation
+        @return: the projected relation.
         """
         pass
 
     @abstractmethod
     def operator_union(self, relations: List[Relation]) -> Relation:
         """
-        relation union.
-        we assume that all the relations have the same set of free_vars,
-        but not necessarily in the same order.
+        Relation union.
+        @note: we assume that all the relations have same free_vars in the same order.
+
 
         @param relations: a list of relations to unite.
         @return: the united relation.
@@ -261,9 +260,11 @@ class RgxlogEngineBase(ABC):
     def operator_copy(self, src_rel: Relation, output_relation_name: Optional[str] = None) -> Relation:
         """
         Copies computed_relation to rule_relation.
-        @param src_rel: the relation to copy from
-        @param output_relation_name: if this is None, create a unique name for the outpu relation.
-            otherwise, this will be the name of the output relation
+
+        @param src_rel: the relation to copy from.
+        @param output_relation_name: if this is None, create a unique name for the output relation.
+            otherwise, this will be the name of the output relation.
+        @return: tje copied relation.
         """
         pass
 
@@ -288,10 +289,10 @@ class SqliteEngine(RgxlogEngineBase):
 
     def __init__(self, debug=False, database_name=None):
         """
-        @param debug: print stuff related to the inner workings of the engine
-        @param database_name: open an existing database instead of a new one
+        Creates/opens an SQL database file + connection.C
 
-        creates/opens an SQL database file + connection
+        @param debug: print stuff related to the inner workings of the engine.
+        @param database_name: open an existing database instead of a new one.
         """
         super().__init__(debug=debug)
         self.unique_relation_id_counter = count()
@@ -312,11 +313,9 @@ class SqliteEngine(RgxlogEngineBase):
         self.sql_conn = sqlite.connect(self.db_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
-    def add_fact(self, fact: AddFact):
+    def add_fact(self, fact: AddFact) -> None:
         """
-        add a row into an existing table
-        @param fact:
-        @return:
+        Add a row into an existing table.
         """
         sql_command = f"INSERT INTO {fact.relation_name} ("
         num_types = len(fact.type_list)
@@ -332,7 +331,7 @@ class SqliteEngine(RgxlogEngineBase):
                          zip(fact.type_list, fact.term_list)]
         self.run_sql(sql_command, sql_term_list)
 
-    def remove_fact(self, fact: RemoveFact):
+    def remove_fact(self, fact: RemoveFact) -> None:
         # use a `DELETE` statement
         sql_terms = fact.term_list  # add quotes here
 
@@ -342,10 +341,11 @@ class SqliteEngine(RgxlogEngineBase):
 
     def query(self, query: Query, allow_duplicates=False):
         """
-        outputs a preformatted query result, e.g. [("a",5),("b",6)]
-        @param allow_duplicates: if True, query result may contain duplicate values
-        @param query: the query to be performed
-        @return: a query results which is True, False, or a list of tuples
+        Outputs a preformatted query result, e.g. [("a",5),("b",6)].
+
+        @param allow_duplicates: if True, query result may contain duplicate values.
+        @param query: the query to be performed.
+        @return: a query results which is True, False, or a list of tuples.
         """
         # note: this is an engine query (which asks a single question),
         # not a session query (which can do anything).
@@ -383,9 +383,9 @@ class SqliteEngine(RgxlogEngineBase):
 
     def remove_table(self, table_name: str) -> None:
         """
-        removes a table from the sql database, if it exists
-        @param table_name: the table to remove
-        @return: None
+        Removes a table from the sql database, if it exists.
+
+        @param table_name: the table to remove.
         """
         if self.is_table_exists(table_name):
             sql_command = f"DROP TABLE {table_name}"
@@ -393,12 +393,12 @@ class SqliteEngine(RgxlogEngineBase):
 
     def _create_unique_relation(self, arity, prefix=""):
         """
-        declares a new relation with the requested arity in SQL, the relation will have a unique name
+        Declares a new relation with the requested arity in SQL, the relation will have a unique name.
 
-        @param arity: the relation's arity
+        @param arity: the relation's arity.
         @param prefix: will be used as a part of the relation's name.
-                for example: prefix='join' -> full name = __rgxlog__join{counter}
-        @return: the new relation's name
+                for example: prefix='join' -> full name = __rgxlog__join{counter}.
+        @return: the new relation's name.
         """
         # create the name of the new relation
         unique_relation_id = next(self.unique_relation_id_counter)
@@ -421,15 +421,15 @@ class SqliteEngine(RgxlogEngineBase):
     def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
                             bounding_relation: Optional[Relation]) -> Relation:
         """
-        computes an information extraction relation, returning the result as a normal relation.
+        Computes an information extraction relation, returning the result as a normal relation.
         for more details see RgxlogEngineBase.compute_ie_relation.
         notice comments below regarding constants
 
-        @param ie_relation: an ie relation that determines the input and output terms of the ie function
-        @param ie_func: the ie function that will be used to compute the ie relation
+        @param ie_relation: an ie relation that determines the input and output terms of the ie function.
+        @param ie_func: the ie function that will be used to compute the ie relation.
         @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
-                                  queried from it
-        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine
+                                  queried from it.
+        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine.
         """
         # TODO@niv: right now the outputs are not bound, e.g. a(X) <- b(X,Y), c(X)->(Y) is the same as a(X) <- b(X,Y),
         #  because c's output(Y) is not bound to its input(X). understand if this is ok (wait for dean)
@@ -502,8 +502,8 @@ class SqliteEngine(RgxlogEngineBase):
 
     def _get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
         """
-        @param relation: a relation to be queried
-        @return: all the tuples of 'relation' as a list of tuples
+        @param relation: a relation to be queried.
+        @return: all the tuples of 'relation' as a list of tuples.
         """
 
         relation_name = relation.relation_name
@@ -524,15 +524,15 @@ class SqliteEngine(RgxlogEngineBase):
     @staticmethod
     def _assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation):
         """
-        even though rgxlog performs typechecking during the semantic checks phase, information extraction functions
+        Even though rgxlog performs typechecking during the semantic checks phase, information extraction functions
         are written by the users and could yield results that are not properly typed.
-        this method asserts an information extraction function's output is properly typed
+        this method asserts an information extraction function's output is properly typed.
 
-        @param ie_input: the input of the ie function (used in the exception when the type check fails)
-        @param ie_output: an output of the ie function
-        @param ie_output_schema: the expected schema for ie_output
+        @param ie_input: the input of the ie function (used in the exception when the type check fails).
+        @param ie_output: an output of the ie function.
+        @param ie_output_schema: the expected schema for ie_output.
         @param ie_relation: the ie relation for which the output was computed (will be used to print an exception
-            in case the output is not properly typed)
+            in case the output is not properly typed).
         @raise Exception: if there is output term of an unsupported type or the output relation is not properly typed.
         """
 
@@ -570,10 +570,10 @@ class SqliteEngine(RgxlogEngineBase):
 
     def declare_relation(self, relation_decl: RelationDeclaration) -> None:
         """
-        declares a relation as an SQL table, whose types are named t0, t1, ...
+        Declares a relation as an SQL table, whose types are named t0, t1, ...
         if the relation is already declared does nothing.
 
-        @param relation_decl: the declaration info
+        @param relation_decl: the declaration info.
         """
         # create the relation table. we don't use an id because it would allow inserting the same values twice
         # note: to ignore duplicates, we can either use UNIQUE when creating the table, or DISTINCT when selecting.
@@ -597,12 +597,13 @@ class SqliteEngine(RgxlogEngineBase):
 
     def operator_select(self, src_relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
         """
-        perform sql WHERE
-        @param src_relation: the relation from which we select tuples
+        Performs sql WHERE.
+
+        @param src_relation: the relation from which we select tuples.
         @param select_info: set of tuples. each tuple contains the index of the column, the value to select
                             and the type of the column.
 
-        @return: a filtered relation
+        @return: a filtered relation.
         """
         # get the columns based on `select_info`
         src_relation_name = src_relation.relation_name
@@ -648,18 +649,18 @@ class SqliteEngine(RgxlogEngineBase):
 
     def operator_join(self, relations: List[Relation], var_dict, prefix: str = "") -> Relation:
         """
-        perform a join between all of the relations in the relation list and saves the result to a new relation.
+        Performs a join between all of the relations in the relation list and saves the result to a new relation.
         the results of the join are filtered so they only include columns in the relations that were defined by
         a free variable term.
         all of the relations in relation_list must be normal (not ie relations)
         note: SQL's inner_join without `IN` is actually cross-join (product), so this covers product as well.
 
-        for an example and more details see RgxlogEngineBase.join_relations
+        for an example and more details see RgxlogEngineBase.join_relations.
 
-        @param var_dict: a mapping of free variables. see `get_free_var_to_relations_dict`
-        @param relations: a list of normal relations
-        @param prefix: a prefix for the name of the joined relation
-        @return: a new relation as described above
+        @param var_dict: a mapping of free variables. see `get_free_var_to_relations_dict`.
+        @param relations: a list of normal relations.
+        @param prefix: a prefix for the name of the joined relation.
+        @return: a new relation as described above.
         """
 
         assert len(relations) > 0, "can't join an empty list"
@@ -734,10 +735,11 @@ class SqliteEngine(RgxlogEngineBase):
 
     def operator_project(self, src_relation: Relation, project_vars: List[str]) -> Relation:
         """
-        perform SQL select
+        Performs SQL select.
+
         @param src_relation: the relation on which we project.
         @param project_vars: a list of variables on which we project.
-        @return: the projected relation
+        @return: the projected relation.
         """
         # get the indexes to project from (in `src_relation`) based on `var_dict`
         var_dict: Dict[str, List[Tuple[Union[Relation, IERelation], int]]] = get_free_var_to_relations_dict(
@@ -776,10 +778,6 @@ class SqliteEngine(RgxlogEngineBase):
 
     def operator_union(self, relations: List[Relation]) -> Relation:
         """
-        relation union.
-        we assume that all the relations' terms are free variables, and they're all in the same order,
-        which is the order in which they appear in the output relation
-
         @param relations: a list of relations to unite.
         @return: the united relation.
         """
@@ -837,9 +835,10 @@ class SqliteEngine(RgxlogEngineBase):
 
     def is_table_exists(self, table_name) -> bool:
         """
-        checks whether a table exists in the database
-        @param table_name: the table which is checked for existence
-        @return: True if it exists, else False
+        Checks whether a table exists in the database.
+
+        @param table_name: the table which is checked for existence.
+        @return: True if it exists, else False.
         """
         sql_check_if_exists = (f"{SQL_SELECT} name FROM {SQL_TABLE_OF_TABLES} WHERE "
                                f"type='table' AND name='{table_name}'")
@@ -849,7 +848,7 @@ class SqliteEngine(RgxlogEngineBase):
     def _datatype_to_sql_type(datatype: DataTypes):
         return DATATYPE_TO_SQL_TYPE[datatype]
 
-    def _convert_relation_term_to_string(self, datatype: DataTypes, term):
+    def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
         if datatype == DataTypes.span:
             return self._get_span_string(term)
         else:
@@ -859,11 +858,11 @@ class SqliteEngine(RgxlogEngineBase):
         self.sql_conn.close()
 
     @staticmethod
-    def _get_col_name(col_id: int):
+    def _get_col_name(col_id: int) -> str:
         return f'{RELATION_COLUMN_PREFIX}{col_id}'
 
     @staticmethod
-    def _get_free_variable_indexes(type_list):
+    def _get_free_variable_indexes(type_list) -> List[int]:
         return [i for i, term_type in enumerate(type_list) if (term_type is DataTypes.free_var_name)]
 
     def run_sql(self, command, command_args=None) -> List:
@@ -879,7 +878,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         return self.sql_cursor.fetchall()
 
-    def clear_table(self, table_name):
+    def clear_table(self, table_name) -> None:
         sql_command = f"DELETE FROM {table_name}"
         self.run_sql(sql_command)
 
@@ -897,9 +896,9 @@ class ExecutionBase(ABC):
     def __init__(self, parse_graph: TermGraphBase, term_graph: ExecutionTermGraph,
                  symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         """
-        @param parse_graph: a term graph to execute
-        @param symbol_table: a symbol table
-        @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph
+        @param parse_graph: a term graph to execute.
+        @param symbol_table: a symbol table.
+        @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph.
         """
 
         super().__init__()
@@ -911,7 +910,7 @@ class ExecutionBase(ABC):
     @abstractmethod
     def execute(self) -> Tuple[Query, List]:
         """
-        executes the term graph
+        Executes the term graph.
         """
         pass
 
@@ -924,7 +923,7 @@ class GenericExecution(ExecutionBase):
     this execution performs no special optimization and merely serves as an interface between the term graph
     and the rgxlog engine.
     The only exception for this is the 'rule' execution, you can read more about it in the utility method:
-    GenericExecution.__execute_rule_aux()
+    GenericExecution.__execute_rule_aux().
     """
 
     def __init__(self, parse_graph: TermGraphBase, term_graph: ExecutionTermGraph,
@@ -1001,14 +1000,14 @@ class GenericExecution(ExecutionBase):
 
         def get_relation_node(self, relation: str) -> int:
             """
-            @param relation: a relation
+            @param relation: a relation.
             @return: the node that represents the relation.
             """
             return self.term_graph.get_relation_id(relation)
 
         def __call__(self, to_reset: bool = False) -> None:
             """
-            Computes the rule (including the mutual recursive rules)
+            Computes the rule (including the mutual recursive rules).
 
             @param to_reset: if set to True we reset the nodes after the computation.
             """
@@ -1028,18 +1027,19 @@ class GenericExecution(ExecutionBase):
                 # we stop iterating when all the rules converged at the same step
                 fixed_point = all(stopped)
 
-            if to_reset:
-                # mark all nodes as not computed
-                self.reset_visited_nodes()
+            state = EvalState.NOT_COMPUTED if to_reset else EvalState.COMPUTED
+            self.set_visited_nodes(state)
 
-        def reset_visited_nodes(self) -> None:
+        def set_visited_nodes(self, state: EvalState) -> None:
             """
             Marks all the nodes that were visited during the computation as not computed.
+
+            @param state: the state of the visited nodes.
             """
 
             rel_id = self.get_relation_node(self.relation)
             for term_id in self.term_graph.post_order_dfs_from(rel_id):
-                self.term_graph.set_term_attribute(term_id, "state", EvalState.NOT_COMPUTED)
+                self.term_graph.set_term_attribute(term_id, "state", state)
 
         def compute_iteration(self) -> bool:
             """
@@ -1060,6 +1060,7 @@ class GenericExecution(ExecutionBase):
         def compute_independent_rule(cls, relation: str) -> None:
             """
             Computes rule that is independent of the current rule.
+
             @param relation: the rule head relation to compute.
             """
             compute_instance = cls(relation)
@@ -1068,6 +1069,7 @@ class GenericExecution(ExecutionBase):
         def compute_dfs(self, node_id: int) -> None:
             """
             Runs postorder dfs over the term graph and evaluates the tree.
+
             @param node_id: the current node.
             """
             if self.stop_dfs(node_id):
@@ -1082,9 +1084,10 @@ class GenericExecution(ExecutionBase):
 
         def stop_dfs(self, node_id: int) -> bool:
             """
-            Catches the cases of rule rel
-            @param node_id: the current node
-            @return: True if we can continue the DFS, False otherwise
+            Catches the cases of rule rel.
+
+            @param node_id: the current node.
+            @return: True if we can continue the DFS, False otherwise.
             """
 
             if node_id in self.visited_nodes:
@@ -1115,7 +1118,8 @@ class GenericExecution(ExecutionBase):
         def compute_node(self, node_id: int) -> None:
             """
             Computes the current node based on it's type.
-            @param node_id: the current node
+
+            @param node_id: the current node.
             """
             term_graph = self.term_graph
 
@@ -1155,8 +1159,9 @@ class GenericExecution(ExecutionBase):
 
         def compute_rule_rel_node(self, node_id: int, term_attrs: Dict) -> None:
             """
-            Computes a rule rel node
-            @param node_id: the node
+            Computes a rule rel node.
+
+            @param node_id: the node.
             @param term_attrs: the attributes of the node.
             """
 
@@ -1168,8 +1173,9 @@ class GenericExecution(ExecutionBase):
 
         def compute_join_node(self, node_id: int, term_attrs: Dict) -> None:
             """
-            Computes a join node
-            @param node_id: the node
+            Computes a join node.
+
+            @param node_id: the node.
             @param term_attrs: the attributes of the node.
             """
             # TODO@niv: @tom, i think `join_info` is redundant here,
@@ -1182,8 +1188,9 @@ class GenericExecution(ExecutionBase):
 
         def compute_project_node(self, node_id: int, term_attrs: Dict) -> None:
             """
-            Computes a project node
-            @param node_id: the node
+            Computes a project node.
+
+            @param node_id: the node.
             @param term_attrs: the attributes of the node.
             """
 
@@ -1194,8 +1201,9 @@ class GenericExecution(ExecutionBase):
 
         def compute_calc_node(self, node_id: int, term_attrs: Dict) -> None:
             """
-            Computes a calc node
-            @param node_id: the node
+            Computes a calc node.
+
+            @param node_id: the node.
             @param term_attrs: the attributes of the node.
             """
 
@@ -1211,8 +1219,9 @@ class GenericExecution(ExecutionBase):
 
         def compute_union_node(self, node_id: int, term_attrs: Dict) -> None:
             """
-            Computes a union node
-            @param node_id: the node
+            Computes a union node.
+
+            @param node_id: the node.
             @param term_attrs: the attributes of the node.
             """
 
@@ -1221,8 +1230,9 @@ class GenericExecution(ExecutionBase):
 
         def compute_select_node(self, node_id: int, term_attrs: Dict) -> None:
             """
-            Computes a select node
-            @param node_id: the node
+            Computes a select node.
+
+            @param node_id: the node.
             @param term_attrs: the attributes of the node.
             """
 
@@ -1235,8 +1245,8 @@ class GenericExecution(ExecutionBase):
             """
             Finds out whether the node is computed.
 
-            @param node_id: the node for which we check the status
-            @return: True if all the children of the node are computed or it has no children, False otherwise
+            @param node_id: the node for which we check the status.
+            @return: True if all the children of the node are computed or it has no children, False otherwise.
             """
 
             children = self.term_graph.get_children(node_id)
@@ -1249,10 +1259,10 @@ class GenericExecution(ExecutionBase):
 
         def set_output_relation(self, term_id: int, relation: Relation) -> None:
             """
-            sets the output relation of a node in term graph
+            Sets the output relation of a node in term graph.
 
-            @param term_id: the id of the node
-            @param relation: the output relation
+            @param term_id: the id of the node.
+            @param relation: the output relation.
             """
             self.term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, relation)
 
@@ -1260,8 +1270,8 @@ class GenericExecution(ExecutionBase):
             """
             Gets the node's children output relations.
 
-            @param node_id: a node
-            @return: a list containing the children output relations
+            @param node_id: a node.
+            @return: a list containing the children output relations.
             """
             term_graph = self.term_graph
             relations_ids = term_graph.get_children(node_id)
@@ -1271,10 +1281,10 @@ class GenericExecution(ExecutionBase):
 
         def get_child_relation(self, node_id: int) -> Relation:
             """
-            Gets the node's child output relation
+            Gets the node's child output relation.
             @note: this method is called when we know that the node has at most one child.
 
-            @param node_id: a node
+            @param node_id: a node.
             @return: the output relation of the node's child.
             """
             children = self.get_children_relations(node_id)
@@ -1283,8 +1293,10 @@ class GenericExecution(ExecutionBase):
 
     def compute_rule(self, rule_head: Query) -> None:
         """
-        saves the rule to rules_history (used for rule deletion) and copies the table from the
-        rule's child in the parse graph, which is the result of all the rule calculations
+        Saves the rule to rules_history (used for rule deletion) and copies the table from the
+        rule's child in the parse graph, which is the result of all the rule calculations.
+
+        @param rule_head: the rule relation to compute.
         """
         term_graph = self.term_graph
         rule_head_id = term_graph.get_relation_id(rule_head.relation_name)

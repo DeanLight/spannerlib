@@ -2,21 +2,21 @@
 this module contains the implementations of term graphs
 """
 
-from abc import abstractmethod
 from enum import Enum
-from itertools import count
-from typing import Union, Set, List, Dict
 
 import networkx as nx
+from abc import abstractmethod
+from itertools import count
+from typing import Set, List, Dict, Iterable
 
-from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, Rule
+from rgxlog.engine.datatypes.ast_node_types import Relation, Rule
 
 PRETTY_INDENT = ' ' * 4
 
 
 class EvalState(Enum):
     """
-    will be used to determine if a term is computed or not
+    will be used to determine if a term is computed or not.
     """
 
     NOT_COMPUTED = "not_computed"
@@ -30,103 +30,100 @@ class EvalState(Enum):
 class TermGraphBase:
 
     @abstractmethod
-    def add_term(self, **attr):
+    def add_term(self, **attr) -> None:
         """
-        add a term to the term graph
+        Adds a term to the term graph.
 
-        @param **attr: the attributes of the term
-
-        @return: a term id that refers to the term that was added
-        """
-        pass
-
-    @abstractmethod
-    def get_root_id(self):
-        """
-        @return: the term id of the root of the term graph
+        @param attr: the attributes of the term.
+        @return: a term id that refers to the term that was added.
         """
         pass
 
     @abstractmethod
-    def remove_term(self, term_id):
+    def get_root_id(self) -> int:
         """
-        removes a term from the term graph
-
-        @param term_id: the id of the term that will be removed
+        @return: the term id of the root of the term graph.
         """
         pass
 
     @abstractmethod
-    def add_edge(self, father_id, son_id, **attr):
+    def remove_term(self, term_id: int) -> None:
+        """
+        Removes a term from the term graph.
+
+        @param term_id: the id of the term that will be removed.
+        """
+        pass
+
+    @abstractmethod
+    def add_edge(self, father_id: int, son_id: int, **attr) -> None:
         """
         Adds the edge (father_id, son_id) to the term graph.
-        the edge signifies that the father term is dependent on the son term
+        the edge signifies that the father term is dependent on the son term.
 
-        @param father_id: the id of the father term
-        @param son_id: the id of the son term
-        @param **attr: the attributes for the edge
+        @param father_id: the id of the father term.
+        @param son_id: the id of the son term.
+        @param attr: the attributes for the edge.
         """
         pass
 
     @abstractmethod
-    def pre_order_dfs_from(self, node_id: int):
+    def pre_order_dfs_from(self, node_id: int) -> Iterable[int]:
         """
         @return: an iterable of the term ids generated from a depth-first-search pre-ordering starting at the root
-        of the term graph
+        of the term graph.
         """
         pass
 
-    def pre_order_dfs(self):
+    def pre_order_dfs(self) -> Iterable[int]:
         """
         @return: an iterable of the term ids generated from a depth-first-search pre-ordering starting at the root
-        of the term graph
+        of the term graph.
         """
         return self.pre_order_dfs_from(self.get_root_id())
 
     @abstractmethod
-    def post_order_dfs_from(self, node_id: int):
+    def post_order_dfs_from(self, node_id: int) -> Iterable[int]:
         """
         @return: an iterable of the term ids generated from a depth-first-search post-ordering starting at the root
-        of the term graph
+        of the term graph.
         """
         pass
 
-    def post_order_dfs(self):
+    def post_order_dfs(self) -> Iterable[int]:
         """
         @return: an iterable of the term ids generated from a depth-first-search post-ordering starting at the root
-        of the term graph
+        of the term graph.
         """
         return self.post_order_dfs_from(self.get_root_id())
 
     @abstractmethod
-    def get_children(self, term_id):
+    def get_children(self, term_id) -> Iterable[int]:
         """
-        in a term graph the children of a term are its dependencies
-        this function returns the children of a term
+        In a term graph the children of a term are its dependencies
+        this function returns the children of a term.
 
-        @param term_id: a term id
-
+        @param term_id: a term id.
         @return: an iterable of the children of the term.
         """
         pass
 
     @abstractmethod
-    def set_term_attribute(self, term_id, attr_name, attr_value):
+    def set_term_attribute(self, term_id: int, attr_name: str, attr_value) -> None:
         """
-        sets an attribute of a term
+        Sets an attribute of a term.
 
-        @param term_id: the id of the term
-        @param attr_name: the name of the attribute
-        @param attr_value: the value that will be set for the attribute
+        @param term_id: the id of the term.
+        @param attr_name: the name of the attribute.
+        @param attr_value: the value that will be set for the attribute.
         """
         pass
 
     @abstractmethod
-    def get_term_attributes(self, term_id: int) -> dict:
+    def get_term_attributes(self, term_id: int) -> Dict:
         """
-        @param term_id: a term id
-
-        @return: a dict containing the attributes of the term
+        @param term_id: a term id.
+        @return: a dict containing the attributes of the term.
         """
         pass
 
@@ -217,9 +214,9 @@ class NetxTermGraph(TermGraphBase):
 
     def _get_term_string(self, term_id: int) -> str:
         """
-        a utility function for pretty()
-        @param term_id: a term id
+        A utility function for pretty().
 
+        @param term_id: a term id
         @return: a string representation of the term
         """
 
@@ -237,12 +234,11 @@ class NetxTermGraph(TermGraphBase):
 
     def _pretty_aux(self, term_id: int, level: int) -> List[str]:
         """
-        a helper function for pretty()
+        A helper function for pretty().
 
-        @param term_id: an id of a term in the term graph
-        @param level: the depth of the term in the tree (used for indentation)
-
-        @return: a list of strings that represents the term and its children
+        @param term_id: an id of a term in the term graph.
+        @param level: the depth of the term in the tree (used for indentation).
+        @return: a list of strings that represents the term and its children.
         """
 
         # get a representation of the term
@@ -261,7 +257,7 @@ class NetxTermGraph(TermGraphBase):
 
     def pretty(self):
         """
-        prints a representation of the networkx tree.
+        Prints a representation of the networkx tree.
         Works similarly to lark's pretty() function.
 
         example:
@@ -293,7 +289,7 @@ class ExecutionTermGraph(NetxTermGraph):
 
         @param rule: the rule to add.
         @param nodes: all the nodes in the graph that are unique to the rule
-                      (and thus should be removed if the rule is removed)
+                      (and thus should be removed if the rule is removed).
         """
 
         self._rule_to_nodes[str(rule)] = (rule, nodes)
@@ -302,7 +298,7 @@ class ExecutionTermGraph(NetxTermGraph):
         """
         Checks if id node has parents or it's the root node.
 
-        @param node_id: id of a node
+        @param node_id: id of a node.
         @return: true if the node is has parents (if node is root the we also return true).
         """
         if node_id == self.get_root_id():
@@ -331,6 +327,7 @@ class ExecutionTermGraph(NetxTermGraph):
     def remove_rules_with_head(self, rule_head: str) -> None:
         """
         Removes all rules with given rule head from the term graph.
+
         @param rule_head: a relation name
         """
 
@@ -378,18 +375,20 @@ class ExecutionTermGraph(NetxTermGraph):
 
         return False
 
-    def print_all_rules(self):
+    def print_all_rules(self) -> None:
+        """
+        Prints all the registered rules.
+        """
         print("Printing all the rules:")
         for i, rule in enumerate(self._rule_to_nodes):
             print(f"\t{i + 1}. {rule}")
 
     def add_relation(self, relation: Relation) -> int:
         """
-        adds the relation to the graph. if it's already inside nothing is done.
+        Adds the relation to the graph. if it's already inside nothing is done.
 
         @param relation: the relation to add.
         @note: we assume the relation is rule relation and not declared relation.
-
         @return: returns the relation node id if is_rule is false.
                  otherwise returns the relation child node id (union node).
         """
@@ -407,8 +406,7 @@ class ExecutionTermGraph(NetxTermGraph):
 
     def get_relation_id(self, relation: str, actual_node: bool = True) -> int:
         """
-
-        @param relation: the relation to look for
+        @param relation: the relation to look for.
         @param actual_node: if true we return the relation node. otherwise we return it's union child node id.
         """
         ids = self._relation_to_id.get(relation, -1)
@@ -429,7 +427,7 @@ class ExecutionTermGraph(NetxTermGraph):
 
     class DependencyGraph(NetxTermGraph):
         """
-        a class that represents the dependencies between rules
+        a class that represents the dependencies between rules.
         """
 
         def __init__(self):
@@ -440,8 +438,9 @@ class ExecutionTermGraph(NetxTermGraph):
         def _add_relation(self, relation: Relation) -> int:
             """
             Adds relation to dependency graph.
-            @param relation: the relation to add (should be rule relation)
-            @return: the id of the relation node
+
+            @param relation: the relation to add (should be rule relation).
+            @return: the id of the relation node.
             """
             relation_name = relation.relation_name
             if relation_name in self.relation_to_id:
@@ -456,9 +455,10 @@ class ExecutionTermGraph(NetxTermGraph):
         def is_dependent(self, head_rel: Relation, body_rel: Relation) -> bool:
             """
             Finds out whether the head relation is dependent in body relation.
+
             @param head_rel: the head relation.
             @param body_rel: a body relation.
-            @return: True if they are dependent False otherwise
+            @return: True if they are dependent, False otherwise.
             """
 
             common_free_vars = set(head_rel.term_list).intersection(body_rel.term_list)
@@ -466,8 +466,9 @@ class ExecutionTermGraph(NetxTermGraph):
 
         def add_dependencies(self, head_relation: Relation, body_relations: set[Relation]) -> None:
             """
-            Adds all the dependencies of the rule to the graph
-            @param head_relation: the head relation of the rule
+            Adds all the dependencies of the rule to the graph.
+
+            @param head_relation: the head relation of the rule.
             @param body_relations: a set of rule's body relations.
             """
 
@@ -484,16 +485,18 @@ class ExecutionTermGraph(NetxTermGraph):
 
         def remove_relation(self, relation_name: str) -> None:
             """
-            Removes the relation node from the dependency graph
-            @param relation_name: the name of the relation to remove
+            Removes the relation node from the dependency graph.
+
+            @param relation_name: the name of the relation to remove.
             """
 
             self._graph.remove_node(self.relation_to_id[relation_name])
 
         def remove_rule(self, rule: Rule) -> None:
             """
-            Removes the dependencies of the rule from the graph
-            @param rule: the rule to remove
+            Removes the dependencies of the rule from the graph.
+
+            @param rule: the rule to remove.
             """
 
             head_relation = rule.head_relation
@@ -513,6 +516,7 @@ class ExecutionTermGraph(NetxTermGraph):
         def get_mutually_recursive_relations(self, relation_name: str) -> Set[str]:
             """
             Finds all relations that are mutually recursive with the input relation.
+
             @param relation_name: the name of the relation.
             @return: a set of relations names (including the input relation).
             """
@@ -523,7 +527,6 @@ class ExecutionTermGraph(NetxTermGraph):
                 if rel_id in component:
                     names_component = set(map(lambda x: self.id_to_relation[x], component))
                     return names_component
-
 
         def __str__(self):
             return self.__class__.__name__ + " is:\n" + super().__str__()
