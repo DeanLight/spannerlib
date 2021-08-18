@@ -29,7 +29,8 @@ OUT_REL_ATTRIBUTE = "output_rel"
 PROJECT_PREFIX = "project"
 JOIN_PREFIX = "join"
 COPY_PREFIX = "copy"
-SELECT_PREFIX = 'select'
+SELECT_PREFIX = "select"
+UNION_PREFIX = "union"
 
 RESERVED_RELATION_PREFIX = "__rgxlog__"
 SEPARATOR = "___"  # TODO@tom: find a good separator
@@ -832,7 +833,7 @@ class SqliteEngine(RgxlogEngineBase):
         if new_arity == 1:
             return relations[0]
 
-        new_relation_name = self._create_unique_relation(new_arity, prefix=PROJECT_PREFIX)
+        new_relation_name = self._create_unique_relation(len(relations[0].term_list), prefix=UNION_PREFIX)
         new_term_list = relations[0].term_list
         new_type_list = relations[0].type_list
         new_relation = Relation(new_relation_name, new_term_list, new_type_list)
@@ -1266,7 +1267,6 @@ class GenericExecution(ExecutionBase):
             Computes a union node.
 
             @param node_id: the node.
-            @param term_attrs: the attributes of the node.
             """
 
             union_rel = self.rgxlog_engine.operator_union(self.get_children_relations(node_id))

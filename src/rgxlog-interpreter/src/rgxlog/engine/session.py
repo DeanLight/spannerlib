@@ -491,58 +491,22 @@ class Session:
 
         self._term_graph.print_all_rules()
 
-
-# TODO@tom: test and debug ie relations
-
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(False)
+    my_session = Session(True)
 
-    my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-
-    # query = """
-    #     new B(int)
-    #     new C(int, int)
-    #     B(2)
-    #     C(1, 4)
-    #     C(2, 5)
-    #     # A(X) <- B(X), C(X, 5)
-    #     # ?A(X)
-    #     A(Y) <- B(X), ID(X) -> (Y)
-    #     ?A(X)
-    #     """
-
-    query = '''
-            new lecturer(str, str)
-            lecturer("walter", "chemistry")
-            lecturer("linus", "operation systems")
-            lecturer("rick", "physics")
-
-            new enrolled(str, str)
-            enrolled("abigail", "chemistry")
-            enrolled("abigail", "operation systems")
-            enrolled("jordan", "chemistry")
-            enrolled("gale", "operation systems")
-            enrolled("howard", "chemistry")
-            enrolled("howard", "physics")
-
-            enrolled_in_chemistry(X) <- enrolled(X, "chemistry")
-            ?enrolled_in_chemistry("jordan")
-            ?enrolled_in_chemistry("gale")
-            ?enrolled_in_chemistry(X)
-
-            enrolled_in_physics_and_chemistry(X) <- enrolled(X, "chemistry"), enrolled(X, "physics")
-            ?enrolled_in_physics_and_chemistry(X)
-
-            lecturer_of(X, Z) <- lecturer(X, Y), enrolled(Z, Y)
-            ?lecturer_of(X, "abigail")
-            '''
+    query = """
+        new C(int)
+        C(1)
+        C(2)
+        C(3)
+        
+        B(X) <- C(X)
+        A(X) <- B(X)
+        B(X) <- A(X)
+        
+        ?A(X)
+        ?B(X)
+        """
 
     my_session.run_query(query)
-
-    query2 = (r"""gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
-                gpa_of_chemistry_students(Student, Grade) <- py_rgx_string(gpa_str, "(\w+).*?(\d+)")"""
-              r"""->(Student, Grade), enrolled_in_chemistry(Student)
-            ?gpa_of_chemistry_students(X, "100")""")
-
-    my_session.run_query(query2)
