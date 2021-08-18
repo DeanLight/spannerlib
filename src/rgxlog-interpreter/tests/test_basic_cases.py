@@ -349,6 +349,25 @@ def test_remove_rule():
     run_test("?A(X, Y)", expected_result, test_session=session)
 
 
+def test_select_and_join():
+    expected_result = """printing results for query 'A(X)':
+       X
+    -----
+       2
+    """
+
+    query = """
+        new B(int)
+        new C(int, int)
+        B(2)
+        C(1, 4)
+        C(2, 5)
+        A(X) <- B(X), C(X, 5)
+        ?A(X)
+    """
+
+    run_test(query, expected_result)
+
 def test_recursive():
     expected_result = """printing results for query 'ancestor("Liam", X)':
             X
@@ -383,5 +402,32 @@ def test_recursive():
         ?ancestor(X, "Mason")
         ?ancestor("Mason", X)
         '''
+
+    run_test(query, expected_result)
+
+
+def test_query_true_value():
+    expected_result = """printing results for query 'A(1)':
+    [()]
+    """
+
+    query = """
+        new A(int)
+        A(1)
+        ?A(1)
+    """
+
+    run_test(query, expected_result)
+
+def test_query_false_value():
+    expected_result = """printing results for query 'A(2)':
+    []
+    """
+
+    query = """
+        new A(int)
+        A(1)
+        ?A(2)
+    """
 
     run_test(query, expected_result)

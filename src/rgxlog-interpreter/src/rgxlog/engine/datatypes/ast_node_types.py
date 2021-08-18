@@ -38,6 +38,7 @@ def peel_token(token) -> str:
         return token.value
     return token
 
+
 class RelationDeclaration:
     """a representation of a relation_declaration statement"""
 
@@ -121,6 +122,13 @@ class Relation:
     def as_relation_declaration(self) -> RelationDeclaration:
         return RelationDeclaration(self.relation_name, self.type_list)
 
+    def has_same_terms_and_types(self, other: "Relation") -> bool:
+        """
+        Checks only term list and type list equivalence.
+        """
+
+        return self.type_list == other.type_list and self.term_list == other.term_list
+
 
 class IERelation:
     """
@@ -177,6 +185,14 @@ class IERelation:
         self.input_term_list = peel_list(self.input_term_list)
         self.output_term_list = peel_list(self.output_term_list)
         self.relation_name = peel_token(self.relation_name)
+
+    def has_same_terms_and_types(self, other: Relation) -> bool:
+        """
+        Checks that everything besides names is equivalent.
+        """
+
+        return self.output_type_list == other.type_list and self.output_term_list == other.term_list
+
 
 
 class AddFact(Relation):

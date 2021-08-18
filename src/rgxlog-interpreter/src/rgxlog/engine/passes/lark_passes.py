@@ -25,12 +25,11 @@ https://lark-parser.readthedocs.io/en/stable/lark_cheatsheet.pdf
 A short tutorial on lark:
 https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
-from typing import List, Set
-
 from abc import ABC, abstractmethod
-
 from lark import Transformer
+from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
+from typing import List, Set
 
 from rgxlog.engine.datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule,
                                                     IERelation, RelationDeclaration, Relation)
@@ -39,7 +38,6 @@ from rgxlog.engine.execution import RESERVED_RELATION_PREFIX
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
                                                fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
 from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node
-from lark import Tree as LarkNode
 
 
 def get_tree(**kwargs):

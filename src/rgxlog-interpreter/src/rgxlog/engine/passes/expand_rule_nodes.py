@@ -1,4 +1,5 @@
 from collections import OrderedDict
+
 from typing import Set, Optional, Union, Dict, List, OrderedDict as OrderedDictType
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, Rule
@@ -124,7 +125,7 @@ class AddRuleToTermGraph:
         self.nodes.add(node_id)
 
     def add_join_branch(self, head_id: int, relations: Set[Union[Relation, IERelation]],
-                        future_ie_relations: Optional[Set[IERelation]] = None) -> Optional[int]:
+                        future_ie_relations: Optional[Set[IERelation]] = None) -> int:
         """
         Connects all the relations to a join node. Connects the join_node to head_id.
 
@@ -138,21 +139,22 @@ class AddRuleToTermGraph:
         total_relations = relations | future_ies
 
         # check if there is one relation (we don't need join)
-        if len(total_relations) == 1:
+        if len(total_relations) == 1 and len(relations) == 1:
             self.add_relation_branch(next(iter(total_relations)), head_id)
-            return
+            return head_id
 
         join_dict = get_free_var_to_relations_dict(total_relations)
-        if join_dict:
-            # add join node
-            join_node_id = self.term_graph.add_term(type="join", value=join_dict)
-            self.add_node(join_node_id)
+        if not join_dict:
+            return head_id
+        # add join node
+        join_node_id = self.term_graph.add_term(type="join", value=join_dict)
+        self.add_node(join_node_id)
 
-            self.term_graph.add_edge(head_id, join_node_id)
-            for relation in relations:
-                self.add_relation_branch(relation, join_node_id)
+        self.term_graph.add_edge(head_id, join_node_id)
+        for relation in relations:
+            self.add_relation_branch(relation, join_node_id)
 
-            return join_node_id
+        return join_node_id
 
     def add_relation_to(self, relation: Union[Relation, IERelation], father_node_id: int) -> None:
         """

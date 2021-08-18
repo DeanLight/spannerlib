@@ -113,3 +113,4 @@ def run_test(query: str, expected_output: Optional[str] = None, functions_to_imp
         assert compare_strings(expected_output, query_result_string), "expected string != result string"
 
     return test_session
+

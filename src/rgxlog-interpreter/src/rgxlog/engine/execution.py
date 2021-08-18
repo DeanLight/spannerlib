@@ -17,8 +17,7 @@ from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, ExecutionTermGraph
-from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, \
-    get_free_var_names
+from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict
 
 SQL_SELECT = 'SELECT DISTINCT'
 
@@ -31,7 +30,9 @@ PROJECT_PREFIX = "project"
 JOIN_PREFIX = "join"
 COPY_PREFIX = "copy"
 SELECT_PREFIX = 'select'
+
 RESERVED_RELATION_PREFIX = "__rgxlog__"
+SEPARATOR = "___"  # TODO@tom: find a good separator
 
 DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
 RELATION_COLUMN_PREFIX = "col"
@@ -360,7 +361,10 @@ class SqliteEngine(RgxlogEngineBase):
 
         free_var_names_for_project = [term for term, term_type in zip(query.term_list, query.type_list)
                                       if term_type is DataTypes.free_var_name]
-        projected_relation_name = self.operator_project(selected_relation, free_var_names_for_project).relation_name
+        if has_free_vars:
+            projected_relation_name = self.operator_project(selected_relation, free_var_names_for_project).relation_name
+        else:
+            projected_relation_name = selected_relation_name
 
         query_result = self.run_sql(f"{SQL_SELECT} * FROM {projected_relation_name}")
 
@@ -439,7 +443,7 @@ class SqliteEngine(RgxlogEngineBase):
         # create the output relation for the ie function, and also declare it inside SQL
         output_relation_arity = len(ie_relation.output_term_list)
         output_relation_name = self._create_unique_relation(output_relation_arity,
-                                                            prefix=f'{ie_relation_name}_output')
+                                                            prefix=f'{ie_relation_name}{SEPARATOR}output')
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         # define the ie input relation
@@ -456,6 +460,7 @@ class SqliteEngine(RgxlogEngineBase):
             index_in_bounded_input = 0
             for bounded_input in inputs_without_constants:
                 result_input_list = []
+                index_in_bounded_input = 0
                 for term, datatype in zip(ie_relation.input_term_list, ie_relation.input_type_list):
                     if datatype is DataTypes.free_var_name:
                         # add value from `bounded_input`
@@ -478,7 +483,7 @@ class SqliteEngine(RgxlogEngineBase):
             # process each ie output and add it to the output relation
             for ie_output in ie_outputs:
                 # the output should be a tuple, but if a single value is returned, we accept it as well
-                if isinstance(ie_output, str) or isinstance(ie_output, int) or isinstance(ie_output, Span):
+                if isinstance(ie_output, (str, int, Span)):
                     ie_output = [ie_output]
                 else:
                     ie_output = list(ie_output)
@@ -612,7 +617,8 @@ class SqliteEngine(RgxlogEngineBase):
         new_term_list = src_relation.term_list
         new_type_list = src_relation.type_list
 
-        new_relation_name = self._create_unique_relation(new_arity, prefix=f"{src_relation_name}_{SELECT_PREFIX}")
+        new_relation_name = self._create_unique_relation(new_arity,
+                                                         prefix=f"{src_relation_name}{SEPARATOR}{SELECT_PREFIX}")
 
         selected_relation = Relation(new_relation_name, new_term_list, new_type_list)
 
@@ -647,7 +653,7 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command, sql_args)
         return selected_relation
 
-    def operator_join(self, relations: List[Relation], var_dict, prefix: str = "") -> Relation:
+    def operator_join(self, relations: List[Relation], var_dict: Dict, prefix: str = "") -> Relation:
         """
         Performs a join between all of the relations in the relation list and saves the result to a new relation.
         the results of the join are filtered so they only include columns in the relations that were defined by
@@ -680,7 +686,8 @@ class SqliteEngine(RgxlogEngineBase):
         joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
 
         # declare the joined relation in sql and get its name
-        joined_relation_name = self._create_unique_relation(joined_relation_arity, prefix=f"{prefix}_{JOIN_PREFIX}")
+        joined_relation_name = self._create_unique_relation(joined_relation_arity,
+                                                            prefix=f"{prefix}{SEPARATOR}{JOIN_PREFIX}")
 
         # created a structured node of the joined relation
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
@@ -697,9 +704,7 @@ class SqliteEngine(RgxlogEngineBase):
             if i > 0:
                 sql_command += ", "
             relation_with_free_var, first_index = first_pair
-            assert relation_with_free_var in relation_sql_names, (f"`relations` and `var_dict` do not match -"
-                                                                  f" {relation_with_free_var} is not inside"
-                                                                  f" `relations`")
+            relation_with_free_var = SqliteEngine._find_actual_relation(relation_with_free_var, relation_sql_names)
             name_of_relation_with_free_var = relation_sql_names[relation_with_free_var]
             new_col_name = self._get_col_name(i)
             first_col_name = self._get_col_name(first_index)
@@ -708,8 +713,7 @@ class SqliteEngine(RgxlogEngineBase):
             sql_command += f"{name_of_relation_with_free_var}.{first_col_name} AS {new_col_name}"
             # 2. create the comparison between all of them, using `ON`
             for (second_relation, second_index) in other_pairs:
-                assert second_relation in relation_sql_names, (f"`relations` and `var_dict` do not match -"
-                                                               f" {second_relation} is not inside `relations`")
+                second_relation = SqliteEngine._find_actual_relation(second_relation, relation_sql_names)
                 second_col_name = self._get_col_name(second_index)
                 name_of_second_relation = relation_sql_names[second_relation]
                 on_conditions_list.append(f"{name_of_relation_with_free_var}.{first_col_name}="
@@ -732,6 +736,48 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command)
 
         return joined_relation
+
+    @staticmethod
+    def _find_actual_relation(orig_relation: Union[Relation, IERelation],
+                              actual_relations: Iterable[Relation]) -> Relation:
+        """
+        Given an iterable of actual relation (__rgxlog_C_select0(X, 5)) and original relation (C(X, 5))
+        finds the actual relation.
+
+        @raise Exception: if we can't find a matching relation.
+        @param orig_relation: the original relation.
+        @param actual_relations: an iterable of actual relations during the computation.
+        @return: the actual relation that match to the original relation.
+        """
+
+        for actual_relation in actual_relations:
+            if SqliteEngine._is_same_relation_name(orig_relation, actual_relation) \
+                    and orig_relation.has_same_terms_and_types(actual_relation):
+                return actual_relation
+
+        raise Exception(f"`relations` and `var_dict` do not match - can't find {orig_relation}")
+
+    @staticmethod
+    def _is_same_relation_name(orig_relation: Union[Relation, IERelation],
+                               actual_relation: Relation) -> bool:
+        """
+        Checks whether the relation have the same name.
+
+        @param orig_relation: "clean" relation
+        @param actual_relation: possibly "unclean" relation (begins with __rgxlog__)
+        @return: True if they have the same name, False otherwise.
+        """
+        if actual_relation.relation_name == orig_relation.relation_name:
+            return True
+
+        if not actual_relation.relation_name.startswith(RESERVED_RELATION_PREFIX):
+            return False
+
+        name_without_prefix = actual_relation.relation_name[len(RESERVED_RELATION_PREFIX):]
+
+        # TODO@tom: it won't work if there is underscire inside the orig_relation. how to fix that? (SQLite doesn't
+        #           special characters)
+        return name_without_prefix.split(SEPARATOR)[0] == orig_relation.relation_name
 
     def operator_project(self, src_relation: Relation, project_vars: List[str]) -> Relation:
         """
@@ -823,7 +869,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         else:
             dest_rel_name = self._create_unique_relation(arity=len(src_rel.type_list),
-                                                         prefix=f"{src_rel_name}_{COPY_PREFIX}")
+                                                         prefix=f"{src_rel_name}{SEPARATOR}{COPY_PREFIX}")
 
         dest_rel = Relation(dest_rel_name, src_rel.term_list, src_rel.type_list)
 
@@ -1015,9 +1061,6 @@ class GenericExecution(ExecutionBase):
             # cleat all the mutually recursive tables.
             self.rgxlog_engine.clear_tables(self.mutually_recursive)
 
-            # computes all the rules that are independent of the current rule
-            self.compute_iteration()
-
             fixed_point = False
             while not fixed_point:
                 # computes one iteration for all of the mutually recursive rules
@@ -1063,6 +1106,7 @@ class GenericExecution(ExecutionBase):
 
             @param relation: the rule head relation to compute.
             """
+
             compute_instance = cls(relation)
             compute_instance()
 
@@ -1104,7 +1148,7 @@ class GenericExecution(ExecutionBase):
             rule_rel = term_attrs["value"]
             if rule_rel.relation_name not in self.mutually_recursive:
                 # computes the independent rule and stop
-                GenericExecution.ComputeRule.compute_independent_rule(rule_rel)
+                GenericExecution.ComputeRule.compute_independent_rule(rule_rel.relation_name)
                 return True
 
             # if rule rel is the rule we currently computing continue the dfs
@@ -1136,7 +1180,7 @@ class GenericExecution(ExecutionBase):
                 self.compute_rule_rel_node(node_id, term_attrs)
 
             elif term_type == "union":
-                self.compute_union_node(node_id, term_attrs)
+                self.compute_union_node(node_id)
 
             elif term_type == "join":
                 self.compute_join_node(node_id, term_attrs)
@@ -1217,7 +1261,7 @@ class GenericExecution(ExecutionBase):
             ie_rel_out = self.rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
             self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, ie_rel_out)
 
-        def compute_union_node(self, node_id: int, term_attrs: Dict) -> None:
+        def compute_union_node(self, node_id: int) -> None:
             """
             Computes a union node.
 

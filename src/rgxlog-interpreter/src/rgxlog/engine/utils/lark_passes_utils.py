@@ -4,7 +4,6 @@ this module contains helper functions and function decorators that are used in l
 
 from lark import Tree as LarkNode
 
-from rgxlog.engine.datatypes.ast_node_types import Relation, RelationDeclaration
 from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
 
 

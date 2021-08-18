@@ -1,4 +1,5 @@
 from typing import Iterable, List, Callable, Union
+
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 

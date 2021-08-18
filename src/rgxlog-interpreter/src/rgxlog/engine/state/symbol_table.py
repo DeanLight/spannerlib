@@ -3,9 +3,9 @@ this module contains the implementations of symbol tables
 """
 
 from abc import ABC, abstractmethod
+from typing import Iterable, Dict, Set
 
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
-from typing import Iterable, Dict, Optional, Set
 
 
 class SymbolTableBase(ABC):
