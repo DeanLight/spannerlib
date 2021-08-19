@@ -19,7 +19,7 @@ RUST_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
 # rust
 DOWNLOAD_RUST_URL = "https://rustup.rs/"
 
-# package info
+# package info - @niv: i use my fork here because it's more stable than the original
 PACKAGE_GIT_URL = "https://github.com/NNRepos/enum-spanner-rs"
 PACKAGE_NAME = "enum-spanner-rs"
 REGEX_FOLDER_NAME = "enum_spanner_regex"
