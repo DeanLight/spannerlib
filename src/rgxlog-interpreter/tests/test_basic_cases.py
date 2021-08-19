@@ -368,43 +368,6 @@ def test_select_and_join():
 
     run_test(query, expected_result)
 
-def test_recursive():
-    expected_result = """printing results for query 'ancestor("Liam", X)':
-            X
-        ----------
-          Mason
-          Oliver
-         Benjamin
-           Noah
-
-        printing results for query 'ancestor(X, "Mason")':
-            X
-        ----------
-           Noah
-           Liam
-         Benjamin
-
-        printing results for query 'ancestor("Mason", X)':
-        []
-        """
-
-    query = '''
-        new parent(str, str)
-        parent("Liam", "Noah")
-        parent("Noah", "Oliver")
-        parent("James", "Lucas")
-        parent("Noah", "Benjamin")
-        parent("Benjamin", "Mason")
-        ancestor(X,Y) <- parent(X,Y)
-        ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
-
-        ?ancestor("Liam", X)
-        ?ancestor(X, "Mason")
-        ?ancestor("Mason", X)
-        '''
-
-    run_test(query, expected_result)
-
 
 def test_query_true_value():
     expected_result = """printing results for query 'A(1)':
@@ -418,6 +381,7 @@ def test_query_true_value():
     """
 
     run_test(query, expected_result)
+
 
 def test_query_false_value():
     expected_result = """printing results for query 'A(2)':

@@ -5,6 +5,7 @@ import pytest
 from pandas import DataFrame
 
 from rgxlog.engine.datatypes.primitive_types import Span
+from rgxlog.engine.execution import FREE_VAR_PREFIX
 from rgxlog.engine.session import Session
 from tests.utils import run_test, is_equal_stripped_sorted_tables, is_equal_dataframes_ignore_order
 
@@ -103,7 +104,7 @@ def test_query_into_csv_basic(im_ex_session: Session):
         assert os.path.isfile(temp_csv), "file was not created"
 
         with open(temp_csv) as f_temp:
-            assert f_temp.read().strip() == expected_rel.strip(), "file was not written properly"
+            assert is_equal_stripped_sorted_tables(f_temp.read(), expected_rel), "file was not written properly"
 
 
 def test_query_into_csv_long(im_ex_session: Session):
@@ -126,7 +127,7 @@ def test_query_into_csv_long(im_ex_session: Session):
         assert os.path.isfile(temp_csv), "file was not created"
 
         with open(temp_csv) as f_temp:
-            assert f_temp.read().strip() == expected_longrel.strip(), "file was not written properly"
+            assert is_equal_stripped_sorted_tables(f_temp.read(), expected_longrel), "file was not written properly"
 
 
 def test_query_into_df(im_ex_session: Session):
@@ -141,12 +142,12 @@ def test_query_into_df(im_ex_session: Session):
 
     # query into df and compare
     temp_df = im_ex_session.query_into_df("?df_query_rel(X)")
-    assert temp_df.equals(test_df)
+    assert is_equal_dataframes_ignore_order(temp_df, test_df), "the dataframes are not equal"
 
 
 def test_export_relation_into_csv(im_ex_session: Session):
-    expected_export_rel = """
-        T0:T1
+    expected_export_rel = f"""
+        {FREE_VAR_PREFIX}0:{FREE_VAR_PREFIX}1
         wow:42
         such summer:420
         much heat:42"""
@@ -170,7 +171,7 @@ def test_export_relation_into_csv(im_ex_session: Session):
 
 
 def test_export_relation_into_df(im_ex_session: Session):
-    column_names = ["T0", "T1"]
+    column_names = [f"{FREE_VAR_PREFIX}0", f"{FREE_VAR_PREFIX}1"]
     expected_df = DataFrame([[Span(1, 3), "aa"], [Span(2, 4), "bb"]], columns=column_names)
     relation_name = "export_df_rel"
 

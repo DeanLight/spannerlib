@@ -42,11 +42,13 @@ class DataTypes(Enum):
 class Span:
     """A representation of a span"""
 
-    def __init__(self, span_start, span_end):
+    def __init__(self, span_start: int, span_end: int):
         """
         @param span_start: the first (included) index of the span.
         @param span_end: the last (excluded) index of the span.
         """
+        if not isinstance(span_start, int) and isinstance(span_end, int):
+            raise TypeError("Span's start/end must be integers")
         self.span_start = span_start
         self.span_end = span_end
 

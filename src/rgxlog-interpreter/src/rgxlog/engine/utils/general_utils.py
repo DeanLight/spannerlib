@@ -1,12 +1,18 @@
 """
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
+import re
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, IERelation, Rule)
-from rgxlog.engine.datatypes.primitive_types import DataTypes
+from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from typing import (Union, Tuple, Set, Dict, List)
+from typing import (Union, Tuple, Set, Dict, List, Optional)
 from typing import Callable
+
+SPAN_GROUP1 = "start"
+SPAN_GROUP2 = "end"
+# as of now, we don't support negative/float numbers (for both spans and integers)
+SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 
 
 def fixed_point(start, step: Callable, distance: Callable, thresh: int = 0):
@@ -214,6 +220,7 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
 
     return free_var_to_type, conflicted_free_vars
 
+
 # TODO@tom: add params description
 def type_check_rule_free_vars_aux(term_list: List, type_list: List, correct_type_list: List,
                                   free_var_to_type: Dict, conflicted_free_vars: Set):
@@ -260,3 +267,11 @@ def rule_to_relation_name(rule: str) -> str:
     """
 
     return rule.split('(')[0]
+
+
+def string_to_span(string_of_span: str) -> Optional[Span]:
+    span_match = re.match(SPAN_PATTERN, string_of_span)
+    if not span_match:
+        return None
+    start, end = int(span_match.group(SPAN_GROUP1)), int(span_match.group(SPAN_GROUP2))
+    return Span(span_start=start, span_end=end)

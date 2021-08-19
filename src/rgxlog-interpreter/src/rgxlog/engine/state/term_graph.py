@@ -414,7 +414,7 @@ class ExecutionTermGraph(NetxTermGraph):
             return -1
         return ids[0] if actual_node else ids[1]
 
-    def add_dependencies(self, head_relation: Relation, body_relations: set[Relation]) -> None:
+    def add_dependencies(self, head_relation: Relation, body_relations: Set[Relation]) -> None:
         """@see documentation of add_dependencies in DependencyGraph"""
         self._dependency_graph.add_dependencies(head_relation, body_relations)
 
@@ -464,7 +464,7 @@ class ExecutionTermGraph(NetxTermGraph):
             common_free_vars = set(head_rel.term_list).intersection(body_rel.term_list)
             return body_rel.relation_name in self.relation_to_id and len(common_free_vars) > 0
 
-        def add_dependencies(self, head_relation: Relation, body_relations: set[Relation]) -> None:
+        def add_dependencies(self, head_relation: Relation, body_relations: Set[Relation]) -> None:
             """
             Adds all the dependencies of the rule to the graph.
 

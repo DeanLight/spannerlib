@@ -249,7 +249,7 @@ class SymbolTable(SymbolTableBase):
         return var_name in self._var_to_type
 
     def add_relation_schema(self, relation_name, schema, is_rule: bool):
-
+        # TODO@niv: maybe remove all Tokens here?
         # rule can be defined multiple times with same head (unlike relation)
         if is_rule:
             err_msg = f'relation "{relation_name}" already has a different schema'

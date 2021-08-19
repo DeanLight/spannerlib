@@ -17,7 +17,7 @@ from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, ExecutionTermGraph
-from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict
+from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, string_to_span
 
 SQL_SELECT = 'SELECT DISTINCT'
 
@@ -37,6 +37,7 @@ SEPARATOR = "___"  # TODO@tom: find a good separator
 
 DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
 RELATION_COLUMN_PREFIX = "col"
+FREE_VAR_PREFIX = "COL"
 
 # rgx constants
 FALSE_VALUE = []
@@ -375,7 +376,32 @@ class SqliteEngine(RgxlogEngineBase):
         if (not has_free_vars) and query_result != FALSE_VALUE:
             query_result = TRUE_VALUE
 
-        return query_result
+        spanned_query_result = self.convert_strings_to_spans_in_query_result(query_result)
+
+        return spanned_query_result
+
+    @staticmethod
+    def convert_strings_to_spans_in_query_result(query_result: List[tuple]) -> List[tuple]:
+        """
+        convert strings that look like spans into spans
+        @param query_result: the list of tuples which may contain strings that should be converted to spans
+        @return: the same list, but with span-looking strings converted to `Span` objects
+        """
+        spanned_query_result = []
+        for row in query_result:
+            converted_row = []
+            for value in row:
+                if isinstance(value, str):
+                    transformed_string = string_to_span(value)
+                    if transformed_string is None:
+                        converted_row.append(value)
+                    else:
+                        converted_row.append(transformed_string)
+                else:
+                    converted_row.append(value)
+
+            spanned_query_result.append(tuple(converted_row))
+        return spanned_query_result
 
     def remove_tables(self, table_names: Iterable[str]) -> None:
         """
@@ -742,18 +768,18 @@ class SqliteEngine(RgxlogEngineBase):
     def _find_actual_relation(orig_relation: Union[Relation, IERelation],
                               actual_relations: Iterable[Relation]) -> Relation:
         """
-        Given an iterable of actual relation (__rgxlog_C_select0(X, 5)) and original relation (C(X, 5))
+        Given an iterable of an actual relation (e.g. __rgxlog__C_select0(X, 5)) and an original relation (C(X, 5)),
         finds the actual relation.
 
         @raise Exception: if we can't find a matching relation.
         @param orig_relation: the original relation.
-        @param actual_relations: an iterable of actual relations during the computation.
-        @return: the actual relation that match to the original relation.
+        @param actual_relations: an iterable of all actual relations during the computation.
+        @return: the actual relation that matches the original relation.
         """
 
         for actual_relation in actual_relations:
-            if SqliteEngine._is_same_relation_name(orig_relation, actual_relation) \
-                    and orig_relation.has_same_terms_and_types(actual_relation):
+            if (SqliteEngine._is_same_relation_name(orig_relation, actual_relation)
+                    and orig_relation.has_same_terms_and_types(actual_relation)):
                 return actual_relation
 
         raise Exception(f"`relations` and `var_dict` do not match - can't find {orig_relation}")
@@ -776,8 +802,8 @@ class SqliteEngine(RgxlogEngineBase):
 
         name_without_prefix = actual_relation.relation_name[len(RESERVED_RELATION_PREFIX):]
 
-        # TODO@tom: it won't work if there is underscire inside the orig_relation. how to fix that? (SQLite doesn't
-        #           special characters)
+        # TODO@tom: it won't work if there is underscore inside the orig_relation. how to fix that? (SQLite doesn't
+        #           support special characters)
         return name_without_prefix.split(SEPARATOR)[0] == orig_relation.relation_name
 
     def operator_project(self, src_relation: Relation, project_vars: List[str]) -> Relation:

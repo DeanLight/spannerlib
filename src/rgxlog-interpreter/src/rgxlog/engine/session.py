@@ -11,7 +11,7 @@ import rgxlog
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import (GenericExecution, AddFact, DataTypes, RelationDeclaration, Query,
-                                     RELATION_COLUMN_PREFIX, FALSE_VALUE, TRUE_VALUE)
+                                     FALSE_VALUE, TRUE_VALUE, FREE_VAR_PREFIX)
 from rgxlog.engine.passes.expand_rule_nodes import ExpandRuleNodes
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
@@ -23,7 +23,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               ExecuteAssignments, AddStatementsToNetxTermGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import NetxTermGraph, ExecutionTermGraph
-from rgxlog.engine.utils.general_utils import rule_to_relation_name
+from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN
 from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
@@ -34,11 +34,6 @@ from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
 PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, JsonPathFull, Tokenize, SSplit, POS, Lemma, NER,
                        EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
 
-SPAN_GROUP1 = "start"
-SPAN_GROUP2 = "end"
-
-# as of now, we don't support negative/float numbers (for both spans and integers)
-SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
 
@@ -84,9 +79,8 @@ def _text_to_typed_data(line, relation_types):
             if isinstance(str_or_object, Span):
                 transformed_line.append(str_or_object)
             else:
-                span_match = re.match(SPAN_PATTERN, str_or_object)
-                start, end = span_match.group(SPAN_GROUP1), span_match.group(SPAN_GROUP2)
-                transformed_line.append(Span(span_start=start, span_end=end))
+                transformed_span = string_to_span(str_or_object)
+                transformed_line.append(transformed_span)
         elif rel_type == DataTypes.integer:
             transformed_line.append(int(str_or_object))
         else:
@@ -213,6 +207,16 @@ class Session:
         self._parse_graph = NetxTermGraph()
         self._execution = execution.SqliteEngine(debug)
         self._term_graph = ExecutionTermGraph()
+
+        # TODO@niv: a simple hack to make the stanford nlp methods more efficient:
+        #  add here:
+        #  `self.stanford_nlp = StanfordCoreNLP(NLP_DIR_PATH)`
+        #  add in __del__:```
+        #  try:
+        #   self.stanford_nlp.close()
+        #  except:
+        #   pass
+        #  ```
 
         self._pass_stack = [
             RemoveTokens,
@@ -452,7 +456,7 @@ class Session:
         relation_schema = symbol_table.get_relation_schema(relation_name)
         relation_arity = len(relation_schema)
         query = (f"?{relation_name}(" +
-                 ", ".join(f"{RELATION_COLUMN_PREFIX}{i}" for i in range(relation_arity)) + ")")
+                 ", ".join(f"{FREE_VAR_PREFIX}{i}" for i in range(relation_arity)) + ")")
         return query
 
     def export_relation_into_df(self, relation_name: str):
@@ -490,6 +494,7 @@ class Session:
         """
 
         self._term_graph.print_all_rules()
+
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
