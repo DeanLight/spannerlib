@@ -5,13 +5,13 @@ from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable
+from typing import Tuple, List, Union, Optional, Callable, Type
 
 import rgxlog
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import (GenericExecution, AddFact, DataTypes, RelationDeclaration, Query,
-                                     FALSE_VALUE, TRUE_VALUE, FREE_VAR_PREFIX)
+                                     FALSE_VALUE, TRUE_VALUE, FREE_VAR_PREFIX, ExecutionBase)
 from rgxlog.engine.passes.expand_rule_nodes import ExpandRuleNodes
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
@@ -205,8 +205,9 @@ class Session:
         self._symbol_table = SymbolTable()
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
         self._parse_graph = NetxTermGraph()
-        self._execution = execution.SqliteEngine(debug)
+        self._engine = execution.SqliteEngine(debug)
         self._term_graph = ExecutionTermGraph()
+        self._execution = GenericExecution
 
         # TODO@niv: a simple hack to make the stanford nlp methods more efficient:
         #  add here:
@@ -256,7 +257,6 @@ class Session:
         for curr_pass in pass_list:
             curr_pass_object = curr_pass(parse_graph=self._parse_graph,
                                          symbol_table=self._symbol_table,
-                                         rgxlog_engine=self._execution,
                                          term_graph=self._term_graph,
                                          debug=self.debug)
             new_tree = curr_pass_object.run_pass(tree=lark_tree)
@@ -289,10 +289,10 @@ class Session:
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            exec_result = GenericExecution(parse_graph=self._parse_graph,
-                                           symbol_table=self._symbol_table,
-                                           rgxlog_engine=self._execution,
-                                           term_graph=self._term_graph).execute()
+            exec_result = self._execution(parse_graph=self._parse_graph,
+                                          symbol_table=self._symbol_table,
+                                          rgxlog_engine=self._engine,
+                                          term_graph=self._term_graph).execute()
             if exec_result is not None:
                 exec_results.append(exec_result)
                 if print_results:
@@ -311,10 +311,30 @@ class Session:
         """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
+    def set_execution(self, execution_class: Type) -> None:
+        """
+        Sets the execution class of the engine.
+
+        @raise Exception: if execution class doesn't inherit from ExecutionBase.
+        @param execution_class: the execution class.
+        """
+        if not issubclass(execution_class, ExecutionBase):
+            raise Exception("Execution class must inherit from ExecutionBase.")
+
+        self._execution = execution_class
+
+    def get_execution_class(self) -> str:
+        """
+        @return: the execution class name.
+        """
+
+        return self._execution.__name__
+
     def get_pass_stack(self) -> List[str]:
         """
         @return: the current pass stack
         """
+
         return [pass_.__name__ for pass_ in self._pass_stack]
 
     def set_pass_stack(self, user_stack: List[GenericPass]):
@@ -341,7 +361,7 @@ class Session:
         @param relation_name: the name of the relation ot remove.
         """
         self._symbol_table.remove_rule_relation(relation_name)
-        self._execution.remove_table(relation_name)
+        self._engine.remove_table(relation_name)
 
     def remove_rule(self, rule: str):
         """
@@ -364,7 +384,7 @@ class Session:
         if rule_head is None:
             self._term_graph = ExecutionTermGraph()
             relations_names = self._symbol_table.remove_all_rule_relations()
-            self._execution.remove_tables(relations_names)
+            self._engine.remove_tables(relations_names)
         else:
             self._term_graph.remove_rules_with_head(rule_head)
             self._remove_rule_relation_from_symbols_and_engine(rule_head)
@@ -375,7 +395,7 @@ class Session:
 
     def _add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
         symbol_table = self._symbol_table
-        engine = self._execution
+        engine = self._engine
         # first make sure the types are legal, then we add them to the engine (to make sure
         #  we don't add them in case of an error)
         facts = []

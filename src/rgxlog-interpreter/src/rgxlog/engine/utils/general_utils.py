@@ -221,7 +221,6 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
     return free_var_to_type, conflicted_free_vars
 
 
-# TODO@tom: add params description
 def type_check_rule_free_vars_aux(term_list: List, type_list: List, correct_type_list: List,
                                   free_var_to_type: Dict, conflicted_free_vars: Set):
     """
@@ -230,14 +229,12 @@ def type_check_rule_free_vars_aux(term_list: List, type_list: List, correct_type
 
     @param term_list: the term list of a rule body relation.
     @param type_list: the types of the terms in term_list
-                      correct_type_list: a list of the types that the terms in the term list should have
-                      free_var_to_type: a mapping of free variables to their type (those that are currently known)
-                      this function updates this mapping if it finds new free variables in term_list
-                      conflicted_free_vars: a set of the free variables that are found to have conflicting types
-                      this function adds conflicting free variables that it finds to this set.
-    @param correct_type_list:
-    @param free_var_to_type:
-    @param conflicted_free_vars:
+    @param correct_type_list: a list of the types that the terms in the term list should have
+    @param free_var_to_type: a mapping of free variables to their type (those that are currently known)
+                             this function updates this mapping if it finds new free variables in term_list
+    @param conflicted_free_vars: a set of the free variables that are found to have conflicting types
+                                 this function adds conflicting free variables that it finds to this set.
+
     """
 
     if len(term_list) != len(type_list) or len(term_list) != len(correct_type_list):

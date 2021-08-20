@@ -199,7 +199,6 @@ class AddRuleToTermGraph:
         if len(free_vars) != len(term_list) or len(term_list) != len(set(term_list)):
             # create select node and connect relation branch to it
             select_info = relation.get_select_cols_values_and_types()
-            # TODO@tom: change value to relation
             select_node_id = self.term_graph.add_term(type="select", value=select_info)
             self.add_node(select_node_id)
             self.term_graph.add_edge(join_node_id, select_node_id)
@@ -262,10 +261,9 @@ class ExpandRuleNodes(GenericPass):
     """
 
     def __init__(self, parse_graph: NetxTermGraph, symbol_table: SymbolTableBase,
-                 rgxlog_engine: RgxlogEngineBase, term_graph: ExecutionTermGraph, debug: int):
+                 term_graph: ExecutionTermGraph, debug: bool):
         self.parse_graph = parse_graph
         self.symbol_table = symbol_table
-        self.engine = rgxlog_engine
         self.term_graph = term_graph
         self.debug = debug
 
@@ -275,6 +273,7 @@ class ExpandRuleNodes(GenericPass):
 
         @return: a list of rules to expand.
         """
+
         term_ids = self.parse_graph.post_order_dfs()
         rule_nodes: List[Rule] = list()
 
