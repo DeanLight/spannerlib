@@ -321,3 +321,17 @@ def test_clean_xml():
            ?clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)"""
 
     run_test(query, expected_result)
+
+
+def test_quote():
+    expected_result = ("""printing results for query 'cool_quote(A, S, D, F, G, H, J, K, L, P)':
+                       A |            S            |   D |   F |   G |   H |   J |   K |     L     |     P
+                    -----+-------------------------+-----+-----+-----+-----+-----+-----+-----------+-----------
+                       0 | "I'm going to Hawaii.\" |  62 |  85 |  15 |  23 |   1 |   2 | Joe Smith | Joe Smith
+   """)
+
+    query = """sentence = "In the summer Joe Smith decided to go on vacation.  He said, \\"I'm going to Hawaii.\\"  That July, vacationer Joe went to Hawaii."
+           cool_quote(A,S,D,F,G,H,J,K,L,P) <- Quote(sentence) -> (A,S,D,F,G,H,J,K,L,P)
+           ?cool_quote(A,S,D,F,G,H,J,K,L,P)"""
+
+    run_test(query, expected_result)

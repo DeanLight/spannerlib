@@ -119,9 +119,9 @@ class CheckReservedRelationNames(InterpreterPass):
     @assert_expected_node_structure
     def relation_name(self, relation_name_node: LarkNode):
         relation_name = relation_name_node.children[0]
-        if relation_name.startswith(RESERVED_RELATION_PREFIX):
+        if RESERVED_RELATION_PREFIX in relation_name:
             raise Exception(f'encountered relation name: {relation_name}. '
-                            f'names starting with {RESERVED_RELATION_PREFIX} are reserved')
+                            f'names containing {RESERVED_RELATION_PREFIX} are reserved')
 
 
 class FixStrings(VisitorRecursivePass):

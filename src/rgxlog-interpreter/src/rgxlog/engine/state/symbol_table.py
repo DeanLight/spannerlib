@@ -3,8 +3,9 @@ this module contains the implementations of symbol tables
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Dict, Set
+from typing import Iterable, Dict, Set, List
 
+from rgxlog.engine.datatypes.ast_node_types import peel_list, peel_token
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 
 
@@ -248,9 +249,10 @@ class SymbolTable(SymbolTableBase):
     def contains_variable(self, var_name):
         return var_name in self._var_to_type
 
-    def add_relation_schema(self, relation_name, schema, is_rule: bool):
-        # TODO@niv: maybe remove all Tokens here?
+    def add_relation_schema(self, relation_name, schema: List, is_rule: bool):
         # rule can be defined multiple times with same head (unlike relation)
+        schema = peel_list(schema)
+        relation_name = peel_token(relation_name)
         if is_rule:
             err_msg = f'relation "{relation_name}" already has a different schema'
             # if the rule is already defined the current schema must be equal to the rule's schema
@@ -308,7 +310,6 @@ class SymbolTable(SymbolTableBase):
         self._registered_ie_functions = dict()
 
     def print_registered_ie_functions(self):
-        # TODO@niv: add docstring for every default function
         for ie_function_name, ie_function_obj in self._registered_ie_functions.items():
             print(f'{ie_function_name}\n{ie_function_obj.get_meta_data}\n{ie_function_obj}\n'
                   f'{ie_function_obj.ie_function_def.__doc__}\n\n')
