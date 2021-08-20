@@ -37,3 +37,26 @@ def test_recursive():
         '''
 
     run_test(query, expected_result)
+
+
+def test_mutually_recursive_basic():
+    expected_result = """printing results for query 'A(X)':
+        X
+        -----
+        1
+        2
+        3
+    """
+    query = """
+        new C(int)
+        C(1)
+        C(2)
+        C(3)
+        
+        B(X) <- C(X)
+        A(X) <- B(X)
+        B(X) <- A(X)
+        
+        ?A(X)
+        """
+    run_test(query, expected_result)

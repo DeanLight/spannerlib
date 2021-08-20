@@ -511,7 +511,6 @@ if __name__ == "__main__":
         B(X) <- A(X)
         
         ?A(X)
-        ?B(X)
         """
 
     my_session.run_query(query)
