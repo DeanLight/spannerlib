@@ -63,6 +63,9 @@ def _download_and_install_rust_and_regex():
     if errcode:
         raise IOError(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
 
+    # TODO why do you have a print here
+    # the installation messages should be warnings too since they are not standard control flow and cause unexpected delay for the user
+    # additionally, the default is warning level and currently the install only shows the warning in the notebook
     logging.warning(f"{PACKAGE_NAME} was not found on your system")
     logging.info(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
     print("\nstarting installation")
