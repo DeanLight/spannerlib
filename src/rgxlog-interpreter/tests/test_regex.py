@@ -50,8 +50,9 @@ def test_rust_regex_reuse_function():
 
 
 def test_rust_regex_groups():
-    # TODO@niv: @dean, how does the user know what order to expect, regarding the capture groups?
+    # @niv: @dean, how does the user know what order to expect, regarding the capture groups?
     # @response, when introducing this default ie function, you should tell him with some examples
+    # TODO@niv: add example for the order in the introduction
     expected_result = """printing results for query 'group_string_rel(X, Y, Z)':
           X  |  Y  |  Z
         -----+-----+-----

@@ -462,9 +462,6 @@ class SqliteEngine(RgxlogEngineBase):
                                   queried from it.
         @return: a normal relation that contains all of the resulting tuples in the rgxlog engine.
         """
-        # TODO@niv: right now the outputs are not bound, e.g. a(X) <- b(X,Y), c(X)->(Y) is the same as a(X) <- b(X,Y),
-        #  because c's output(Y) is not bound to its input(X). understand if this is ok (wait for dean)
-
         ie_relation_name = ie_relation.relation_name
 
         # create the output relation for the ie function, and also declare it inside SQL
@@ -514,15 +511,13 @@ class SqliteEngine(RgxlogEngineBase):
                     ie_output = [ie_output]
                 else:
                     ie_output = list(ie_output)
+                    # the user is allowed to represent a span in an ie output as a tuple of length 2
+                    # convert said tuples to spans
+                    ie_output = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
+                                 else term for term in ie_output]
 
                 # assert the ie output is properly typed
                 self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)
-
-                # the user is allowed to represent a span in an ie output as a tuple of length 2
-                # convert said tuples to spans
-                ie_output = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
-                             else term
-                             for term in ie_output]
 
                 # add the output as a fact to the output relation
                 # notice - repetitions are ignored here (results are in a set)
@@ -575,7 +570,7 @@ class SqliteEngine(RgxlogEngineBase):
                 output_type = DataTypes.integer
             elif isinstance(output_term, str):
                 output_type = DataTypes.string
-            elif (isinstance(output_term, tuple) and len(output_term) == 2) or isinstance(output_term, Span):
+            elif isinstance(output_term, Span):
                 # allow the user to return a span as either a tuple of length 2 or a datatypes.Span instance
                 output_type = DataTypes.span
             else:
@@ -725,7 +720,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         # iterate over the free_vars and do 2 things:
         for i, free_var in enumerate(joined_relation_terms):
-            free_var_pairs: List[Tuple[str, int]] = var_dict[free_var]
+            free_var_pairs: List[Tuple[Union[Relation, IERelation], int]] = var_dict[free_var]
             first_pair, other_pairs = free_var_pairs[0], free_var_pairs[1:]
 
             if i > 0:
@@ -1069,6 +1064,7 @@ class GenericExecution(ExecutionBase):
 
         def __init__(self, relation: str):
             self.relation = relation
+            self.visited_nodes: Optional[set] = None
             self.mutually_recursive = self.term_graph.get_mutually_recursive_relations(relation)
 
         def get_relation_node(self, relation: str) -> int:
@@ -1085,7 +1081,7 @@ class GenericExecution(ExecutionBase):
             @param to_reset: if set to True we reset the nodes after the computation.
             """
 
-            # cleat all the mutually recursive tables.
+            # clear all the mutually recursive tables.
             self.rgxlog_engine.clear_tables(self.mutually_recursive)
 
             fixed_point = False
@@ -1143,7 +1139,7 @@ class GenericExecution(ExecutionBase):
 
             @param node_id: the current node.
             """
-            if self.stop_dfs(node_id):
+            if self.is_stop_dfs(node_id):
                 return
 
             self.visited_nodes.add(node_id)
@@ -1153,7 +1149,7 @@ class GenericExecution(ExecutionBase):
 
             self.compute_node(node_id)
 
-        def stop_dfs(self, node_id: int) -> bool:
+        def is_stop_dfs(self, node_id: int) -> bool:
             """
             Catches the cases of rule rel.
 
@@ -1178,7 +1174,7 @@ class GenericExecution(ExecutionBase):
                 GenericExecution.ComputeRule.compute_independent_rule(rule_rel.relation_name)
                 return True
 
-            # if rule rel is the rule we currently computing continue the dfs
+            # if rule rel is the rule we're currently computing - continue the dfs
             if rule_rel.relation_name == self.relation:
                 return False
 
@@ -1252,7 +1248,6 @@ class GenericExecution(ExecutionBase):
             # TODO@niv: @tom, i think `join_info` is redundant here,
             #  since we get it from the children which are passed anyways
 
-            # TODO@niv: i have a bug here where `JOIN ON {ie_rel}` looks at the wrong table (c instead of __rgx...)
             join_info = term_attrs['value']
             join_rel = self.rgxlog_engine.operator_join(self.get_children_relations(node_id), join_info)
             self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)

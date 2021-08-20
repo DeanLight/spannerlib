@@ -352,7 +352,7 @@ TrueCase = dict(ie_function=truecase_wrapper,
 # ********************************************************************************************************************
 
 # TODO@niv: @dean
-# I don't understand the schema (list of dicts with values of list)
+#  @tom: I don't understand the schema (list of dicts with values of list)
 def udfeats_wrapper(sentence: str):
     with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
         for token in core_nlp_engine.udfeats(sentence):

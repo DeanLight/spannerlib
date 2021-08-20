@@ -84,6 +84,7 @@ def test_basic_queries():
 
     run_test(query2, expected_result2, test_session=session)
 
+
 def test_json_path():
     expected_result = """printing results for query 'simple_1(X)':
            X
