@@ -14,6 +14,11 @@ def test_range_int_no_tuple():
                         "in_rel": yield_range_int_no_tuple_in_types,
                         "out_rel": yield_range_int_no_tuple_out_types}
 
+    query = """
+        test_range_int_no_tuple(X) <- yield_range_int_no_tuple(5) -> (X)
+        ?test_range_int_no_tuple(X)
+        """
+
     expected_result = """printing results for query 'test_range_int_no_tuple(X)':
                             X
                             -----
@@ -22,11 +27,6 @@ def test_range_int_no_tuple():
                             2
                             1
                             0"""
-
-    query = """
-    test_range_int_no_tuple(X) <- yield_range_int_no_tuple(5) -> (X)
-    ?test_range_int_no_tuple(X)
-    """
 
     run_test(query, expected_result, functions_to_import=[yield_range_dict])
 
@@ -43,6 +43,11 @@ def test_range_span_no_tuple():
                              "in_rel": yield_range_span_no_tuple_in_types,
                              "out_rel": yield_range_span_no_tuple_out_types}
 
+    query = """
+        test_range_span_no_tuple(X) <- yield_range_span_no_tuple(5) -> (X)
+        ?test_range_span_no_tuple(X)
+        """
+
     expected_result = """printing results for query 'test_range_span_no_tuple(X)':
                            X
                         --------
@@ -51,11 +56,6 @@ def test_range_span_no_tuple():
                          [2, 2)
                          [1, 1)
                          [0, 0)"""
-
-    query = """
-    test_range_span_no_tuple(X) <- yield_range_span_no_tuple(5) -> (X)
-    ?test_range_span_no_tuple(X)
-    """
 
     run_test(query, expected_result, functions_to_import=[yield_range_span_dict])
 
@@ -72,6 +72,11 @@ def test_range_str_no_tuple():
                             "in_rel": yield_range_str_no_tuple_in_types,
                             "out_rel": yield_range_str_no_tuple_out_types}
 
+    query = """
+        test_range_str_no_tuple(X) <- yield_range_str_no_tuple(5) -> (X)
+        ?test_range_str_no_tuple(X)
+        """
+
     expected_result = """printing results for query 'test_range_str_no_tuple(X)':
                             X
                         ---------
@@ -80,11 +85,6 @@ def test_range_str_no_tuple():
                          string2
                          string1
                          string0"""
-
-    query = """
-    test_range_str_no_tuple(X) <- yield_range_str_no_tuple(5) -> (X)
-    ?test_range_str_no_tuple(X)
-    """
 
     run_test(query, expected_result, functions_to_import=[yield_range_str_dict])
 
@@ -106,6 +106,11 @@ def test_range_int_with_tuple():
                         "in_rel": yield_range_int_with_tuple_in_types,
                         "out_rel": yield_range_int_with_tuple_out_types}
 
+    query = """
+        test_range_int_with_tuple(X) <- yield_range_int_with_tuple(5) -> (X)
+        ?test_range_int_with_tuple(X)
+        """
+
     expected_result = """printing results for query 'test_range_int_with_tuple(X)':
                             X
                             -----
@@ -114,10 +119,5 @@ def test_range_int_with_tuple():
                             2
                             1
                             0"""
-
-    query = """
-    test_range_int_with_tuple(X) <- yield_range_int_with_tuple(5) -> (X)
-    ?test_range_int_with_tuple(X)
-    """
 
     run_test(query, expected_result, functions_to_import=[yield_range_dict])

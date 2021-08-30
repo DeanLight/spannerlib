@@ -4,6 +4,12 @@ from tests.utils import run_test
 
 
 def test_tokenize():
+    query = """
+                    sentence = "Hello world. Hello world again."
+                    tokens(X, Y) <- Tokenize(sentence) -> (X, Y)
+                    ?tokens(Token, Span)
+                """
+
     expected_result = """printing results for query 'tokens(Token, Span)':
   Token  |   Span
 ---------+----------
@@ -16,16 +22,16 @@ def test_tokenize():
   Hello  |  [0, 5)
 """
 
-    query = """
-                sentence = "Hello world. Hello world again."
-                tokens(X, Y) <- Tokenize(sentence) -> (X, Y)
-                ?tokens(Token, Span)
-            """
-
     run_test(query, expected_result)
 
 
 def test_ssplit():
+    query = """
+                sentence = "Hello world. Hello world again."
+                sentences(X) <- SSplit(sentence) -> (X)
+                ?sentences(Sentences)
+                """
+
     expected_result = """printing results for query 'sentences(Sentences)':
                           Sentences
                     ---------------------
@@ -33,16 +39,16 @@ def test_ssplit():
                         Hello world .
                     """
 
-    query = """
-            sentence = "Hello world. Hello world again."
-            sentences(X) <- SSplit(sentence) -> (X)
-            ?sentences(Sentences)
-            """
-
     run_test(query, expected_result)
 
 
 def test_pos():
+    query = """
+                sentence = "Marie was born in Paris."
+                pos(X, Y, Z) <- POS(sentence) -> (X, Y, Z)
+                ?pos(Token, POS, Span)
+            """
+
     expected_result = """printing results for query 'pos(Token, POS, Span)':
                       Token  |  POS  |   Span
                     ---------+-------+----------
@@ -54,17 +60,16 @@ def test_pos():
                       Marie  |  NNP  |  [0, 5)
                     """
 
-    query = """
-            sentence = "Marie was born in Paris."
-            pos(X, Y, Z) <- POS(sentence) -> (X, Y, Z)
-            ?pos(Token, POS, Span)
-        """
-
     run_test(query, expected_result)
 
 
 def test_lemma():
-    from rgxlog.stdlib.nlp import Lemma
+    query = """
+                sentence = "I've been living a lie, there's nothing inside."
+                lemma(X, Y, Z) <- Lemma(sentence) -> (X, Y, Z)
+                ?lemma(Token, Lemma, Span)
+                 """
+
     expected_result = """printing results for query 'lemma(Token, Lemma, Span)':
                       Token  |  Lemma  |   Span
                     ---------+---------+----------
@@ -82,17 +87,16 @@ def test_lemma():
                         I    |    I    |  [0, 1)
                     """
 
-    query = """
-            sentence = "I've been living a lie, there's nothing inside."
-            lemma(X, Y, Z) <- Lemma(sentence) -> (X, Y, Z)
-            ?lemma(Token, Lemma, Span)
-             """
-
-    run_test(query, expected_result, [Lemma])
+    run_test(query, expected_result)
 
 
 @pytest.mark.long
 def test_ner():
+    query = ("""sentence = "While in France, Christine Lagarde discussed short-term stimulus """
+             """efforts in a recent interview with the Wall Street Journal."
+            ner(X, Y, Z) <- NER(sentence) -> (X, Y, Z)
+            ?ner(Token, NER, Span)""")
+
     expected_result = """printing results for query 'ner(Token, NER, Span)':
                        Token   |     NER      |    Span
                     -----------+--------------+------------
@@ -104,16 +108,16 @@ def test_ner():
                       France   |   COUNTRY    |  [9, 15)
                     """
 
-    query = ("""sentence = "While in France, Christine Lagarde discussed short-term stimulus """
-             """efforts in a recent interview with the Wall Street Journal."
-            ner(X, Y, Z) <- NER(sentence) -> (X, Y, Z)
-            ?ner(Token, NER, Span)""")
-
     run_test(query, expected_result)
 
 
 @pytest.mark.long
 def test_entity_mentions():
+    query = """sentence = "New York Times newspaper is distributed in California." 
+            em(X, Y, Z, W, A, B, C, D, E) <- EntityMentions(sentence) -> (X, Y, Z, W, A, B, C, D, E) 
+            ?em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text, \
+            CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences) """
+
     expected_result = ("""printing results for query 'em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text,"""
                        """ CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences)':
                        DocTokenBegin |   DocTokenEnd |   TokenBegin |   TokenEnd |      Text      |   """
@@ -126,16 +130,14 @@ def test_entity_mentions():
                        """         0 |                   14 |   ORGANIZATION    | {'ORGANIZATION': 0.98456891831803}
                     """)
 
-    query = """sentence = "New York Times newspaper is distributed in California." 
-        em(X, Y, Z, W, A, B, C, D, E) <- EntityMentions(sentence) -> (X, Y, Z, W, A, B, C, D, E) 
-        ?em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text, \
-        CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences) """
-
     run_test(query, expected_result)
 
 
 def test_parse():
-    from rgxlog.stdlib.nlp import Parse
+    query = """sentence = "the quick brown fox jumps over the lazy dog"
+           parse(X) <- Parse(sentence) -> (X)
+           ?parse(X)"""
+
     expected_result = ("""printing results for query 'parse(X)':
                                                                                                     X
                     ----------------------------------------------------------------------------------------"""
@@ -143,15 +145,15 @@ def test_parse():
                      (ROOT<nl>  (S<nl>    (NP (DT the) (JJ quick) (JJ brown) (NN fox))<nl>    (VP (VBZ jumps)<nl>"""
                        """      (PP (IN over)<nl>        (NP (DT the) (JJ lazy) (NN dog))))))""")
 
-    query = """sentence = "the quick brown fox jumps over the lazy dog"
-        parse(X) <- Parse(sentence) -> (X)
-        ?parse(X)"""
-
-    run_test(query, expected_result, [Parse])
+    run_test(query, expected_result)
 
 
 @pytest.mark.long
 def test_depparse():
+    query = """sentence = "the quick brown fox jumps over the lazy dog"
+                depparse(X, Y, Z, W, U) <- DepParse(sentence) -> (X, Y, Z, W, U)
+                ?depparse(Dep, Governor, GovernorGloss, Dependent, DependentGloss)"""
+
     expected_result = """printing results for query 'depparse(Dep, Governor, GovernorGloss, Dependent, DependentGloss)':
                           Dep  |   Governor |  GovernorGloss  |   Dependent |  DependentGloss
                         -------+------------+-----------------+-------------+------------------
@@ -166,15 +168,18 @@ def test_depparse():
                          ROOT  |          0 |      ROOT       |           5 |      jumps
                          """
 
-    query = """sentence = "the quick brown fox jumps over the lazy dog"
-            depparse(X, Y, Z, W, U) <- DepParse(sentence) -> (X, Y, Z, W, U)
-            ?depparse(Dep, Governor, GovernorGloss, Dependent, DependentGloss)"""
-
     run_test(query, expected_result)
 
 
 @pytest.mark.long
 def test_coref():
+    query = """sentence = "The atom is a basic unit of matter, \
+                    it consists of a dense central nucleus surrounded by a cloud of negatively charged electrons."
+            coref(X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12) <- \
+            Coref(sentence) -> (X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12)
+            ?coref(Id, Text, Type, Number, Gender, Animacy, StartIndex, \
+            EndIndex, HeadIndex, SentNum, Position, IsRepresentativeMention)"""
+
     expected_result = ("""printing results for query 'coref(Id, Text, Type, Number, Gender, Animacy, StartIndex,"""
                        """ EndIndex, HeadIndex, SentNum, Position, IsRepresentativeMention)':
                            Id |   Text   |    Type    |  Number  |  Gender  |  Animacy  |   StartIndex |   EndIndex"""
@@ -186,18 +191,15 @@ def test_coref():
                             0 | The atom |  NOMINAL   | SINGULAR | NEUTRAL  | INANIMATE |            1 |          3"""
                        """ |           2 |         1 |   [1, 1)   |           True""")
 
-    query = """sentence = "The atom is a basic unit of matter, \
-                it consists of a dense central nucleus surrounded by a cloud of negatively charged electrons."
-        coref(X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12) <- \
-        Coref(sentence) -> (X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12)
-        ?coref(Id, Text, Type, Number, Gender, Animacy, StartIndex, \
-        EndIndex, HeadIndex, SentNum, Position, IsRepresentativeMention)"""
-
     run_test(query, expected_result)
 
 
 @pytest.mark.long
 def test_openie():
+    query = """sentence = "the quick brown fox jumps over the lazy dog"
+               openie(X1, X2, X3, X4, X5, X6) <- OpenIE(sentence) -> (X1, X2, X3, X4, X5, X6)
+               ?openie(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
+
     expected_result = ("""printing results for query 'openie(Subject, SubjectSpan, Relation, RelationSpan,"""
                        """ Object, ObjectSpan)':
                              Subject     |  SubjectSpan  |  Relation  |  RelationSpan  |  Object  |  ObjectSpan
@@ -212,16 +214,16 @@ def test_openie():
                          quick brown fox |    [1, 4)     | jumps over |     [4, 6)     | lazy dog |    [7, 9)
                         """)
 
-    query = """sentence = "the quick brown fox jumps over the lazy dog"
-           openie(X1, X2, X3, X4, X5, X6) <- OpenIE(sentence) -> (X1, X2, X3, X4, X5, X6)
-           ?openie(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
-
     run_test(query, expected_result)
 
 
 # note: this test uses 3+ GB of RAM
 @pytest.mark.long
 def test_kbp():
+    query = """sentence = "Joe Smith was born in Oregon."
+              kbp(X1, X2, X3, X4, X5, X6) <- KBP(sentence) -> (X1, X2, X3, X4, X5, X6)
+              ?kbp(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
+
     expected_result = ("""printing results for query 'kbp(Subject, SubjectSpan, Relation, RelationSpan, Object,"""
                        """ ObjectSpan)':
                           Subject  |  SubjectSpan  |           Relation           |  RelationSpan  |  Object  |"""
@@ -231,14 +233,17 @@ def test_kbp():
                          Joe Smith |    [0, 2)     | per:stateorprovince_of_birth |    [-2, -1)    |  Oregon  |    """
                        """[5, 6)""")
 
-    query = """sentence = "Joe Smith was born in Oregon."
-           kbp(X1, X2, X3, X4, X5, X6) <- KBP(sentence) -> (X1, X2, X3, X4, X5, X6)
-           ?kbp(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
-
     run_test(query, expected_result)
 
 
 def test_sentiment():
+    query = """sentence = "But I do not want to go among mad people, Alice remarked.\
+                Oh, you can not help that, said the Cat: we are all mad here. I am mad. You are mad.\
+                How do you know I am mad? said Alice.\
+                You must be, said the Cat, or you would not have come here. This is awful, bad, disgusting"
+               sentiment(X, Y, Z) <- Sentiment(sentence) -> (X, Y, Z)
+               ?sentiment(SentimentValue, Sentiment, SentimentDistribution)"""
+
     expected_result = ("""printing results for query 'sentiment(SentimentValue, Sentiment, SentimentDistribution)':
                            SentimentValue |  Sentiment  |                                   SentimentDistribution
                         ------------------+-------------+-------------------------------------------------------"""
@@ -261,18 +266,15 @@ def test_sentiment():
                        """ 0.0811364260425, 0.00393484036195]
                         """)
 
-    query = """sentence = "But I do not want to go among mad people, Alice remarked.\
-            Oh, you can not help that, said the Cat: we are all mad here. I am mad. You are mad.\
-            How do you know I am mad? said Alice.\
-            You must be, said the Cat, or you would not have come here. This is awful, bad, disgusting"
-           sentiment(X, Y, Z) <- Sentiment(sentence) -> (X, Y, Z)
-           ?sentiment(SentimentValue, Sentiment, SentimentDistribution)"""
-
     run_test(query, expected_result)
 
 
 @pytest.mark.long
 def test_truecase():
+    query = """sentence = "lonzo ball talked about kobe bryant after the lakers game."
+              truecase(X, Y, Z, W) <- TrueCase(sentence) -> (X, Y, Z, W)
+              ?truecase(Token, Span, Truecase, TruecaseText)"""
+
     expected_result = """printing results for query 'truecase(Token, Span, Truecase, TruecaseText)':
                           Token  |   Span   |  Truecase  |  TruecaseText
                         ---------+----------+------------+----------------
@@ -289,14 +291,17 @@ def test_truecase():
                           lonzo  |  [0, 5)  | INIT_UPPER |     Lonzo
                         """
 
-    query = """sentence = "lonzo ball talked about kobe bryant after the lakers game."
-           truecase(X, Y, Z, W) <- TrueCase(sentence) -> (X, Y, Z, W)
-           ?truecase(Token, Span, Truecase, TruecaseText)"""
-
     run_test(query, expected_result)
 
 
 def test_clean_xml():
+    query = """sentence = "<xml><to>Tove</to>\
+       <from>Jani</Ffrom>\
+       <heading>Reminder</heading>\
+       <body>Don't forget me this weekend!</body></xml>"
+           clean_xml(X, Y, Z, W, U) <- CleanXML(sentence) -> (X, Y, Z, W, U)
+           ?clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)"""
+
     expected_result = ("""printing results for query 'clean_xml(Index, Word, OriginalText, CharacterOffsetBegin,"""
                        """ CharacterOffsetEnd)':
                            Index |   Word   |  OriginalText  |   CharacterOffsetBegin |   CharacterOffsetEnd
@@ -313,25 +318,19 @@ def test_clean_xml():
                               -1 |   Tove   |      Tove      |                      9 |                   13
                         """)
 
-    query = """sentence = "<xml><to>Tove</to>\
-       <from>Jani</Ffrom>\
-       <heading>Reminder</heading>\
-       <body>Don't forget me this weekend!</body></xml>"
-           clean_xml(X, Y, Z, W, U) <- CleanXML(sentence) -> (X, Y, Z, W, U)
-           ?clean_xml(Index, Word, OriginalText, CharacterOffsetBegin, CharacterOffsetEnd)"""
 
     run_test(query, expected_result)
 
 
 def test_quote():
+    query = """sentence = "In the summer Joe Smith decided to go on vacation.  He said, \\"I'm going to Hawaii.\\"  That July, vacationer Joe went to Hawaii."
+               cool_quote(A,S,D,F,G,H,J,K,L,P) <- Quote(sentence) -> (A,S,D,F,G,H,J,K,L,P)
+               ?cool_quote(A,S,D,F,G,H,J,K,L,P)"""
+
     expected_result = ("""printing results for query 'cool_quote(A, S, D, F, G, H, J, K, L, P)':
                        A |            S            |   D |   F |   G |   H |   J |   K |     L     |     P
                     -----+-------------------------+-----+-----+-----+-----+-----+-----+-----------+-----------
                        0 | "I'm going to Hawaii.\\" |  62 |  85 |  15 |  23 |   1 |   2 | Joe Smith | Joe Smith
    """)
-
-    query = """sentence = "In the summer Joe Smith decided to go on vacation.  He said, \\"I'm going to Hawaii.\\"  That July, vacationer Joe went to Hawaii."
-           cool_quote(A,S,D,F,G,H,J,K,L,P) <- Quote(sentence) -> (A,S,D,F,G,H,J,K,L,P)
-           ?cool_quote(A,S,D,F,G,H,J,K,L,P)"""
 
     run_test(query, expected_result)

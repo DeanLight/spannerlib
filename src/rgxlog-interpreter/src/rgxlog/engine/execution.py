@@ -1208,7 +1208,7 @@ class GenericExecution(ExecutionBase):
             """
 
             join_rel = self.rgxlog_engine.operator_join(self.get_children_relations(node_id))
-            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)
+            self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)
 
         def compute_project_node(self, node_id: int, term_attrs: Dict) -> None:
             """

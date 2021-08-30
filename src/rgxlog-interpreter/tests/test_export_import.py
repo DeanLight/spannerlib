@@ -71,6 +71,8 @@ def test_import_csv2(im_ex_session: Session):
 def test_import_df(im_ex_session: Session):
     df = DataFrame([["a", "[1,2)"], ["b", Span(6, 8)], ["c", "[2,10)"]], columns=["str", "span"])
 
+    query = "?df_rel(X,Y)"
+
     expected_result_string = """printing results for query 'df_rel(X, Y)':
           X  |    Y
         -----+---------
@@ -78,22 +80,22 @@ def test_import_df(im_ex_session: Session):
           b  | [6, 8)
           a  | [1, 2)"""
 
-    query = "?df_rel(X,Y)"
-
     im_ex_session.import_relation_from_df(df, "df_rel")
     run_test(query, expected_result_string, test_session=im_ex_session)
 
 
 def test_query_into_csv_basic(im_ex_session: Session):
+    query = """new basic_rel(str)
+            basic_rel("stardew")
+            basic_rel("valley")"""
+
     expected_rel = (
         "X\n"
         "valley\n"
         "stardew\n")
 
     # create new relation
-    query = """new basic_rel(str)
-        basic_rel("stardew")
-        basic_rel("valley")"""
+
     im_ex_session.run_query(query, print_results=False)
 
     # query into csv and compare with old file
@@ -108,16 +110,17 @@ def test_query_into_csv_basic(im_ex_session: Session):
 
 
 def test_query_into_csv_long(im_ex_session: Session):
+    query = """new longrel(str,span,int)
+            longrel("ano sora",[42, 69),24)
+            longrel("aoi",[1, 2),16)
+            longrel("aoi",[0, 3),8)"""
+
     expected_longrel = (
         "X;Y;Z\n"
         "aoi;[0, 3);8\n"
         "aoi;[1, 2);16\n"
         "ano sora;[42, 69);24\n")
 
-    query = """new longrel(str,span,int)
-        longrel("ano sora",[42, 69),24)
-        longrel("aoi",[1, 2),16)
-        longrel("aoi",[0, 3),8)"""
     im_ex_session.run_query(query, print_results=False)
 
     # query into csv and compare with old file
@@ -146,18 +149,18 @@ def test_query_into_df(im_ex_session: Session):
 
 
 def test_export_relation_into_csv(im_ex_session: Session):
+    relation_name = "hotdoge"
+    query = f"""
+            new {relation_name}(str, int)
+            {relation_name}("wow",42)
+            {relation_name}("such summer", 420)
+            {relation_name}("much heat", 42)"""
+
     expected_export_rel = f"""
         {FREE_VAR_PREFIX}0:{FREE_VAR_PREFIX}1
         wow:42
         such summer:420
         much heat:42"""
-
-    relation_name = "hotdoge"
-    query = f"""
-        new {relation_name}(str, int)
-        {relation_name}("wow",42)
-        {relation_name}("such summer", 420)
-        {relation_name}("much heat", 42)"""
 
     im_ex_session.run_query(query, print_results=False)
 
@@ -172,13 +175,14 @@ def test_export_relation_into_csv(im_ex_session: Session):
 
 def test_export_relation_into_df(im_ex_session: Session):
     column_names = [f"{FREE_VAR_PREFIX}0", f"{FREE_VAR_PREFIX}1"]
-    expected_df = DataFrame([[Span(1, 3), "aa"], [Span(2, 4), "bb"]], columns=column_names)
     relation_name = "export_df_rel"
 
     query = f"""
-    new {relation_name}(span, str)
-    {relation_name}([1,3), "aa")
-    {relation_name}([2,4), "bb")"""
+        new {relation_name}(span, str)
+        {relation_name}([1,3), "aa")
+        {relation_name}([2,4), "bb")"""
+
+    expected_df = DataFrame([[Span(1, 3), "aa"], [Span(2, 4), "bb"]], columns=column_names)
 
     im_ex_session.run_query(query)
     result_df = im_ex_session.export_relation_into_df(relation_name)

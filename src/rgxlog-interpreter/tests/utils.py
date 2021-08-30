@@ -8,10 +8,11 @@ from rgxlog.engine.session import queries_to_string, Session
 
 def is_equal_stripped_sorted_tables(result_text, expected_text):
     """
-    compares all lines in between two strings, ignoring the order of the lines
-    @param result_text: first string to compare, usually the output of a test
-    @param expected_text: second string to compare, usually the expected output of a test
-    @return: True if equal, else False
+    Compares all lines in between two strings, ignoring the order of the lines.
+
+    @param result_text: first string to compare, usually the output of a test.
+    @param expected_text: second string to compare, usually the expected output of a test.
+    @return: True if equal, else False.
     """
     result_text = sorted([line.strip() for line in result_text.splitlines() if line.strip()])
     expected_text = sorted([line.strip() for line in expected_text.splitlines() if line.strip()])
@@ -20,10 +21,11 @@ def is_equal_stripped_sorted_tables(result_text, expected_text):
 
 def is_equal_dataframes_ignore_order(result_df, expected_df):
     """
-    similarly to `is_equal_stripped_sorted_tables`, compares two dataframes while ignoring the order of the rows
-    @param result_df: first dataframe to compare
-    @param expected_df: second dataframe to compare
-    @return: True if equal, else False
+    Similarly to `is_equal_stripped_sorted_tables`, compares two dataframes while ignoring the order of the rows.
+
+    @param result_df: first dataframe to compare.
+    @param expected_df: second dataframe to compare.
+    @return: True if equal, else False.
     """
     result_df_sorted = DataFrame(np.sort(result_df.values, axis=0), index=result_df.index, columns=result_df.columns)
     expected_df_sorted = DataFrame(np.sort(expected_df.values, axis=0), index=expected_df.index,
@@ -34,6 +36,7 @@ def is_equal_dataframes_ignore_order(result_df, expected_df):
 def table_to_query_free_vars_tuples(table: str) -> Iterable:
     """
     Parses the string table into a nicer format.
+
     @param table: the string that represents a table.
     @return: the clean format (see comments above return statements).
     """
@@ -64,7 +67,6 @@ def split_to_tables(result: str) -> List[str]:
 
 def compare_strings(expected: str, output: str) -> bool:
     """
-
     @param expected: expected output.
     @param output: actual output.
     @return: True if output and expected represent the same result, False otherwise.
@@ -96,7 +98,7 @@ def run_test(query: str, expected_output: Optional[str] = None, functions_to_imp
     @param expected_output: the expected output of the query. if it has value of None, than we won't check the output.
     @param functions_to_import: an iterable of functions we want to import to the session.
     @param test_session: the session in which we run the query.
-    @return: the ssesion it created or got as an argument.
+    @return: the session it created or got as an argument.
     """
     # if session wasn't passed as an arg than we create it
     if test_session is None:
