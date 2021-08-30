@@ -1011,7 +1011,7 @@ class AddStatementsToNetxTermGraph(InterpreterPass):
                                name in the grammar. Will be set as the node's type attribute.
         @param statement_value: will be set as the value attribute of the node.
         """
-        new_statement_node = self.parse_graph.add_term(type=statement_type, value=statement_value)
+        new_statement_node = self.parse_graph.add_node(type=statement_type, value=statement_value)
         self.parse_graph.add_edge(self.parse_graph.get_root_id(), new_statement_node)
 
     @unravel_lark_node

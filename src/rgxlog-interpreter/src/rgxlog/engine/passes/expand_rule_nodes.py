@@ -6,7 +6,7 @@ from rgxlog.engine.datatypes.ast_node_types import Relation, IERelation, Rule
 from rgxlog.engine.execution import RgxlogEngineBase
 from rgxlog.engine.passes.lark_passes import GenericPass
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.state.term_graph import EvalState, ExecutionTermGraph, NetxTermGraph
+from rgxlog.engine.state.term_graph import EvalState, ComputationTermGraph, NetxGraph
 from rgxlog.engine.utils.general_utils import (get_input_free_var_names, get_output_free_var_names,
                                                get_free_var_to_relations_dict)
 
@@ -100,7 +100,7 @@ class AddRuleToTermGraph:
             connect to join of all bounding bodies
     """
 
-    def __init__(self, term_graph: ExecutionTermGraph, rule: Rule):
+    def __init__(self, term_graph: ComputationTermGraph, rule: Rule):
         """
         @note: term_graph is passed like a pointer, so it modifies.
 
@@ -147,7 +147,7 @@ class AddRuleToTermGraph:
         if not join_dict:
             return head_id
         # add join node
-        join_node_id = self.term_graph.add_term(type="join", value=join_dict)
+        join_node_id = self.term_graph.add_node(type="join", value=join_dict)
         self.add_node(join_node_id)
 
         self.term_graph.add_edge(head_id, join_node_id)
@@ -167,7 +167,7 @@ class AddRuleToTermGraph:
         rel_id = self.term_graph.get_relation_id(relation.relation_name)
         is_base_rel = rel_id == -1
 
-        get_rel_id = self.term_graph.add_term(type="get_rel", value=relation)
+        get_rel_id = self.term_graph.add_node(type="get_rel", value=relation)
         self.add_node(get_rel_id)
 
         # cache the branch
@@ -199,7 +199,7 @@ class AddRuleToTermGraph:
         if len(free_vars) != len(term_list) or len(term_list) != len(set(term_list)):
             # create select node and connect relation branch to it
             select_info = relation.get_select_cols_values_and_types()
-            select_node_id = self.term_graph.add_term(type="select", value=select_info)
+            select_node_id = self.term_graph.add_node(type="select", value=select_info)
             self.add_node(select_node_id)
             self.term_graph.add_edge(join_node_id, select_node_id)
             self.add_relation_to(relation, select_node_id)
@@ -217,7 +217,7 @@ class AddRuleToTermGraph:
         @param bounding_graph: the bounding graph of the ie relations.
         @return: the calc_node's id.
         """
-        calc_node_id = self.term_graph.add_term(type="calc", value=ie_relation)
+        calc_node_id = self.term_graph.add_node(type="calc", value=ie_relation)
         self.add_node(calc_node_id)
 
         # join all the ie relation's bounding relations. The bounding relations already exists in the graph!
@@ -239,7 +239,7 @@ class AddRuleToTermGraph:
 
         # make root
         union_id = self.term_graph.add_relation(head_relation)
-        project_id = self.term_graph.add_term(type="project", value=head_relation.term_list)
+        project_id = self.term_graph.add_node(type="project", value=head_relation.term_list)
         self.term_graph.add_edge(union_id, project_id)
         self.add_node(project_id)
 
@@ -260,8 +260,8 @@ class ExpandRuleNodes(GenericPass):
     This pass transforms each rule node into an execution tree and adds it to the term graph.
     """
 
-    def __init__(self, parse_graph: NetxTermGraph, symbol_table: SymbolTableBase,
-                 term_graph: ExecutionTermGraph, debug: bool):
+    def __init__(self, parse_graph: NetxGraph, symbol_table: SymbolTableBase,
+                 term_graph: ComputationTermGraph, debug: bool):
         self.parse_graph = parse_graph
         self.symbol_table = symbol_table
         self.term_graph = term_graph
@@ -278,7 +278,7 @@ class ExpandRuleNodes(GenericPass):
         rule_nodes: List[Rule] = list()
 
         for term_id in term_ids:
-            term_attrs = self.parse_graph.get_term_attributes(term_id)
+            term_attrs = self.parse_graph.get_node_attributes(term_id)
 
             # the term is not computed, get its type and compute it accordingly
             term_type = term_attrs['type']
@@ -287,7 +287,7 @@ class ExpandRuleNodes(GenericPass):
                 # make sure that the rule wasn't expanded before
                 if term_attrs['state'] == EvalState.NOT_COMPUTED:
                     rule_nodes.append(term_attrs['value'])
-                    self.parse_graph.set_term_attribute(term_id, 'state', EvalState.VISITED)
+                    self.parse_graph.set_node_attribute(term_id, 'state', EvalState.VISITED)
 
         return rule_nodes
 

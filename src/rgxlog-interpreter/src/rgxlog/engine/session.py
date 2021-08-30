@@ -22,7 +22,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxTermGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable
-from rgxlog.engine.state.term_graph import NetxTermGraph, ExecutionTermGraph
+from rgxlog.engine.state.term_graph import NetxGraph, ComputationTermGraph
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN
 from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
@@ -204,9 +204,9 @@ class Session:
         self.debug = debug
         self._symbol_table = SymbolTable()
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
-        self._parse_graph = NetxTermGraph()
+        self._parse_graph = NetxGraph()
         self._engine = execution.SqliteEngine(debug)
-        self._term_graph = ExecutionTermGraph()
+        self._term_graph = ComputationTermGraph()
         self._execution = GenericExecution
 
         # TODO@niv: a simple hack to make the stanford nlp methods more efficient:
@@ -332,7 +332,7 @@ class Session:
 
     def get_pass_stack(self) -> List[str]:
         """
-        @return: the current pass stack
+        @return: the current pass stack.
         """
 
         return [pass_.__name__ for pass_ in self._pass_stack]
@@ -382,7 +382,7 @@ class Session:
         """
 
         if rule_head is None:
-            self._term_graph = ExecutionTermGraph()
+            self._term_graph = ComputationTermGraph()
             relations_names = self._symbol_table.remove_all_rule_relations()
             self._engine.remove_tables(relations_names)
         else:

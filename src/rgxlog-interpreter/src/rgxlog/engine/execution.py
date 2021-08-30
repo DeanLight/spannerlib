@@ -16,7 +16,7 @@ from rgxlog.engine.datatypes.ast_node_types import (DataTypes, Relation, AddFact
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, ExecutionTermGraph
+from rgxlog.engine.state.term_graph import EvalState, GraphBase, ComputationTermGraph
 from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, string_to_span
 
 SQL_SELECT = 'SELECT DISTINCT'
@@ -961,7 +961,7 @@ class ExecutionBase(ABC):
     Abstraction for a class that gets a term graph and executes it
     """
 
-    def __init__(self, parse_graph: TermGraphBase, term_graph: ExecutionTermGraph,
+    def __init__(self, parse_graph: GraphBase, term_graph: ComputationTermGraph,
                  symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         """
         @param parse_graph: a term graph to execute.
@@ -994,7 +994,7 @@ class GenericExecution(ExecutionBase):
     GenericExecution.__execute_rule_aux().
     """
 
-    def __init__(self, parse_graph: TermGraphBase, term_graph: ExecutionTermGraph,
+    def __init__(self, parse_graph: GraphBase, term_graph: ComputationTermGraph,
                  symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         super().__init__(parse_graph, term_graph, symbol_table, rgxlog_engine)
         GenericExecution.ComputeRule.term_graph = term_graph
@@ -1050,7 +1050,7 @@ class GenericExecution(ExecutionBase):
                 raise ValueError("illegal term type in parse graph")
 
             # statement was executed, mark it as "computed"
-            parse_graph.set_term_attribute(term_id, "state", EvalState.COMPUTED)
+            parse_graph.set_node_attribute(term_id, "state", EvalState.COMPUTED)
 
         return exec_result
 
@@ -1058,7 +1058,7 @@ class GenericExecution(ExecutionBase):
         """
         this class traverses the term graph and computes a rule (along side with it's mutual recursive rules).
         """
-        term_graph: ExecutionTermGraph = None
+        term_graph: ComputationTermGraph = None
         rgxlog_engine: RgxlogEngineBase = None
         symbol_table: SymbolTableBase = None
 
@@ -1105,7 +1105,7 @@ class GenericExecution(ExecutionBase):
 
             rel_id = self.get_relation_node(self.relation)
             for term_id in self.term_graph.post_order_dfs_from(rel_id):
-                self.term_graph.set_term_attribute(term_id, "state", state)
+                self.term_graph.set_node_attribute(term_id, "state", state)
 
         def compute_iteration(self) -> bool:
             """
@@ -1179,7 +1179,7 @@ class GenericExecution(ExecutionBase):
                 return False
 
             # in case of dependent rule we use the current state of that rule
-            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, rule_rel)
+            self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, rule_rel)
             return True
 
         def compute_node(self, node_id: int) -> None:
@@ -1197,7 +1197,7 @@ class GenericExecution(ExecutionBase):
             term_type = term_attrs["type"]
 
             if term_type in "get_rel":
-                term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
+                term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
 
             elif term_type == "rule_rel":
                 self.compute_rule_rel_node(node_id, term_attrs)
@@ -1222,7 +1222,7 @@ class GenericExecution(ExecutionBase):
 
             # statement was executed, mark it as "computed" or "visited"
             compute_status = EvalState.COMPUTED if self.is_node_computed(node_id) else EvalState.VISITED
-            term_graph.set_term_attribute(node_id, 'state', compute_status)
+            term_graph.set_node_attribute(node_id, 'state', compute_status)
 
         def compute_rule_rel_node(self, node_id: int, term_attrs: Dict) -> None:
             """
@@ -1236,7 +1236,7 @@ class GenericExecution(ExecutionBase):
             rule_name = rule_rel.relation_name
             rel_in: Relation = self.get_child_relation(node_id)
             copy_rel = self.rgxlog_engine.operator_copy(rel_in, rule_name)
-            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, copy_rel)
+            self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, copy_rel)
 
         def compute_join_node(self, node_id: int, term_attrs: Dict) -> None:
             """
@@ -1250,7 +1250,7 @@ class GenericExecution(ExecutionBase):
 
             join_info = term_attrs['value']
             join_rel = self.rgxlog_engine.operator_join(self.get_children_relations(node_id), join_info)
-            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)
+            self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)
 
         def compute_project_node(self, node_id: int, term_attrs: Dict) -> None:
             """
@@ -1263,7 +1263,7 @@ class GenericExecution(ExecutionBase):
             output_rel: Relation = self.get_child_relation(node_id)
             project_info = term_attrs["value"]
             project_rel = self.rgxlog_engine.operator_project(output_rel, project_info)
-            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, project_rel)
+            self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, project_rel)
 
         def compute_calc_node(self, node_id: int, term_attrs: Dict) -> None:
             """
@@ -1281,7 +1281,7 @@ class GenericExecution(ExecutionBase):
             ie_rel_in: IERelation = term_attrs["value"]
             ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
             ie_rel_out = self.rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
-            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, ie_rel_out)
+            self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, ie_rel_out)
 
         def compute_union_node(self, node_id: int) -> None:
             """
@@ -1291,7 +1291,7 @@ class GenericExecution(ExecutionBase):
             """
 
             union_rel = self.rgxlog_engine.operator_union(self.get_children_relations(node_id))
-            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, union_rel)
+            self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, union_rel)
 
         def compute_select_node(self, node_id: int, term_attrs: Dict) -> None:
             """
@@ -1329,7 +1329,7 @@ class GenericExecution(ExecutionBase):
             @param term_id: the id of the node.
             @param relation: the output relation.
             """
-            self.term_graph.set_term_attribute(term_id, OUT_REL_ATTRIBUTE, relation)
+            self.term_graph.set_node_attribute(term_id, OUT_REL_ATTRIBUTE, relation)
 
         def get_children_relations(self, node_id: int) -> List[Relation]:
             """
