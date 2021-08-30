@@ -146,6 +146,7 @@ class AddRuleToTermGraph:
         join_dict = get_free_var_to_relations_dict(total_relations)
         if not join_dict:
             return head_id
+
         # add join node
         join_node_id = self.term_graph.add_node(type="join", value=join_dict)
         self.add_node(join_node_id)

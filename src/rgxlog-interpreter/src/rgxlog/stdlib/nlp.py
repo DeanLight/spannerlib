@@ -1,3 +1,7 @@
+"""
+this module supports nlp methods. for documentation:
+https://stanfordnlp.github.io/CoreNLP/index.html
+"""
 import json
 import logging
 from io import BytesIO
@@ -58,8 +62,10 @@ def _run_installation():
     if not _is_installed_java():
         logging.info(f"Installing JRE into {INSTALLATION_PATH}.")
         jdk.install('8', jre=True)
-        logging.info("installation completed.")
-        # TODO@tom: assert _is_installed_java()
+        if _is_installed_java():
+            logging.info("installation completed.")
+        else:
+            raise IOError("installation failed")
 
 
 _run_installation()
@@ -216,9 +222,8 @@ CleanXML = dict(ie_function=cleanxml_wrapper,
 def parse_wrapper(sentence):
     with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
         for res in core_nlp_engine.parse(sentence):
-            # TODO@niv: @tom, can we change this, since we don't support pydatalog?
-            # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
-            # notice - this yields a tuple
+            # note #1: this yields a tuple
+            # note #2: we replace the newlines with `<nl> because it is difficult to tell the results apart otherwise
             yield res.replace("\n", "<nl>").replace("\r", ""),
 
 
@@ -351,8 +356,7 @@ TrueCase = dict(ie_function=truecase_wrapper,
 
 # ********************************************************************************************************************
 
-# TODO@niv: @dean
-#  @tom: I don't understand the schema (list of dicts with values of list)
+# TODO: a present for the future generations
 def udfeats_wrapper(sentence: str):
     with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
         for token in core_nlp_engine.udfeats(sentence):

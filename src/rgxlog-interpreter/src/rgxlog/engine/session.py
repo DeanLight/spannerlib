@@ -157,14 +157,6 @@ def tabulate_result(result: Union[DataFrame, List]):
 
 
 def queries_to_string(query_results: List[Tuple[Query, List]]):
-    # @niv: maybe we should remove the "printing results" thing?
-    # @dean: what are the pros and cons? Did you consider user experience
-    #  I need more to go on to understand if we should do this
-    # TODO@niv: @dean this is why i've opened the issue - i think it's easier to discuss things there.
-    #  pros - that's how most interpreters work, since the users know the input that they insert.
-    #   also, this way we don't have to save it, which allows us to use cleaner structures.
-    #  cons - more difficult to debug, perhaps less convenient for beginners, especially when running multiple commands
-    #   in a single query
     """
     Takes in a list of results from the engine and converts them into a single string, which contains
     either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.
@@ -246,7 +238,6 @@ class Session:
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
 
     def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
-        # TODO@niv: @dean+@tom, shouldn't this method and term_graph be inside the engine?
         """
         Runs the passes in pass_list on tree, one after another.
         """
@@ -337,7 +328,7 @@ class Session:
 
         return [pass_.__name__ for pass_ in self._pass_stack]
 
-    def set_pass_stack(self, user_stack: List[GenericPass]):
+    def set_pass_stack(self, user_stack: List[Type]):
         """
         Sets a new pass stack instead of the current one.
 
@@ -519,18 +510,14 @@ class Session:
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
+    my_session.register(lambda x: [(x,)], "id", [DataTypes.integer], [DataTypes.integer])
 
     query = """
-        new C(int)
-        C(1)
-        C(2)
-        C(3)
-        
-        B(X) <- C(X)
-        A(X) <- B(X)
-        B(X) <- A(X)
-        
-        ?A(X)
+        new c(int)
+        new a(int, int)
+        b(X) <- a(X,5), c(X)
+        ?b(X)
         """
 
     my_session.run_query(query)
+    print("hi")

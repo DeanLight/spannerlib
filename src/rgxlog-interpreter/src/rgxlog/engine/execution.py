@@ -19,9 +19,10 @@ from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, GraphBase, ComputationTermGraph
 from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, string_to_span
 
-SQL_SELECT = 'SELECT DISTINCT'
 
+SQL_SELECT = 'SELECT DISTINCT'
 SQL_TABLE_OF_TABLES = 'sqlite_master'
+SQL_SEPARATOR = "_"
 
 VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
@@ -33,7 +34,6 @@ SELECT_PREFIX = "select"
 UNION_PREFIX = "union"
 
 RESERVED_RELATION_PREFIX = "__rgxlog__"
-SEPARATOR = "___"  # TODO@tom: find a good separator
 
 DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
 RELATION_COLUMN_PREFIX = "col"
@@ -233,9 +233,20 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    # TODO@tom: add docstring.
     @abstractmethod
-    def operator_join(self, relations: List[Relation], var_dict, prefix: str = "") -> Relation:
+    def operator_join(self, relations: List[Relation], prefix: str = "") -> Relation:
+        """
+        Performs a join between all of the relations in the relation list and saves the result to a new relation.
+        the results of the join are filtered so they only include columns in the relations that were defined by
+        a free variable term.
+        all of the relations in relation_list must be normal (not ie relations)
+
+        for an example and more details see RgxlogEngineBase.join_relations.
+
+        @param relations: a list of normal relations.
+        @param prefix: a prefix for the name of the joined relation.
+        @return: a new relation as described above.
+        """
         pass
 
     @abstractmethod
@@ -467,7 +478,7 @@ class SqliteEngine(RgxlogEngineBase):
         # create the output relation for the ie function, and also declare it inside SQL
         output_relation_arity = len(ie_relation.output_term_list)
         output_relation_name = self._create_unique_relation(output_relation_arity,
-                                                            prefix=f'{ie_relation_name}{SEPARATOR}output')
+                                                            prefix=f'{ie_relation_name}{SQL_SEPARATOR}output')
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         # define the ie input relation
@@ -640,7 +651,7 @@ class SqliteEngine(RgxlogEngineBase):
         new_type_list = src_relation.type_list
 
         new_relation_name = self._create_unique_relation(new_arity,
-                                                         prefix=f"{src_relation_name}{SEPARATOR}{SELECT_PREFIX}")
+                                                         prefix=f"{src_relation_name}{SQL_SEPARATOR}{SELECT_PREFIX}")
 
         selected_relation = Relation(new_relation_name, new_term_list, new_type_list)
 
@@ -675,17 +686,10 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command, sql_args)
         return selected_relation
 
-    def operator_join(self, relations: List[Relation], var_dict: Dict, prefix: str = "") -> Relation:
+    def operator_join(self, relations: List[Relation], prefix: str = "") -> Relation:
         """
-        Performs a join between all of the relations in the relation list and saves the result to a new relation.
-        the results of the join are filtered so they only include columns in the relations that were defined by
-        a free variable term.
-        all of the relations in relation_list must be normal (not ie relations)
         note: SQL's inner_join without `IN` is actually cross-join (product), so this covers product as well.
 
-        for an example and more details see RgxlogEngineBase.join_relations.
-
-        @param var_dict: a mapping of free variables. see `get_free_var_to_relations_dict`.
         @param relations: a list of normal relations.
         @param prefix: a prefix for the name of the joined relation.
         @return: a new relation as described above.
@@ -697,6 +701,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         # create a mapping between the relations and their temporary names for sql
         relation_sql_names = {relation: f"table{i}" for (i, relation) in enumerate(relations)}
+        var_dict = get_free_var_to_relations_dict(set(relations))
 
         # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
         free_var_sets = [get_output_free_var_names(relation) for relation in relations]
@@ -709,7 +714,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         # declare the joined relation in sql and get its name
         joined_relation_name = self._create_unique_relation(joined_relation_arity,
-                                                            prefix=f"{prefix}{SEPARATOR}{JOIN_PREFIX}")
+                                                            prefix=f"{prefix}{SQL_SEPARATOR}{JOIN_PREFIX}")
 
         # created a structured node of the joined relation
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
@@ -726,7 +731,6 @@ class SqliteEngine(RgxlogEngineBase):
             if i > 0:
                 sql_command += ", "
             relation_with_free_var, first_index = first_pair
-            relation_with_free_var = SqliteEngine._find_actual_relation(relation_with_free_var, relation_sql_names)
             name_of_relation_with_free_var = relation_sql_names[relation_with_free_var]
             new_col_name = self._get_col_name(i)
             first_col_name = self._get_col_name(first_index)
@@ -735,7 +739,6 @@ class SqliteEngine(RgxlogEngineBase):
             sql_command += f"{name_of_relation_with_free_var}.{first_col_name} AS {new_col_name}"
             # 2. create the comparison between all of them, using `ON`
             for (second_relation, second_index) in other_pairs:
-                second_relation = SqliteEngine._find_actual_relation(second_relation, relation_sql_names)
                 second_col_name = self._get_col_name(second_index)
                 name_of_second_relation = relation_sql_names[second_relation]
                 on_conditions_list.append(f"{name_of_relation_with_free_var}.{first_col_name}="
@@ -758,48 +761,6 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command)
 
         return joined_relation
-
-    @staticmethod
-    def _find_actual_relation(orig_relation: Union[Relation, IERelation],
-                              actual_relations: Iterable[Relation]) -> Relation:
-        """
-        Given an iterable of an actual relation (e.g. __rgxlog__C_select0(X, 5)) and an original relation (C(X, 5)),
-        finds the actual relation.
-
-        @raise Exception: if we can't find a matching relation.
-        @param orig_relation: the original relation.
-        @param actual_relations: an iterable of all actual relations during the computation.
-        @return: the actual relation that matches the original relation.
-        """
-
-        for actual_relation in actual_relations:
-            if (SqliteEngine._is_same_relation_name(orig_relation, actual_relation)
-                    and orig_relation.has_same_terms_and_types(actual_relation)):
-                return actual_relation
-
-        raise Exception(f"`relations` and `var_dict` do not match - can't find {orig_relation}")
-
-    @staticmethod
-    def _is_same_relation_name(orig_relation: Union[Relation, IERelation],
-                               actual_relation: Relation) -> bool:
-        """
-        Checks whether the relation have the same name.
-
-        @param orig_relation: "clean" relation
-        @param actual_relation: possibly "unclean" relation (begins with __rgxlog__)
-        @return: True if they have the same name, False otherwise.
-        """
-        if actual_relation.relation_name == orig_relation.relation_name:
-            return True
-
-        if not actual_relation.relation_name.startswith(RESERVED_RELATION_PREFIX):
-            return False
-
-        name_without_prefix = actual_relation.relation_name[len(RESERVED_RELATION_PREFIX):]
-
-        # TODO@tom: it won't work if there is underscore inside the orig_relation. how to fix that? (SQLite doesn't
-        #           support special characters)
-        return name_without_prefix.split(SEPARATOR)[0] == orig_relation.relation_name
 
     def operator_project(self, src_relation: Relation, project_vars: List[str]) -> Relation:
         """
@@ -891,7 +852,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         else:
             dest_rel_name = self._create_unique_relation(arity=len(src_rel.type_list),
-                                                         prefix=f"{src_rel_name}{SEPARATOR}{COPY_PREFIX}")
+                                                         prefix=f"{src_rel_name}{SQL_SEPARATOR}{COPY_PREFIX}")
 
         dest_rel = Relation(dest_rel_name, src_rel.term_list, src_rel.type_list)
 
@@ -1232,7 +1193,7 @@ class GenericExecution(ExecutionBase):
             @param term_attrs: the attributes of the node.
             """
 
-            rule_rel = term_attrs["value"]
+            rule_rel = term_attrs[VALUE_ATTRIBUTE]
             rule_name = rule_rel.relation_name
             rel_in: Relation = self.get_child_relation(node_id)
             copy_rel = self.rgxlog_engine.operator_copy(rel_in, rule_name)
@@ -1245,12 +1206,9 @@ class GenericExecution(ExecutionBase):
             @param node_id: the node.
             @param term_attrs: the attributes of the node.
             """
-            # TODO@niv: @tom, i think `join_info` is redundant here,
-            #  since we get it from the children which are passed anyways
 
-            join_info = term_attrs['value']
-            join_rel = self.rgxlog_engine.operator_join(self.get_children_relations(node_id), join_info)
-            self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)
+            join_rel = self.rgxlog_engine.operator_join(self.get_children_relations(node_id))
+            self.term_graph.set_term_attribute(node_id, OUT_REL_ATTRIBUTE, join_rel)
 
         def compute_project_node(self, node_id: int, term_attrs: Dict) -> None:
             """
@@ -1261,7 +1219,7 @@ class GenericExecution(ExecutionBase):
             """
 
             output_rel: Relation = self.get_child_relation(node_id)
-            project_info = term_attrs["value"]
+            project_info = term_attrs[VALUE_ATTRIBUTE]
             project_rel = self.rgxlog_engine.operator_project(output_rel, project_info)
             self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, project_rel)
 
@@ -1275,10 +1233,9 @@ class GenericExecution(ExecutionBase):
 
             children = self.get_children_relations(node_id)
             rel_in = children[0] if children else None
-            # TODO@niv: @tom, we shouldn't use "value" for everything, change this (e.g. "in_rel" here).
-            #  same for all the other ["value"]s.
-            #  also, use constants
-            ie_rel_in: IERelation = term_attrs["value"]
+            # note: we use the same `VALUE_ATTRIBUTE` keyword for different things to be able to print it easily
+            # when printing the tree
+            ie_rel_in: IERelation = term_attrs[VALUE_ATTRIBUTE]
             ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
             ie_rel_out = self.rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
             self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, ie_rel_out)
@@ -1302,7 +1259,7 @@ class GenericExecution(ExecutionBase):
             """
 
             output_rel = self.get_child_relation(node_id)
-            select_info = term_attrs["value"]
+            select_info = term_attrs[VALUE_ATTRIBUTE]
             select_rel = self.rgxlog_engine.operator_select(output_rel, select_info)
             self.set_output_relation(node_id, select_rel)
 
