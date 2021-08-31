@@ -12,7 +12,7 @@ from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import (GenericExecution, AddFact, DataTypes, RelationDeclaration, Query,
                                      FALSE_VALUE, TRUE_VALUE, FREE_VAR_PREFIX, ExecutionBase)
-from rgxlog.engine.passes.expand_rule_nodes import ExpandRuleNodes
+from rgxlog.engine.passes.expand_rule_nodes import AddRulesToComputationTermGraph
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
@@ -227,7 +227,7 @@ class Session:
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxTermGraph,
-            ExpandRuleNodes
+            AddRulesToComputationTermGraph
         ]
 
         grammar_file_path = os.path.dirname(rgxlog.grammar.__file__)

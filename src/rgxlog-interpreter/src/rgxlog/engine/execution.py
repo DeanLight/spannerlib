@@ -327,6 +327,19 @@ class SqliteEngine(RgxlogEngineBase):
         self.sql_conn = sqlite.connect(self.db_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
+    def run_sql(self, command, command_args=None) -> List:
+        if self.debug:
+            print(f"sql {command=}")
+            if command_args:
+                print(f"...with args: {command_args}")
+
+        if command_args:
+            self.sql_cursor.execute(command, command_args)
+        else:
+            self.sql_cursor.execute(command)
+
+        return self.sql_cursor.fetchall()
+
     def add_fact(self, fact: AddFact) -> None:
         """
         Add a row into an existing table.
@@ -893,19 +906,6 @@ class SqliteEngine(RgxlogEngineBase):
     @staticmethod
     def _get_free_variable_indexes(type_list) -> List[int]:
         return [i for i, term_type in enumerate(type_list) if (term_type is DataTypes.free_var_name)]
-
-    def run_sql(self, command, command_args=None) -> List:
-        if self.debug:
-            print(f"sql {command=}")
-            if command_args:
-                print(f"...with args: {command_args}")
-
-        if command_args:
-            self.sql_cursor.execute(command, command_args)
-        else:
-            self.sql_cursor.execute(command)
-
-        return self.sql_cursor.fetchall()
 
     def clear_table(self, table_name) -> None:
         sql_command = f"DELETE FROM {table_name}"

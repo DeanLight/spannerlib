@@ -411,7 +411,8 @@ class ComputationTermGraph(NetxGraph):
             return True
 
         # all the nodes are connected to global root
-        return len(list(self._graph.predecessors(node_id))) > 1
+        predecessors_number = len(list(self._graph.predecessors(node_id)))
+        return predecessors_number > 1
 
     def _get_all_rules_with_head(self, relation_name: str) -> List[str]:
         """
@@ -500,7 +501,7 @@ class ComputationTermGraph(NetxGraph):
         """
         relation_name = relation.relation_name
         if relation_name in self._relation_to_id:
-            return self.get_relation_id(relation_name, False)
+            return self.get_relation_id(relation_name, True)
 
         rel_id = self.add_node(type="rule_rel", value=relation)
         self.add_edge(self._root_id, rel_id)
@@ -508,17 +509,22 @@ class ComputationTermGraph(NetxGraph):
         self.add_edge(rel_id, union_id)
         self._relation_to_id[relation_name] = (rel_id, union_id)
 
-        return self.get_relation_id(relation_name, False)
+        return self.get_relation_id(relation_name, True)
 
-    def get_relation_id(self, relation: str, actual_node: bool = True) -> int:
+    def get_relation_id(self, relation: str, get_union_node: bool = False) -> int:
         """
         @param relation: the relation to look for.
-        @param actual_node: if true we return the relation node. otherwise we return it's union child node id.
+        @param get_union_node: if true we return the relation node. otherwise we return it's union child node id.
         """
-        ids = self._relation_to_id.get(relation, -1)
-        if ids == -1:
+        try:
+            rule_id, union_id = self._relation_to_id[relation]
+        except KeyError:
             return -1
-        return ids[0] if actual_node else ids[1]
+
+        if get_union_node:
+            return union_id
+        else:
+            return rule_id
 
     def add_dependencies(self, head_relation: Relation, body_relations: Set[Relation]) -> None:
         """@see documentation of add_dependencies in DependencyGraph"""

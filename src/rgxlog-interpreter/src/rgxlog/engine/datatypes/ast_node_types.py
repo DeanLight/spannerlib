@@ -250,14 +250,7 @@ class Rule:
         self.body_relation_type_list = body_relation_type_list
 
     def __str__(self):
-        # get the string of the head relation
-        head_relation_string = str(self.head_relation)
-        # get the string of the rule body
-        body_relation_strings_list = [str(relation) for relation in self.body_relation_list]
-        rule_body_string = ', '.join(body_relation_strings_list)
-        # create the string of the rule and return it
-        rule_string = f'{head_relation_string} <- {rule_body_string}'
-        return rule_string
+        return f"{self.head_relation} <- {', '.join(map(str, self.body_relation_list))}"
 
     def __repr__(self):
         return str(self)

@@ -320,7 +320,8 @@ class SymbolTable(SymbolTableBase):
 
     def remove_all_rule_relations(self):
         relations_names = self._rule_relations
-        self._relation_to_schema = dict(filter(lambda pair: pair[0] not in relations_names,
-                                               self._relation_to_schema.items()))
+
+        self._relation_to_schema = {relation: schema for relation, schema in self._relation_to_schema.items()
+                                    if relation not in relations_names}
         self._rule_relations = set()
         return relations_names
