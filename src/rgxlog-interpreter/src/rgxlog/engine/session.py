@@ -22,7 +22,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxTermGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable
-from rgxlog.engine.state.term_graph import NetxGraph, ComputationTermGraph
+from rgxlog.engine.state.term_graph import ComputationTermGraph, NetxStateGraph
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN
 from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
@@ -196,7 +196,7 @@ class Session:
         self.debug = debug
         self._symbol_table = SymbolTable()
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
-        self._parse_graph = NetxGraph()
+        self._parse_graph = NetxStateGraph()
         self._engine = execution.SqliteEngine(debug)
         self._term_graph = ComputationTermGraph()
         self._execution = GenericExecution
@@ -510,14 +510,14 @@ class Session:
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
-    my_session.register(lambda x: [(x,)], "id", [DataTypes.integer], [DataTypes.integer])
-
+    my_session.register(lambda x: [(x, )], "ID", [DataTypes.integer], [DataTypes.integer])
     query = """
-        new c(int)
-        new a(int, int)
-        b(X) <- a(X,5), c(X)
-        ?b(X)
+        new A(int, int)
+        new B(int, int)
+        C(X, Y) <- A(X, Y)
+        D(X, Y) <- C(X, Y)
+        D(X, Y) <- A(X, 1), B(X, Y), ID(X) -> (Y)
         """
 
     my_session.run_query(query)
-    print("hi")
+

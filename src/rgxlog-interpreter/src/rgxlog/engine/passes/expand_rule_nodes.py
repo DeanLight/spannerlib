@@ -12,7 +12,80 @@ from rgxlog.engine.utils.general_utils import (get_input_free_var_names, get_out
 
 class AddRulesToComputationTermGraph(GenericPass):
     """
-    This pass transforms each rule node into an execution tree and adds it to the term graph.
+    This pass transforms each rule node into an execution graph and adds it to the computation term graph.
+
+    The purpose of the computation graph is to store relationships about the following entities:
+        1. The rule head.
+        2. The body rule relations.
+        3. The body base relations and ie relations.
+        4. All the computation paths of the rule head.
+
+    Lets look on the following RGXLog program:
+        new A(int, int)
+        new B(int, int)
+        C(X, Y) <- A(X, Y)
+        D(X, Y) <- C(X, Y)
+        D(X, Y) <- A(X, 1), B(X, Y), ID(X) -> (Y)  # ID is some ie function
+
+    We will explain the meaning of the 4 entities w.r.t the rules of D:
+        1. The rule head is: D(X, Y)
+        2. The body rule relations are: C(X, Y) in the first rule (there are None in the second rule).
+        3. The base relations are: A(X, 1) and B(X, Y) in the second rule (there are None in the first rule).
+        4. The computation paths of the rule are the paths of first rule and second rule.
+
+    The structure of the computation term graph:
+
+        * Each rule relation has a node in the computation graph, we call this node 'rule_rel node'.
+          Every rule_rel node is connected to a global root.
+
+        * The rule_rel node is connected to a node we call 'union_node'.
+
+        * The union_node is connected to all the relation's computation paths.
+
+        * Each computation path starts with a node we call 'project_node' that projects the columns of the relation it
+          gets (the project_node is connected to the union_node).
+
+        * Under the project_node, there is a node we call 'join_node' that joins all the body relations of the rule.
+          There are specials cases when this node isn't used:
+            - there is only one relation in the rule's body.
+            - all the body relation don't have free variables.
+
+        * Each ie relation in the body of the rule is connected to the join node by a node we call 'calc_node'.
+          This node is connected to another join node that connects all the ie relation's bounding relations.
+
+        * Each rule relation in the body relation is connected to the join node by a node we call 'get_rel node'.
+          The get_rel node is connected to the corresponding rule root.
+
+        * Each base relation is connected to the join node.
+
+        * In case the is relation with same free var (e.g. A(X, X)) or relation with some constant value (e.g. A(1, x))
+          we use a node we call 'select_node' that deals with filtering tuples form the relation. The select node is
+          connected to the join node and the get_rel node is connected to the select node.
+
+    For the RGXLog program above, the computation term graph will be:
+        global root
+
+            rule_rel node (of C)
+                union node
+                    project node
+                        get_rel node (get A)  @note: there isn't join node since there is only one body relation.
+
+            rule_rel node (of D)
+                union node
+                    project node
+                        get_rel node (get C)  @note: there isn't join node since there is only one body relation.
+                            rule_rel node (of C)
+
+                    project node
+                        join node (join A, B and ID)
+                            get_rel node (get B)
+                            select_node (select from A)
+                                get_rel node (get A)
+                            calc node (of ID)
+                                join node (join A and B)
+                                    get_rel node (get B)         @note: this get_rel node is the same one from above.
+                                    select_node (select from A)  @note: this select node is the same one from above.
+                                        get_rel node (get A)
     """
 
     def __init__(self, parse_graph: NetxGraph, symbol_table: SymbolTableBase,
@@ -38,11 +111,11 @@ class AddRulesToComputationTermGraph(GenericPass):
             # the term is not computed, get its type and compute it accordingly
             term_type = term_attrs['type']
 
-            if term_type == "rule":
-                # make sure that the rule wasn't expanded before
-                if term_attrs['state'] == EvalState.NOT_COMPUTED:
-                    rule_nodes.append(term_attrs['value'])
-                    self.parse_graph.set_node_attribute(term_id, 'state', EvalState.VISITED)
+            # make sure that the rule wasn't expanded before
+            if term_type == "rule" and term_attrs['state'] == EvalState.NOT_COMPUTED:
+
+                rule_nodes.append(term_attrs['value'])
+                self.parse_graph.set_node_attribute(term_id, 'state', EvalState.VISITED)
 
         return rule_nodes
 
@@ -141,7 +214,7 @@ class AddRulesToComputationTermGraph(GenericPass):
         # stores the nodes that were added to to execution graph
         nodes = set()
 
-        def add_node(node_id: int) -> None:
+        def add_node(node_id) -> None:
             """
             Saves all the nodes that were added due to the rule.
 
@@ -149,8 +222,8 @@ class AddRulesToComputationTermGraph(GenericPass):
             """
             nodes.add(node_id)
 
-        def add_join_branch(head_id: int, joined_relations: Set[Union[Relation, IERelation]],
-                            future_ie_relations: Optional[Set[IERelation]] = None) -> int:
+        def add_join_branch(head_id, joined_relations: Set[Union[Relation, IERelation]],
+                            future_ie_relations: Optional[Set[IERelation]] = None):
             """
             Connects all the relations to a join node. Connects the join_node to head_id.
 
@@ -190,9 +263,6 @@ class AddRulesToComputationTermGraph(GenericPass):
             @param father_node_id: the node to which the relation will be connected.
             """
 
-            rel_id = self.term_graph.get_relation_id(relation.relation_name)
-            is_base_rel = rel_id == -1
-
             get_rel_id = self.term_graph.add_node(type="get_rel", value=relation)
             add_node(get_rel_id)
 
@@ -201,8 +271,8 @@ class AddRulesToComputationTermGraph(GenericPass):
             self.term_graph.add_edge(father_node_id, get_rel_id)
 
             # if relation is a rule relation we connect it to the root of the relation (rel_id)
-            if not is_base_rel:
-                self.term_graph.add_edge(get_rel_id, rel_id)
+            if self.term_graph.has_node(relation.relation_name):
+                self.term_graph.add_edge(get_rel_id, relation.relation_name)
 
         def add_relation_branch(relation: Union[Relation, IERelation], join_node_id_: int) -> None:
             """

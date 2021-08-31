@@ -19,7 +19,6 @@ from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, GraphBase, ComputationTermGraph
 from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, string_to_span
 
-
 SQL_SELECT = 'SELECT DISTINCT'
 SQL_TABLE_OF_TABLES = 'sqlite_master'
 SQL_SEPARATOR = "_"
@@ -1028,13 +1027,6 @@ class GenericExecution(ExecutionBase):
             self.visited_nodes: Optional[set] = None
             self.mutually_recursive = self.term_graph.get_mutually_recursive_relations(relation)
 
-        def get_relation_node(self, relation: str) -> int:
-            """
-            @param relation: a relation.
-            @return: the node that represents the relation.
-            """
-            return self.term_graph.get_relation_id(relation)
-
         def __call__(self, to_reset: bool = False) -> None:
             """
             Computes the rule (including the mutual recursive rules).
@@ -1064,8 +1056,7 @@ class GenericExecution(ExecutionBase):
             @param state: the state of the visited nodes.
             """
 
-            rel_id = self.get_relation_node(self.relation)
-            for term_id in self.term_graph.post_order_dfs_from(rel_id):
+            for term_id in self.term_graph.post_order_dfs_from(self.relation):
                 self.term_graph.set_node_attribute(term_id, "state", state)
 
         def compute_iteration(self) -> bool:
@@ -1079,7 +1070,7 @@ class GenericExecution(ExecutionBase):
             self.visited_nodes = set()
 
             initial_len = self.rgxlog_engine.get_table_len(self.relation)
-            self.compute_dfs(self.get_relation_node(self.relation))
+            self.compute_dfs(self.relation)
 
             return self.rgxlog_engine.get_table_len(self.relation) == initial_len
 
@@ -1321,14 +1312,11 @@ class GenericExecution(ExecutionBase):
         @param rule_head: the rule relation to compute.
         """
         term_graph = self.term_graph
-        rule_head_id = term_graph.get_relation_id(rule_head.relation_name)
 
-        # check if the relation is declared relation
-        if rule_head_id == -1:
-            return
-
-        compute_rule_object = GenericExecution.ComputeRule(rule_head.relation_name)
-        compute_rule_object(to_reset=True)
+        # check if the relation is rule relation
+        if term_graph.has_node(rule_head.relation_name):
+            compute_rule_object = GenericExecution.ComputeRule(rule_head.relation_name)
+            compute_rule_object(to_reset=True)
 
 
 if __name__ == "__main__":
