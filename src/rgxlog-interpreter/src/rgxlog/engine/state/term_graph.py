@@ -324,6 +324,7 @@ class DependencyGraph(NetxGraph):
     """
     A class that represents the dependencies between rule relation.
     We use this class to find out which relations are mutually recursive.
+    Each rule relation in the program is represented by a node in this graph - the id of this node is the relation name.
 
     Example:
         Let's look on the following RGXLog program-
@@ -362,7 +363,15 @@ class DependencyGraph(NetxGraph):
 
     def is_dependent(self, head_rel: Relation, body_rel: Relation) -> bool:
         """
-        Finds out whether the head relation is dependent in body relation.
+        Finds out whether the head relation is dependent in body relation, i.e. there is an edge from head_rel node to
+        body_rel node).
+
+        Example:
+            A(X, Y) <- B(X, Y), C(X, Y)
+            B(X, Y) < A(X, Y)
+
+            is_dependent(A, B), is_dependent(A, C) and is_dependent(B, A) will return True.
+            On the other hand, is_dependent(C, A) will return False.
 
         @param head_rel: the head relation.
         @param body_rel: a body relation.
@@ -426,11 +435,13 @@ class DependencyGraph(NetxGraph):
         """
 
         scc = nx.strongly_connected_components(self._graph)
+        names_component,  = filter(lambda component: relation_name in component, scc)
+        return set(names_component)
 
-        for component in scc:
-            if relation_name in component:
-                names_component = set(component)
-                return names_component
+        # for component in scc:
+        #     if relation_name in component:
+        #         names_component = set(component)
+        #         return names_component
 
     def _get_node_string(self, node_id: str) -> str:
         # for nicer printing format

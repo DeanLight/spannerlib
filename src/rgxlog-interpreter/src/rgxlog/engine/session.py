@@ -512,11 +512,13 @@ if __name__ == "__main__":
     my_session = Session(True)
     my_session.register(lambda x: [(x, )], "ID", [DataTypes.integer], [DataTypes.integer])
     query = """
-        new A(int, int)
-        new B(int, int)
-        C(X, Y) <- A(X, Y)
-        D(X, Y) <- C(X, Y)
-        D(X, Y) <- A(X, 1), B(X, Y), ID(X) -> (Y)
+            new B(int, int)
+            B(1, 1)
+            B(1, 2)
+            B(2, 2)
+            A(X) <- B(X, X)
+            C(X) <- B(X, Y)
+            ?A(X)
         """
 
     my_session.run_query(query)
