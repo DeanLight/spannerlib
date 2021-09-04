@@ -204,12 +204,14 @@ class Session:
         # TODO@niv: a simple hack to make the stanford nlp methods more efficient:
         #  add here:
         #  `self.stanford_nlp = StanfordCoreNLP(NLP_DIR_PATH)`
-        #  add in __del__:```
+        #  add in __del__:
+        #  ```
         #  try:
         #   self.stanford_nlp.close()
         #  except:
         #   pass
         #  ```
+        #  or, modify the spanner_nlp repo and add it there
 
         self._pass_stack = [
             RemoveTokens,
@@ -511,7 +513,7 @@ if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
     my_session.register(lambda x: [(x, )], "ID", [DataTypes.integer], [DataTypes.integer])
-    query = """
+    za_query = """
             new B(int, int)
             B(1, 1)
             B(1, 2)
@@ -521,5 +523,5 @@ if __name__ == "__main__":
             ?A(X)
         """
 
-    my_session.run_query(query)
+    my_session.run_query(za_query)
 

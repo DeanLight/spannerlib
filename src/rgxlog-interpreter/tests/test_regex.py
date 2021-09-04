@@ -28,8 +28,8 @@ def test_rust_regex():
 
 def test_rust_regex_reuse_function():
     query = """
-            string_rel(X) <- rgx_string("aa",".+") -> (X)
-            string_rel2(X) <- rgx_string("bb",".+") -> (X)
+            string_rel(X) <- rgx_string("bb",".+") -> (X)
+            string_rel2(X) <- rgx_string("cc",".+") -> (X)
             ?string_rel(X)
             ?string_rel2(X)
             """
@@ -37,14 +37,14 @@ def test_rust_regex_reuse_function():
     expected_result = """printing results for query 'string_rel(X)':
                           X
                         -----
-                          a
-                         aa
+                          b
+                         bb
                         
                         printing results for query 'string_rel2(X)':
                           X
                         -----
-                          b
-                         bb"""
+                          c
+                         cc"""
 
     run_test(query, expected_result)
 
