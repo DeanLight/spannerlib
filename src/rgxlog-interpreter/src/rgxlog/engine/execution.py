@@ -337,12 +337,9 @@ class SqliteEngine(RgxlogEngineBase):
         """
         Add a row into an existing table.
         """
-        sql_command = f"INSERT INTO {fact.relation_name} ("
         num_types = len(fact.type_list)
-        for i in range(num_types):
-            if i > 0:
-                sql_command += ", "
-            sql_command += f"{RELATION_COLUMN_PREFIX}{i}"
+        sql_command = f"INSERT INTO {fact.relation_name} ("
+        sql_command += ", ".join([f"{RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)])
         sql_command += ") VALUES ("
         sql_command += ", ".join(["?"] * num_types)
         sql_command += ")"
@@ -624,13 +621,9 @@ class SqliteEngine(RgxlogEngineBase):
         if self.is_table_exists(relation_decl.relation_name):
             return
 
-        sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
-
         # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
-        for i, relation_type in enumerate(relation_decl.type_list):
-            if i > 0:
-                sql_command += ", "
-            sql_command += f"{RELATION_COLUMN_PREFIX}{i}"
+        sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
+        sql_command += ", ".join([f"{RELATION_COLUMN_PREFIX}{i}" for i in range(len(relation_decl.type_list))])
         sql_command += ")"
 
         self.run_sql(sql_command)
@@ -700,6 +693,18 @@ class SqliteEngine(RgxlogEngineBase):
         @return: a new relation as described above.
         """
 
+        def create_new_relation_for_join_result(relation_terms, relation_prefix):
+            # get the type list of the joined relation (all of the terms are free variables)
+            relation_arity = len(relation_terms)
+            relation_types = [DataTypes.free_var_name] * relation_arity
+
+            # declare the joined relation in sql and get its name
+            joined_relation_name = self._create_unique_relation(relation_arity,
+                                                                prefix=f"{relation_prefix}{self.SQL_SEPARATOR}{self.JOIN_PREFIX}")
+
+            # create a structured node of the joined relation
+            return Relation(joined_relation_name, relation_terms, relation_types)
+
         assert len(relations) > 0, "can't join an empty list"
         if len(relations) == 1:
             return self.operator_copy(relations[0])
@@ -713,35 +718,27 @@ class SqliteEngine(RgxlogEngineBase):
         free_vars = set().union(*free_var_sets)
         joined_relation_terms = list(free_vars)
 
-        # get the type list of the joined relation (all of the terms are free variables)
-        joined_relation_arity = len(joined_relation_terms)
-        joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
-
-        # declare the joined relation in sql and get its name
-        joined_relation_name = self._create_unique_relation(joined_relation_arity,
-                                                            prefix=f"{prefix}{self.SQL_SEPARATOR}{self.JOIN_PREFIX}")
-
-        # created a structured node of the joined relation
-        joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
+        joined_relation = create_new_relation_for_join_result(joined_relation_terms, prefix)
 
         # construct the sql join command
-        sql_command = f"INSERT INTO {joined_relation_name} {self.SQL_SELECT} "
+        sql_command = f"INSERT INTO {joined_relation.relation_name} {self.SQL_SELECT} "
         on_conditions_list = []
+        inner_join_list = []
+        free_var_cols = []
 
         # iterate over the free_vars and do 2 things:
         for i, free_var in enumerate(joined_relation_terms):
             free_var_pairs: List[Tuple[Union[Relation, IERelation], int]] = var_dict[free_var]
             first_pair, other_pairs = free_var_pairs[0], free_var_pairs[1:]
 
-            if i > 0:
-                sql_command += ", "
             relation_with_free_var, first_index = first_pair
             name_of_relation_with_free_var = relation_sql_names[relation_with_free_var]
             new_col_name = self._get_col_name(i)
             first_col_name = self._get_col_name(first_index)
 
             # 1. name the new columns. the columns should be named col0, col1, etc.
-            sql_command += f"{name_of_relation_with_free_var}.{first_col_name} AS {new_col_name}"
+            free_var_cols.append(f"{name_of_relation_with_free_var}.{first_col_name} AS {new_col_name}")
+
             # 2. create the comparison between all of them, using `ON`
             for (second_relation, second_index) in other_pairs:
                 second_col_name = self._get_col_name(second_index)
@@ -751,17 +748,22 @@ class SqliteEngine(RgxlogEngineBase):
 
         # first relation - just `FROM`
         first_relation, other_relations = relations[0], relations[1:]
-        sql_command += f" FROM {first_relation.relation_name} AS {relation_sql_names[first_relation]} "
 
         # for every next relation: `INNER JOIN`
         for relation in other_relations:
-            sql_command += f"INNER JOIN {relation.relation_name} AS {relation_sql_names[relation]} "
+            inner_join_list.append(f"INNER JOIN {relation.relation_name} AS {relation_sql_names[relation]}")
 
         # add the join conditions (`ON`)
         if on_conditions_list:
             on_conditions_str = "ON "
             on_conditions_str += " AND ".join(on_conditions_list)
-            sql_command += on_conditions_str
+        else:
+            on_conditions_str = ""
+
+        sql_command += ", ".join(free_var_cols)
+        sql_command += f" FROM {first_relation.relation_name} AS {relation_sql_names[first_relation]} "
+        sql_command += " ".join(inner_join_list)
+        sql_command += on_conditions_str
 
         self.run_sql(sql_command)
 
@@ -793,7 +795,6 @@ class SqliteEngine(RgxlogEngineBase):
 
         new_relation = Relation(new_relation_name, project_vars, new_type_list)
 
-        sql_command = f"INSERT INTO {new_relation_name} {self.SQL_SELECT} "
         dest_col_list = []
         for new_col_num, src_col_num in enumerate(project_indexes):
             new_col = self._get_col_name(new_col_num)
@@ -804,8 +805,8 @@ class SqliteEngine(RgxlogEngineBase):
             else:
                 dest_col_list.append(f"{src_col} AS {new_col}")
 
-        sql_command += ", ".join(dest_col_list)
-        sql_command += f" FROM {src_relation_name}"
+        sql_command = (f"INSERT INTO {new_relation_name} {self.SQL_SELECT} {', '.join(dest_col_list)}"
+                       f" FROM {src_relation_name}")
 
         self.run_sql(sql_command)
         return new_relation
@@ -826,7 +827,6 @@ class SqliteEngine(RgxlogEngineBase):
         new_relation = Relation(new_relation_name, new_term_list, new_type_list)
 
         # create the union command by iterating over the relations and finding the index of each term
-        sql_command = f"INSERT INTO {new_relation_name} "
         union_list = []
         for relation in relations:
             curr_relation_string = f"{self.SQL_SELECT} "
@@ -838,6 +838,7 @@ class SqliteEngine(RgxlogEngineBase):
             curr_relation_string += ", ".join(selection_list) + f" FROM {relation.relation_name}"
             union_list.append(curr_relation_string)
 
+        sql_command = f"INSERT INTO {new_relation_name} "
         sql_command += " UNION ".join(union_list)
 
         self.run_sql(sql_command)
@@ -944,8 +945,22 @@ class GenericExecution(ExecutionBase):
     rgxlog engine in order to work.
     this execution performs no special optimization and merely serves as an interface between the term graph
     and the rgxlog engine.
-    The only exception for this is the 'rule' execution, you can read more about it in the utility method:
-    GenericExecution.__execute_rule_aux().
+
+    the main idea behind this class is that it uses the `term_graph` to understand how relations are related to
+    one another, and thanks to that information, it is able to execute the commands in the `parse_graph`.
+    for example, let's say the parse graph looks like this:
+
+    ```
+    (root) -> (query relation a)
+    ```
+
+    and the term graph looks like this:
+
+    (a)  --> union --> (b)
+                   --> (c)
+
+    the execution class will perform a union over `b` and `c`, and put it in a new relation, let's say `union_b_c`.
+    then it will copy `union_b_c` into `a`, and finally it will query `a` and return the result.
     """
 
     def __init__(self, parse_graph: GraphBase, term_graph: ComputationTermGraph,
@@ -1193,6 +1208,7 @@ class GenericExecution(ExecutionBase):
         visited_nodes = set()
         mutually_recursive = term_graph.get_mutually_recursive_relations(relation_name)
 
+        # declare methods used in rule computation
         def compute_iteration() -> bool:
             """
             Computes one iteration. if reaches a mutually recursive relation it uses the relation current state
