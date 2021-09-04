@@ -19,18 +19,8 @@ from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, GraphBase, ComputationTermGraph
 from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, string_to_span
 
-SQL_SELECT = 'SELECT DISTINCT'
-SQL_TABLE_OF_TABLES = 'sqlite_master'
-SQL_SEPARATOR = "_"
-
 VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
-
-PROJECT_PREFIX = "project"
-JOIN_PREFIX = "join"
-COPY_PREFIX = "copy"
-SELECT_PREFIX = "select"
-UNION_PREFIX = "union"
 
 RESERVED_RELATION_PREFIX = "__rgxlog__"
 
@@ -45,7 +35,9 @@ TRUE_VALUE = [tuple()]
 
 class RgxlogEngineBase(ABC):
     """
-    An abstraction for a rgxlog execution engine.
+    An abstraction for a rgxlog execution engine, used by GenericExecution.
+    it includes relational algebra operators like join and project, database modification operators like
+    `add_fact` (insert) and `remove_fact` (delete), and rgxlog-specific operators like `compute_ie_relation`.
     """
 
     def __init__(self, debug=False):
@@ -125,7 +117,7 @@ class RgxlogEngineBase(ABC):
     def get_table_len(self, table: str) -> int:
         """
         @param table: name of a table.
-        @return: number of tuple inside the table.
+        @return: number of tuples inside the table.
         """
         pass
 
@@ -284,25 +276,27 @@ class RgxlogEngineBase(ABC):
 
 class SqliteEngine(RgxlogEngineBase):
     """
-    general idea (i took this from `execution.py:970` we need to create intermediate tables for everything we do.
-    for example, let's see this rule:
-    `very_cool_and_even(X) <- cool(X), awesome(X),  get_number(X) -> (Y), even(Y)`
-
-    we need to create a few tables:
-    very_cool(X) <- cool(X), awesome(X)  # SQL join
-    input_get_number(X) <- very_cool(X)  # SQL select
-    get_number_pairs(X,Y) = run `get_number` on every X, output (X,Y)  # SQL select and then for loop with IE func
-    final_join_relations(X,Y) <- very_cool(X), get_number_pairs(X,Y), even(Y)  # SQL join ,union and project/rename
-
-    and finally:
-    very_cool_and_even(X) <- final_join_relations(X,Y)  # SQL project/rename
-
-    notice that all we need for those is a few SQL selects/unions, and running IE functions over an SQL table.
+    in this implementation of the engine, we use python's sqlite3, which allows creating an SQL database easily, without using servers.
+    the engine is called from `GenericExecution`, and uses `run_sql` as an interface to the database, which queries/modifies a table.
+    each `operator` method implements a relational algebra operator by constructing an SQL command and executing it.
+    use `debug=True` to print all the SQL commands executed.
     """
+
+    # useful prefixes
+    PROJECT_PREFIX = "project"
+    JOIN_PREFIX = "join"
+    COPY_PREFIX = "copy"
+    SELECT_PREFIX = "select"
+    UNION_PREFIX = "union"
+
+    # sql constants
+    SQL_SELECT = 'SELECT DISTINCT'
+    SQL_TABLE_OF_TABLES = 'sqlite_master'
+    SQL_SEPARATOR = "_"
 
     def __init__(self, debug=False, database_name=None):
         """
-        Creates/opens an SQL database file + connection.C
+        Creates/opens an SQL database file + connection.
 
         @param debug: print stuff related to the inner workings of the engine.
         @param database_name: open an existing database instead of a new one.
@@ -365,7 +359,7 @@ class SqliteEngine(RgxlogEngineBase):
                        f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
         self.run_sql(sql_command)
 
-    def query(self, query: Query, allow_duplicates=False):
+    def query(self, query: Query, allow_duplicates=False) -> List[tuple]:
         """
         Outputs a preformatted query result, e.g. [("a",5),("b",6)].
 
@@ -391,7 +385,7 @@ class SqliteEngine(RgxlogEngineBase):
         else:
             projected_relation_name = selected_relation_name
 
-        query_result = self.run_sql(f"{SQL_SELECT} * FROM {projected_relation_name}")
+        query_result = self.run_sql(f"{self.SQL_SELECT} * FROM {projected_relation_name}")
 
         self.remove_table(selected_relation_name)
         self.remove_table(projected_relation_name)
@@ -490,7 +484,7 @@ class SqliteEngine(RgxlogEngineBase):
         # create the output relation for the ie function, and also declare it inside SQL
         output_relation_arity = len(ie_relation.output_term_list)
         output_relation_name = self._create_unique_relation(output_relation_arity,
-                                                            prefix=f'{ie_relation_name}{SQL_SEPARATOR}output')
+                                                            prefix=f'{ie_relation_name}{self.SQL_SEPARATOR}output')
         output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         # define the ie input relation
@@ -504,7 +498,6 @@ class SqliteEngine(RgxlogEngineBase):
             # get a list of inputs to the ie function - some of them may be constants
             inputs_without_constants = self._get_all_relation_tuples(bounding_relation)
             ie_inputs = []
-            index_in_bounded_input = 0
             for bounded_input in inputs_without_constants:
                 result_input_list = []
                 index_in_bounded_input = 0
@@ -663,12 +656,12 @@ class SqliteEngine(RgxlogEngineBase):
         new_type_list = src_relation.type_list
 
         new_relation_name = self._create_unique_relation(new_arity,
-                                                         prefix=f"{src_relation_name}{SQL_SEPARATOR}{SELECT_PREFIX}")
+                                                         prefix=f"{src_relation_name}{self.SQL_SEPARATOR}{self.SELECT_PREFIX}")
 
         selected_relation = Relation(new_relation_name, new_term_list, new_type_list)
 
         # sql part
-        sql_command = f'INSERT INTO {new_relation_name} {SQL_SELECT} * FROM {src_relation_name}'
+        sql_command = f'INSERT INTO {new_relation_name} {self.SQL_SELECT} * FROM {src_relation_name}'
         sql_args = []
 
         # get variables in var_dict that repeat - used below to add conditions
@@ -726,13 +719,13 @@ class SqliteEngine(RgxlogEngineBase):
 
         # declare the joined relation in sql and get its name
         joined_relation_name = self._create_unique_relation(joined_relation_arity,
-                                                            prefix=f"{prefix}{SQL_SEPARATOR}{JOIN_PREFIX}")
+                                                            prefix=f"{prefix}{self.SQL_SEPARATOR}{self.JOIN_PREFIX}")
 
         # created a structured node of the joined relation
         joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
 
         # construct the sql join command
-        sql_command = f"INSERT INTO {joined_relation_name} {SQL_SELECT} "
+        sql_command = f"INSERT INTO {joined_relation_name} {self.SQL_SELECT} "
         on_conditions_list = []
 
         # iterate over the free_vars and do 2 things:
@@ -796,11 +789,11 @@ class SqliteEngine(RgxlogEngineBase):
         new_arity = len(project_vars)
 
         src_relation_name = src_relation.relation_name
-        new_relation_name = self._create_unique_relation(new_arity, prefix=PROJECT_PREFIX)
+        new_relation_name = self._create_unique_relation(new_arity, prefix=self.PROJECT_PREFIX)
 
         new_relation = Relation(new_relation_name, project_vars, new_type_list)
 
-        sql_command = f"INSERT INTO {new_relation_name} {SQL_SELECT} "
+        sql_command = f"INSERT INTO {new_relation_name} {self.SQL_SELECT} "
         dest_col_list = []
         for new_col_num, src_col_num in enumerate(project_indexes):
             new_col = self._get_col_name(new_col_num)
@@ -827,7 +820,7 @@ class SqliteEngine(RgxlogEngineBase):
         if new_arity == 1:
             return relations[0]
 
-        new_relation_name = self._create_unique_relation(len(relations[0].term_list), prefix=UNION_PREFIX)
+        new_relation_name = self._create_unique_relation(len(relations[0].term_list), prefix=self.UNION_PREFIX)
         new_term_list = relations[0].term_list
         new_type_list = relations[0].type_list
         new_relation = Relation(new_relation_name, new_term_list, new_type_list)
@@ -836,7 +829,7 @@ class SqliteEngine(RgxlogEngineBase):
         sql_command = f"INSERT INTO {new_relation_name} "
         union_list = []
         for relation in relations:
-            curr_relation_string = f"{SQL_SELECT} "
+            curr_relation_string = f"{self.SQL_SELECT} "
             selection_list = []
             for col_index, term in enumerate(new_term_list):
                 # we assume the same order in the source and the destination, so no need to use 'AS'
@@ -864,12 +857,12 @@ class SqliteEngine(RgxlogEngineBase):
 
         else:
             dest_rel_name = self._create_unique_relation(arity=len(src_rel.type_list),
-                                                         prefix=f"{src_rel_name}{SQL_SEPARATOR}{COPY_PREFIX}")
+                                                         prefix=f"{src_rel_name}{self.SQL_SEPARATOR}{self.COPY_PREFIX}")
 
         dest_rel = Relation(dest_rel_name, src_rel.term_list, src_rel.type_list)
 
         # sql part
-        sql_command = f"INSERT INTO {dest_rel_name} {SQL_SELECT} * FROM {src_rel_name}"
+        sql_command = f"INSERT INTO {dest_rel_name} {self.SQL_SELECT} * FROM {src_rel_name}"
         self.run_sql(sql_command)
 
         return dest_rel
@@ -881,7 +874,7 @@ class SqliteEngine(RgxlogEngineBase):
         @param table_name: the table which is checked for existence.
         @return: True if it exists, else False.
         """
-        sql_check_if_exists = (f"{SQL_SELECT} name FROM {SQL_TABLE_OF_TABLES} WHERE "
+        sql_check_if_exists = (f"{self.SQL_SELECT} name FROM {self.SQL_TABLE_OF_TABLES} WHERE "
                                f"type='table' AND name='{table_name}'")
         return bool(self.run_sql(sql_check_if_exists))
 
@@ -921,6 +914,7 @@ class ExecutionBase(ABC):
     Abstraction for a class that gets a term graph and executes it
     """
 
+    # TODO@niv: i don't understand why we need this class, since `GenericExecution` is already generic.
     def __init__(self, parse_graph: GraphBase, term_graph: ComputationTermGraph,
                  symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
         """
@@ -1053,14 +1047,14 @@ class GenericExecution(ExecutionBase):
         compute_status = EvalState.COMPUTED if self.is_node_computed(node_id) else EvalState.VISITED
         term_graph.set_node_attribute(node_id, 'state', compute_status)
 
-    def compute_rule_rel_node(self, node_id: str, term_attrs: Dict) -> None:
+    def compute_rule_rel_node(self, node_id: Union[str, int], term_attrs: Dict) -> None:
         """
         Computes a rule rel node.
 
         @param node_id: the node.
         @param term_attrs: the attributes of the node.
         """
-
+        # TODO@niv: @tom, if node_id can be both int and str, change it to `node_name`. otherwise, change the type hint to int
         rule_rel = term_attrs[VALUE_ATTRIBUTE]
         rule_name = rule_rel.relation_name
         rel_in: Relation = self.get_child_relation(node_id)

@@ -1,6 +1,7 @@
 """
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
+import pdb
 import re
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, IERelation, Rule)
@@ -45,8 +46,8 @@ def get_numbered_free_var_pairs(relation: Union[Relation, IERelation]) -> List[T
     @return: a list of all (free_var, index) pairs based on term_list.
     """
     term_list, type_list = relation.get_term_list(), relation.get_type_list()
-    free_var_names = list(((i, term_pair[0]) for i, term_pair in enumerate(zip(term_list, type_list))
-                           if term_pair[1] is DataTypes.free_var_name))
+    free_var_names = list(((i, term) for i, (term, term_type) in enumerate(zip(term_list, type_list))
+                           if term_type is DataTypes.free_var_name))
     return free_var_names
 
 
@@ -91,15 +92,21 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
     @param relations: a set of relations.
     @return: a mapping between each free var to the relations and corresponding columns in which it appears.
     """
-    var_dict = {}
-
     # note: don't remove variables with less than 2 uses here, we need them as well
-    for relation in relations:
-        free_vars_pairs = get_numbered_output_free_var_names(relation)
-        for i, var in free_vars_pairs:
-            old_var_entry = var_dict.get(var, list())
-            old_var_entry.append((relation, i))
-            var_dict[var] = old_var_entry
+    # TODO@niv
+    # var_dict = dict()
+    # for relation in relations:
+    #     free_vars_pairs = get_numbered_output_free_var_names(relation)
+    #     for i, var in free_vars_pairs:
+    #         old_var_entry = var_dict.get(var, list())
+    #         old_var_entry.append((relation, i))
+    #         var_dict[var] = old_var_entry
+    free_var_positions = {relation: get_numbered_output_free_var_names(relation) for relation in relations}
+    free_var_set = {var for pair_list in free_var_positions.values() for (i, var) in pair_list}
+    var_dict = {var1: [(relation, i) for relation, pair_list in free_var_positions.items() for
+                       (i, var2) in pair_list if var2 == var1]
+                for var1 in free_var_set}
+
     return var_dict
 
 
