@@ -1184,8 +1184,6 @@ class GenericExecution(ExecutionBase):
         """
         Computes the rule (including the mutual recursive rules).
 
-
-    
         @param relation_name: the name of the relation to compute.
         @param to_reset: if set to True we reset the nodes after the computation.
         @param only_one_iteration: if set to True we evaluate one iteration, Otherwise we do fixed-point.
