@@ -763,7 +763,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         # add the join conditions (`ON`)
         if on_conditions_list:
-            on_conditions_str = "ON "
+            on_conditions_str = " ON "
             on_conditions_str += " AND ".join(on_conditions_list)
         else:
             on_conditions_str = ""
