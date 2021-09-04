@@ -359,6 +359,14 @@ class SqliteEngine(RgxlogEngineBase):
     def query(self, query: Query, allow_duplicates=False) -> List[tuple]:
         """
         Outputs a preformatted query result, e.g. [("a",5),("b",6)].
+        notice that `query` isn't a string; it's a `Query` object which inherits from `Relation`.
+        for example, parsing the string `?excellent("bill","ted")` yields the following `Query`:
+
+        ```
+        relation_name = excellent
+        term_list = ["bill", "ted"]
+        type_list = [DataType.string, DataType.string]
+        ```
 
         @param allow_duplicates: if True, query result may contain duplicate values.
         @param query: the query to be performed.
