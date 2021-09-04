@@ -318,10 +318,10 @@ def test_clean_xml():
                               -1 |   Tove   |      Tove      |                      9 |                   13
                         """)
 
-
     run_test(query, expected_result)
 
 
+@pytest.mark.long
 def test_quote():
     query = """sentence = "In the summer Joe Smith decided to go on vacation.  He said, \\"I'm going to Hawaii.\\"  That July, vacationer Joe went to Hawaii."
                cool_quote(A,S,D,F,G,H,J,K,L,P) <- Quote(sentence) -> (A,S,D,F,G,H,J,K,L,P)
