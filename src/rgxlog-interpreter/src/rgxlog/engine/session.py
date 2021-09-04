@@ -258,7 +258,7 @@ class Session:
                     print(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
 
     def __repr__(self):
-        return [repr(self._symbol_table), repr(self._parse_graph)]
+        return "\n".join([repr(self._symbol_table), repr(self._parse_graph)])
 
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'

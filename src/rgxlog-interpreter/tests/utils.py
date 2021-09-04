@@ -1,9 +1,13 @@
+import os
+import tempfile
 from typing import List, Optional, Iterable, Dict
 
 import numpy as np
 from pandas import DataFrame
 
 from rgxlog.engine.session import queries_to_string, Session
+
+TEMP_FILE_NAME = "temp"
 
 
 def is_equal_stripped_sorted_tables(result_text, expected_text):
@@ -115,3 +119,15 @@ def run_test(query: str, expected_output: Optional[str] = None, functions_to_imp
         assert compare_strings(expected_output, query_result_string), "expected string != result string"
 
     return test_session
+
+
+def run_query_into_csv_test(expected_longrel, im_ex_session, query, query_for_csv):
+    im_ex_session.run_query(query, print_results=False)
+    # query into csv and compare with old file
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
+        im_ex_session.query_into_csv(query_for_csv, temp_csv)
+        assert os.path.isfile(temp_csv), "file was not created"
+
+        with open(temp_csv) as f_temp:
+            assert is_equal_stripped_sorted_tables(f_temp.read(), expected_longrel), "file was not written properly"

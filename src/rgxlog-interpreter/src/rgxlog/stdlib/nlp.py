@@ -17,6 +17,7 @@ from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 MIN_VERSION = 1.8
 
+# TODO@niv: we need a server with a copy of this file, their server is not very stable
 NLP_URL = "https://nlp.stanford.edu/software/stanford-corenlp-4.1.0.zip"
 
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
@@ -73,9 +74,8 @@ _run_installation()
 
 # ********************************************************************************************************************
 
-
 def tokenize_wrapper(sentence: str):
-    # TODO@niv: if this affects efficiency, don't set `core_nlp_engine` as a global variable,
+    # TODO@niv: if starting the engine here affects efficiency, don't set `core_nlp_engine` as a global variable,
     #  because that way, the java process will never shut down. instead, start `core_nlp_engine` inside `Session`,
     #  and close it when the session dies.
     with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:

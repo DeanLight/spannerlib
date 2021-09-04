@@ -7,9 +7,7 @@ from pandas import DataFrame
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import FREE_VAR_PREFIX
 from rgxlog.engine.session import Session
-from tests.utils import run_test, is_equal_stripped_sorted_tables, is_equal_dataframes_ignore_order
-
-TEMP_FILE_NAME = "temp"
+from tests.utils import (run_test, is_equal_stripped_sorted_tables, is_equal_dataframes_ignore_order, run_query_into_csv_test, TEMP_FILE_NAME)
 
 
 @pytest.fixture(scope="module")
@@ -94,19 +92,9 @@ def test_query_into_csv_basic(im_ex_session: Session):
         "valley\n"
         "stardew\n")
 
-    # create new relation
+    query_for_csv = '?basic_rel(X)'
 
-    im_ex_session.run_query(query, print_results=False)
-
-    # query into csv and compare with old file
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
-
-        im_ex_session.query_into_csv('?basic_rel(X)', temp_csv)
-        assert os.path.isfile(temp_csv), "file was not created"
-
-        with open(temp_csv) as f_temp:
-            assert is_equal_stripped_sorted_tables(f_temp.read(), expected_rel), "file was not written properly"
+    run_query_into_csv_test(expected_rel, im_ex_session, query, query_for_csv)
 
 
 def test_query_into_csv_long(im_ex_session: Session):
@@ -121,31 +109,9 @@ def test_query_into_csv_long(im_ex_session: Session):
         "aoi;[1, 2);16\n"
         "ano sora;[42, 69);24\n")
 
-    im_ex_session.run_query(query, print_results=False)
+    query_for_csv = "?longrel(X,Y,Z)"
 
-    # query into csv and compare with old file
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
-        im_ex_session.query_into_csv("?longrel(X,Y,Z)", temp_csv)
-        assert os.path.isfile(temp_csv), "file was not created"
-
-        with open(temp_csv) as f_temp:
-            assert is_equal_stripped_sorted_tables(f_temp.read(), expected_longrel), "file was not written properly"
-
-
-def test_query_into_df(im_ex_session: Session):
-    test_df = DataFrame(["king", "jump"], columns=["X"])
-    # create new relation
-    query = """
-        new df_query_rel(str)
-        df_query_rel("jump")
-        df_query_rel("king")"""
-
-    im_ex_session.run_query(query, print_results=False)
-
-    # query into df and compare
-    temp_df = im_ex_session.query_into_df("?df_query_rel(X)")
-    assert is_equal_dataframes_ignore_order(temp_df, test_df), "the dataframes are not equal"
+    run_query_into_csv_test(expected_longrel, im_ex_session, query, query_for_csv)
 
 
 def test_export_relation_into_csv(im_ex_session: Session):
@@ -173,10 +139,27 @@ def test_export_relation_into_csv(im_ex_session: Session):
             assert is_equal_stripped_sorted_tables(f_temp.read(), expected_export_rel), "file was not written properly"
 
 
+def test_query_into_df(im_ex_session: Session):
+    test_df = DataFrame(["king", "jump"], columns=["X"])
+    # create new relation
+    query = """
+        new df_query_rel(str)
+        df_query_rel("jump")
+        df_query_rel("king")"""
+
+    im_ex_session.run_query(query, print_results=False)
+
+    query_for_df = "?df_query_rel(X)"
+
+    # query into df and compare
+    temp_df = im_ex_session.query_into_df(query_for_df)
+    assert is_equal_dataframes_ignore_order(temp_df, test_df), "the dataframes are not equal"
+
+
 def test_export_relation_into_df(im_ex_session: Session):
     column_names = [f"{FREE_VAR_PREFIX}0", f"{FREE_VAR_PREFIX}1"]
-    relation_name = "export_df_rel"
 
+    relation_name = "export_df_rel"
     query = f"""
         new {relation_name}(span, str)
         {relation_name}([1,3), "aa")
