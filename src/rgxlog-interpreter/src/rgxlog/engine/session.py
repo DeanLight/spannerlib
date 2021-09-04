@@ -265,9 +265,7 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
 
-    # TODO@niv: @dean,
-    #  maybe change this to `run` or something, since the name `query` is already in use? (e.g. "?rel(X)")
-    def run_query(self, query: str, print_results: bool = True, format_results: bool = False) -> (
+    def run_statements(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
         Generates an AST and passes it through the pass stack.
@@ -442,7 +440,7 @@ class Session:
 
     def query_into_csv(self, query: str, csv_file_name: str, delimiter=";"):
         # run a query normally and get formatted results:
-        query_results = self.run_query(query, print_results=False)
+        query_results = self.run_statements(query, print_results=False)
         if len(query_results) != 1:
             raise Exception("a query into csv must have exactly one output")
 
@@ -458,7 +456,7 @@ class Session:
 
     def query_into_df(self, query: str) -> Union[DataFrame, List]:
         # run a query normally and get formatted results:
-        query_results = self.run_query(query, print_results=False)
+        query_results = self.run_statements(query, print_results=False)
         if len(query_results) != 1:
             raise Exception("the query must have exactly one output")
 
@@ -512,7 +510,7 @@ class Session:
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(True)
-    my_session.register(lambda x: [(x, )], "ID", [DataTypes.integer], [DataTypes.integer])
+    my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
     za_query = """
             new B(int, int)
             B(1, 1)
@@ -523,5 +521,4 @@ if __name__ == "__main__":
             ?A(X)
         """
 
-    my_session.run_query(za_query)
-
+    my_session.run_statements(za_query)

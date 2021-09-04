@@ -112,7 +112,7 @@ def run_test(query: str, expected_output: Optional[str] = None, functions_to_imp
     for ie_function in functions_to_import:
         test_session.register(**ie_function)
 
-    query_result = test_session.run_query(query, print_results=True)
+    query_result = test_session.run_statements(query, print_results=True)
 
     if expected_output is not None:
         query_result_string = queries_to_string(query_result)
@@ -122,7 +122,7 @@ def run_test(query: str, expected_output: Optional[str] = None, functions_to_imp
 
 
 def run_query_into_csv_test(expected_longrel, im_ex_session, query, query_for_csv):
-    im_ex_session.run_query(query, print_results=False)
+    im_ex_session.run_statements(query, print_results=False)
     # query into csv and compare with old file
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
