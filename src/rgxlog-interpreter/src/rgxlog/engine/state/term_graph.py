@@ -7,7 +7,7 @@ from enum import Enum
 import networkx as nx
 from abc import ABC, abstractmethod, ABCMeta
 from itertools import count
-from typing import Set, List, Dict, Iterable, Union, Optional
+from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, Rule, IERelation
 from rgxlog.engine.utils.general_utils import get_input_free_var_names, get_output_free_var_names, \
@@ -640,7 +640,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
 
     @staticmethod
     def _compute_bounding_graph(relations: Set[Relation], ie_relations: Set[IERelation]) -> \
-            OrderedDict[IERelation, Set[Union[Relation, IERelation]]]:
+            OrderedDictType[IERelation, Set[Union[Relation, IERelation]]]:
         """
         This class gets body relations of a rule and computes for each ie relation the relations that bound it.
         @note: In some cases ie relation is bounded by other ie relation.
