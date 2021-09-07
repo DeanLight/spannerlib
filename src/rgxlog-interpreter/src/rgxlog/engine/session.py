@@ -20,7 +20,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
-                                              ExecuteAssignments, AddStatementsToNetxTermGraph, GenericPass)
+                                              ExecuteAssignments, AddStatementsToNetxParseGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import ComputationTermGraph, NetxStateGraph
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN
@@ -228,7 +228,7 @@ class Session:
             SaveDeclaredRelationsSchemas,
             ResolveVariablesReferences,
             ExecuteAssignments,
-            AddStatementsToNetxTermGraph,
+            AddStatementsToNetxParseGraph,
             AddRulesToComputationTermGraph
         ]
 
@@ -509,16 +509,16 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(True)
-    my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-    za_query = """
-            new B(int, int)
-            B(1, 1)
-            B(1, 2)
-            B(2, 2)
-            A(X) <- B(X, X)
-            C(X) <- B(X, Y)
-            ?A(X)
-        """
+    my_session = Session(False)
+    commands = '''
+            new parent(str, str)
+            parent("Liam", "Noah")
+            parent("Noah", "Oliver")
+            
+            ancestor(X,Y) <- parent(X,Y)
+            ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
 
-    my_session.run_statements(za_query)
+            ?ancestor(Ancestor, Descendant)
+            '''
+
+    my_session.run_statements(commands)

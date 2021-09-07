@@ -76,9 +76,6 @@ CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
 # ********************************************************************************************************************
 
 def tokenize_wrapper(sentence: str):
-    # TODO@niv: if starting the engine here affects efficiency, don't set `core_nlp_engine` as a global variable,
-    #  because that way, the java process will never shut down. instead, start `core_nlp_engine` inside `Session`,
-    #  and close it when the session dies.
     for token in CoreNLPEngine.tokenize(sentence):
         yield token["token"], token["span"]
 
@@ -293,9 +290,6 @@ KBP = dict(ie_function=kbp_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO@niv: tom, are you sure? the second half of the yield wasn't yielded because it wasn't inside parentheses,
-#  that might've been the issue
-# doesn't works because regexlog parser doesn't support strings such as "\"hello\"" (with escapes)
 def quote_wrapper(sentence):
     for res in CoreNLPEngine.quote(sentence):
         yield (res['id'], res['text'], res['beginIndex'], res['endIndex'], res['beginToken'], res['endToken'],

@@ -973,27 +973,27 @@ class ExecuteAssignments(InterpreterPass):
         self.symbol_table.set_var_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
 
-class AddStatementsToNetxTermGraph(InterpreterPass):
+class AddStatementsToNetxParseGraph(InterpreterPass):
     # TODO@niv: @dean what is `NetworkxExecution`?
     """
     a lark execution pass.
-    This pass adds each statement in the input parse tree to the term graph.
+    This pass adds each statement in the input parse tree to the parse graph.
     This pass is made to work with execution.NetworkxExecution as the execution engine and
-    term_graph.NetxTermGraph as the term graph.
+    parse_graph.NetxParseGraph as the parse graph.
 
-    Each statement in the term graph will be a child of the term graph's root.
+    Each statement in the parse graph will be a child of the parse graph's root.
 
-    each statement in the term graph will have a type attribute that contains the statement's name in the
+    each statement in the parse graph will have a type attribute that contains the statement's name in the
     rgxlog grammar.
 
-    some nodes in the term graph will contain a value attribute that would contain a relation that describes
+    some nodes in the parse graph will contain a value attribute that would contain a relation that describes
     that statement.
     e.g. a add_fact node would have a value which is a structured_nodes.AddFact instance
     (which inherits from structured_nodes.Relation) that describes the fact that will be added.
 
     Some statements are more complex and will be described by more than a single node, e.g. a rule node.
     The reason for this is that we want a single netx node to not contain more than one Relation
-    (or IERelation) instance. This will make the term graph a "graph of relation nodes", allowing
+    (or IERelation) instance. This will make the parse graph a "graph of relation nodes", allowing
      for flexibility for optimization in the future.
     """
 
@@ -1001,10 +1001,10 @@ class AddStatementsToNetxTermGraph(InterpreterPass):
         super().__init__()
         self.parse_graph = kw['parse_graph']
 
-    def _add_statement_to_term_graph(self, statement_type, statement_value) -> None:
+    def _add_statement_to_parse_graph(self, statement_type, statement_value) -> None:
         """
-        A utility function that adds a statement to the term graph, meaning it adds a node that
-        represents the statement to the term graph, then attach the node to the term graph's root.
+        A utility function that adds a statement to the parse graph, meaning it adds a node that
+        represents the statement to the parse graph, then attach the node to the parse graph's root.
         Should only be used for simple statements (i.e. can be described by a single node).
 
         @param statement_type: the type of the statement, (e.g. add_fact). should be the same as the statement's
@@ -1017,24 +1017,24 @@ class AddStatementsToNetxTermGraph(InterpreterPass):
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
         fact.peel_off_token_wrappers()
-        self._add_statement_to_term_graph("add_fact", fact)
+        self._add_statement_to_parse_graph("add_fact", fact)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
         fact.peel_off_token_wrappers()
-        self._add_statement_to_term_graph("remove_fact", fact)
+        self._add_statement_to_parse_graph("remove_fact", fact)
 
     @unravel_lark_node
     def query(self, query: Query):
         query.peel_off_token_wrappers()
-        self._add_statement_to_term_graph("query", query)
+        self._add_statement_to_parse_graph("query", query)
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
         relation_decl.peel_off_token_wrappers()
-        self._add_statement_to_term_graph("relation_declaration", relation_decl)
+        self._add_statement_to_parse_graph("relation_declaration", relation_decl)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
         rule.peel_off_token_wrappers()
-        self._add_statement_to_term_graph("rule", rule)
+        self._add_statement_to_parse_graph("rule", rule)
