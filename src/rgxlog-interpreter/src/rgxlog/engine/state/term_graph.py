@@ -380,6 +380,9 @@ class DependencyGraph(NetxGraph):
         @return: True if they are dependent, False otherwise.
         """
 
+        if head_rel.relation_name == body_rel.relation_name:
+            return False
+
         common_free_vars = set(head_rel.term_list).intersection(body_rel.term_list)
         return self.has_node(body_rel.relation_name) and len(common_free_vars) > 0
 
@@ -394,6 +397,7 @@ class DependencyGraph(NetxGraph):
         self._add_relation(head_relation)
 
         for body_relation in body_relations:
+
             # add edge only if there is at least one free var in relation
             if self.is_dependent(head_relation, body_relation):
                 edge = (head_relation.relation_name, body_relation.relation_name)
@@ -437,12 +441,23 @@ class DependencyGraph(NetxGraph):
         """
 
         scc = nx.strongly_connected_components(self._graph)
-        names_component,  = filter(lambda component: relation_name in component, scc)
+        names_component, = filter(lambda component: relation_name in component, scc)
         return set(names_component)
 
     def _get_node_string(self, node_id: str) -> str:
         # for nicer printing format
         return node_id
+
+    def is_relation_in_use(self, relation_name: str) -> bool:
+        """
+        Checks if the relation is used by other existing rules.
+
+        @param relation_name: name of the relation.
+        @return: true if the node is has parents (if node is root the we also return true).
+        """
+        # all the nodes are connected to global root
+        predecessors_number = len(list(self._graph.predecessors(relation_name)))
+        return predecessors_number > 1
 
     def __str__(self):
         return self.__class__.__name__ + " is:\n" + super().__str__()
@@ -494,20 +509,6 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
 
         self._rule_to_nodes[str(rule)] = (rule, nodes)
 
-    def _is_node_in_use(self, node_id: str) -> bool:
-        """
-        Checks if id node has parents or it's the root node.
-
-        @param node_id: id of a node.
-        @return: true if the node is has parents (if node is root the we also return true).
-        """
-        if node_id == self.get_root_id():
-            return True
-
-        # all the nodes are connected to global root
-        predecessors_number = len(list(self._graph.predecessors(node_id)))
-        return predecessors_number > 1
-
     def _get_all_rules_with_head(self, relation_name: str) -> List[str]:
         """
         Find all the rule with rule head.
@@ -533,8 +534,8 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         """
 
         rules = self._get_all_rules_with_head(rule_head_name)
-        if self._is_node_in_use(rule_head_name):
-            raise ValueError(f"The rule head'{rule_head_name}' can't be deleted since it's used in another existing "
+        if self._dependency_graph.is_relation_in_use(rule_head_name):
+            raise ValueError(f"The rule head '{rule_head_name}' can't be deleted since it's used in another existing "
                              f"rule.")
 
         for rule in rules:
@@ -555,7 +556,6 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
             if head is None or rule.head_relation.relation_name == head:
                 print(f"\t{i + 1}. {rule}")
                 i += 1
-
 
     def add_dependencies(self, head_relation: Relation, body_relations: Set[Relation]) -> None:
         """@see documentation of add_dependencies in DependencyGraph"""
@@ -913,7 +913,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
         union_node = self.get_relation_union_node(rule_name)
 
         is_last_rule_path = len(list(self.get_children(union_node))) == 1
-        is_rule_used = self._is_node_in_use(rule_name)
+        is_rule_used = self._dependency_graph.is_relation_in_use(rule_name)
 
         # check if something is connected to the root and the root is going to be deleted (this shouldn't happen)
         if is_last_rule_path and is_rule_used:

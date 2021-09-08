@@ -523,3 +523,6 @@ if __name__ == "__main__":
             '''
 
     my_session.run_statements(commands)
+    my_session.print_all_rules()
+    my_session.remove_all_rules("ancestor")
+    my_session.print_all_rules()
