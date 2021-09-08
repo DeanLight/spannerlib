@@ -512,17 +512,9 @@ if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(False)
     commands = '''
-            new parent(str, str)
-            parent("Liam", "Noah")
-            parent("Noah", "Oliver")
-            
-            ancestor(X,Y) <- parent(X,Y)
-            ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
-
-            ?ancestor(Ancestor, Descendant)
+            new thing(span, str)
+            thing([1,2), "hi")
+            ?thing([1,2), X)
             '''
 
     my_session.run_statements(commands)
-    my_session.print_all_rules()
-    my_session.remove_all_rules("ancestor")
-    my_session.print_all_rules()

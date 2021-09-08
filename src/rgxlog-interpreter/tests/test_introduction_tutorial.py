@@ -237,3 +237,19 @@ def test_neq():
         """
 
     run_test(query, expected_result, [neq_dict])
+
+
+def test_span_constant():
+    query = '''
+            new verb(str, span)
+            verb("Ron eats quickly.", [4,8))
+            verb("You write neatly.", [4,9))
+            ?verb(X,[4,9)) # returns "You write neatly."
+            '''
+
+    expected_result = """printing results for query 'verb(X, [4, 9))':
+                                 X
+                        -------------------
+                         You write neatly."""
+
+    run_test(query, expected_result)

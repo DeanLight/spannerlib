@@ -6,7 +6,7 @@ from rgxlog.engine.datatypes.primitive_types import DataTypes
 def parse_match(match) -> str:
     """
     @param match: a match result of json path query.
-    @return: a string that reprisents the match in string format.
+    @return: a string that represents the match in string format.
     """
     json_result = match.value
     if type(json_result) != str:

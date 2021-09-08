@@ -35,6 +35,9 @@ class GraphBase(ABC):
     This is an interface for a simple graph.
     """
 
+    def __init__(self):
+        self._visited_nodes = set()
+
     @abstractmethod
     def add_node(self, node_id=None, **attr):
         """
@@ -205,7 +208,7 @@ class NetxGraph(GraphBase):
     """
 
     def __init__(self):
-
+        super().__init__()
         # define the graph with 'DiGraph' to make sure the order of a reported node's children is the same
         # as the order they were added to the graph.
         self._graph = nx.DiGraph()
@@ -557,10 +560,6 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
                 print(f"\t{i + 1}. {rule}")
                 i += 1
 
-    def add_dependencies(self, head_relation: Relation, body_relations: Set[Relation]) -> None:
-        """@see documentation of add_dependencies in DependencyGraph"""
-        self._dependency_graph.add_dependencies(head_relation, body_relations)
-
     def get_mutually_recursive_relations(self, relation_name: str) -> Set[str]:
         """@see documentation of get_mutually_recursive_relations in DependencyGraph"""
         return self._dependency_graph.get_mutually_recursive_relations(relation_name)
@@ -893,7 +892,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
             relation_to_branch_id[ie_relation] = calc_node_id
 
         self.add_rule_node(rule, nodes)
-        self.add_dependencies(head_relation, relations)
+        self._dependency_graph.add_dependencies(head_relation, relations)
 
     def remove_rule(self, rule: str) -> bool:
         """

@@ -677,6 +677,9 @@ class SqliteEngine(RgxlogEngineBase):
             # add conditions based on `select_info`
             for i, value, _ in select_info:
                 col_name = self._get_col_name(i)
+                if type(value) is Span:
+                    # sql does not accept spans
+                    value = str(value)
                 sql_args.append(value)
                 sql_conditions.append(f"{col_name}=?")
 
