@@ -498,13 +498,14 @@ class Session:
         """
         self._symbol_table.remove_all_ie_functions()
 
-    def print_all_rules(self):
+    def print_all_rules(self, head: Optional[str] = None):
         """
         Prints all the rules that are registered.
 
+        @param head: if specified it will print only rules with the given head relation name.
         """
 
-        self._term_graph.print_all_rules()
+        self._term_graph.print_all_rules(head)
 
 
 if __name__ == "__main__":

@@ -42,21 +42,21 @@ prerequisites:
 
 To download and install RGXLog run the following command in your terminal:
 
-```bash
+<!-- #region language="bash" -->
 git clone https://github.com/DeanLight/spanner_workbench
 cd spanner_workbench
 
 pip install src/rgxlog-interpreter 
 
-```
+<!-- #endregion -->
 Make sure you are calling the pip version of your current python environment.
 To install with another python interpreter, run
 
-```bash
+<!-- #region language="bash" -->
 
 <path_to_python_interpreter> -m pip install  src/rgxlog-interpreter
 
-```
+<!-- #endregion -->
 You can also install RGXLog in the current Jupyter kernel:
 <!-- #endregion -->
 

@@ -171,12 +171,14 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    @staticmethod
-    def clear_all() -> None:
-        """
-        Removes all facts and clauses from the engine.
-        """
-        pass
+    #  TODO@tom: @niv, why do we need this method?
+    # @staticmethod
+    # @abstractmethod
+    # def clear_all() -> None:
+    #     """
+    #     Removes all facts and clauses from the engine.
+    #     """
+    #     pass
 
     @staticmethod
     def _get_span_string(span: Span) -> str:

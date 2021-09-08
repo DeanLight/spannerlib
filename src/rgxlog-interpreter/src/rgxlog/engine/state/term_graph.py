@@ -540,13 +540,22 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         for rule in rules:
             self.remove_rule(rule)
 
-    def print_all_rules(self) -> None:
+    def print_all_rules(self, head: Optional[str]) -> None:
         """
         Prints all the registered rules.
         """
-        print("Printing all the rules:")
-        for i, rule in enumerate(self._rule_to_nodes):
-            print(f"\t{i + 1}. {rule}")
+
+        if head is None:
+            print("Printing all the rules:")
+        else:
+            print(f"Printing all the rules with head {head}:")
+
+        i = 0
+        for rule, _ in self._rule_to_nodes.values():
+            if head is None or rule.head_relation.relation_name == head:
+                print(f"\t{i + 1}. {rule}")
+                i += 1
+
 
     def add_dependencies(self, head_relation: Relation, body_relations: Set[Relation]) -> None:
         """@see documentation of add_dependencies in DependencyGraph"""
