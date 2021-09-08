@@ -1,3 +1,18 @@
+---
+jupyter:
+  jupytext:
+    formats: ipynb,md
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.11.2
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
 # Spanner Workbench Introduction
 In this tutorial you will learn the basics of spanner workbench:
 * [how to install, import and use RGXLog](#use_rgxlog)
@@ -14,10 +29,13 @@ In this tutorial you will learn the basics of spanner workbench:
 
 At the end of this tutorial there is also an [example for a small RGXLog program.](#example_program)
 
+
 # Using RGXLog<a class="anchor" id="use_rgxlog"></a>
+
 
 ### Installation
 
+<!-- #region pycharm={"name": "#%% md\n"} -->
 prerequisites:
 
 * Have [Python](https://www.python.org/downloads/) version 3.8 or above installed
@@ -40,21 +58,25 @@ To install with another python interpreter, run
 
 ```
 You can also install RGXLog in the current Jupyter kernel:
+<!-- #endregion -->
 
+<!-- #region pycharm={"name": "#%%\n"} -->
 ```python
 import sys
 from pathlib import Path
 current_python=f"{sys.executable}"
 package_path=Path("../src/rgxlog-interpreter")
 ```
+<!-- #endregion -->
 
 ```
 ! {current_python} -m pip install {package_path}
 ```
 
+<!-- #region pycharm={"name": "#%% md\n"} -->
 In order to use RGXLog in jupyter notebooks, you must first load it:
 
-
+<!-- #endregion -->
 
 ```python
 import rgxlog  # or `load_ext rgxlog`
@@ -63,30 +85,19 @@ import rgxlog  # or `load_ext rgxlog`
 Importing the RGXLog library automatically loads the `%rgxlog` and `%%rgxlog` cell magics which accepts RGXLog queries as shown below.<br>
 use %rgxlog to run a single line, and %%rgxlog to run a block of code:
 
-
 ```python
 %rgxlog new relation(str)
 print("this is python code")
 ```
 
-    this is python code
-
-
-
-```python
+```python pycharm={"name": "#%%\n"}
 %%rgxlog
 new uncle(str, str)
 uncle("bob", "greg")
 ?uncle(X,Y)
 ```
 
-    printing results for query 'uncle(X, Y)':
-      X  |  Y
-    -----+------
-     bob | greg
-    
-
-
+<!-- #region pycharm={"name": "#%% md\n"} -->
 # Local and free variables<a class="anchor" id="local_and_free_vars"></a>
 
 RGXLog distinguishes two kinds of variables.
@@ -120,11 +131,11 @@ And here are some illegal free variable names:
 * `_Some_STRING`
 * `1A`
 
+<!-- #endregion -->
 
 # Local variable assignment<a class="anchor" id="local_var_assignment"></a>
 RGXLog allows you to use three types of variables: strings, integers and spans.
 The assignment of a string is intuitive:
-
 
 ```python
 %%rgxlog
@@ -138,7 +149,6 @@ b4 = "this is a multiline string" # b4 holds the same value as b3
 
 The assignment of integers is also very simple:
 
-
 ```python
 %%rgxlog
 n = 4
@@ -148,7 +158,6 @@ n2 = n # n2 = 4
  A span identifies a substring of a string by specifying its bounding indices. It is constructed from two integers.
  You can assign a span value like this:
 
-
 ```python
 %%rgxlog
 span1 = [3,7)
@@ -157,7 +166,6 @@ span2 = span1 # span2 value is [3,7)
 
 # Reading from a file<a class="anchor" id="read_a_file"></a>
 You can also perform a string assignment by reading from a file. You will need to provide a path to a file by either using a string literal or a string variable:
-
 
 ```python
 %%rgxlog
@@ -169,7 +177,6 @@ c = read(b) # c holds the same string value as a
 # Declaring a relation<a class="anchor" id="declare_relations"></a>
 RGXLog allows you to define and query relations.
 You have to declare a relation before you can use it (unless you define it with a rule as we'll see in the "rules" chapter). Each term in a relation could be a string, an integer or a span. Here are some examples for declaring relations:
-
 
 ```python
 %%rgxlog
@@ -199,7 +206,6 @@ relation_name(term_1,term_2,...term_3) <- True
 where each `term` is either a constant or a local variable that is from the same variable type that was declared for `relation_name` at the same location.
 
 For example:
-
 
 ```python
 %%rgxlog
@@ -233,7 +239,6 @@ goals("kronovi", 10) <- False  # this statement does nothing
 Datalog allows you to deduce new tuples for a relation.
 RGXLog includes this feature as well:
 
-
 ```python
 %%rgxlog
 new parent(str ,str)
@@ -244,7 +249,6 @@ grandparent(X,Z) <- parent(X,Y), parent(Y,Z) # ',' is a short hand to the 'and' 
 ```
 
 RGXLog also supports recursive rules:
-
 
 ```python
 %%rgxlog
@@ -263,32 +267,11 @@ ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y)
 ?ancestor("Mason", X)
 ```
 
-    printing results for query 'ancestor("Liam", X)':
-        X
-    ----------
-      Mason
-      Oliver
-     Benjamin
-       Noah
-    
-    printing results for query 'ancestor(X, "Mason")':
-        X
-    ----------
-       Noah
-       Liam
-     Benjamin
-    
-    printing results for query 'ancestor("Mason", X)':
-    []
-    
-
-
 You could also remove a rule via the session:
 
 ```magic_session.remove_rule(rule_to_delete)```
 
 note: the rule must be written exactly as it appears in the output of `print_all_rules`
-
 
 ```python
 %%rgxlog
@@ -300,26 +283,6 @@ ancestor(X, Y) <- brothers(X, Y), confused(Y)
 
 ?ancestor(X,Y)
 ```
-
-    printing results for query 'ancestor(X, Y)':
-        X     |    Y
-    ----------+----------
-      Drake   |   Josh
-       Noah   |  Mason
-       Liam   |  Mason
-       Liam   |  Oliver
-       Liam   | Benjamin
-       bob    |  alice
-       bob    |   greg
-       greg   |  alice
-       Liam   |   Noah
-       Noah   |  Oliver
-      James   |  Lucas
-       Noah   | Benjamin
-     Benjamin |  Mason
-    
-
-
 
 ```python
 from rgxlog import magic_session
@@ -333,65 +296,24 @@ print ("after:")
 magic_session.print_all_rules()
 ```
 
-    before:
-    Printing all rules:
-    grandparent(X, Z) <- parent(X, Y), parent(Y, Z)
-    ancestor(X, Y) <- parent(X, Y)
-    ancestor(X, Y) <- parent(X, Z), ancestor(Z, Y)
-    ancestor(X, Y) <- brothers(X, Y), confused(Y)
-    
-    after:
-    Printing all rules:
-    grandparent(X, Z) <- parent(X, Y), parent(Y, Z)
-    ancestor(X, Y) <- parent(X, Y)
-    ancestor(X, Y) <- parent(X, Z), ancestor(Z, Y)
-    
-
-
-
 ```python
 %%rgxlog
 ?ancestor(X,Y)
 ```
 
-    printing results for query 'ancestor(X, Y)':
-        X     |    Y
-    ----------+----------
-       Noah   |  Mason
-       Liam   |  Mason
-       Liam   |  Oliver
-       Liam   | Benjamin
-       bob    |  alice
-       bob    |   greg
-       greg   |  alice
-       Liam   |   Noah
-       Noah   |  Oliver
-      James   |  Lucas
-       Noah   | Benjamin
-     Benjamin |  Mason
-    
-
-
 success! the rule was deleted - Drake and Josh are no longer part of the `?ancestor` query result
+
 
 Note that during this examples we used ```print_all_rules```.<br>
 This function prints all the registered rules.<br>
 If you wan't to print only rules that relevant to spesific rule head, you can pass the rule head as a parameter.
 
-
 ```python
 magic_session.print_all_rules("ancestor")
 ```
 
-    Printing all rules with head ancestor:
-    ancestor(X, Y) <- parent(X, Y)
-    ancestor(X, Y) <- parent(X, Z), ancestor(Z, Y)
-    
-
-
 In addition you can use ```remove_all_rules``` to remove all the rules (it won't affect the facts).<br>
 You can pass rule head paraemetr to remove all the rules related to it.
-
 
 ```python
 magic_session.remove_all_rules("ancestor")
@@ -404,29 +326,10 @@ magic_session.print_all_rules()
 %rgxlog ?parent(X, Y)
 ```
 
-    Printing all rules:
-    grandparent(X, Z) <- parent(X, Y), parent(Y, Z)
-    
-    Printing all rules:
-    
-    printing results for query 'parent(X, Y)':
-        X     |    Y
-    ----------+----------
-     Benjamin |  Mason
-       Noah   | Benjamin
-      James   |  Lucas
-       Noah   |  Oliver
-       Liam   |   Noah
-       greg   |  alice
-       bob    |   greg
-    
-
-
 # Queries<a class="anchor" id="queries"></a>
 Querying is very simple in RGXLog. You can query by using constant values, local variables and free variables:
 
-
-```python
+```python pycharm={"name": "#%%\n"}
 %%rgxlog
 # first create a relation with some facts for the example
 new grandfather(str, str)
@@ -459,51 +362,7 @@ orders("cake", 0)
 ?orders(X, 4) # retutns "pie" and "pizza"         
 ```
 
-    printing results for query 'grandfather("bob", "alice")':
-    [()]
-    
-    printing results for query 'grandfather("edward", "alice")':
-    []
-    
-    printing results for query 'grandfather("george", X)':
-       X
-    -------
-      rin
-     alice
-    
-    printing results for query 'grandfather(X, "rin")':
-       X
-    --------
-      bob
-     george
-    
-    printing results for query 'grandfather(X, Y)':
-       X    |   Y
-    --------+-------
-     edward | john
-     george |  rin
-     george | alice
-      bob   |  rin
-      bob   | alice
-    
-    printing results for query 'verb("Ron eats quickly.", X)':
-       X
-    --------
-     [4, 8)
-    
-    printing results for query 'verb(X, [4, 9))':
-             X
-    -------------------
-     You write neatly.
-    
-    printing results for query 'orders(X, 4)':
-       X
-    -------
-     pizza
-      pie
-    
-
-
+<!-- #region pycharm={"name": "#%% md\n"} -->
 You may have noticed that the query
 
 ```
@@ -520,7 +379,9 @@ A good example for using free variables to construct a relation is the query:
 ```
 
 which finds all of george's grandchildren (`X`) and constructs a tuple for each one.
+<!-- #endregion -->
 
+<!-- #region pycharm={"name": "#%% md\n"} -->
 # Functional regex formulas<a class="anchor" id="RGX_ie"></a>
 RGXLog supports information extraction using a regular expressions and named capture groups (for now in rule bodies only).
 You will first need to define a string variable either by using a literal or a load from a file, and then you can use the following syntax in a rule body:
@@ -543,7 +404,7 @@ where:
 The only difference between the 'rgx_span' and 'rgx_string' ie functions, is that RGX returns spans while RGXString returns strings. This also means that if you want to use constant terms as return values, they have to be spans if you use 'RGX', or strings if you use 'RGXString'
 
 For example:
-
+<!-- #endregion -->
 
 ```python
 %%rgxlog
@@ -553,20 +414,13 @@ annual_earning(Year, Amount) <- py_rgx_string(report,"(\d\d\d\d).*?(?P<a>\d+)")-
 
 ```
 
-    printing results for query 'annual_earning(X, Y)':
-        X |    Y
-    ------+------
-     2000 | 2019
-    
-
-
 # Creating and Registering a New IE Function
+
 
 Using regex is nice, but what if we want to define our own IE function? <br>
 RGXLog allows us to do that:
 
 ### IE function `get_happy`
-
 
 ```python
 import re
@@ -602,6 +456,7 @@ magic_session.register(ie_function=get_happy,
 
 ### #TODO@niv: @dean, maybe rename information extractors to tell them apart from IE functions?
 
+
 # Custom information extractors<a class="anchor" id="custom_ie"></a>
 RGXLog allows you to define and use your own information extractors. You can use them only in rule bodies in the current version. The following is the syntax for custom information extractors:
 
@@ -616,8 +471,8 @@ where:
 
 For example:
 
-### custom IE using `get_happy`
 
+### custom IE using `get_happy`
 
 ```python
 %%rgxlog
@@ -630,14 +485,6 @@ test_happy(X) <- get_happy(sentence) -> (X)
 happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 ?happy_grandmother(X) # assuming get_happy returned "rin", also returns "rin"
 ```
-
-    printing results for query 'happy_grandmother(X)':
-      X
-    -----
-     rin
-    
-
-
 ## More information about IE functions
 * You can remove an IE function via the session:
 
@@ -653,346 +500,19 @@ happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 
 ```magic_session.print_registered_ie_functions()```
 
-
 ```python
 # first, let's print all functions:
 magic_session.print_registered_ie_functions()
 ```
-
-    py_rgx_span
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9b50>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9b50>
-    
-        @param text: The input text for the regex operation
-        @param regex_pattern: the pattern of the regex operation
-    
-        @return: tuples of spans that represents the results
-        
-    
-    
-    py_rgx_string
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9bb0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9bb0>
-    
-        @param text: The input text for the regex operation
-        @param regex_pattern: the pattern of the regex operation
-    
-        @return: tuples of strings that represents the results
-        
-    
-    
-    rgx_span
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9fa0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9fa0>
-    
-        @param text: The input text for the regex operation
-        @param regex_pattern: the pattern of the regex operation
-    
-        @return: tuples of spans that represents the results
-        
-    
-    
-    rgx_string
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5070>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5070>
-    
-        @param text: The input text for the regex operation
-        @param regex_pattern: the pattern of the regex operation
-    
-        @return: tuples of strings that represents the results
-        
-    
-    
-    JsonPath
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc50a0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc50a0>
-    
-        @param json_document: The document on which we will run the path expression
-        @param path_expression: The query to execute.
-    
-        @return: json documents
-        
-    
-    
-    JsonPathFull
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5250>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5250>
-    
-        @param json_document: The document on which we will run the path expression
-        @param path_expression: The query to execute.
-    
-        @return: json documents with the full results paths.
-        
-    
-    
-    Tokenize
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc52b0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc52b0>
-    None
-    
-    
-    SSplit
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5310>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5310>
-    None
-    
-    
-    POS
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5370>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5370>
-    None
-    
-    
-    Lemma
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc53d0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc53d0>
-    None
-    
-    
-    NER
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5430>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5430>
-    None
-    
-    
-    EntityMentions
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5490>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5490>
-    None
-    
-    
-    CleanXML
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc54f0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc54f0>
-    None
-    
-    
-    Parse
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5580>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5580>
-    None
-    
-    
-    DepParse
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc55e0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc55e0>
-    None
-    
-    
-    Coref
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5640>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5640>
-    None
-    
-    
-    OpenIE
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc56a0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc56a0>
-    None
-    
-    
-    KBP
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5700>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5700>
-    None
-    
-    
-    Quote
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5760>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5760>
-    None
-    
-    
-    Sentiment
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc57c0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc57c0>
-    None
-    
-    
-    TrueCase
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5820>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5820>
-    None
-    
-    
-    get_happy
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87d5921940>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87d5921940>
-    
-        get the names of people who are happy in `text`
-        
-    
-    
-
-
 
 ```python
 magic_session.remove_ie_function("Coref")
 magic_session.print_registered_ie_functions()
 ```
 
-    py_rgx_span
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9b50>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9b50>
-    
-        @param text: The input text for the regex operation
-        @param regex_pattern: the pattern of the regex operation
-    
-        @return: tuples of spans that represents the results
-        
-    
-    
-    py_rgx_string
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9bb0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9bb0>
-    
-        @param text: The input text for the regex operation
-        @param regex_pattern: the pattern of the regex operation
-    
-        @return: tuples of strings that represents the results
-        
-    
-    
-    rgx_span
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9fa0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6db9fa0>
-    
-        @param text: The input text for the regex operation
-        @param regex_pattern: the pattern of the regex operation
-    
-        @return: tuples of spans that represents the results
-        
-    
-    
-    rgx_string
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5070>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5070>
-    
-        @param text: The input text for the regex operation
-        @param regex_pattern: the pattern of the regex operation
-    
-        @return: tuples of strings that represents the results
-        
-    
-    
-    JsonPath
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc50a0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc50a0>
-    
-        @param json_document: The document on which we will run the path expression
-        @param path_expression: The query to execute.
-    
-        @return: json documents
-        
-    
-    
-    JsonPathFull
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5250>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5250>
-    
-        @param json_document: The document on which we will run the path expression
-        @param path_expression: The query to execute.
-    
-        @return: json documents with the full results paths.
-        
-    
-    
-    Tokenize
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc52b0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc52b0>
-    None
-    
-    
-    SSplit
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5310>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5310>
-    None
-    
-    
-    POS
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5370>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5370>
-    None
-    
-    
-    Lemma
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc53d0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc53d0>
-    None
-    
-    
-    NER
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5430>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5430>
-    None
-    
-    
-    EntityMentions
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5490>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5490>
-    None
-    
-    
-    CleanXML
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc54f0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc54f0>
-    None
-    
-    
-    Parse
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5580>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5580>
-    None
-    
-    
-    DepParse
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc55e0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc55e0>
-    None
-    
-    
-    OpenIE
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc56a0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc56a0>
-    None
-    
-    
-    KBP
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5700>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5700>
-    None
-    
-    
-    Quote
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5760>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5760>
-    None
-    
-    
-    Sentiment
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc57c0>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc57c0>
-    None
-    
-    
-    TrueCase
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5820>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87b6dc5820>
-    None
-    
-    
-    get_happy
-    <bound method IEFunction.get_meta_data of <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87d5921940>>
-    <rgxlog.engine.ie_functions.ie_function_base.IEFunction object at 0x7f87d5921940>
-    
-        get the names of people who are happy in `text`
-        
-    
-    
-
-
 another tremendous triumph! Coref was deleted from the registered functions
 
+<!-- #region pycharm={"name": "#%% md\n"} -->
 # Additional small features<a class="anchor" id="small_features"></a>
 You can use line overflow escapes if you want to split your statements into multiple lines
 
@@ -1003,8 +523,8 @@ k \
 string"
 ```
 
-# Full RGXLog program example<a class="anchor" id="example_program"></a>
-
+# RGXLog program example<a class="anchor" id="example_program"></a>
+<!-- #endregion -->
 
 ```python
 %%rgxlog
@@ -1038,44 +558,12 @@ py_rgx_string(grade_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemist
 ?grade_of_chemistry_students(X, "100") # returns "abigail"
 ```
 
-    printing results for query 'enrolled_in_chemistry("jordan")':
-    [()]
-    
-    printing results for query 'enrolled_in_chemistry("gale")':
-    []
-    
-    printing results for query 'enrolled_in_chemistry(X)':
-        X
-    ---------
-     abigail
-     jordan
-     howard
-    
-    printing results for query 'enrolled_in_physics_and_chemistry(X)':
-       X
-    --------
-     howard
-    
-    printing results for query 'lecturer_of(X, "abigail")':
-       X
-    --------
-     linus
-     walter
-    
-    printing results for query 'grade_of_chemistry_students(X, "100")':
-        X
-    ---------
-     abigail
-    
-
-
 # Useful tricks<a class="anchor" id="Usefull tricks"></a>
-## Using input variables of ie functions:
+## Table Alignment:
 Lets write a rgxlog program that gets a table in which each row is a strings - string(str).
 <br>
 The program will create a new table in which each row is a string and it's length.
 ### First try:
-
 
 ```python
 # Step 1: implement an IE function
@@ -1085,7 +573,6 @@ def length(string):
 # Step 2: register the function
 magic_session.register(length, "Length", [DataTypes.string], [DataTypes.integer])
 ```
-
 
 ```python
 %%rgxlog
@@ -1100,28 +587,6 @@ string_length(Str, Len) <- string(Str), Length(Str) -> (Len)
 ?string_length(Str, Len)
 ```
 
-    printing results for query 'string_length(Str, Len)':
-      Str  |   Len
-    -------+-------
-     abcd  |     1
-     abcd  |     2
-     abcd  |     3
-     abcd  |     4
-      abc  |     4
-      abc  |     3
-      abc  |     2
-      abc  |     1
-      ab   |     4
-      ab   |     3
-      ab   |     2
-      ab   |     1
-       a   |     4
-       a   |     3
-       a   |     2
-       a   |     1
-    
-
-
 ### Looks like something went wrong!
 Our goal was to append to each string in the table its length.
 What we actually got is the length of each string appended to **all** the strings.
@@ -1129,9 +594,8 @@ What we actually got is the length of each string appended to **all** the string
 This happens becuase RGXLog stores all the inputs of each IE function in an input table and all the outputs in an output table. 
 Then it's joining the input table with the output table.
 <br><br>
-Therefore, if we want to associate inputs of an ie function with their output, we need our ie function to do so.
+Therefore, if we want append to each input to its output, we have to do it manually.
 ### Second try:
-
 
 ```python
 def length2(string):
@@ -1141,22 +605,11 @@ def length2(string):
 magic_session.register(length2, "Length2", [DataTypes.string], [DataTypes.integer, DataTypes.string])
 ```
 
-
 ```python
 %%rgxlog
 string_length_2(Str, Len) <- string(Tmp), Length2(Tmp) -> (Len, Str)
 ?string_length_2(Str, Len)
 ```
-
-    printing results for query 'string_length_2(Str, Len)':
-      Str  |   Len
-    -------+-------
-       a   |     1
-      ab   |     2
-      abc  |     3
-     abcd  |     4
-    
-
 
 ## Logical Operators:
 Suppose we have a table in which each row contains two strings - pair(str, str).
@@ -1172,57 +625,42 @@ Unfortunately RGXLog doesn't support True/False values. Therefore, we can't use 
 <br>
 Our solution to this problem is to create an ie function that implements NEQ relation:
 
-
-```python
-magic_session.remove_all_rules()
-```
-
-
 ```python
 def NEQ(x, y):
-    if x != y:
-        #return tuples only if they are not equal
+    if x == y:
+        # return false (empty tuple represents false)
+        yield tuple() 
+    else:
+        #return true
         yield x, y
-    
-    #Other wise nothing is returned
-        
 
 in_out_types = [DataTypes.string, DataTypes.string]
 magic_session.register(NEQ, "NEQ", in_out_types, in_out_types)
 ```
 
-
 ```python
 %%rgxlog
 #Lets test this solution
-# new pair(str, str)
+new pair(str, str)
 pair("Dan", "Tom")
 pair("Cat", "Dog")
 pair("Apple", "Apple")
 pair("Cow", "Cow")
 pair("123", "321")
 
-unique_pair(X, Y) <- pair(X, Y), NEQ(X, Y) -> (X, Y)
+unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
 ?unique_pair(X, Y)
 ```
 
-    printing results for query 'unique_pair(X, Y)':
-      X  |  Y
-    -----+-----
-     123 | 321
-     Cat | Dog
-     Dan | Tom
-    
+# Python Implementation v.s. RgxLog Implementation
 
-
-# Comparing Python and RgxLog in implementing complex control flow
 
 let's try to compare coding in python and coding in rgxlog.
 we are given two long strings of enrolled pairs, grades pairs.
 our goal is to find all student that are enrolled in biology and chemistry, and have a GPA > 80.
 
-## python 
 
+## python 
 
 ```python
 import re
@@ -1239,11 +677,7 @@ for student1, course1 in enrolled_pairs:
                     print(student1)
 ```
 
-    subaru
-
-
 ## rgxlog
-
 
 ```python
 %%rgxlog
@@ -1256,24 +690,48 @@ interesting_student(X) <- enrolled_in(X, "biology"), enrolled_in(X, "chemistry")
 ?interesting_student(X)
 ```
 
-    printing results for query 'interesting_student(X)':
-       X
-    --------
-     subaru
-    
+in this case, the python implementation was long and unnatural. on the other hand, the rgxlog implementation was cleaner and allowed us to express our intentions directly, rather than dealing with annoying programming logic.
 
-
-in this case, the python implementation was long and unnatural. on the other hand, the rgxlog implementation was cleaner and allowed us to express our intentions directly, rather than dealing with annoying nesting and control flow.
 
 # Parsing JSON document using RgxLog
 
-Rgxlog's JsonPath/JsonFullPath ie funciton allows us to easily parse json documents using path expressions.<br>
-We will demonstrate how to use this function.
-<br>
-<br>
+
+Rglog's JsonPath/JsonFullPath ie funcitons allow us to easily parse json documents using path expressions.<br>
+We will demonstrate how to use the latter. Check out the [jsonpath repo](https://github.com/json-path/JsonPath) for more information.
+
+First, we would like to remove the built-in jsonpath function, to show how we implement it from scratch:
+
+```python
+magic_session.remove_ie_function("JsonPathFull")
+```
+
+After removing the function, implementing and registering it is as easy as:
+
+```python
+def json_path_full(json_document: str, path_expression: str):
+    """
+    @param json_document: The document on which we will run the path expression.
+    @param path_expression: The query to execute.
+    @return: json documents with the full results paths.
+    """
+
+    json_document = json.loads(json_document.replace("'", "\""))
+    jsonpath_expr = parse(path_expression)
+    for match in jsonpath_expr.find(json_document):
+        json_result = str(match.full_path)
+        # objects in full path are separated by dots.
+        yield *json_result.split("."), parse_match(match)
+
+JsonPathFull = dict(ie_function=json_path_full,
+            ie_function_name='JsonPathFull',
+            in_rel=[DataTypes.string, DataTypes.string],
+            out_rel=lambda arity: [DataTypes.string] * arity,
+            )
+```
+
+And now for the usage.
 Suppose we have a json document of the following format {student: {subject: grade, ...} ,...}
 We want to create a rglox relation containg tuples of (student, subject, grade).
-
 
 ```python
 %%rgxlog
@@ -1290,17 +748,3 @@ json_string = "{ \
 json_table(Student, Subject, Grade) <- JsonPathFull(json_string, "*.*") -> (Student, Subject, Grade)
 ?json_table(Student, Subject, Grade)
 ```
-
-    printing results for query 'json_table(Student, Subject, Grade)':
-      Student  |      Subject      |   Grade
-    -----------+-------------------+---------
-      howard   |      biology      |      92
-      howard   |      physics      |      91
-      howard   |     chemistry     |      90
-       gale    | operation systems |     100
-      jordan   |      physics      |      70
-      jordan   |     chemistry     |      65
-      abigail  | operation systems |      99
-      abigail  |     chemistry     |      80
-    
-
