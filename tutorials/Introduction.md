@@ -40,22 +40,21 @@ prerequisites:
 
 * Have [Python](https://www.python.org/downloads/) version 3.8 or above installed
 
-To download and install RGXLog run the following command in your terminal:
+To download and install RGXLog run the following commands in your terminal:
 
-<!-- #region language="bash" -->
+```bash
 git clone https://github.com/DeanLight/spanner_workbench
 cd spanner_workbench
-
 pip install src/rgxlog-interpreter 
-
+```
 <!-- #endregion -->
 Make sure you are calling the pip version of your current python environment.
 To install with another python interpreter, run
 
-<!-- #region language="bash" -->
-
-<path_to_python_interpreter> -m pip install  src/rgxlog-interpreter
-
+<!-- #region -->
+```bash
+<path_to_python_interpreter> -m pip install src/rgxlog-interpreter
+```
 <!-- #endregion -->
 You can also install RGXLog in the current Jupyter kernel:
 <!-- #endregion -->
@@ -274,6 +273,10 @@ You could also remove a rule via the session:
 note: the rule must be written exactly as it appears in the output of `print_all_rules`
 
 ```python
+
+```
+
+```python
 %%rgxlog
 confused("Josh")
 brothers("Drake", "Josh")
@@ -317,9 +320,11 @@ You can pass rule head paraemetr to remove all the rules related to it.
 
 ```python
 magic_session.remove_all_rules("ancestor")
+print("after removing ancestor rules:")
 magic_session.print_all_rules()
 
 magic_session.remove_all_rules()
+print("after removing all rules:")
 magic_session.print_all_rules()
 
 # facts are not affected...
@@ -625,6 +630,11 @@ Unfortunately RGXLog doesn't support True/False values. Therefore, we can't use 
 <br>
 Our solution to this problem is to create an ie function that implements NEQ relation:
 
+
+```python
+
+```
+
 ```python
 def NEQ(x, y):
     if x == y:
@@ -696,7 +706,7 @@ in this case, the python implementation was long and unnatural. on the other han
 # Parsing JSON document using RgxLog
 
 
-Rglog's JsonPath/JsonFullPath ie funcitons allow us to easily parse json documents using path expressions.<br>
+Rgxlog's JsonPath/JsonFullPath ie functions allow us to easily parse json documents using path expressions.<br>
 We will demonstrate how to use the latter. Check out the [jsonpath repo](https://github.com/json-path/JsonPath) for more information.
 
 First, we would like to remove the built-in jsonpath function, to show how we implement it from scratch:
@@ -708,13 +718,26 @@ magic_session.remove_ie_function("JsonPathFull")
 After removing the function, implementing and registering it is as easy as:
 
 ```python
+import json
+from jsonpath_ng import parse
+
+def parse_match(match) -> str:
+    """
+    @param match: a match result of json path query.
+    @return: a string that represents the match in string format.
+    """
+    json_result = match.value
+    if type(json_result) != str:
+        # we replace for the same reason as in json_path implementation.
+        json_result = json.dumps(json_result).replace("\"", "'")
+    return json_result
+
 def json_path_full(json_document: str, path_expression: str):
     """
     @param json_document: The document on which we will run the path expression.
     @param path_expression: The query to execute.
     @return: json documents with the full results paths.
     """
-
     json_document = json.loads(json_document.replace("'", "\""))
     jsonpath_expr = parse(path_expression)
     for match in jsonpath_expr.find(json_document):
@@ -727,6 +750,8 @@ JsonPathFull = dict(ie_function=json_path_full,
             in_rel=[DataTypes.string, DataTypes.string],
             out_rel=lambda arity: [DataTypes.string] * arity,
             )
+
+magic_session.register(**JsonPathFull)
 ```
 
 And now for the usage.
@@ -735,6 +760,7 @@ We want to create a rglox relation containg tuples of (student, subject, grade).
 
 ```python
 %%rgxlog
+
 # we use string as RgxLog doesn't support dicts.
 json_string = "{ \
                 'abigail': {'chemistry': 80, 'operation systems': 99}, \
@@ -747,4 +773,65 @@ json_string = "{ \
 # than JsonPathFull appends the full path to the value
 json_table(Student, Subject, Grade) <- JsonPathFull(json_string, "*.*") -> (Student, Subject, Grade)
 ?json_table(Student, Subject, Grade)
+```
+
+# Wrapping shell-based functions
+
+
+Rgxlog's `rgx_string` ie function is a good example of running an external shell as part of rgxlog code.
+This time we won't remove the built-in function - we'll just show the implementation:
+
+<!-- #region -->
+```python
+def rgx(text, regex_pattern, out_type: str):
+    """
+    An IE function which runs regex using rust's `enum-spanner-rs` and yields tuples of strings/spans (not both).
+
+    @param text: the string on which regex is run.
+    @param regex_pattern: the pattern to run.
+    @param out_type: string/span - decides which one will be returned.
+    @return: a tuple of strings/spans.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        rgx_temp_file_name = os.path.join(temp_dir, TEMP_FILE_NAME)
+        with open(rgx_temp_file_name, "w+") as f:
+            f.write(text)
+
+        if out_type == "string":
+            rust_regex_args = rf"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name}"
+            format_function = _format_spanner_string_output
+        elif out_type == "span":
+            rust_regex_args = rf"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name} --bytes-offset"
+            format_function = _format_spanner_span_output
+        else:
+            assert False, "illegal out_type"
+
+        regex_output = format_function(run_command(rust_regex_args, stderr=True))
+
+        for out in regex_output:
+            yield out
+
+def rgx_string(text, regex_pattern):
+    """
+    @param text: The input text for the regex operation.
+    @param regex_pattern: the pattern of the regex operation.
+    @return: tuples of strings that represents the results.
+    """
+    return rgx(text, regex_pattern, "string")
+
+RGX_STRING = dict(ie_function=rgx_string,
+                  ie_function_name='rgx_string',
+                  in_rel=RUST_RGX_IN_TYPES,
+                  out_rel=rgx_string_out_type)
+```
+<!-- #endregion -->
+
+`run_command` is an STDLIB function used in rgxlog, which basically runs a command using python's `Popen`.
+
+Let's run the ie function:
+
+```python
+%%rgxlog
+string_rel(X) <- rgx_string("bb",".+") -> (X)
+?string_rel(X)
 ```
