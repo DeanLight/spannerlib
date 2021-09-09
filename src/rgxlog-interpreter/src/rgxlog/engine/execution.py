@@ -1051,7 +1051,7 @@ class GenericExecution(ExecutionBase):
             term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
 
         elif term_type == "rule_rel":
-            self.compute_rule_rel_node(node_id, term_attrs)
+            self.compute_rule_rel_node(term_attrs)
 
         elif term_type == "union":
             self.compute_union_node(node_id)
@@ -1075,19 +1075,20 @@ class GenericExecution(ExecutionBase):
         compute_status = EvalState.COMPUTED if self.is_node_computed(node_id) else EvalState.VISITED
         term_graph.set_node_attribute(node_id, 'state', compute_status)
 
-    def compute_rule_rel_node(self, node_id: Union[str, int], term_attrs: Dict) -> None:
+    def compute_rule_rel_node(self, term_attrs: Dict) -> None:
         """
         Computes a rule rel node.
 
-        @param node_id: the node.
-        @param term_attrs: the attributes of the node.
+        @param term_attrs: the attributes of the rule rel node.
         """
-        # TODO@niv: @tom, if node_id can be both int and str, change it to `node_name`. otherwise, change the type hint to int
+        # TODO@niv: @tom, if node_id can be both int and str, change it to `node_name`. otherwise, change the type
+        #  hint to int
+        #  @tom: this param was unnecessary, so i deleted it.
         rule_rel = term_attrs[VALUE_ATTRIBUTE]
         rule_name = rule_rel.relation_name
-        rel_in: Relation = self.get_child_relation(node_id)
+        rel_in: Relation = self.get_child_relation(rule_name)
         copy_rel = self.rgxlog_engine.operator_copy(rel_in, rule_name)
-        self.term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, copy_rel)
+        self.term_graph.set_node_attribute(rule_name, OUT_REL_ATTRIBUTE, copy_rel)
 
     def compute_join_node(self, node_id: int) -> None:
         """
