@@ -1081,9 +1081,6 @@ class GenericExecution(ExecutionBase):
 
         @param term_attrs: the attributes of the rule rel node.
         """
-        # TODO@niv: @tom, if node_id can be both int and str, change it to `node_name`. otherwise, change the type
-        #  hint to int
-        #  @tom: this param was unnecessary, so i deleted it.
         rule_rel = term_attrs[VALUE_ATTRIBUTE]
         rule_name = rule_rel.relation_name
         rel_in: Relation = self.get_child_relation(rule_name)
