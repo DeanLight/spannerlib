@@ -24,8 +24,6 @@ OUT_REL_ATTRIBUTE = "output_rel"
 
 RESERVED_RELATION_PREFIX = "__rgxlog__"
 
-DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
-RELATION_COLUMN_PREFIX = "col"
 FREE_VAR_PREFIX = "COL"
 
 # rgx constants
@@ -299,11 +297,14 @@ class SqliteEngine(RgxlogEngineBase):
     COPY_PREFIX = "copy"
     SELECT_PREFIX = "select"
     UNION_PREFIX = "union"
+    RELATION_COLUMN_PREFIX = "col"
 
     # sql constants
     SQL_SELECT = 'SELECT DISTINCT'
     SQL_TABLE_OF_TABLES = 'sqlite_master'
     SQL_SEPARATOR = "_"
+    DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
+
 
     # TODO@niv: refactor everything to jinja2
     def __init__(self, debug=False, database_name=None):
@@ -351,7 +352,7 @@ class SqliteEngine(RgxlogEngineBase):
         """
         num_types = len(fact.type_list)
         sql_command = f"INSERT INTO {fact.relation_name} ("
-        sql_command += ", ".join([f"{RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)])
+        sql_command += ", ".join([f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)])
         sql_command += ") VALUES ("
         sql_command += ", ".join(["?"] * num_types)
         sql_command += ")"
@@ -643,7 +644,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
         sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
-        sql_command += ", ".join([f"{RELATION_COLUMN_PREFIX}{i}" for i in range(len(relation_decl.type_list))])
+        sql_command += ", ".join([f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(len(relation_decl.type_list))])
         sql_command += ")"
 
         self.run_sql(sql_command)
@@ -906,9 +907,8 @@ class SqliteEngine(RgxlogEngineBase):
                                f"type='table' AND name='{table_name}'")
         return bool(self.run_sql(sql_check_if_exists))
 
-    @staticmethod
-    def _datatype_to_sql_type(datatype: DataTypes):
-        return DATATYPE_TO_SQL_TYPE[datatype]
+    def _datatype_to_sql_type(self, datatype: DataTypes):
+        return self.DATATYPE_TO_SQL_TYPE[datatype]
 
     def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
         if datatype == DataTypes.span:
@@ -919,9 +919,8 @@ class SqliteEngine(RgxlogEngineBase):
     def __del__(self):
         self.sql_conn.close()
 
-    @staticmethod
-    def _get_col_name(col_id: int) -> str:
-        return f'{RELATION_COLUMN_PREFIX}{col_id}'
+    def _get_col_name(self, col_id: int) -> str:
+        return f'{self.RELATION_COLUMN_PREFIX}{col_id}'
 
     @staticmethod
     def _get_free_variable_indexes(type_list) -> List[int]:
