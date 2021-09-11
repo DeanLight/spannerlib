@@ -7,7 +7,8 @@ from pandas import DataFrame
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import FREE_VAR_PREFIX
 from rgxlog.engine.session import Session
-from tests.utils import (run_test, is_equal_stripped_sorted_tables, is_equal_dataframes_ignore_order, run_query_into_csv_test, TEMP_FILE_NAME)
+from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
+from tests.utils import (run_test, is_equal_stripped_sorted_tables, is_equal_dataframes_ignore_order, run_commands_into_csv_test, TEMP_FILE_NAME)
 
 
 @pytest.fixture(scope="module")
@@ -23,7 +24,7 @@ def test_import_csv1(im_ex_session: Session):
         '"aoi";[1,2);16\n'
         '"ano sora";[42,69);24\n')
 
-    expected_result_string = """printing results for query \'csv_rel(X, Y, Z)\':
+    expected_result_string = f"""{QUERY_RESULT_PREFIX}'csv_rel(X, Y, Z)':
                                         X     |    Y     |   Z
                                     ----------+----------+-----
                                      ano sora | [42, 69) |  24
@@ -54,7 +55,7 @@ def test_import_csv2(im_ex_session: Session):
 
         im_ex_session.import_relation_from_csv(example_relation2_csv, relation_name="csv_rel2")
 
-        expected_result_string = """printing results for query \'csv_rel2(X)\':
+        expected_result_string = f"""{QUERY_RESULT_PREFIX}'csv_rel2(X)':
                                       X
                                     -----
                                       c
@@ -71,7 +72,7 @@ def test_import_df(im_ex_session: Session):
 
     query = "?df_rel(X,Y)"
 
-    expected_result_string = """printing results for query 'df_rel(X, Y)':
+    expected_result_string = f"""{QUERY_RESULT_PREFIX}'df_rel(X, Y)':
           X  |    Y
         -----+---------
           c  | [2, 10)
@@ -82,8 +83,8 @@ def test_import_df(im_ex_session: Session):
     run_test(query, expected_result_string, test_session=im_ex_session)
 
 
-def test_query_into_csv_basic(im_ex_session: Session):
-    query = """new basic_rel(str)
+def test_commands_into_csv_basic(im_ex_session: Session):
+    commands = """new basic_rel(str)
             basic_rel("stardew")
             basic_rel("valley")"""
 
@@ -94,11 +95,11 @@ def test_query_into_csv_basic(im_ex_session: Session):
 
     query_for_csv = '?basic_rel(X)'
 
-    run_query_into_csv_test(expected_rel, im_ex_session, query, query_for_csv)
+    run_commands_into_csv_test(expected_rel, im_ex_session, commands, query_for_csv)
 
 
-def test_query_into_csv_long(im_ex_session: Session):
-    query = """new longrel(str,span,int)
+def test_commands_into_csv_long(im_ex_session: Session):
+    commands = """new longrel(str,span,int)
             longrel("ano sora",[42, 69),24)
             longrel("aoi",[1, 2),16)
             longrel("aoi",[0, 3),8)"""
@@ -111,12 +112,12 @@ def test_query_into_csv_long(im_ex_session: Session):
 
     query_for_csv = "?longrel(X,Y,Z)"
 
-    run_query_into_csv_test(expected_longrel, im_ex_session, query, query_for_csv)
+    run_commands_into_csv_test(expected_longrel, im_ex_session, commands, query_for_csv)
 
 
 def test_export_relation_into_csv(im_ex_session: Session):
     relation_name = "hotdoge"
-    query = f"""
+    commands = f"""
             new {relation_name}(str, int)
             {relation_name}("wow",42)
             {relation_name}("such summer", 420)
@@ -128,7 +129,7 @@ def test_export_relation_into_csv(im_ex_session: Session):
         such summer:420
         much heat:42"""
 
-    im_ex_session.run_statements(query, print_results=False)
+    im_ex_session.run_statements(commands, print_results=False)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
@@ -139,20 +140,20 @@ def test_export_relation_into_csv(im_ex_session: Session):
             assert is_equal_stripped_sorted_tables(f_temp.read(), expected_export_rel), "file was not written properly"
 
 
-def test_query_into_df(im_ex_session: Session):
+def test_commands_into_df(im_ex_session: Session):
     test_df = DataFrame(["king", "jump"], columns=["X"])
     # create new relation
-    query = """
+    commands = """
         new df_query_rel(str)
         df_query_rel("jump")
         df_query_rel("king")"""
 
-    im_ex_session.run_statements(query, print_results=False)
+    im_ex_session.run_statements(commands, print_results=False)
 
     query_for_df = "?df_query_rel(X)"
 
-    # query into df and compare
-    temp_df = im_ex_session.query_into_df(query_for_df)
+    # send commands into df and compare
+    temp_df = im_ex_session.send_commands_result_into_df(query_for_df)
     assert is_equal_dataframes_ignore_order(temp_df, test_df), "the dataframes are not equal"
 
 
@@ -160,14 +161,14 @@ def test_export_relation_into_df(im_ex_session: Session):
     column_names = [f"{FREE_VAR_PREFIX}0", f"{FREE_VAR_PREFIX}1"]
 
     relation_name = "export_df_rel"
-    query = f"""
+    commands = f"""
         new {relation_name}(span, str)
         {relation_name}([1,3), "aa")
         {relation_name}([2,4), "bb")"""
 
     expected_df = DataFrame([[Span(1, 3), "aa"], [Span(2, 4), "bb"]], columns=column_names)
 
-    im_ex_session.run_statements(query)
+    im_ex_session.run_statements(commands)
     result_df = im_ex_session.export_relation_into_df(relation_name)
 
     assert is_equal_dataframes_ignore_order(result_df, expected_df)

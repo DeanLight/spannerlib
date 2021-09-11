@@ -14,6 +14,7 @@ SPAN_GROUP1 = "start"
 SPAN_GROUP2 = "end"
 # as of now, we don't support negative/float numbers (for both spans and integers)
 SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
+QUERY_RESULT_PREFIX = "printing results for query "
 
 
 def fixed_point(start, step: Callable, distance: Callable, thresh: int = 0):
@@ -40,7 +41,7 @@ def get_free_var_names(term_list: List, type_list: List) -> Set:
     return free_var_names
 
 
-def get_numbered_free_var_pairs(relation: Union[Relation, IERelation]) -> List[Tuple]:
+def freevar_position_pairs(relation: Union[Relation, IERelation]) -> List[Tuple]:
     """
     @param relation: a relation.
     @return: a list of all (free_var, index) pairs based on term_list.
@@ -77,7 +78,7 @@ def get_numbered_output_free_var_names(relation: Union[Relation, IERelation]) ->
     @return: a set of the free variable names used as output terms in the relation.
     """
 
-    return get_numbered_free_var_pairs(relation)
+    return freevar_position_pairs(relation)
 
 
 def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) -> (
@@ -93,18 +94,10 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
     @return: a mapping between each free var to the relations and corresponding columns in which it appears.
     """
     # note: don't remove variables with less than 2 uses here, we need them as well
-    # TODO@niv
-    # var_dict = dict()
-    # for relation in relations:
-    #     free_vars_pairs = get_numbered_output_free_var_names(relation)
-    #     for i, var in free_vars_pairs:
-    #         old_var_entry = var_dict.get(var, list())
-    #         old_var_entry.append((relation, i))
-    #         var_dict[var] = old_var_entry
     free_var_positions = {relation: get_numbered_output_free_var_names(relation) for relation in relations}
-    free_var_set = {var for pair_list in free_var_positions.values() for (i, var) in pair_list}
-    var_dict = {var1: [(relation, i) for relation, pair_list in free_var_positions.items() for
-                       (i, var2) in pair_list if var2 == var1]
+    free_var_set = {var for pair_list in free_var_positions.values() for (_, var) in pair_list}
+    var_dict = {var1: [(relation, free_var_pos) for relation, pair_list in free_var_positions.items() for
+                       (free_var_pos, var2) in pair_list if var2 == var1]
                 for var1 in free_var_set}
 
     return var_dict

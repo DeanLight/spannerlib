@@ -1,8 +1,9 @@
+from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
 def test_recursive():
-    query = '''
+    commands = '''
             new parent(str, str)
             parent("Liam", "Noah")
             parent("Noah", "Oliver")
@@ -17,7 +18,7 @@ def test_recursive():
             ?ancestor("Mason", X)
             '''
 
-    expected_result = """printing results for query 'ancestor("Liam", X)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'ancestor("Liam", X)':
             X
         ----------
           Mason
@@ -25,22 +26,22 @@ def test_recursive():
          Benjamin
            Noah
 
-        printing results for query 'ancestor(X, "Mason")':
+        {QUERY_RESULT_PREFIX}'ancestor(X, "Mason")':
             X
         ----------
            Noah
            Liam
          Benjamin
 
-        printing results for query 'ancestor("Mason", X)':
+        {QUERY_RESULT_PREFIX}'ancestor("Mason", X)':
         []
         """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_mutually_recursive_basic():
-    query = """
+    commands = """
             new C(int)
             C(1)
             C(2)
@@ -53,7 +54,7 @@ def test_mutually_recursive_basic():
             ?A(X)
             """
 
-    expected_result = """printing results for query 'A(X)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X)':
         X
         -----
         1
@@ -61,4 +62,4 @@ def test_mutually_recursive_basic():
         3
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)

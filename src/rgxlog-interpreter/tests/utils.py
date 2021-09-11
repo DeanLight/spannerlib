@@ -1,5 +1,6 @@
 import os
 import tempfile
+from pathlib import Path
 from typing import List, Optional, Iterable, Dict
 
 import numpy as np
@@ -93,15 +94,15 @@ def compare_strings(expected: str, output: str) -> bool:
     return True
 
 
-def run_test(query: str, expected_output: Optional[str] = None, functions_to_import: Iterable[Dict] = tuple(),
+def run_test(commands: str, expected_output: Optional[str] = None, functions_to_import: Iterable[Dict] = tuple(),
              test_session: Optional[Session] = None) -> Session:
     """
     A function that executes a test.
 
-    @param query: the query to run.
-    @param expected_output: the expected output of the query. if it has value of None, than we won't check the output.
+    @param commands: the commands to run.
+    @param expected_output: the expected output of the commands. if it has value of None, than we won't check the output.
     @param functions_to_import: an iterable of functions we want to import to the session.
-    @param test_session: the session in which we run the query.
+    @param test_session: the session in which we run the commands.
     @return: the session it created or got as an argument.
     """
     # if session wasn't passed as an arg than we create it
@@ -112,21 +113,21 @@ def run_test(query: str, expected_output: Optional[str] = None, functions_to_imp
     for ie_function in functions_to_import:
         test_session.register(**ie_function)
 
-    query_result = test_session.run_statements(query, print_results=True)
+    commands_result = test_session.run_statements(commands, print_results=True)
 
     if expected_output is not None:
-        query_result_string = queries_to_string(query_result)
-        assert compare_strings(expected_output, query_result_string), "expected string != result string"
+        commands_result_string = queries_to_string(commands_result)
+        assert compare_strings(expected_output, commands_result_string), "expected string != result string"
 
     return test_session
 
 
-def run_query_into_csv_test(expected_longrel, im_ex_session, query, query_for_csv):
-    im_ex_session.run_statements(query, print_results=False)
+def run_commands_into_csv_test(expected_longrel, im_ex_session, commands, query_for_csv):
+    im_ex_session.run_statements(commands, print_results=False)
     # query into csv and compare with old file
     with tempfile.TemporaryDirectory() as temp_dir:
-        temp_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
-        im_ex_session.query_into_csv(query_for_csv, temp_csv)
+        temp_csv = Path(temp_dir) / TEMP_FILE_NAME
+        im_ex_session.send_commands_result_into_csv(query_for_csv, str(temp_csv))
         assert os.path.isfile(temp_csv), "file was not created"
 
         with open(temp_csv) as f_temp:
