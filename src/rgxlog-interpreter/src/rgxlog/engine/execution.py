@@ -967,7 +967,7 @@ class ExecutionBase(ABC):
 
 class GenericExecution(ExecutionBase):
     """
-    Executes a term graph
+    Executes a parse graph
     this execution is generic, meaning it does not require any specific kind of term graph, symbol table or
     rgxlog engine in order to work.
     this execution performs no special optimization and merely serves as an interface between the term graph
@@ -999,57 +999,57 @@ class GenericExecution(ExecutionBase):
         rgxlog_engine = self.rgxlog_engine
         exec_result = None
 
-        # get the term ids. note that the order of the ids does not actually matter as long as the statements
+        # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
         # are ordered the same way as they were in the original program
-        term_ids = parse_graph.post_order_dfs()
+        parse_node_ids = parse_graph.post_order_dfs()
 
-        # execute each non computed statement in the term graph
-        for term_id in term_ids:
-            term_attrs = parse_graph[term_id]
+        # execute each non computed statement in the parse graph
+        for parse_id in parse_node_ids:
+            parse_node_attrs = parse_graph[parse_id]
 
-            if term_attrs["state"] is EvalState.COMPUTED:
+            if parse_node_attrs["state"] is EvalState.COMPUTED:
                 continue
 
-            # the term is not computed, get its type and compute it accordingly
-            term_type = term_attrs["type"]
+            # the parse node is not computed, get its type and compute it accordingly
+            parse_node_type = parse_node_attrs["type"]
 
-            if term_type in ("root", "relation"):
+            if parse_node_type in ("root", "relation"):
                 # pass and not continue, because we want to mark them as computed
                 pass
 
-            elif term_type == "rule":
-                rule = term_attrs[VALUE_ATTRIBUTE]
+            elif parse_node_type == "rule":
+                rule = parse_node_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.declare_relation(rule.head_relation.as_relation_declaration())
 
-            elif term_type == "relation_declaration":
-                relation_decl = term_attrs[VALUE_ATTRIBUTE]
+            elif parse_node_type == "relation_declaration":
+                relation_decl = parse_node_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.declare_relation(relation_decl)
 
-            elif term_type == "add_fact":
-                fact = term_attrs[VALUE_ATTRIBUTE]
+            elif parse_node_type == "add_fact":
+                fact = parse_node_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.add_fact(fact)
 
-            elif term_type == "remove_fact":
-                fact = term_attrs[VALUE_ATTRIBUTE]
+            elif parse_node_type == "remove_fact":
+                fact = parse_node_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.remove_fact(fact)
 
-            elif term_type == "query":
+            elif parse_node_type == "query":
                 # we return the query as well as the result, because we print as part of the output
-                query = term_attrs[VALUE_ATTRIBUTE]
+                query = parse_node_attrs[VALUE_ATTRIBUTE]
                 self.compute_rule(query.relation_name)
                 exec_result = (query, rgxlog_engine.query(query))
 
             else:
-                raise ValueError("illegal term type in parse graph")
+                raise ValueError("illegal node type in parse graph")
 
             # statement was executed, mark it as "computed"
-            parse_graph.set_node_attribute(term_id, "state", EvalState.COMPUTED)
+            parse_graph.set_node_attribute(parse_id, "state", EvalState.COMPUTED)
 
         return exec_result
 
     def compute_node(self, node_id: int) -> None:
         """
-        Computes the current node based on it's type.
+        Computes the current node based on its type.
 
         @param node_id: the current node.
         """
