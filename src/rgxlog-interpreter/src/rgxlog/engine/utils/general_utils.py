@@ -96,9 +96,13 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
     # note: don't remove variables with less than 2 uses here, we need them as well
     free_var_positions = {relation: get_numbered_output_free_var_names(relation) for relation in relations}
     free_var_set = {var for pair_list in free_var_positions.values() for (_, var) in pair_list}
-    var_dict = {var1: [(relation, free_var_pos) for relation, pair_list in free_var_positions.items() for
-                       (free_var_pos, var2) in pair_list if var2 == var1]
-                for var1 in free_var_set}
+
+    # create a triple of every relation, free var position, and free var name. these will be united inside var_dict.
+    rel_pos_var_triple = [(relation, pos, free_var) for (relation, pair_list) in free_var_positions.items() for
+                          (pos, free_var) in pair_list]
+
+    var_dict = {var_from_set: [(relation, free_var_pos) for (relation, free_var_pos, var_from_triple) in rel_pos_var_triple if var_from_set == var_from_triple]
+                for var_from_set in free_var_set}
 
     return var_dict
 
