@@ -2,6 +2,25 @@ from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
+def test_assignment():
+    commands = """
+            new Relation(int, int)
+            x = 1
+            y = 2
+            Relation(x, y)
+            Relation(y, x)
+            ?Relation(X, x)
+        """
+
+    expected_result = f"""{QUERY_RESULT_PREFIX}'Relation(X, 1)':
+       X
+    -----
+       2
+    """
+
+    run_test(commands, expected_result)
+
+
 def test_copy_table_rule():
     commands = """
             new B(int, int)

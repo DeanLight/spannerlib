@@ -1,5 +1,5 @@
-import os
 import tempfile
+from pathlib import Path
 
 import pytest
 from pandas import DataFrame
@@ -33,7 +33,7 @@ def test_import_csv1(im_ex_session: Session):
                                     """
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        example_relation_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
+        example_relation_csv = Path(temp_dir) / TEMP_FILE_NAME
         with open(example_relation_csv, "w") as f:
             f.write(example_relation)
 
@@ -49,7 +49,7 @@ def test_import_csv2(im_ex_session: Session):
         "c\n")
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        example_relation2_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
+        example_relation2_csv = Path(temp_dir) / TEMP_FILE_NAME
         with open(example_relation2_csv, "w") as f:
             f.write(example_relation_two)
 
@@ -132,9 +132,9 @@ def test_export_relation_into_csv(im_ex_session: Session):
     im_ex_session.run_statements(commands, print_results=False)
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        temp_csv = os.path.join(temp_dir, TEMP_FILE_NAME)
+        temp_csv = Path(temp_dir) / TEMP_FILE_NAME
         im_ex_session.export_relation_into_csv(temp_csv, relation_name, delimiter=":")
-        assert os.path.isfile(temp_csv), "file was not created"
+        assert Path(temp_csv).is_file(), "file was not created"
 
         with open(temp_csv) as f_temp:
             assert is_equal_stripped_sorted_tables(f_temp.read(), expected_export_rel), "file was not written properly"

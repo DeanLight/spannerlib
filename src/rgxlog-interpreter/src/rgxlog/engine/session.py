@@ -232,9 +232,9 @@ class Session:
             AddRulesToComputationTermGraph
         ]
 
-        grammar_file_path = os.path.dirname(rgxlog.grammar.__file__)
+        grammar_file_path = Path(rgxlog.grammar.__file__).parent
         grammar_file_name = 'grammar.lark'
-        with open(f'{grammar_file_path}/{grammar_file_name}', 'r') as grammar_file:
+        with open(grammar_file_path/grammar_file_name, 'r') as grammar_file:
             self._grammar = grammar_file.read()
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
@@ -406,7 +406,7 @@ class Session:
             engine.add_fact(fact)
 
     def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=";"):
-        if not os.path.isfile(csv_file_name):
+        if not Path(csv_file_name).is_file():
             raise IOError("csv file does not exist")
 
         if os.stat(csv_file_name).st_size == 0:

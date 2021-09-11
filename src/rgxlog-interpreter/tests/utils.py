@@ -1,4 +1,3 @@
-import os
 import tempfile
 from pathlib import Path
 from typing import List, Optional, Iterable, Dict
@@ -128,7 +127,7 @@ def run_commands_into_csv_test(expected_longrel, im_ex_session, commands, query_
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_csv = Path(temp_dir) / TEMP_FILE_NAME
         im_ex_session.send_commands_result_into_csv(query_for_csv, str(temp_csv))
-        assert os.path.isfile(temp_csv), "file was not created"
+        assert Path(temp_csv).is_file(), "file was not created"
 
         with open(temp_csv) as f_temp:
             assert is_equal_stripped_sorted_tables(f_temp.read(), expected_longrel), "file was not written properly"

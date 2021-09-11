@@ -9,9 +9,9 @@ because that way, the java processes will not be killed.
 import json
 import logging
 from io import BytesIO
-from os import path
 from os import popen
 from urllib.request import urlopen
+from pathlib import Path
 from zipfile import ZipFile
 
 import jdk
@@ -25,12 +25,12 @@ MIN_VERSION = 1.8
 NLP_URL = "https://nlp.stanford.edu/software/stanford-corenlp-4.1.0.zip"
 
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
-CURR_DIR = path.dirname(__file__)
-NLP_DIR_PATH = path.join(CURR_DIR, NLP_DIR_NAME)
+CURR_DIR = Path(__file__).parent
+NLP_DIR_PATH = str(Path(CURR_DIR) / NLP_DIR_NAME)
 
 JAVA_DOWNLOADER = "install-jdk"
-_USER_DIR = path.expanduser("~")
-INSTALLATION_PATH = path.join(_USER_DIR, ".jre")
+_USER_DIR = Path.home()
+INSTALLATION_PATH = _USER_DIR / ".jre"
 
 
 # @dean: why is enum_spanner_regex and stanford-corenlp in the git tree, did you forget to add them to gitignore?
@@ -38,7 +38,7 @@ INSTALLATION_PATH = path.join(_USER_DIR, ".jre")
 #  temporary folders and stuff like that), and stanford-corenlp isn't in the tree
 
 def _is_installed_nlp():
-    return path.isdir(NLP_DIR_PATH)
+    return Path(NLP_DIR_PATH).is_dir()
 
 
 def _install_nlp():
@@ -57,7 +57,7 @@ def _is_installed_java():
     if len(version) != 0 and float(version) >= MIN_VERSION:
         return True
 
-    return path.isdir(INSTALLATION_PATH)
+    return Path(INSTALLATION_PATH).is_dir()
 
 
 def _run_installation():

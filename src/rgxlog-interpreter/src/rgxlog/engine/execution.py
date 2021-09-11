@@ -4,11 +4,11 @@ and also implementations of 'ExecutionBase' which serves as an abstraction for a
 and an rgxlog engine.
 """
 
-import os
 import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
+from pathlib import Path
 from typing import (Tuple, Optional, Dict, Set, Iterable, Union, Any, List)
 
 from rgxlog.engine.datatypes.ast_node_types import (DataTypes, Relation, AddFact, RemoveFact, Query,
@@ -80,6 +80,15 @@ class RgxlogEngineBase(ABC):
     def query(self, query: Query):
         """
         Queries the rgxlog engine.
+        Outputs a preformatted query result, e.g. [("a",5),("b",6)].
+        notice that `query` isn't a string; it's a `Query` object which inherits from `Relation`.
+        for example, parsing the string `?excellent("bill","ted")` yields the following `Query`:
+
+        ```
+        relation_name = excellent
+        term_list = ["bill", "ted"]
+        type_list = [DataType.string, DataType.string]
+        ```
 
         @param query: a query for the rgxlog engine.
         @return: a list of tuples that are the query's results.
@@ -296,6 +305,7 @@ class SqliteEngine(RgxlogEngineBase):
     SQL_TABLE_OF_TABLES = 'sqlite_master'
     SQL_SEPARATOR = "_"
 
+    # TODO@niv: refactor everything to jinja2
     def __init__(self, debug=False, database_name=None):
         """
         Creates/opens an SQL database file + connection.
@@ -308,7 +318,7 @@ class SqliteEngine(RgxlogEngineBase):
         self.rules_history = dict()
 
         if database_name:
-            if not os.path.isfile(database_name):
+            if not Path(database_name).is_file():
                 raise IOError(f"database file: {database_name} was not found")
             self.db_filename = database_name
         else:
@@ -672,7 +682,8 @@ class SqliteEngine(RgxlogEngineBase):
         repeating_vars_in_relation = [(free_var, pairs) for (free_var, pairs) in
                                       src_relation_var_dict.items() if (len(pairs) > 1)]
         if (len(select_info) > 0) or repeating_vars_in_relation:
-            sql_command += " WHERE "
+            # TODO@niv: refactor this into new helper method
+            sql_command_where = " WHERE "
             sql_conditions = []
             # add conditions based on `select_info`
             for i, value, _ in select_info:
@@ -692,7 +703,12 @@ class SqliteEngine(RgxlogEngineBase):
                     second_col_name = self._get_col_name(second_index)
                     sql_conditions.append(f"{first_col_name}={second_col_name}")
 
-            sql_command += " AND ".join(sql_conditions)
+            sql_command_where += " AND ".join(sql_conditions)
+
+        else:
+            sql_command_where = ""
+
+        sql_command += sql_command_where
 
         self.run_sql(sql_command, sql_args)
         return selected_relation
@@ -706,7 +722,7 @@ class SqliteEngine(RgxlogEngineBase):
         @return: a new relation as described above.
         """
 
-        def create_new_relation_for_join_result(relation_terms, relation_prefix):
+        def _create_new_relation_for_join_result(relation_terms, relation_prefix):
             # get the type list of the joined relation (all of the terms are free variables)
             relation_arity = len(relation_terms)
             relation_types = [DataTypes.free_var_name] * relation_arity
@@ -731,10 +747,9 @@ class SqliteEngine(RgxlogEngineBase):
         free_vars = set().union(*free_var_sets)
         joined_relation_terms = list(free_vars)
 
-        joined_relation = create_new_relation_for_join_result(joined_relation_terms, prefix)
+        joined_relation = _create_new_relation_for_join_result(joined_relation_terms, prefix)
 
         # construct the sql join command
-        sql_command = f"INSERT INTO {joined_relation.relation_name} {self.SQL_SELECT} "
         on_conditions_list = []
         inner_join_list = []
         free_var_cols = []
@@ -768,11 +783,11 @@ class SqliteEngine(RgxlogEngineBase):
 
         # add the join conditions (`ON`)
         if on_conditions_list:
-            on_conditions_str = " ON "
-            on_conditions_str += " AND ".join(on_conditions_list)
+            on_conditions_str = " ON " + " AND ".join(on_conditions_list)
         else:
             on_conditions_str = ""
 
+        sql_command = f"INSERT INTO {joined_relation.relation_name} {self.SQL_SELECT} "
         sql_command += ", ".join(free_var_cols)
         sql_command += f" FROM {first_relation.relation_name} AS {relation_sql_names[first_relation]} "
         sql_command += " ".join(inner_join_list)
@@ -851,8 +866,7 @@ class SqliteEngine(RgxlogEngineBase):
             curr_relation_string += ", ".join(selection_list) + f" FROM {relation.relation_name}"
             union_list.append(curr_relation_string)
 
-        sql_command = f"INSERT INTO {new_relation_name} "
-        sql_command += " UNION ".join(union_list)
+        sql_command = f"INSERT INTO {new_relation_name} {' UNION '.join(union_list)}"
 
         self.run_sql(sql_command)
         return new_relation
