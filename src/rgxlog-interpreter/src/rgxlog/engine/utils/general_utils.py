@@ -2,7 +2,7 @@
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
 import re
-from typing import Callable
+from typing import Callable, Any
 from typing import (Union, Tuple, Set, Dict, List, Optional)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, IERelation, Rule)
@@ -17,7 +17,7 @@ SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 QUERY_RESULT_PREFIX = "printing results for query "
 
 
-def strip_lines(text):
+def strip_lines(text: str) -> str:
     return "\n".join([line.strip() for line in text.splitlines() if line.strip()])
 
 
@@ -34,7 +34,7 @@ def fixed_point(start, step: Callable, distance: Callable, thresh: int = 0):
     return x
 
 
-def get_free_var_names(term_list: List, type_list: List) -> Set:
+def get_free_var_names(term_list: List, type_list: List) -> Set[Any]:
     """
     @param term_list: a list of terms.
     @param type_list: a list of the term types.
@@ -45,18 +45,18 @@ def get_free_var_names(term_list: List, type_list: List) -> Set:
     return free_var_names
 
 
-def freevar_position_pairs(relation: Union[Relation, IERelation]) -> List[Tuple]:
+def position_freevar_pairs(relation: Union[Relation, IERelation]) -> List[Tuple]:
     """
     @param relation: a relation.
-    @return: a list of all (free_var, index) pairs based on term_list.
+    @return: a list of all (index, free_var) pairs based on term_list.
     """
     term_list, type_list = relation.get_term_list(), relation.get_type_list()
-    free_var_names = list(((i, term) for i, (term, term_type) in enumerate(zip(term_list, type_list))
-                           if term_type is DataTypes.free_var_name))
-    return free_var_names
+    pos_var_pairs = list(((i, term) for i, (term, term_type) in enumerate(zip(term_list, type_list))
+                          if term_type is DataTypes.free_var_name))
+    return pos_var_pairs
 
 
-def get_input_free_var_names(relation: Union[Relation, IERelation]) -> Set:
+def get_input_free_var_names(relation: Union[Relation, IERelation]) -> Set[Any]:
     """
     @param relation: a relation (either a normal relation or an ie relation).
     @return: a set of the free variable names used as input terms in the relation.
@@ -68,7 +68,7 @@ def get_input_free_var_names(relation: Union[Relation, IERelation]) -> Set:
         return set()
 
 
-def get_output_free_var_names(relation: Union[Relation, IERelation]) -> Set:
+def get_output_free_var_names(relation: Union[Relation, IERelation]) -> Set[Any]:
     """
     @param relation: a relation (either a normal relation or an ie relation).
     @return: a set of the free variable names used as output terms in the relation.
@@ -82,7 +82,7 @@ def get_numbered_output_free_var_names(relation: Union[Relation, IERelation]) ->
     @return: a set of the free variable names used as output terms in the relation.
     """
 
-    return freevar_position_pairs(relation)
+    return position_freevar_pairs(relation)
 
 
 def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) -> (
@@ -112,7 +112,7 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
 
 
 def check_properly_typed_term_list(term_list: list, type_list: list,
-                                   correct_type_list: list, symbol_table: SymbolTableBase):
+                                   correct_type_list: list, symbol_table: SymbolTableBase) -> bool:
     """
     Checks if the term list is properly typed.
     the term list could include free variables, this method will assume their actual type is correct.
@@ -142,7 +142,7 @@ def check_properly_typed_term_list(term_list: list, type_list: list,
 
 
 def check_properly_typed_relation(relation: Union[Relation, IERelation], relation_type: str,
-                                  symbol_table: SymbolTableBase):
+                                  symbol_table: SymbolTableBase) -> bool:
     """
     Checks if a relation is properly typed, this check ignores free variables.
 
@@ -182,7 +182,7 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation], relatio
     return relation_is_properly_typed
 
 
-def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
+def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase) -> Tuple[Dict, Set]:
     """
     Free variables in rules get their type from the relations in the rule body.
     it is possible for a free variable to be expected to be more than one type (meaning it has conflicting types).
@@ -230,7 +230,7 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase):
 
 
 def type_check_rule_free_vars_aux(term_list: List, type_list: List, correct_type_list: List,
-                                  free_var_to_type: Dict, conflicted_free_vars: Set):
+                                  free_var_to_type: Dict, conflicted_free_vars: Set) -> None:
     """
     A helper function for the method "type_check_rule_free_vars"
     performs the free variables type checking on term_list.
