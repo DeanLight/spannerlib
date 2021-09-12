@@ -502,7 +502,7 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         This function depends on the structure of the computation graph.
 
         @param rule: the rule to remove.
-        @note: the rule is in string format and must be exectly equal the the original rule (i.e.,  if you want to
+        @note: the rule is in string format and must be exactly equal the the original rule (i.e.,  if you want to
                delete the rule A(X) <-B(X), you mast pass A(X) <- B(X) and not A(Y) <- B(Y))
         @return: Whether the deletion of the rule succeeded.
         """
@@ -660,7 +660,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
     def _compute_bounding_graph(relations: Set[Relation], ie_relations: Set[IERelation]) -> \
             OrderedDictType[IERelation, Set[Union[Relation, IERelation]]]:
         """
-        This class gets body relations of a rule and computes for each ie relation the relations that bound it.
+        This function gets body relations of a rule and computes for each ie relation the relations that bound it.
         @note: In some cases ie relation is bounded by other ie relation.
                 e.g. A(X) <- B(Y), C(Z) -> (X), D(Y) -> (Z); in this example C is bounded only by D.
 
@@ -906,7 +906,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
 
     def remove_rule(self, rule: str) -> bool:
         """
-        Removes rule from term graph.
+        Removes a rule from term graph.
 
         @param rule: the rule to remove. unlike add_rule, here rule should be string as it is a user input.
         @raise Exception if the rule doesn't exist in the term graph
@@ -924,7 +924,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
         is_last_rule_path = len(list(self.get_children(union_node))) == 1
         is_rule_used = self._dependency_graph.is_relation_in_use(rule_name)
 
-        # check if something is connected to the root and the root is going to be deleted (this shouldn't happen)
+        # check if something is connected to the rel_root and the root is going to be deleted (this shouldn't happen)
         if is_last_rule_path and is_rule_used:
             raise RuntimeError(f"The rule '{rule}' can't be deleted since '{rule_name}' is used in another existing "
                                f"rule.")
