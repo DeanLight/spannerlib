@@ -303,7 +303,7 @@ class Session:
         """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    def set_execution(self, execution_class: Type) -> None:
+    def set_execution(self, execution_class: Type[ExecutionBase]) -> None:
         """
         Sets the execution class of the engine.
 
@@ -329,7 +329,7 @@ class Session:
 
         return [pass_.__name__ for pass_ in self._pass_stack]
 
-    def set_pass_stack(self, user_stack: List[Type]):
+    def set_pass_stack(self, user_stack: List[Type[GenericPass]]):
         """
         Sets a new pass stack instead of the current one.
 
