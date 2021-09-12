@@ -37,6 +37,7 @@ INSTALLATION_PATH = _USER_DIR / ".jre"
 # TODO@niv: @dean, no - i use enum_spanner_regex for the installation (convenient because we don't have to mess with
 #  temporary folders and stuff like that), and stanford-corenlp isn't in the tree
 
+# TODO@niv: try the efficiency thing again, this time resurrect the modules in spanner_nlp and test closing the interpreter while running
 def _is_installed_nlp():
     return Path(NLP_DIR_PATH).is_dir()
 

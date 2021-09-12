@@ -1,20 +1,24 @@
 """
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
-import pdb
 import re
+from typing import Callable
+from typing import (Union, Tuple, Set, Dict, List, Optional)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, IERelation, Rule)
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from typing import (Union, Tuple, Set, Dict, List, Optional)
-from typing import Callable
 
 SPAN_GROUP1 = "start"
 SPAN_GROUP2 = "end"
+
 # as of now, we don't support negative/float numbers (for both spans and integers)
 SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 QUERY_RESULT_PREFIX = "printing results for query "
+
+
+def strip_lines(text):
+    return "\n".join([line.strip() for line in text.splitlines() if line.strip()])
 
 
 def fixed_point(start, step: Callable, distance: Callable, thresh: int = 0):

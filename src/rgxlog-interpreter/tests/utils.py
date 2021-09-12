@@ -106,7 +106,7 @@ def run_test(commands: str, expected_output: Optional[str] = None, functions_to_
     """
     # if session wasn't passed as an arg than we create it
     if test_session is None:
-        test_session = Session()
+        test_session = Session(True)
 
     # import all ie functions
     for ie_function in functions_to_import:

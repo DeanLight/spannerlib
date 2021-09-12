@@ -59,7 +59,8 @@ setuptools.setup(
         'jsonpath-ng',
         'psutil',
         'install-jdk',
-        'spanner-nlp'
+        'spanner-nlp',
+        'Jinja2'
     ],
     dependency_links=[
     ]

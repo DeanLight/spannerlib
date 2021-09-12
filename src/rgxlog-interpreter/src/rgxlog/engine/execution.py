@@ -4,6 +4,7 @@ and also implementations of 'ExecutionBase' which serves as an abstraction for a
 and an rgxlog engine.
 """
 
+from jinja2 import Template
 import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
@@ -17,7 +18,7 @@ from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, GraphBase, ComputationTermGraph
-from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, string_to_span
+from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, string_to_span, strip_lines
 
 VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
@@ -305,7 +306,6 @@ class SqliteEngine(RgxlogEngineBase):
     SQL_SEPARATOR = "_"
     DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
 
-
     # TODO@niv: refactor everything to jinja2
     def __init__(self, debug=False, database_name=None):
         """
@@ -351,11 +351,30 @@ class SqliteEngine(RgxlogEngineBase):
         Add a row into an existing table.
         """
         num_types = len(fact.type_list)
-        sql_command = f"INSERT INTO {fact.relation_name} ("
-        sql_command += ", ".join([f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)])
-        sql_command += ") VALUES ("
-        sql_command += ", ".join(["?"] * num_types)
-        sql_command += ")"
+        sql_template = strip_lines("""
+        INSERT INTO {{fact.relation_name}} (
+        {%- for col_index in range(num_types) -%}
+            {{engine.RELATION_COLUMN_PREFIX}}{{col_index}}
+            {%- if not loop.last -%}
+            , 
+            {%- endif -%}
+        {% endfor -%}
+        ) VALUES (
+        {%- for i in range(num_types) -%}
+            ?
+            {%- if not loop.last -%}
+            , 
+            {%- endif -%}
+        {%- endfor -%}
+        )
+        """)
+        sql_command = Template(sql_template).render(num_types=num_types, fact=fact, engine=self)
+
+        # sql_command = f"INSERT INTO {fact.relation_name} ("
+        # sql_command += ", ".join([f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)])
+        # sql_command += ") VALUES ("
+        # sql_command += ", ".join(["?"] * num_types)
+        # sql_command += ")"
 
         sql_term_list = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
                          zip(fact.type_list, fact.term_list)]
