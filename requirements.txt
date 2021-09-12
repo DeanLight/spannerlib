@@ -12,3 +12,4 @@ install-jdk
 parse
 spanner-nlp
 pytest
+Jinja2

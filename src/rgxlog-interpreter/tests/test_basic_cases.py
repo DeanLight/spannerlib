@@ -1,24 +1,28 @@
+from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
-def test_introduction():
-    query = """
-    new uncle(str, str)
-    uncle("bob", "greg")
-    ?uncle(X,Y)
-    """
-
-    expected_result_intro = """printing results for query 'uncle(X, Y)':
-          X  |  Y
-        -----+------
-         bob | greg
+def test_assignment():
+    commands = """
+            new Relation(int, int)
+            x = 1
+            y = 2
+            Relation(x, y)
+            Relation(y, x)
+            ?Relation(X, x)
         """
 
-    run_test(query, expected_result_intro)
+    expected_result = f"""{QUERY_RESULT_PREFIX}'Relation(X, 1)':
+       X
+    -----
+       2
+    """
+
+    run_test(commands, expected_result)
 
 
 def test_copy_table_rule():
-    query = """
+    commands = """
             new B(int, int)
             B(1, 1)
             B(1, 2)
@@ -27,7 +31,7 @@ def test_copy_table_rule():
             ?A(X, Y)
         """
 
-    expected_result = """printing results for query 'A(X, Y)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X, Y)':
        X |   Y
     -----+-----
        1 |   1
@@ -35,11 +39,11 @@ def test_copy_table_rule():
        2 |   3
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_join_two_tables():
-    query = """
+    commands = """
         new B(int, int)
         new C(int, int)
         B(1, 1)
@@ -51,18 +55,18 @@ def test_join_two_tables():
         ?D(X, Y, Z)
     """
 
-    expected_result = """printing results for query 'D(X, Y, Z)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'D(X, Y, Z)':
        X |   Y |   Z
     -----+-----+-----
        1 |   2 |   2
        1 |   1 |   1
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_relation_with_same_free_var():
-    query = """
+    commands = """
         new B(int, int)
         B(1, 1)
         B(1, 2)
@@ -71,18 +75,18 @@ def test_relation_with_same_free_var():
         ?A(X)
     """
 
-    expected_result = """printing results for query 'A(X)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X)':
        X
     -----
        1
        2
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_union_rule_with_same_vars():
-    query = """
+    commands = """
         new B(int, int)
         new C(int, int)
         B(1, 1)
@@ -96,7 +100,7 @@ def test_union_rule_with_same_vars():
         ?A(X, Y)
     """
 
-    expected_result = """printing results for query 'A(X, Y)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X, Y)':
        X |   Y
     -----+-----
        1 |   1
@@ -105,11 +109,11 @@ def test_union_rule_with_same_vars():
        2 |   3
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_union_rule_with_different_vars():
-    query = """
+    commands = """
         new B(int, int)
         new C(int, int)
         B(1, 1)
@@ -123,7 +127,7 @@ def test_union_rule_with_different_vars():
         ?A(X, Y)
     """
 
-    expected_result = """printing results for query 'A(X, Y)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X, Y)':
        X |   Y
     -----+-----
        1 |   1
@@ -132,11 +136,11 @@ def test_union_rule_with_different_vars():
        2 |   3
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_project():
-    query = """
+    commands = """
             new B(int, int)
             B(1, 1)
             B(1, 2)
@@ -145,17 +149,17 @@ def test_project():
             ?A(X)
         """
 
-    expected_result = """printing results for query 'A(X)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X)':
        X
     -----
        1 
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_add_fact_after_rule():
-    query = """
+    commands = """
             new B(int, int)
             B(1, 1)
             A(X, Y) <- B(X, Y)
@@ -163,34 +167,34 @@ def test_add_fact_after_rule():
             ?A(Z, W)
         """
 
-    expected_result = """printing results for query 'A(Z, W)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(Z, W)':
        Z |   W
     -----+-----
        1 |   1
        1 |   2
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_datatypes():
-    query = """
+    commands = """
             new B(int, str, span)
             B(1, "2", [1, 2))
             ?B(X, Y, Z)
         """
 
-    expected_result = """printing results for query 'B(X, Y, Z)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'B(X, Y, Z)':
        X |   Y |   Z
     -----+-----+--------
        1 |   2 | [1, 2)
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_join_same_relation():
-    query = """
+    commands = """
             new Parent(str, str)
             Parent("God", "Abraham")
             Parent("Abraham", "Isaac")
@@ -201,17 +205,17 @@ def test_join_same_relation():
             ?GrandParent(X, "Isaac")
         """
 
-    expected_result = """printing results for query 'GrandParent(X, "Isaac")':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'GrandParent(X, "Isaac")':
       X
     -----
      God
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_rule_with_constant():
-    query = """
+    commands = """
               new B(int, int)
               new C(int, int)
               B(1, 1)
@@ -224,18 +228,18 @@ def test_rule_with_constant():
               ?A(X)
            """
 
-    expected_result = """printing results for query 'A(X)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X)':
        X
     -----
        1
        2
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_rule_with_true_value():
-    query = """
+    commands = """
                new B(int, int)
                new C(int, int)
                B(1, 1)
@@ -248,7 +252,7 @@ def test_rule_with_true_value():
                ?A(X, Y)
             """
 
-    expected_result = """printing results for query 'A(X, Y)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X, Y)':
        X |   Y
     -----+-----
        1 |   1
@@ -256,11 +260,11 @@ def test_rule_with_true_value():
        2 |   3
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_rule_with_false_value():
-    query = """
+    commands = """
                new B(int, int)
                new C(int, int)
                B(1, 1)
@@ -273,15 +277,15 @@ def test_rule_with_false_value():
                ?A(X, Y)
             """
 
-    expected_result = """printing results for query 'A(X, Y)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X, Y)':
     []
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_query_with_same_var():
-    query = """
+    commands = """
               new B(int, int)
               B(1, 1)
               B(1, 2)
@@ -291,17 +295,17 @@ def test_query_with_same_var():
               ?A(X, X)
            """
 
-    expected_result = """printing results for query 'A(X, X)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X, X)':
        X |   X
     -----+-----
        1 |   1
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_query_with_constant_value():
-    query = """
+    commands = """
                new B(int, int)
                B(1, 1)
                B(1, 2)
@@ -311,18 +315,18 @@ def test_query_with_constant_value():
                ?A(1, X)
             """
 
-    expected_result = """printing results for query 'A(1, X)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(1, X)':
        X
     -----
        1
        2
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_remove_rule():
-    query = """
+    commands = """
                new B(int, int)
                new C(int, int)
                B(1, 1)
@@ -336,7 +340,7 @@ def test_remove_rule():
 
             """
 
-    expected_result = """printing results for query 'A(X, Y)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X, Y)':
        X |   Y
     -----+-----
        1 |   1
@@ -344,7 +348,7 @@ def test_remove_rule():
        2 |   3
      """
 
-    session = run_test(query)
+    session = run_test(commands)
 
     session.remove_rule("A(X, Y) <- C(X, Y)")
 
@@ -352,7 +356,7 @@ def test_remove_rule():
 
 
 def test_select_and_join():
-    query = """
+    commands = """
             new B(int)
             new C(int, int)
             B(2)
@@ -362,38 +366,38 @@ def test_select_and_join():
             ?A(X)
         """
 
-    expected_result = """printing results for query 'A(X)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(X)':
        X
     -----
        2
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_query_true_value():
-    query = """
+    commands = """
             new A(int)
             A(1)
             ?A(1)
         """
 
-    expected_result = """printing results for query 'A(1)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(1)':
     [()]
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_query_false_value():
-    query = """
+    commands = """
             new A(int)
             A(1)
             ?A(2)
         """
 
-    expected_result = """printing results for query 'A(2)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'A(2)':
     []
     """
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)

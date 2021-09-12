@@ -4,11 +4,12 @@ and also implementations of 'ExecutionBase' which serves as an abstraction for a
 and an rgxlog engine.
 """
 
-import os
+from jinja2 import Template
 import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
+from pathlib import Path
 from typing import (Tuple, Optional, Dict, Set, Iterable, Union, Any, List)
 
 from rgxlog.engine.datatypes.ast_node_types import (DataTypes, Relation, AddFact, RemoveFact, Query,
@@ -17,15 +18,13 @@ from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.state.term_graph import EvalState, GraphBase, ComputationTermGraph
-from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, string_to_span
+from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_free_var_to_relations_dict, string_to_span, strip_lines
 
 VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
 
 RESERVED_RELATION_PREFIX = "__rgxlog__"
 
-DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
-RELATION_COLUMN_PREFIX = "col"
 FREE_VAR_PREFIX = "COL"
 
 # rgx constants
@@ -80,6 +79,15 @@ class RgxlogEngineBase(ABC):
     def query(self, query: Query):
         """
         Queries the rgxlog engine.
+        Outputs a preformatted query result, e.g. [("a",5),("b",6)].
+        notice that `query` isn't a string; it's a `Query` object which inherits from `Relation`.
+        for example, parsing the string `?excellent("bill","ted")` yields the following `Query`:
+
+        ```
+        relation_name = excellent
+        term_list = ["bill", "ted"]
+        type_list = [DataType.string, DataType.string]
+        ```
 
         @param query: a query for the rgxlog engine.
         @return: a list of tuples that are the query's results.
@@ -290,12 +298,15 @@ class SqliteEngine(RgxlogEngineBase):
     COPY_PREFIX = "copy"
     SELECT_PREFIX = "select"
     UNION_PREFIX = "union"
+    RELATION_COLUMN_PREFIX = "col"
 
     # sql constants
     SQL_SELECT = 'SELECT DISTINCT'
     SQL_TABLE_OF_TABLES = 'sqlite_master'
     SQL_SEPARATOR = "_"
+    DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
 
+    # TODO@niv: refactor everything to jinja2
     def __init__(self, debug=False, database_name=None):
         """
         Creates/opens an SQL database file + connection.
@@ -308,7 +319,7 @@ class SqliteEngine(RgxlogEngineBase):
         self.rules_history = dict()
 
         if database_name:
-            if not os.path.isfile(database_name):
+            if not Path(database_name).is_file():
                 raise IOError(f"database file: {database_name} was not found")
             self.db_filename = database_name
         else:
@@ -340,11 +351,30 @@ class SqliteEngine(RgxlogEngineBase):
         Add a row into an existing table.
         """
         num_types = len(fact.type_list)
-        sql_command = f"INSERT INTO {fact.relation_name} ("
-        sql_command += ", ".join([f"{RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)])
-        sql_command += ") VALUES ("
-        sql_command += ", ".join(["?"] * num_types)
-        sql_command += ")"
+        sql_template = strip_lines("""
+        INSERT INTO {{fact.relation_name}} (
+        {%- for col_index in range(num_types) -%}
+            {{engine.RELATION_COLUMN_PREFIX}}{{col_index}}
+            {%- if not loop.last -%}
+            , 
+            {%- endif -%}
+        {% endfor -%}
+        ) VALUES (
+        {%- for i in range(num_types) -%}
+            ?
+            {%- if not loop.last -%}
+            , 
+            {%- endif -%}
+        {%- endfor -%}
+        )
+        """)
+        sql_command = Template(sql_template).render(num_types=num_types, fact=fact, engine=self)
+
+        # sql_command = f"INSERT INTO {fact.relation_name} ("
+        # sql_command += ", ".join([f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)])
+        # sql_command += ") VALUES ("
+        # sql_command += ", ".join(["?"] * num_types)
+        # sql_command += ")"
 
         sql_term_list = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
                          zip(fact.type_list, fact.term_list)]
@@ -633,7 +663,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
         sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
-        sql_command += ", ".join([f"{RELATION_COLUMN_PREFIX}{i}" for i in range(len(relation_decl.type_list))])
+        sql_command += ", ".join([f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(len(relation_decl.type_list))])
         sql_command += ")"
 
         self.run_sql(sql_command)
@@ -672,7 +702,8 @@ class SqliteEngine(RgxlogEngineBase):
         repeating_vars_in_relation = [(free_var, pairs) for (free_var, pairs) in
                                       src_relation_var_dict.items() if (len(pairs) > 1)]
         if (len(select_info) > 0) or repeating_vars_in_relation:
-            sql_command += " WHERE "
+            # TODO@niv: refactor this into new helper method
+            sql_command_where = " WHERE "
             sql_conditions = []
             # add conditions based on `select_info`
             for i, value, _ in select_info:
@@ -692,7 +723,12 @@ class SqliteEngine(RgxlogEngineBase):
                     second_col_name = self._get_col_name(second_index)
                     sql_conditions.append(f"{first_col_name}={second_col_name}")
 
-            sql_command += " AND ".join(sql_conditions)
+            sql_command_where += " AND ".join(sql_conditions)
+
+        else:
+            sql_command_where = ""
+
+        sql_command += sql_command_where
 
         self.run_sql(sql_command, sql_args)
         return selected_relation
@@ -706,7 +742,7 @@ class SqliteEngine(RgxlogEngineBase):
         @return: a new relation as described above.
         """
 
-        def create_new_relation_for_join_result(relation_terms, relation_prefix):
+        def _create_new_relation_for_join_result(relation_terms, relation_prefix):
             # get the type list of the joined relation (all of the terms are free variables)
             relation_arity = len(relation_terms)
             relation_types = [DataTypes.free_var_name] * relation_arity
@@ -731,10 +767,9 @@ class SqliteEngine(RgxlogEngineBase):
         free_vars = set().union(*free_var_sets)
         joined_relation_terms = list(free_vars)
 
-        joined_relation = create_new_relation_for_join_result(joined_relation_terms, prefix)
+        joined_relation = _create_new_relation_for_join_result(joined_relation_terms, prefix)
 
         # construct the sql join command
-        sql_command = f"INSERT INTO {joined_relation.relation_name} {self.SQL_SELECT} "
         on_conditions_list = []
         inner_join_list = []
         free_var_cols = []
@@ -768,11 +803,11 @@ class SqliteEngine(RgxlogEngineBase):
 
         # add the join conditions (`ON`)
         if on_conditions_list:
-            on_conditions_str = " ON "
-            on_conditions_str += " AND ".join(on_conditions_list)
+            on_conditions_str = " ON " + " AND ".join(on_conditions_list)
         else:
             on_conditions_str = ""
 
+        sql_command = f"INSERT INTO {joined_relation.relation_name} {self.SQL_SELECT} "
         sql_command += ", ".join(free_var_cols)
         sql_command += f" FROM {first_relation.relation_name} AS {relation_sql_names[first_relation]} "
         sql_command += " ".join(inner_join_list)
@@ -851,8 +886,7 @@ class SqliteEngine(RgxlogEngineBase):
             curr_relation_string += ", ".join(selection_list) + f" FROM {relation.relation_name}"
             union_list.append(curr_relation_string)
 
-        sql_command = f"INSERT INTO {new_relation_name} "
-        sql_command += " UNION ".join(union_list)
+        sql_command = f"INSERT INTO {new_relation_name} {' UNION '.join(union_list)}"
 
         self.run_sql(sql_command)
         return new_relation
@@ -892,9 +926,8 @@ class SqliteEngine(RgxlogEngineBase):
                                f"type='table' AND name='{table_name}'")
         return bool(self.run_sql(sql_check_if_exists))
 
-    @staticmethod
-    def _datatype_to_sql_type(datatype: DataTypes):
-        return DATATYPE_TO_SQL_TYPE[datatype]
+    def _datatype_to_sql_type(self, datatype: DataTypes):
+        return self.DATATYPE_TO_SQL_TYPE[datatype]
 
     def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
         if datatype == DataTypes.span:
@@ -905,9 +938,8 @@ class SqliteEngine(RgxlogEngineBase):
     def __del__(self):
         self.sql_conn.close()
 
-    @staticmethod
-    def _get_col_name(col_id: int) -> str:
-        return f'{RELATION_COLUMN_PREFIX}{col_id}'
+    def _get_col_name(self, col_id: int) -> str:
+        return f'{self.RELATION_COLUMN_PREFIX}{col_id}'
 
     @staticmethod
     def _get_free_variable_indexes(type_list) -> List[int]:
@@ -953,7 +985,7 @@ class ExecutionBase(ABC):
 
 class GenericExecution(ExecutionBase):
     """
-    Executes a term graph
+    Executes a parse graph
     this execution is generic, meaning it does not require any specific kind of term graph, symbol table or
     rgxlog engine in order to work.
     this execution performs no special optimization and merely serves as an interface between the term graph
@@ -985,57 +1017,57 @@ class GenericExecution(ExecutionBase):
         rgxlog_engine = self.rgxlog_engine
         exec_result = None
 
-        # get the term ids. note that the order of the ids does not actually matter as long as the statements
+        # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
         # are ordered the same way as they were in the original program
-        term_ids = parse_graph.post_order_dfs()
+        parse_node_ids = parse_graph.post_order_dfs()
 
-        # execute each non computed statement in the term graph
-        for term_id in term_ids:
-            term_attrs = parse_graph[term_id]
+        # execute each non computed statement in the parse graph
+        for parse_id in parse_node_ids:
+            parse_node_attrs = parse_graph[parse_id]
 
-            if term_attrs["state"] is EvalState.COMPUTED:
+            if parse_node_attrs["state"] is EvalState.COMPUTED:
                 continue
 
-            # the term is not computed, get its type and compute it accordingly
-            term_type = term_attrs["type"]
+            # the parse node is not computed, get its type and compute it accordingly
+            parse_node_type = parse_node_attrs["type"]
 
-            if term_type in ("root", "relation"):
+            if parse_node_type in ("root", "relation"):
                 # pass and not continue, because we want to mark them as computed
                 pass
 
-            elif term_type == "rule":
-                rule = term_attrs[VALUE_ATTRIBUTE]
+            elif parse_node_type == "rule":
+                rule = parse_node_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.declare_relation(rule.head_relation.as_relation_declaration())
 
-            elif term_type == "relation_declaration":
-                relation_decl = term_attrs[VALUE_ATTRIBUTE]
+            elif parse_node_type == "relation_declaration":
+                relation_decl = parse_node_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.declare_relation(relation_decl)
 
-            elif term_type == "add_fact":
-                fact = term_attrs[VALUE_ATTRIBUTE]
+            elif parse_node_type == "add_fact":
+                fact = parse_node_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.add_fact(fact)
 
-            elif term_type == "remove_fact":
-                fact = term_attrs[VALUE_ATTRIBUTE]
+            elif parse_node_type == "remove_fact":
+                fact = parse_node_attrs[VALUE_ATTRIBUTE]
                 rgxlog_engine.remove_fact(fact)
 
-            elif term_type == "query":
+            elif parse_node_type == "query":
                 # we return the query as well as the result, because we print as part of the output
-                query = term_attrs[VALUE_ATTRIBUTE]
+                query = parse_node_attrs[VALUE_ATTRIBUTE]
                 self.compute_rule(query.relation_name)
                 exec_result = (query, rgxlog_engine.query(query))
 
             else:
-                raise ValueError("illegal term type in parse graph")
+                raise ValueError("illegal node type in parse graph")
 
             # statement was executed, mark it as "computed"
-            parse_graph.set_node_attribute(term_id, "state", EvalState.COMPUTED)
+            parse_graph.set_node_attribute(parse_id, "state", EvalState.COMPUTED)
 
         return exec_result
 
     def compute_node(self, node_id: int) -> None:
         """
-        Computes the current node based on it's type.
+        Computes the current node based on its type.
 
         @param node_id: the current node.
         """
@@ -1081,9 +1113,6 @@ class GenericExecution(ExecutionBase):
 
         @param term_attrs: the attributes of the rule rel node.
         """
-        # TODO@niv: @tom, if node_id can be both int and str, change it to `node_name`. otherwise, change the type
-        #  hint to int
-        #  @tom: this param was unnecessary, so i deleted it.
         rule_rel = term_attrs[VALUE_ATTRIBUTE]
         rule_name = rule_rel.relation_name
         rel_in: Relation = self.get_child_relation(rule_name)

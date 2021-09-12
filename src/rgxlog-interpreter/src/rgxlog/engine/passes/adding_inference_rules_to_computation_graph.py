@@ -5,6 +5,7 @@ from rgxlog.engine.passes.lark_passes import GenericPass
 from rgxlog.engine.state.term_graph import EvalState, ComputationTermGraphBase, GraphBase
 
 
+# TODO@niv: @tom, can you add a docstring for the class, with a short explanation?
 class AddRulesToComputationTermGraph(GenericPass):
 
     def __init__(self, debug: bool, **kwargs):

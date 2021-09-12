@@ -287,6 +287,9 @@ class NetxStateGraph(NetxGraph):
     will be the base of dependency graph).
     """
 
+    def __init__(self):
+        super().__init__()
+
     def add_node(self, node_id=None, **attr):
         # assert the node has a type
         if 'type' not in attr:
@@ -645,6 +648,9 @@ class ComputationTermGraph(ComputationTermGraphBase):
                                        select_node (select from A)  @note: this select node is the same one from above.
                                            get_rel node (get A)
        """
+
+    def __init__(self):
+        super().__init__()
 
     @staticmethod
     def _compute_bounding_graph(relations: Set[Relation], ie_relations: Set[IERelation]) -> \
