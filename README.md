@@ -1,3 +1,5 @@
+![Tests](https://github.com/DeanLight/spanner_workbench/actions/workflows/regression_testing.yml/badge.svg)
+
 The spanner workbench is an interpreter and a REPL system for spanner-like languages. Our goal in developing the spanner workbench is twofold:
 
 * First and foremost, to allow students learning about spanner languages an easy to use system to play around with the languages.
