@@ -1,5 +1,9 @@
 """
-This module contains the implementations of graphs (directed graphs).
+this module contains the implementations of graphs (directed graphs).
+
+the graphs we use when executing commands are called `term_graph`, `parse_graph`, and `dependency_graph`.
+the parse graph is an abstract syntax tree. it contains nodes which represent commands, like `add_fact`, 'rule', 'query', etc.
+in order to compute rule nodes, or compute query nodes, we use the term graph.
 """
 from collections import OrderedDict
 from enum import Enum
@@ -283,7 +287,7 @@ class NetxGraph(GraphBase):
 class NetxStateGraph(NetxGraph):
     """
     This is a wrapper to NetxGraph that stores a state and type for each node in the graph.
-    (This class will be the base class of the computation term graph and the parse graph while NetxGrpah
+    (This class will be the base class of the computation term graph and the parse graph while NetxGraph
     will be the base of dependency graph).
     """
 
@@ -471,7 +475,7 @@ class DependencyGraph(NetxGraph):
 
 class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
     """
-    A wrapper to NetxStateGraph that adds utility function which are independent
+    A wrapper to NetxStateGraph that adds utility functions which are independent
     of the structure of the computation graph.
     """
 
