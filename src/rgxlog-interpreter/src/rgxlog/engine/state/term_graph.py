@@ -287,7 +287,7 @@ class NetxGraph(GraphBase):
 class NetxStateGraph(NetxGraph):
     """
     This is a wrapper to NetxGraph that stores a state and type for each node in the graph.
-    (This class will be the base class of the computation term graph and the parse graph while NetxGraph
+    (This class will be the base class of the term graph and the parse graph while NetxGraph
     will be the base of dependency graph).
     """
 
@@ -473,10 +473,10 @@ class DependencyGraph(NetxGraph):
         return self.__class__.__name__ + " is:\n" + super().__str__()
 
 
-class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
+class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
     """
     A wrapper to NetxStateGraph that adds utility functions which are independent
-    of the structure of the computation graph.
+    of the structure of the term graph.
     """
 
     def __init__(self):
@@ -486,10 +486,10 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         self._dependency_graph = DependencyGraph()
 
     @abstractmethod
-    def add_rule_to_computation_graph(self, rule: Rule) -> None:
+    def add_rule_to_term_graph(self, rule: Rule) -> None:
         """
-        Adds the rule to the computation graph.
-        This function is responsible for the structure of the computation graph.
+        Adds the rule to the term graph.
+        This function is responsible for the structure of the term graph.
 
         @param rule: the rule to add.
         """
@@ -498,8 +498,8 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
     @abstractmethod
     def remove_rule(self, rule: str) -> bool:
         """
-        Removes rule from the computation graph.
-        This function depends on the structure of the computation graph.
+        Removes rule from the term graph.
+        This function depends on the structure of the term graph.
 
         @param rule: the rule to remove.
         @note: the rule is in string format and must be exactly equal the the original rule (i.e.,  if you want to
@@ -575,11 +575,11 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         return super().__str__() + "\n" + str(self._dependency_graph)
 
 
-class ComputationTermGraph(ComputationTermGraphBase):
+class TermGraph(TermGraphBase):
     """
-       This class transforms each rule node into an execution graph and adds it to the computation term graph.
+       This class transforms each rule node into an execution graph and adds it to the term graph.
 
-       The purpose of the computation graph is to store relationships about the following entities:
+       The purpose of the term graph is to store relationships about the following entities:
            1. The rule head.
            2. The body rule relations.
            3. The body base relations and ie relations.
@@ -598,9 +598,9 @@ class ComputationTermGraph(ComputationTermGraphBase):
            3. The base relations are: A(X, 1) and B(X, Y) in the second rule (there are None in the first rule).
            4. The computation paths of the rule are the paths of first rule and second rule.
 
-       The structure of the computation term graph:
+       The structure of the term graph:
 
-           * Each rule relation has a node in the computation graph, we call this node 'rule_rel node'.
+           * Each rule relation has a node in the term graph, we call this node 'rule_rel node'.
              Every rule_rel node is connected to a global root.
 
            * The rule_rel node is connected to a node we call 'union_node'.
@@ -627,7 +627,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
              we use a node we call 'select_node' that deals with filtering tuples form the relation. The select node is
              connected to the join node and the get_rel node is connected to the select node.
 
-       For the RGXLog program above, the computation term graph will be:
+       For the RGXLog program above, the term graph will be:
            global root
 
                rule_rel node (of C)
@@ -751,7 +751,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
         union_id, = self.get_children(relation_name)  # relation has only one child (the union node).
         return union_id
 
-    def add_rule_to_computation_graph(self, rule: Rule) -> None:
+    def add_rule_to_term_graph(self, rule: Rule) -> None:
         """
         Generates the execution tree of the rule and adds it to the term graph.
         Implements the following pseudo code:
@@ -885,7 +885,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
         head_relation = rule.head_relation
         relations, ie_relations = rule.get_relations_by_type()
         # computes the bounding graph (it's actually an ordered dict).
-        bounding_graph = ComputationTermGraph._compute_bounding_graph(relations, ie_relations)
+        bounding_graph = TermGraph._compute_bounding_graph(relations, ie_relations)
 
         # make root
         union_id = self.add_relation(head_relation)

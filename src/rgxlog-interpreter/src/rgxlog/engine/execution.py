@@ -10,7 +10,7 @@ from rgxlog.engine.datatypes.ast_node_types import (DataTypes, Relation, AddFact
                                                     RelationDeclaration, IERelation)
 from rgxlog.engine.engine import RgxlogEngineBase, SqliteEngine
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.state.term_graph import EvalState, GraphBase, ComputationTermGraph
+from rgxlog.engine.state.term_graph import EvalState, GraphBase, TermGraph
 
 VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
@@ -18,7 +18,7 @@ OUT_REL_ATTRIBUTE = "output_rel"
 FREE_VAR_PREFIX = "COL"
 
 
-def naive_execution(parse_graph: GraphBase, term_graph: ComputationTermGraph,
+def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
                     symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase) -> Tuple[Query, List]:
     """
         Executes a parse graph

@@ -2,7 +2,7 @@ from typing import List
 
 from rgxlog.engine.datatypes.ast_node_types import Rule
 from rgxlog.engine.passes.lark_passes import GenericPass
-from rgxlog.engine.state.term_graph import EvalState, ComputationTermGraphBase, GraphBase
+from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, GraphBase
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class AddRulesToComputationTermGraph(GenericPass):
 
     def __init__(self, **kwargs):
         self.parse_graph: GraphBase = kwargs["parse_graph"]
-        self.term_graph: ComputationTermGraphBase = kwargs["term_graph"]
+        self.term_graph: TermGraphBase = kwargs["term_graph"]
 
     def _get_rule_nodes(self) -> List[Rule]:
         """
@@ -46,7 +46,7 @@ class AddRulesToComputationTermGraph(GenericPass):
         rule_nodes = self._get_rule_nodes()
         for rule in rule_nodes:
             # modifies the term graph
-            self.term_graph.add_rule_to_computation_graph(rule)
+            self.term_graph.add_rule_to_term_graph(rule)
 
     def run_pass(self, **kwargs):
         self._add_rules_to_computation_graph()
