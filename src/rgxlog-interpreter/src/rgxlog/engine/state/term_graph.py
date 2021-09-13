@@ -594,7 +594,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
 
        We will explain the meaning of the 4 entities w.r.t the rules of D:
            1. The rule head is: D(X, Y)
-           2. The body rule relations are: C(X, Y) in the first rule (there are None in the second rule).
+           2. The body relations are: C(X, Y) in the first rule (there are None in the second rule).
            3. The base relations are: A(X, 1) and B(X, Y) in the second rule (there are None in the first rule).
            4. The computation paths of the rule are the paths of first rule and second rule.
 
