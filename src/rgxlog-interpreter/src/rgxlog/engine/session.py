@@ -507,13 +507,30 @@ if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
-    commands = """
-            new B(int, int)
-            B(1, 1)
-            B(1, 2)
+    commands = '''
+                new lecturer(str, str)
+                lecturer("walter", "chemistry")
+                lecturer("linus", "operation systems")
+                lecturer("rick", "physics")
 
-            A(X) <- B(X, Y)
-            ?A(X)
-        """
+                new enrolled(str, str)
+                enrolled("abigail", "chemistry")
+                enrolled("abigail", "operation systems")
+                enrolled("jordan", "chemistry")
+                enrolled("gale", "operation systems")
+                enrolled("howard", "chemistry")
+                enrolled("howard", "physics")
+
+                enrolled_in_chemistry(X) <- enrolled(X, "chemistry")
+                ?enrolled_in_chemistry("jordan")
+                ?enrolled_in_chemistry("gale")
+                ?enrolled_in_chemistry(X)
+
+                enrolled_in_physics_and_chemistry(X) <- enrolled(X, "chemistry"), enrolled(X, "physics")
+                ?enrolled_in_physics_and_chemistry(X)
+
+                lecturer_of(X, Z) <- lecturer(X, Y), enrolled(Z, Y)
+                ?lecturer_of(X, "abigail")
+                '''
 
     my_session.run_statements(commands)

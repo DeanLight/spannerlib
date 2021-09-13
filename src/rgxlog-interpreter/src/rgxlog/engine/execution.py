@@ -194,8 +194,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
             # when printing the tree
             ie_rel_in: IERelation = term_attrs[VALUE_ATTRIBUTE]
             ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)
-            ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
-            term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, ie_rel_out)
+            output_relation = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
 
         else:
             operator, has_one_child, pass_value_attr = term_type_to_meta_data[term_type]
