@@ -587,7 +587,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
 
        We will explain the meaning of the 4 entities w.r.t the rules of D:
            1. The rule head is: D(X, Y)
-           2. The body rule relations are: C(X, Y) in the first rule (there are None in the second rule).
+           2. The body relations are: C(X, Y) in the first rule (there are None in the second rule).
            3. The base relations are: A(X, 1) and B(X, Y) in the second rule (there are None in the first rule).
            4. The computation paths of the rule are the paths of first rule and second rule.
 
@@ -650,7 +650,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
     def _compute_bounding_graph(relations: Set[Relation], ie_relations: Set[IERelation]) -> \
             OrderedDictType[IERelation, Set[Union[Relation, IERelation]]]:
         """
-        This class gets body relations of a rule and computes for each ie relation the relations that bound it.
+        This function gets body relations of a rule and computes for each ie relation the relations that bound it.
         @note: In some cases ie relation is bounded by other ie relation.
                 e.g. A(X) <- B(Y), C(Z) -> (X), D(Y) -> (Z); in this example C is bounded only by D.
 
