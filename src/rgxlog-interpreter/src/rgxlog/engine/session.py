@@ -504,12 +504,12 @@ if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
     commands = """
-                new Relation(int, int)
-                x = 1
-                y = 2
-                Relation(x, y)
-                Relation(y, x)
-                ?Relation(X, x)
-            """
+            new B(int, int)
+            B(1, 1)
+            B(1, 2)
+
+            A(X) <- B(X, Y)
+            ?A(X)
+        """
 
     my_session.run_statements(commands)

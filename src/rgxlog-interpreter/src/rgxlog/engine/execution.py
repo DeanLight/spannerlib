@@ -104,7 +104,6 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
         fixed_point = False
         while not fixed_point:
             # computes one iteration for all of the mutually recursive rules
-
             fixed_point = True
             for relation in mutually_recursive:
                 initial_len = rgxlog_engine.get_table_len(relation_name)
@@ -124,81 +123,6 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
 
         @param node_id: the current node.
         """
-
-        def compute_rule_rel_node(term_attrs_: Dict) -> None:
-            """
-            Computes a rule rel node.
-
-            @param term_attrs_: the attributes of the rule rel node.
-            """
-            rule_rel = term_attrs_[VALUE_ATTRIBUTE]
-            rule_name = rule_rel.relation_name
-            rel_in: Relation = get_child_relation(rule_name)
-            copy_rel = rgxlog_engine.operator_copy(rel_in, rule_name)
-            term_graph.set_node_attribute(rule_name, OUT_REL_ATTRIBUTE, copy_rel)
-
-        def compute_join_node(node_id_: int) -> None:
-            """
-            Computes a join node.
-
-            @param node_id_: the node.
-            """
-
-            join_rel = rgxlog_engine.operator_join(get_children_relations(node_id_))
-            term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, join_rel)
-
-        def compute_project_node(node_id_: int, term_attrs_: Dict) -> None:
-            """
-            Computes a project node.
-
-            @param node_id_: the node.
-            @param term_attrs_: the attributes of the node.
-            """
-
-            output_rel: Relation = get_child_relation(node_id_)
-            project_info = term_attrs_[VALUE_ATTRIBUTE]
-            project_rel = rgxlog_engine.operator_project(output_rel, project_info)
-            term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, project_rel)
-
-        def compute_calc_node(node_id_: int, term_attrs_: Dict) -> None:
-            """
-            Computes a calc node.
-
-            @param node_id_: the node.
-            @param term_attrs_: the attributes of the node.
-            """
-
-            children = get_children_relations(node_id_)
-            rel_in = children[0] if children else None
-            # note: we use the same `VALUE_ATTRIBUTE` keyword for different things to be able to print it easily
-            # when printing the tree
-            ie_rel_in: IERelation = term_attrs_[VALUE_ATTRIBUTE]
-            ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)
-            ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
-            term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, ie_rel_out)
-
-        def compute_union_node(node_id_: int) -> None:
-            """
-            Computes a union node.
-
-            @param node_id_: the node.
-            """
-
-            union_rel = rgxlog_engine.operator_union(get_children_relations(node_id_))
-            term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, union_rel)
-
-        def compute_select_node(node_id_: int, term_attrs_: Dict) -> None:
-            """
-            Computes a select node.
-
-            @param node_id_: the node.
-            @param term_attrs_: the attributes of the node.
-            """
-
-            output_rel = get_child_relation(node_id_)
-            select_info = term_attrs_[VALUE_ATTRIBUTE]
-            select_rel = rgxlog_engine.operator_select(output_rel, select_info)
-            term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, select_rel)
 
         def is_node_computed(node_id_) -> bool:
             """
@@ -240,51 +164,58 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
             assert len(children) <= 1, "this node should have exactly one child"
             return children[0]
 
+        # maps between the term type to:
+        #   1. the sql operator to call
+        #   2. a flag that is True if the node type has only one child.
+        #   3. a flag that is True if the 'value' attribute of the node should be passed to the operator
+        term_type_to_meta_data = {
+            "rule_rel": (rgxlog_engine.operator_copy, True, True),
+            "union": (rgxlog_engine.operator_union, False, False),
+            "join": (rgxlog_engine.operator_join, False, False),
+            "project": (rgxlog_engine.operator_project, True, True),
+            "select": (rgxlog_engine.operator_select, True, True)
+        }
+
         term_attrs = term_graph[node_id]
         if term_attrs["state"] is EvalState.COMPUTED:
             return
 
+        output_relation = None
         term_type = term_attrs["type"]
 
-        if term_type in "get_rel":
-            term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, term_attrs["value"])
-
-        elif term_type == "rule_rel":
-            compute_rule_rel_node(term_attrs)
-
-        elif term_type == "union":
-            compute_union_node(node_id)
-
-        elif term_type == "join":
-            compute_join_node(node_id)
-
-        elif term_type == "project":
-            compute_project_node(node_id, term_attrs)
+        if term_type == "get_rel":
+            output_relation = term_attrs[VALUE_ATTRIBUTE]
 
         elif term_type == "calc":
-            compute_calc_node(node_id, term_attrs)
-
-        elif term_type == "select":
-            compute_select_node(node_id, term_attrs)
+            children = get_children_relations(node_id)
+            rel_in = children[0] if children else None
+            # note: we use the same `VALUE_ATTRIBUTE` keyword for different things to be able to print it easily
+            # when printing the tree
+            ie_rel_in: IERelation = term_attrs[VALUE_ATTRIBUTE]
+            ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)
+            ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
+            term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, ie_rel_out)
 
         else:
-            raise ValueError(f"illegal term type in rule's execution graph. The bad type is {term_type}")
+            operator, has_one_child, pass_value_attr = term_type_to_meta_data[term_type]
+            input_relation = get_child_relation(node_id) if has_one_child else get_children_relations(node_id)
+            operator_args = [input_relation]
+            if pass_value_attr:
+                operator_args.append(term_attrs[VALUE_ATTRIBUTE])
+
+            output_relation = operator(*operator_args)
+
+        term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, output_relation)
 
         # statement was executed, mark it as "computed" or "visited"
         compute_status = EvalState.COMPUTED if is_node_computed(node_id) else EvalState.VISITED
         term_graph.set_node_attribute(node_id, 'state', compute_status)
 
-        # node_type_to_op = {"project": rgxlog_engine}
-        # op = node_type_to_op[term_type]
-        #
-        # op(get_child_relation(node_id))
-        # set_attrs
-
     exec_result = None
     node_type_to_action = {
         "rule": lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
         "relation_declaration": rgxlog_engine.declare_relation,
-        "add_fact":  rgxlog_engine.add_fact,
+        "add_fact": rgxlog_engine.add_fact,
         "remove_fact": rgxlog_engine.remove_fact,
     }
 

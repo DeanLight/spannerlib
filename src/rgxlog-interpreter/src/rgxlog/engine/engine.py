@@ -224,12 +224,12 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def operator_copy(self, src_rel: Relation, output_relation_name: Optional[str] = None) -> Relation:
+    def operator_copy(self, src_rel: Relation, output_relation: Optional[Relation] = None) -> Relation:
         """
         Copies computed_relation to rule_relation.
 
         @param src_rel: the relation to copy from.
-        @param output_relation_name: if this is None, create a unique name for the output relation.
+        @param output_relation: if this is None, create a unique name for the output relation.
             otherwise, this will be the name of the output relation.
         @return: tje copied relation.
         """
@@ -864,14 +864,14 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command)
         return new_relation
 
-    def operator_copy(self, src_rel: Relation, output_relation_name=None) -> Relation:
+    def operator_copy(self, src_rel: Relation, output_relation: Optional[Relation] = None) -> Relation:
         src_rel_name = src_rel.relation_name
-        if output_relation_name:
-            dest_rel_name = output_relation_name
+        if output_relation:
+            dest_rel_name = output_relation.relation_name
 
             # check if the relation already exists
-            if self.is_table_exists(output_relation_name):
-                self.clear_table(output_relation_name)
+            if self.is_table_exists(dest_rel_name):
+                self.clear_table(dest_rel_name)
             else:
                 dest_decl_rel = RelationDeclaration(dest_rel_name, src_rel.type_list)
                 self.declare_relation(dest_decl_rel)
