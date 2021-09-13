@@ -165,27 +165,6 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-    #  TODO@tom: @niv, why do we need this method?
-    # @staticmethod
-    # @abstractmethod
-    # def clear_all() -> None:
-    #     """
-    #     Removes all facts and clauses from the engine.
-    #     """
-    #     pass
-
-    @staticmethod
-    def _get_span_string(span: Span) -> str:
-        """
-        Converts Span(start,end) to string("[start, end)").
-
-        @param span: a span object.
-        @return: a string representation of the span.
-        """
-
-        span_string = f'[{span.span_start}, {span.span_end})'
-        return span_string
-
     @abstractmethod
     def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
         """
@@ -196,19 +175,6 @@ class RgxlogEngineBase(ABC):
         @return: string representation.
         """
         pass
-
-    def _get_relation_string(self, relation: Relation) -> str:
-        """
-        Returns the string representation of a relation which has terms, e.g. REL(3, "hello").
-
-        @param relation: a relation object.
-        @return: a string representation of the relation.
-        """
-        terms_string = ', '.join([self._convert_relation_term_to_string(term, term_type)
-                                  for term, term_type in zip(relation.term_list, relation.type_list)])
-
-        final_string = f"{relation.relation_name}({terms_string})"
-        return final_string
 
     @abstractmethod
     def operator_select(self, relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
@@ -938,7 +904,7 @@ class SqliteEngine(RgxlogEngineBase):
 
     def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
         if datatype == DataTypes.span:
-            return self._get_span_string(term)
+            return str(term)
         else:
             return term
 
