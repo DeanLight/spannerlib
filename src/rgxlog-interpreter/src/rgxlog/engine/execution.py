@@ -281,6 +281,12 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
         # set_attrs
 
     exec_result = None
+    node_type_to_action = {
+        "rule": lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
+        "relation_declaration": rgxlog_engine.declare_relation,
+        "add_fact":  rgxlog_engine.add_fact,
+        "remove_fact": rgxlog_engine.remove_fact,
+    }
 
     # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
     # are ordered the same way as they were in the original program
@@ -293,28 +299,14 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
         if parse_node_attrs["state"] is EvalState.COMPUTED:
             continue
 
+        # mark node as "computed"
+        parse_graph.set_node_attribute(parse_id, "state", EvalState.COMPUTED)
+
         # the parse node is not computed, get its type and compute it accordingly
         parse_node_type = parse_node_attrs["type"]
 
         if parse_node_type in ("root", "relation"):
-            # pass and not continue, because we want to mark them as computed
-            pass
-
-        elif parse_node_type == "rule":
-            rule = parse_node_attrs[VALUE_ATTRIBUTE]
-            rgxlog_engine.declare_relation(rule.head_relation.as_relation_declaration())
-
-        elif parse_node_type == "relation_declaration":
-            relation_decl = parse_node_attrs[VALUE_ATTRIBUTE]
-            rgxlog_engine.declare_relation(relation_decl)
-
-        elif parse_node_type == "add_fact":
-            fact = parse_node_attrs[VALUE_ATTRIBUTE]
-            rgxlog_engine.add_fact(fact)
-
-        elif parse_node_type == "remove_fact":
-            fact = parse_node_attrs[VALUE_ATTRIBUTE]
-            rgxlog_engine.remove_fact(fact)
+            continue
 
         elif parse_node_type == "query":
             # we return the query as well as the result, because we print as part of the output
@@ -323,10 +315,8 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
             exec_result = (query, rgxlog_engine.query(query))
 
         else:
-            raise ValueError("illegal node type in parse graph")
-
-        # statement was executed, mark it as "computed"
-        parse_graph.set_node_attribute(parse_id, "state", EvalState.COMPUTED)
+            action = node_type_to_action[parse_node_type]
+            action(parse_node_attrs[VALUE_ATTRIBUTE])
 
     return exec_result
 
