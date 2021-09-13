@@ -106,9 +106,11 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
         while not fixed_point:
             # computes one iteration for all of the mutually recursive rules
             fixed_point = True
-            for relation in mutually_recursive:
+            # the variable must be called relation_name because it's used in compute_postorder
+            for relation_name in mutually_recursive:
+                visited_nodes = set()
                 initial_len = rgxlog_engine.get_table_len(relation_name)
-                compute_postorder(relation)
+                compute_postorder(relation_name)
                 is_stopped = rgxlog_engine.get_table_len(relation_name) == initial_len
 
                 # we stop iterating when all the rules converged at the same step
@@ -181,7 +183,6 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
         if term_attrs["state"] is EvalState.COMPUTED:
             return
 
-        output_relation = None
         term_type = term_attrs["type"]
 
         if term_type == "get_rel":
