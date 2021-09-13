@@ -1,25 +1,26 @@
 from rgxlog.engine.datatypes.primitive_types import DataTypes
+from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
-def test_introduction():
-    query = """
+def test_strings_query():
+    commands = """
     new uncle(str, str)
     uncle("bob", "greg")
     ?uncle(X,Y)
     """
 
-    expected_result_intro = """printing results for query 'uncle(X, Y)':
+    expected_result_intro = f"""{QUERY_RESULT_PREFIX}'uncle(X, Y)':
           X  |  Y
         -----+------
          bob | greg
         """
 
-    run_test(query, expected_result_intro)
+    run_test(commands, expected_result_intro)
 
 
 def test_basic_queries():
-    query = '''
+    commands = '''
             new lecturer(str, str)
             lecturer("walter", "chemistry")
             lecturer("linus", "operation systems")
@@ -45,49 +46,49 @@ def test_basic_queries():
             ?lecturer_of(X, "abigail")
             '''
 
-    expected_result = """printing results for query 'enrolled_in_chemistry("jordan")':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'enrolled_in_chemistry("jordan")':
         [()]
         
-        printing results for query 'enrolled_in_chemistry("gale")':
+        {QUERY_RESULT_PREFIX}'enrolled_in_chemistry("gale")':
         []
         
-        printing results for query 'enrolled_in_chemistry(X)':
+        {QUERY_RESULT_PREFIX}'enrolled_in_chemistry(X)':
             X
         ---------
          howard
          jordan
          abigail
         
-        printing results for query 'enrolled_in_physics_and_chemistry(X)':
+        {QUERY_RESULT_PREFIX}'enrolled_in_physics_and_chemistry(X)':
            X
         --------
          howard
         
-        printing results for query 'lecturer_of(X, "abigail")':
+        {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
            X
         --------
          linus
          walter
         """
 
-    session = run_test(query, expected_result)
+    session = run_test(commands, expected_result)
 
-    query2 = (r"""gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
+    commands2 = (r"""gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
                 gpa_of_chemistry_students(Student, Grade) <- py_rgx_string(gpa_str, "(\w+).*?(\d+)")"""
-              r"""->(Student, Grade), enrolled_in_chemistry(Student)
-            ?gpa_of_chemistry_students(X, "100")""")
+                 r"""->(Student, Grade), enrolled_in_chemistry(Student)
+               ?gpa_of_chemistry_students(X, "100")""")
 
-    expected_result2 = """printing results for query 'gpa_of_chemistry_students(X, "100")':
+    expected_result2 = f"""{QUERY_RESULT_PREFIX}'gpa_of_chemistry_students(X, "100")':
             X
         ---------
          abigail
         """
 
-    run_test(query2, expected_result2, test_session=session)
+    run_test(commands2, expected_result2, test_session=session)
 
 
 def test_json_path():
-    query = """
+    commands = """
                 jsonpath_simple_1 = "foo[*].baz"
                 json_ds_simple_1  = "{'foo': [{'baz': 1}, {'baz': 2}]}"
                 simple_1(X) <- JsonPath(json_ds_simple_1, jsonpath_simple_1) -> (X)
@@ -104,30 +105,32 @@ def test_json_path():
                 ?advanced(X)
             """
 
-    expected_result = """printing results for query 'simple_1(X)':
+    expected_result = (
+        f"""{QUERY_RESULT_PREFIX}'simple_1(X)':
            X
         -----
            2
            1
         
-        printing results for query 'simple_2(X)':
+        {QUERY_RESULT_PREFIX}'simple_2(X)':
              X
         ------------
          number two
          number one
         
-        printing results for query 'advanced(X)':
-                         X
-        -----------------------------------
-         {'foo': [{'baz': 1}, {'baz': 2}]}
-                         1
+        {QUERY_RESULT_PREFIX}'advanced(X)':"""
         """
+                             X
+            -----------------------------------
+             {'foo': [{'baz': 1}, {'baz': 2}]}
+                             1
+        """)
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_remove_rule():
-    query = """
+    commands = """
            new parent(str, str)
            new grandparent(str, str)
            parent("Liam", "Noah")
@@ -144,20 +147,20 @@ def test_remove_rule():
            tmp(X, Y) <- parent(X,Y)
            """
 
-    session = run_test(query)
+    session = run_test(commands)
 
     session.remove_rule("ancestor(X, Y) <- parent(X, Y)")
-    query = """
+    commands = """
             ?ancestor(X, Y)
             ?tmp(X, Y)
           """
 
-    expected_result = """printing results for query 'ancestor(X, Y)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'ancestor(X, Y)':
               X  |  Y
             -----+-----
              Tom | Avi
 
-            printing results for query 'tmp(X, Y)':
+            {QUERY_RESULT_PREFIX}'tmp(X, Y)':
                 X     |    Y
             ----------+----------
              Benjamin |  Mason
@@ -168,7 +171,7 @@ def test_remove_rule():
                Tom    |   Avi
             """
 
-    run_test(query, expected_result, test_session=session)
+    run_test(commands, expected_result, test_session=session)
 
 
 def test_string_len():
@@ -181,7 +184,7 @@ def test_string_len():
                        in_rel=[DataTypes.string],
                        out_rel=[DataTypes.integer, DataTypes.string])
 
-    query = """new string(str)
+    commands = """new string(str)
             string("a")
             string("ab")
             string("abc")
@@ -191,7 +194,7 @@ def test_string_len():
             ?string_length(Str, Len)
             """
 
-    expected_result = """printing results for query 'string_length(Str, Len)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'string_length(Str, Len)':
           Str  |   Len
         -------+-------
            a   |     1
@@ -200,7 +203,7 @@ def test_string_len():
          abcd  |     4
         """
 
-    run_test(query, expected_result, [length_dict])
+    run_test(commands, expected_result, [length_dict])
 
 
 def test_neq():
@@ -217,7 +220,7 @@ def test_neq():
                     ie_function_name='NEQ',
                     in_rel=in_out_types,
                     out_rel=in_out_types)
-    query = """new pair(str, str)
+    commands = """new pair(str, str)
                 pair("Dan", "Tom")
                 pair("Cat", "Dog")
                 pair("Apple", "Apple")
@@ -228,7 +231,7 @@ def test_neq():
                 ?unique_pair(X, Y)
                 """
 
-    expected_result = """printing results for query 'unique_pair(X, Y)':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'unique_pair(X, Y)':
           X  |  Y
         -----+-----
          Dan | Tom
@@ -236,20 +239,20 @@ def test_neq():
          123 | 321
         """
 
-    run_test(query, expected_result, [neq_dict])
+    run_test(commands, expected_result, [neq_dict])
 
 
 def test_span_constant():
-    query = '''
+    commands = '''
             new verb(str, span)
             verb("Ron eats quickly.", [4,8))
             verb("You write neatly.", [4,9))
             ?verb(X,[4,9)) # returns "You write neatly."
             '''
 
-    expected_result = """printing results for query 'verb(X, [4, 9))':
+    expected_result = f"""{QUERY_RESULT_PREFIX}'verb(X, [4, 9))':
                                  X
                         -------------------
                          You write neatly."""
 
-    run_test(query, expected_result)
+    run_test(commands, expected_result)

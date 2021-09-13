@@ -26,6 +26,8 @@ A short tutorial on lark:
 https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
 from abc import ABC, abstractmethod
+from pathlib import Path
+
 from lark import Transformer
 from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
@@ -959,12 +961,9 @@ class ExecuteAssignments(InterpreterPass):
 
     @unravel_lark_node
     def read_assignment(self, assignment: ReadAssignment):
-
         # try to read the file and get its content as a single string. this string is the assigned value.
         try:
-            file = open(assignment.read_arg, 'r')
-            assigned_value = file.read()
-            file.close()
+            assigned_value = Path(assignment.read_arg).read_text()
         except Exception:
             raise Exception(f'could not open file "{assignment.read_arg}"')
 

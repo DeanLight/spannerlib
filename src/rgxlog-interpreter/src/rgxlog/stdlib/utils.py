@@ -19,6 +19,7 @@ def kill_process_and_children(process: Popen):
         process.kill()  # lastly, kill the process
 
 
+# TODO@niv: when we finish the loggers, add stderr+stdout to log
 def run_command(command: str, stdout=True, stderr=False, shell=False, timeout=-1) -> Iterable[str]:
     """
     This utility can be used to run any cli command, and iterate over the output.

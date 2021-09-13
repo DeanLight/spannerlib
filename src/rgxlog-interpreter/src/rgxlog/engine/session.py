@@ -23,7 +23,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               ExecuteAssignments, AddStatementsToNetxParseGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable
 from rgxlog.engine.state.term_graph import ComputationTermGraph, NetxStateGraph
-from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN
+from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
 from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
@@ -129,7 +129,7 @@ def tabulate_result(result: Union[DataFrame, List]):
     """
     Organizes a query result in a table
     for example:
-        printing results for query 'lecturer_of(X, "abigail")':
+        {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
           X
        -------
         linus
@@ -163,7 +163,7 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 
     for example:
 
-    printing results for query 'lecturer_of(X, "abigail")':
+    {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
       X
     --------
     linus
@@ -177,7 +177,7 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
     query_results = list(filter(None, query_results))  # remove Nones
     for query, results in query_results:
         query_result_string = tabulate_result(format_query_results(query, results))
-        query_title = f"printing results for query '{query}':"
+        query_title = f"{QUERY_RESULT_PREFIX}'{query}':"
 
         # combine the title and table to a single string and save it to the prints buffer
         titled_result_string = f'{query_title}\n{query_result_string}\n'
@@ -232,9 +232,9 @@ class Session:
             AddRulesToComputationTermGraph
         ]
 
-        grammar_file_path = os.path.dirname(rgxlog.grammar.__file__)
+        grammar_file_path = Path(rgxlog.grammar.__file__).parent
         grammar_file_name = 'grammar.lark'
-        with open(f'{grammar_file_path}/{grammar_file_name}', 'r') as grammar_file:
+        with open(grammar_file_path/grammar_file_name, 'r') as grammar_file:
             self._grammar = grammar_file.read()
 
         self._parser = Lark(self._grammar, parser='lalr', debug=True)
@@ -265,6 +265,7 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
 
+    # TODO@niv: refactor into run_commands (including tutorials/md) when dean approves
     def run_statements(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
@@ -302,7 +303,7 @@ class Session:
         """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    def set_execution(self, execution_class: Type) -> None:
+    def set_execution(self, execution_class: Type[ExecutionBase]) -> None:
         """
         Sets the execution class of the engine.
 
@@ -328,7 +329,7 @@ class Session:
 
         return [pass_.__name__ for pass_ in self._pass_stack]
 
-    def set_pass_stack(self, user_stack: List[Type]):
+    def set_pass_stack(self, user_stack: List[Type[GenericPass]]):
         """
         Sets a new pass stack instead of the current one.
 
@@ -405,7 +406,7 @@ class Session:
             engine.add_fact(fact)
 
     def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=";"):
-        if not os.path.isfile(csv_file_name):
+        if not Path(csv_file_name).is_file():
             raise IOError("csv file does not exist")
 
         if os.stat(csv_file_name).st_size == 0:
@@ -438,13 +439,20 @@ class Session:
 
         self._add_imported_relation_to_engine(data, relation_name, relation_types)
 
-    def query_into_csv(self, query: str, csv_file_name: str, delimiter=";"):
-        # run a query normally and get formatted results:
-        query_results = self.run_statements(query, print_results=False)
-        if len(query_results) != 1:
-            raise Exception("a query into csv must have exactly one output")
+    # TODO@niv: also change in tutorials/md
+    def send_commands_result_into_csv(self, commands: str, csv_file_name: str, delimiter: str = ";") -> None:
+        """
+        run commands as usual and output their formatted results into a csv file (the commands should contain a query)
+        @param commands: the commands to run
+        @param csv_file_name: the file into which the output will be written
+        @param delimiter: a csv separator between values
+        @return: None
+        """
+        commands_results = self.run_statements(commands, print_results=False)
+        if len(commands_results) != 1:
+            raise Exception("the commands must have exactly one output")
 
-        formatted_result = format_query_results(*query_results[0])
+        formatted_result = format_query_results(*commands_results[0])
 
         if isinstance(formatted_result, DataFrame):
             formatted_result.to_csv(csv_file_name, index=False, sep=delimiter)
@@ -454,13 +462,17 @@ class Session:
                 writer = csv.writer(f, delimiter=delimiter)
                 writer.writerows(formatted_result)
 
-    def query_into_df(self, query: str) -> Union[DataFrame, List]:
-        # run a query normally and get formatted results:
-        query_results = self.run_statements(query, print_results=False)
-        if len(query_results) != 1:
-            raise Exception("the query must have exactly one output")
+    def send_commands_result_into_df(self, commands: str) -> Union[DataFrame, List]:
+        """
+        run commands as usual and output their formatted results into a dataframe (the commands should contain a query)
+        @param commands: the commands to run
+        @return: formatted results (possibly a dataframe)
+        """
+        commands_results = self.run_statements(commands, print_results=False)
+        if len(commands_results) != 1:
+            raise Exception("the commands must have exactly one output")
 
-        return format_query_results(*query_results[0])
+        return format_query_results(*commands_results[0])
 
     def _relation_name_to_query(self, relation_name: str):
         symbol_table = self._symbol_table
@@ -472,11 +484,11 @@ class Session:
 
     def export_relation_into_df(self, relation_name: str):
         query = self._relation_name_to_query(relation_name)
-        return self.query_into_df(query)
+        return self.send_commands_result_into_df(query)
 
     def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";"):
         query = self._relation_name_to_query(relation_name)
-        return self.query_into_csv(query, csv_file_name, delimiter)
+        return self.send_commands_result_into_csv(query, csv_file_name, delimiter)
 
     def print_registered_ie_functions(self):
         """
@@ -511,10 +523,10 @@ class Session:
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     my_session = Session(False)
-    commands = '''
+    code = '''
             new thing(span, str)
             thing([1,2), "hi")
             ?thing([1,2), X)
             '''
 
-    my_session.run_statements(commands)
+    my_session.run_statements(code)

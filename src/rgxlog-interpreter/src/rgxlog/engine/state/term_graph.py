@@ -1,5 +1,9 @@
 """
-This module contains the implementations of graphs (directed graphs).
+this module contains the implementations of graphs (directed graphs).
+
+the graphs we use when executing commands are called `term_graph`, `parse_graph`, and `dependency_graph`.
+the parse graph is an abstract syntax tree. it contains nodes which represent commands, like `add_fact`, 'rule', 'query', etc.
+in order to compute rule nodes, or compute query nodes, we use the term graph.
 """
 from collections import OrderedDict
 from enum import Enum
@@ -283,9 +287,12 @@ class NetxGraph(GraphBase):
 class NetxStateGraph(NetxGraph):
     """
     This is a wrapper to NetxGraph that stores a state and type for each node in the graph.
-    (This class will be the base class of the computation term graph and the parse graph while NetxGrpah
+    (This class will be the base class of the computation term graph and the parse graph while NetxGraph
     will be the base of dependency graph).
     """
+
+    def __init__(self):
+        super().__init__()
 
     def add_node(self, node_id=None, **attr):
         # assert the node has a type
@@ -468,7 +475,7 @@ class DependencyGraph(NetxGraph):
 
 class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
     """
-    A wrapper to NetxStateGraph that adds utility function which are independent
+    A wrapper to NetxStateGraph that adds utility functions which are independent
     of the structure of the computation graph.
     """
 
@@ -495,7 +502,7 @@ class ComputationTermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         This function depends on the structure of the computation graph.
 
         @param rule: the rule to remove.
-        @note: the rule is in string format and must be exectly equal the the original rule (i.e.,  if you want to
+        @note: the rule is in string format and must be exactly equal the the original rule (i.e.,  if you want to
                delete the rule A(X) <-B(X), you mast pass A(X) <- B(X) and not A(Y) <- B(Y))
         @return: Whether the deletion of the rule succeeded.
         """
@@ -645,6 +652,9 @@ class ComputationTermGraph(ComputationTermGraphBase):
                                        select_node (select from A)  @note: this select node is the same one from above.
                                            get_rel node (get A)
        """
+
+    def __init__(self):
+        super().__init__()
 
     @staticmethod
     def _compute_bounding_graph(relations: Set[Relation], ie_relations: Set[IERelation]) -> \
@@ -896,7 +906,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
 
     def remove_rule(self, rule: str) -> bool:
         """
-        Removes rule from term graph.
+        Removes a rule from term graph.
 
         @param rule: the rule to remove. unlike add_rule, here rule should be string as it is a user input.
         @raise Exception if the rule doesn't exist in the term graph
@@ -914,7 +924,7 @@ class ComputationTermGraph(ComputationTermGraphBase):
         is_last_rule_path = len(list(self.get_children(union_node))) == 1
         is_rule_used = self._dependency_graph.is_relation_in_use(rule_name)
 
-        # check if something is connected to the root and the root is going to be deleted (this shouldn't happen)
+        # check if something is connected to the rel_root and the root is going to be deleted (this shouldn't happen)
         if is_last_rule_path and is_rule_used:
             raise RuntimeError(f"The rule '{rule}' can't be deleted since '{rule_name}' is used in another existing "
                                f"rule.")

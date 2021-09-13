@@ -2,10 +2,9 @@
 this module contains implementation of regex ie functions using the rust package `enum-spanner-rs`
 """
 import logging
-import os
 import re
 import tempfile
-from os import path
+from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
 from typing import Iterable
@@ -22,13 +21,14 @@ DOWNLOAD_RUST_URL = "https://rustup.rs/"
 # package info - @niv: i use my fork here because it's more stable than the original
 PACKAGE_GIT_URL = "https://github.com/NNRepos/enum-spanner-rs"
 PACKAGE_NAME = "enum-spanner-rs"
+PACKAGE_WIN_FILENAME = PACKAGE_NAME + ".exe"
 REGEX_FOLDER_NAME = "enum_spanner_regex"
 
 # installation paths
-REGEX_FOLDER_PATH = path.join(path.dirname(__file__), REGEX_FOLDER_NAME)
-REGEX_TEMP_PATH = path.join(REGEX_FOLDER_PATH, "temp{}.txt")
-REGEX_EXE_PATH_POSIX = path.join(REGEX_FOLDER_PATH, "bin", PACKAGE_NAME)
-REGEX_EXE_PATH_WIN = path.join(REGEX_FOLDER_PATH, "bin", PACKAGE_NAME + ".exe")
+REGEX_FOLDER_PATH = Path(__file__).parent / REGEX_FOLDER_NAME
+REGEX_TEMP_PATH = Path(REGEX_FOLDER_PATH) / "temp{}.txt"
+REGEX_EXE_PATH_POSIX = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_NAME
+REGEX_EXE_PATH_WIN = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_WIN_FILENAME
 
 # commands
 RUSTUP_TOOLCHAIN = "1.34"
@@ -85,7 +85,7 @@ def _download_and_install_rust_and_regex():
 
 
 def _is_installed_package():
-    return path.isfile(REGEX_EXE_PATH)
+    return Path(REGEX_EXE_PATH).is_file()
 
 
 def rgx_span_out_type(output_arity):
@@ -133,7 +133,7 @@ def rgx(text, regex_pattern, out_type: str):
     @return: a tuple of strings/spans.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
-        rgx_temp_file_name = os.path.join(temp_dir, TEMP_FILE_NAME)
+        rgx_temp_file_name = Path(temp_dir) / TEMP_FILE_NAME
         with open(rgx_temp_file_name, "w+") as f:
             f.write(text)
 
