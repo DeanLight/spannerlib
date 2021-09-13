@@ -23,8 +23,8 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxParseGraph, GenericPass)
-from rgxlog.engine.state.symbol_table import SymbolTable
-from rgxlog.engine.state.term_graph import TermGraph, NetxStateGraph
+from rgxlog.engine.state.symbol_table import SymbolTable, SymbolTableBase
+from rgxlog.engine.state.term_graph import TermGraph, NetxStateGraph, GraphBase
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
 from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
@@ -190,16 +190,20 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 
 
 class Session:
-    def __init__(self):
+    def __init__(self, symbol_table: Optional[SymbolTableBase] = None, parse_graph: Optional[GraphBase] = None,
+                 term_graph: Optional[GraphBase] = None):
         """
         parse_graph is the lark graph which contains is the result of parsing a single statement,
         term_graph is the combined tree of all statements so far, which describes the connection between relations.
         """
-        self._symbol_table = SymbolTable()
-        self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
-        self._parse_graph = NetxStateGraph()
+        self._symbol_table = symbol_table
+        if symbol_table is None:
+            self._symbol_table = SymbolTable()
+            self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
+
+        self._parse_graph = NetxStateGraph() if parse_graph is None else parse_graph
+        self._term_graph = TermGraph() if term_graph is None else term_graph
         self._engine = rgxlog.engine.engine.SqliteEngine()
-        self._term_graph = TermGraph()
         self._execution = naive_execution
 
         # TODO@niv: a simple hack to make the stanford nlp methods more efficient:

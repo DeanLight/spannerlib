@@ -1,7 +1,5 @@
 """
-this modules contains implementations of 'RgxlogEngineBase' which is an abstraction for the rgxlog engine
-and also implementations of 'ExecutionBase' which serves as an abstraction for an interface between a term graph
-and an rgxlog engine.
+this modules contains implementations of an execution function
 """
 
 from typing import (Tuple, Dict, List)
@@ -21,7 +19,7 @@ FREE_VAR_PREFIX = "COL"
 def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
                     symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase) -> Tuple[Query, List]:
     """
-        Executes a parse graph
+    Executes a parse graph
     this execution is generic, meaning it does not require any specific kind of term graph, symbol table or
     rgxlog engine in order to work.
     this execution performs no special optimization and merely serves as an interface between the term graph
@@ -42,6 +40,9 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
 
     the execution class will perform a union over `b` and `c`, and put it in a new relation, let's say `union_b_c`.
     then it will copy `union_b_c` into `a`, and finally it will query `a` and return the result.
+
+    more precisely, the execution traverses the parse tree, when it reaches a query node it compute the relevant
+    relation using the term graph (i.e. if the query is ?A(X) it will compute the relation A).
 
     @param parse_graph: a term graph to execute.
     @param term_graph: a term graph.

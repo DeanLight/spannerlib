@@ -1,9 +1,15 @@
 """
-this module contains the implementations of graphs (directed graphs).
+This module contains the implementations of graphs (directed graphs).
 
-the graphs we use when executing commands are called `term_graph`, `parse_graph`, and `dependency_graph`.
-the parse graph is an abstract syntax tree. it contains nodes which represent commands, like `add_fact`, 'rule', 'query', etc.
-in order to compute rule nodes, or compute query nodes, we use the term graph.
+The graphs we use when executing commands are called `term_graph`, `parse_graph`, and `dependency_graph`. the parse
+graph is an abstract syntax tree. it contains nodes which represent commands, like `add_fact`, 'rule', 'query',
+etc. In order to compute rule nodes, or compute query nodes, we use the term graph.
+
+The term graph is holding the connection between all the relations and rules in the program, for more description read
+TermGraph's docstring.
+
+The dependency graph stores dependencies between relations in the program, it is used by the term graph to recognize
+mutually recursive relations. for more information read DependencyGraph's docstring.
 """
 from collections import OrderedDict
 from enum import Enum
