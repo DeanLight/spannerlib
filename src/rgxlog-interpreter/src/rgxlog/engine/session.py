@@ -10,10 +10,12 @@ from pandas import DataFrame
 from tabulate import tabulate
 
 import rgxlog
+import rgxlog.engine.engine
 from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
 from rgxlog.engine.execution import (GenericExecution, AddFact, DataTypes, RelationDeclaration, Query,
-                                     FALSE_VALUE, TRUE_VALUE, FREE_VAR_PREFIX, ExecutionBase)
+                                     FREE_VAR_PREFIX, ExecutionBase)
+from rgxlog.engine.engine import FALSE_VALUE, TRUE_VALUE
 from rgxlog.engine.passes.adding_inference_rules_to_computation_graph import AddRulesToComputationTermGraph
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
@@ -198,7 +200,7 @@ class Session:
         self._symbol_table = SymbolTable()
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
         self._parse_graph = NetxStateGraph()
-        self._engine = execution.SqliteEngine()
+        self._engine = rgxlog.engine.engine.SqliteEngine()
         self._term_graph = ComputationTermGraph()
         self._execution = GenericExecution
 

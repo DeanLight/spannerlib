@@ -1,5 +1,6 @@
 import pytest
-from rgxlog.engine.execution import SqliteEngine, RelationDeclaration, DataTypes, AddFact, Query
+from rgxlog.engine.execution import RelationDeclaration, DataTypes, AddFact, Query
+from rgxlog.engine.engine import SqliteEngine
 
 
 @pytest.mark.engine
