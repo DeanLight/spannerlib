@@ -4,7 +4,6 @@ and also implementations of 'ExecutionBase' which serves as an abstraction for a
 and an rgxlog engine.
 """
 
-from abc import ABC, abstractmethod
 from typing import (Tuple, Dict, List)
 
 from rgxlog.engine.datatypes.ast_node_types import (DataTypes, Relation, AddFact, Query,
@@ -19,37 +18,10 @@ OUT_REL_ATTRIBUTE = "output_rel"
 FREE_VAR_PREFIX = "COL"
 
 
-class ExecutionBase(ABC):
+def naive_execution(parse_graph: GraphBase, term_graph: ComputationTermGraph,
+                    symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase) -> Tuple[Query, List]:
     """
-    Abstraction for a class that gets a term graph and executes it
-    """
-
-    # TODO@niv: i don't understand why we need this class, since `GenericExecution` is already generic.
-    def __init__(self, parse_graph: GraphBase, term_graph: ComputationTermGraph,
-                 symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
-        """
-        @param parse_graph: a term graph to execute.
-        @param symbol_table: a symbol table.
-        @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph.
-        """
-
-        super().__init__()
-        self.parse_graph = parse_graph
-        self.term_graph = term_graph
-        self.symbol_table = symbol_table
-        self.rgxlog_engine = rgxlog_engine
-
-    @abstractmethod
-    def execute(self) -> Tuple[Query, List]:
-        """
-        Executes the term graph.
-        """
-        pass
-
-
-class GenericExecution(ExecutionBase):
-    """
-    Executes a parse graph
+        Executes a parse graph
     this execution is generic, meaning it does not require any specific kind of term graph, symbol table or
     rgxlog engine in order to work.
     this execution performs no special optimization and merely serves as an interface between the term graph
@@ -70,66 +42,83 @@ class GenericExecution(ExecutionBase):
 
     the execution class will perform a union over `b` and `c`, and put it in a new relation, let's say `union_b_c`.
     then it will copy `union_b_c` into `a`, and finally it will query `a` and return the result.
+
+    @param parse_graph: a term graph to execute.
+    @param term_graph: a term graph.
+    @param symbol_table: a symbol table.
+    @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph.
     """
 
-    def __init__(self, parse_graph: GraphBase, term_graph: ComputationTermGraph,
-                 symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
-        super().__init__(parse_graph, term_graph, symbol_table, rgxlog_engine)
+    # it's an inner function because it needs to access all naive_execution's params
+    def compute_rule(relation_name: str, to_reset: bool = True) -> None:
+        """
+        Computes the rule (including the mutual recursive rules).
 
-    def execute(self) -> Tuple[Query, List]:
-        parse_graph = self.parse_graph
-        rgxlog_engine = self.rgxlog_engine
-        exec_result = None
+        @param relation_name: the name of the relation to compute.
+        @param to_reset: if set to True we reset the nodes after the computation.
+        """
 
-        # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
-        # are ordered the same way as they were in the original program
-        parse_node_ids = parse_graph.post_order_dfs()
+        # check if the relation is base relation
+        if not term_graph.has_node(relation_name):
+            return
 
-        # execute each non computed statement in the parse graph
-        for parse_id in parse_node_ids:
-            parse_node_attrs = parse_graph[parse_id]
+        # stores all the nodes that were visited during the dfs
+        visited_nodes = set()
+        mutually_recursive = term_graph.get_mutually_recursive_relations(relation_name)
 
-            if parse_node_attrs["state"] is EvalState.COMPUTED:
-                continue
+        def compute_postorder(node_id) -> None:
+            """
+            Runs postorder dfs over the term graph and evaluates the tree.
 
-            # the parse node is not computed, get its type and compute it accordingly
-            parse_node_type = parse_node_attrs["type"]
+            @param node_id: the current node.
+            """
+            term_attrs = term_graph[node_id]
+            if node_id in visited_nodes or term_attrs["state"] is EvalState.COMPUTED:
+                return
 
-            if parse_node_type in ("root", "relation"):
-                # pass and not continue, because we want to mark them as computed
-                pass
+            # if type is not rule_rel it's fine to continue the dfs
+            if term_attrs["type"] == "rule_rel":
+                rule_rel = term_attrs[VALUE_ATTRIBUTE]
+                if rule_rel.relation_name not in mutually_recursive:
+                    # computes the independent rule and stop
+                    compute_rule(rule_rel.relation_name, to_reset=False)
+                    return
 
-            elif parse_node_type == "rule":
-                rule = parse_node_attrs[VALUE_ATTRIBUTE]
-                rgxlog_engine.declare_relation(rule.head_relation.as_relation_declaration())
+                # we here if the rule_rel is mutually recursive with the relation we are computing
+                # if rule rel is the rule we're currently computing - continue the dfs
+                if rule_rel.relation_name != relation_name:
+                    # in case of dependent rule we use the current state of that rule
+                    term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, rule_rel)
+                    return
 
-            elif parse_node_type == "relation_declaration":
-                relation_decl = parse_node_attrs[VALUE_ATTRIBUTE]
-                rgxlog_engine.declare_relation(relation_decl)
+            visited_nodes.add(node_id)
+            children = term_graph.get_children(node_id)
+            for child in children:
+                compute_postorder(child)
 
-            elif parse_node_type == "add_fact":
-                fact = parse_node_attrs[VALUE_ATTRIBUTE]
-                rgxlog_engine.add_fact(fact)
+            compute_node(node_id)
 
-            elif parse_node_type == "remove_fact":
-                fact = parse_node_attrs[VALUE_ATTRIBUTE]
-                rgxlog_engine.remove_fact(fact)
+        # clear all the mutually recursive tables.
+        rgxlog_engine.clear_tables(mutually_recursive)
 
-            elif parse_node_type == "query":
-                # we return the query as well as the result, because we print as part of the output
-                query = parse_node_attrs[VALUE_ATTRIBUTE]
-                self.compute_rule(query.relation_name)
-                exec_result = (query, rgxlog_engine.query(query))
+        fixed_point = False
+        while not fixed_point:
+            # computes one iteration for all of the mutually recursive rules
 
-            else:
-                raise ValueError("illegal node type in parse graph")
+            fixed_point = True
+            for relation in mutually_recursive:
+                initial_len = rgxlog_engine.get_table_len(relation_name)
+                compute_postorder(relation)
+                is_stopped = rgxlog_engine.get_table_len(relation_name) == initial_len
 
-            # statement was executed, mark it as "computed"
-            parse_graph.set_node_attribute(parse_id, "state", EvalState.COMPUTED)
+                # we stop iterating when all the rules converged at the same step
+                fixed_point = fixed_point and is_stopped
 
-        return exec_result
+        state = EvalState.NOT_COMPUTED if to_reset else EvalState.COMPUTED
+        for term_id in term_graph.post_order_dfs_from(relation_name):
+            term_graph.set_node_attribute(term_id, "state", state)
 
-    def compute_node(self, node_id: int) -> None:
+    def compute_node(node_id: int) -> None:
         """
         Computes the current node based on its type.
 
@@ -145,8 +134,8 @@ class GenericExecution(ExecutionBase):
             rule_rel = term_attrs_[VALUE_ATTRIBUTE]
             rule_name = rule_rel.relation_name
             rel_in: Relation = get_child_relation(rule_name)
-            copy_rel = self.rgxlog_engine.operator_copy(rel_in, rule_name)
-            self.term_graph.set_node_attribute(rule_name, OUT_REL_ATTRIBUTE, copy_rel)
+            copy_rel = rgxlog_engine.operator_copy(rel_in, rule_name)
+            term_graph.set_node_attribute(rule_name, OUT_REL_ATTRIBUTE, copy_rel)
 
         def compute_join_node(node_id_: int) -> None:
             """
@@ -155,8 +144,8 @@ class GenericExecution(ExecutionBase):
             @param node_id_: the node.
             """
 
-            join_rel = self.rgxlog_engine.operator_join(get_children_relations(node_id_))
-            self.term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, join_rel)
+            join_rel = rgxlog_engine.operator_join(get_children_relations(node_id_))
+            term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, join_rel)
 
         def compute_project_node(node_id_: int, term_attrs_: Dict) -> None:
             """
@@ -168,8 +157,8 @@ class GenericExecution(ExecutionBase):
 
             output_rel: Relation = get_child_relation(node_id_)
             project_info = term_attrs_[VALUE_ATTRIBUTE]
-            project_rel = self.rgxlog_engine.operator_project(output_rel, project_info)
-            self.term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, project_rel)
+            project_rel = rgxlog_engine.operator_project(output_rel, project_info)
+            term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, project_rel)
 
         def compute_calc_node(node_id_: int, term_attrs_: Dict) -> None:
             """
@@ -184,9 +173,9 @@ class GenericExecution(ExecutionBase):
             # note: we use the same `VALUE_ATTRIBUTE` keyword for different things to be able to print it easily
             # when printing the tree
             ie_rel_in: IERelation = term_attrs_[VALUE_ATTRIBUTE]
-            ie_func_data = self.symbol_table.get_ie_func_data(ie_rel_in.relation_name)
-            ie_rel_out = self.rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
-            self.term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, ie_rel_out)
+            ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)
+            ie_rel_out = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
+            term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, ie_rel_out)
 
         def compute_union_node(node_id_: int) -> None:
             """
@@ -195,8 +184,8 @@ class GenericExecution(ExecutionBase):
             @param node_id_: the node.
             """
 
-            union_rel = self.rgxlog_engine.operator_union(get_children_relations(node_id_))
-            self.term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, union_rel)
+            union_rel = rgxlog_engine.operator_union(get_children_relations(node_id_))
+            term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, union_rel)
 
         def compute_select_node(node_id_: int, term_attrs_: Dict) -> None:
             """
@@ -208,7 +197,7 @@ class GenericExecution(ExecutionBase):
 
             output_rel = get_child_relation(node_id_)
             select_info = term_attrs_[VALUE_ATTRIBUTE]
-            select_rel = self.rgxlog_engine.operator_select(output_rel, select_info)
+            select_rel = rgxlog_engine.operator_select(output_rel, select_info)
             term_graph.set_node_attribute(node_id_, OUT_REL_ATTRIBUTE, select_rel)
 
         def is_node_computed(node_id_) -> bool:
@@ -223,7 +212,7 @@ class GenericExecution(ExecutionBase):
             if not children:
                 return True
 
-            children_statuses_is_computed = [self.term_graph[child_id]["state"] is EvalState.COMPUTED
+            children_statuses_is_computed = [term_graph[child_id]["state"] is EvalState.COMPUTED
                                              for child_id in children]
             return all(children_statuses_is_computed)
 
@@ -250,8 +239,6 @@ class GenericExecution(ExecutionBase):
             children = get_children_relations(node_id_)
             assert len(children) <= 1, "this node should have exactly one child"
             return children[0]
-
-        term_graph = self.term_graph
 
         term_attrs = term_graph[node_id]
         if term_attrs["state"] is EvalState.COMPUTED:
@@ -287,115 +274,61 @@ class GenericExecution(ExecutionBase):
         compute_status = EvalState.COMPUTED if is_node_computed(node_id) else EvalState.VISITED
         term_graph.set_node_attribute(node_id, 'state', compute_status)
 
-    def compute_rule(self, relation_name: str, to_reset: bool = True, only_one_iteration: bool = False) -> bool:
-        """
-        Computes the rule (including the mutual recursive rules).
+        # node_type_to_op = {"project": rgxlog_engine}
+        # op = node_type_to_op[term_type]
+        #
+        # op(get_child_relation(node_id))
+        # set_attrs
 
-        @param relation_name: the name of the relation to compute.
-        @param to_reset: if set to True we reset the nodes after the computation.
-        @param only_one_iteration: if set to True we evaluate one iteration, Otherwise we do fixed-point.
-        """
-        term_graph = self.term_graph
-        rgxlog_engine = self.rgxlog_engine
+    exec_result = None
 
-        # check if the relation is base relation
-        if not term_graph.has_node(relation_name):
-            return True
+    # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
+    # are ordered the same way as they were in the original program
+    parse_node_ids = parse_graph.post_order_dfs()
 
-        # stores all the nodes that were visited during the dfs
-        visited_nodes = set()
-        mutually_recursive = term_graph.get_mutually_recursive_relations(relation_name)
+    # execute each non computed statement in the parse graph
+    for parse_id in parse_node_ids:
+        parse_node_attrs = parse_graph[parse_id]
 
-        # declare methods used in rule computation
-        def compute_iteration() -> bool:
-            """
-            Computes one iteration. if reaches a mutually recursive relation it uses the relation current state
-            (rather than computing it).
+        if parse_node_attrs["state"] is EvalState.COMPUTED:
+            continue
 
-            @return: whether the rule we computed converged (no new tuples).
-            """
+        # the parse node is not computed, get its type and compute it accordingly
+        parse_node_type = parse_node_attrs["type"]
 
-            initial_len = rgxlog_engine.get_table_len(relation_name)
-            compute_dfs(relation_name)
+        if parse_node_type in ("root", "relation"):
+            # pass and not continue, because we want to mark them as computed
+            pass
 
-            return rgxlog_engine.get_table_len(relation_name) == initial_len
+        elif parse_node_type == "rule":
+            rule = parse_node_attrs[VALUE_ATTRIBUTE]
+            rgxlog_engine.declare_relation(rule.head_relation.as_relation_declaration())
 
-        def compute_dfs(node_id) -> None:
-            """
-            Runs postorder dfs over the term graph and evaluates the tree.
+        elif parse_node_type == "relation_declaration":
+            relation_decl = parse_node_attrs[VALUE_ATTRIBUTE]
+            rgxlog_engine.declare_relation(relation_decl)
 
-            @param node_id: the current node.
-            """
-            if is_stop_dfs(node_id):
-                return
+        elif parse_node_type == "add_fact":
+            fact = parse_node_attrs[VALUE_ATTRIBUTE]
+            rgxlog_engine.add_fact(fact)
 
-            visited_nodes.add(node_id)
-            children = self.term_graph.get_children(node_id)
-            for child in children:
-                compute_dfs(child)
+        elif parse_node_type == "remove_fact":
+            fact = parse_node_attrs[VALUE_ATTRIBUTE]
+            rgxlog_engine.remove_fact(fact)
 
-            self.compute_node(node_id)
+        elif parse_node_type == "query":
+            # we return the query as well as the result, because we print as part of the output
+            query = parse_node_attrs[VALUE_ATTRIBUTE]
+            compute_rule(query.relation_name)
+            exec_result = (query, rgxlog_engine.query(query))
 
-        def is_stop_dfs(node_id) -> bool:
-            """
-            Catches the cases of rule rel.
+        else:
+            raise ValueError("illegal node type in parse graph")
 
-            @param node_id: the current node.
-            @return: True if we can continue the DFS, False otherwise.
-            """
+        # statement was executed, mark it as "computed"
+        parse_graph.set_node_attribute(parse_id, "state", EvalState.COMPUTED)
 
-            if node_id in visited_nodes:
-                return True
-
-            term_attrs = self.term_graph[node_id]
-            if term_attrs["state"] is EvalState.COMPUTED:
-                return True
-
-            # if type is not rule_rel it's fine to continue the dfs
-            if term_attrs["type"] != "rule_rel":
-                return False
-
-            rule_rel = term_attrs[VALUE_ATTRIBUTE]
-            if rule_rel.relation_name not in mutually_recursive:
-                # computes the independent rule and stop
-                self.compute_rule(rule_rel.relation_name, to_reset=False)
-                return True
-
-            # if rule rel is the rule we're currently computing - continue the dfs
-            if rule_rel.relation_name == relation_name:
-                return False
-
-            # in case of dependent rule we use the current state of that rule
-            term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, rule_rel)
-            return True
-
-        def set_visited_nodes(state_: EvalState) -> None:
-            """
-            Marks all the nodes that were visited during the computation as not computed.
-
-            @param state_: the state of the visited nodes.
-            """
-
-            for term_id in self.term_graph.post_order_dfs_from(relation_name):
-                self.term_graph.set_node_attribute(term_id, "state", state_)
-
-        if only_one_iteration:
-            return compute_iteration()
-
-        # clear all the mutually recursive tables.
-        rgxlog_engine.clear_tables(mutually_recursive)
-
-        fixed_point = False
-        while not fixed_point:
-            # computes one iteration for all of the mutually recursive rules
-            stopped = [self.compute_rule(relation, only_one_iteration=True)
-                       for relation in mutually_recursive]
-
-            # we stop iterating when all the rules converged at the same step
-            fixed_point = all(stopped)
-
-        state = EvalState.NOT_COMPUTED if to_reset else EvalState.COMPUTED
-        set_visited_nodes(state)
+    return exec_result
 
 
 if __name__ == "__main__":

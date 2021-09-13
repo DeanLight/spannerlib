@@ -2,20 +2,18 @@ import csv
 import logging
 import os
 import re
-from pathlib import Path
-from typing import Tuple, List, Union, Optional, Callable, Type
-
 from lark.lark import Lark
 from pandas import DataFrame
+from pathlib import Path
 from tabulate import tabulate
+from typing import Tuple, List, Union, Optional, Callable, Type
 
 import rgxlog
 import rgxlog.engine.engine
-from rgxlog.engine import execution
 from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.execution import (GenericExecution, AddFact, DataTypes, RelationDeclaration, Query,
-                                     FREE_VAR_PREFIX, ExecutionBase)
 from rgxlog.engine.engine import FALSE_VALUE, TRUE_VALUE
+from rgxlog.engine.execution import (AddFact, DataTypes, RelationDeclaration, Query,
+                                     FREE_VAR_PREFIX, naive_execution)
 from rgxlog.engine.passes.adding_inference_rules_to_computation_graph import AddRulesToComputationTermGraph
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
@@ -202,7 +200,7 @@ class Session:
         self._parse_graph = NetxStateGraph()
         self._engine = rgxlog.engine.engine.SqliteEngine()
         self._term_graph = ComputationTermGraph()
-        self._execution = GenericExecution
+        self._execution = naive_execution
 
         # TODO@niv: a simple hack to make the stanford nlp methods more efficient:
         #  add here:
@@ -284,7 +282,7 @@ class Session:
             exec_result = self._execution(parse_graph=self._parse_graph,
                                           symbol_table=self._symbol_table,
                                           rgxlog_engine=self._engine,
-                                          term_graph=self._term_graph).execute()
+                                          term_graph=self._term_graph)
             if exec_result is not None:
                 exec_results.append(exec_result)
                 if print_results:
@@ -302,25 +300,6 @@ class Session:
         @see params in IEFunction's __init__.
         """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
-
-    def set_execution(self, execution_class: Type[ExecutionBase]) -> None:
-        """
-        Sets the execution class of the engine.
-
-        @raise Exception: if execution class doesn't inherit from ExecutionBase.
-        @param execution_class: the execution class.
-        """
-        if not issubclass(execution_class, ExecutionBase):
-            raise Exception("Execution class must inherit from ExecutionBase.")
-
-        self._execution = execution_class
-
-    def get_execution_class(self) -> str:
-        """
-        @return: the execution class name.
-        """
-
-        return self._execution.__name__
 
     def get_pass_stack(self) -> List[str]:
         """
@@ -523,15 +502,14 @@ class Session:
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     # logging.basicConfig(level=logging.DEBUG)
-    my_session = Session(True)
-    code = '''
-            new thing(str, str, str, str, str)
-            new dude(str, str)
-            thing("hi", "hi", "no", "hi", "yes")
-            dude("a", "bye")
-            dude("hi", "why")
-            c(X,Y) <- thing(X,X,"no",X,"yes"), dude(X, Y)
-            ?c(X,Y)
-            '''
+    my_session = Session()
+    commands = """
+                new Relation(int, int)
+                x = 1
+                y = 2
+                Relation(x, y)
+                Relation(y, x)
+                ?Relation(X, x)
+            """
 
-    my_session.run_statements(code)
+    my_session.run_statements(commands)
