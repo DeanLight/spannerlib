@@ -1,11 +1,13 @@
 import csv
+import logging
 import os
 import re
+from pathlib import Path
+from typing import Tuple, List, Union, Optional, Callable, Type
+
 from lark.lark import Lark
 from pandas import DataFrame
-from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type
 
 import rgxlog
 from rgxlog.engine import execution
@@ -35,6 +37,8 @@ PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, JsonPathF
                        EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
 
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
+
+logger = logging.getLogger(__name__)
 
 
 # @niv: add rust_rgx_*_from_file (ask dean)
@@ -186,18 +190,15 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 
 
 class Session:
-    def __init__(self, debug=False):
+    def __init__(self):
         """
         parse_graph is the lark graph which contains is the result of parsing a single statement,
         term_graph is the combined tree of all statements so far, which describes the connection between relations.
-
-        @param debug: print stuff.
         """
-        self.debug = debug
         self._symbol_table = SymbolTable()
         self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
         self._parse_graph = NetxStateGraph()
-        self._engine = execution.SqliteEngine(debug)
+        self._engine = execution.SqliteEngine()
         self._term_graph = ComputationTermGraph()
         self._execution = GenericExecution
 
@@ -234,30 +235,27 @@ class Session:
 
         grammar_file_path = Path(rgxlog.grammar.__file__).parent
         grammar_file_name = 'grammar.lark'
-        with open(grammar_file_path/grammar_file_name, 'r') as grammar_file:
+        with open(grammar_file_path / grammar_file_name, 'r') as grammar_file:
             self._grammar = grammar_file.read()
 
-        self._parser = Lark(self._grammar, parser='lalr', debug=True)
+        self._parser = Lark(self._grammar, parser='lalr')
 
     def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
         """
         Runs the passes in pass_list on tree, one after another.
         """
-        if self.debug:
-            print(f"initial lark tree:\n{lark_tree.pretty()}")
-            print(f"initial term graph:\n{self._term_graph}")
+        logger.debug(f"initial lark tree:\n{lark_tree.pretty()}")
+        logger.debug(f"initial term graph:\n{self._term_graph}")
 
         for curr_pass in pass_list:
             curr_pass_object = curr_pass(parse_graph=self._parse_graph,
                                          symbol_table=self._symbol_table,
-                                         term_graph=self._term_graph,
-                                         debug=self.debug)
+                                         term_graph=self._term_graph)
             new_tree = curr_pass_object.run_pass(tree=lark_tree)
 
             if new_tree is not None:
                 lark_tree = new_tree
-                if self.debug:
-                    print(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
+                logger.debug(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
 
     def __repr__(self):
         return "\n".join([repr(self._symbol_table), repr(self._parse_graph)])
@@ -522,11 +520,16 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    my_session = Session(False)
+    # logging.basicConfig(level=logging.DEBUG)
+    my_session = Session(True)
     code = '''
-            new thing(span, str)
-            thing([1,2), "hi")
-            ?thing([1,2), X)
+            new thing(str, str, str, str, str)
+            new dude(str, str)
+            thing("hi", "hi", "no", "hi", "yes")
+            dude("a", "bye")
+            dude("hi", "why")
+            c(X,Y) <- thing(X,X,"no",X,"yes"), dude(X, Y)
+            ?c(X,Y)
             '''
 
     my_session.run_statements(code)

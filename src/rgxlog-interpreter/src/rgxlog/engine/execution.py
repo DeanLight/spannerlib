@@ -3,6 +3,7 @@ this modules contains implementations of 'RgxlogEngineBase' which is an abstract
 and also implementations of 'ExecutionBase' which serves as an abstraction for an interface between a term graph
 and an rgxlog engine.
 """
+import logging
 
 from jinja2 import Template
 import sqlite3 as sqlite
@@ -31,6 +32,8 @@ FREE_VAR_PREFIX = "COL"
 FALSE_VALUE = []
 TRUE_VALUE = [tuple()]
 
+logger = logging.getLogger(__name__)
+
 
 class RgxlogEngineBase(ABC):
     """
@@ -39,12 +42,8 @@ class RgxlogEngineBase(ABC):
     `add_fact` (insert) and `remove_fact` (delete), and rgxlog-specific operators like `compute_ie_relation`.
     """
 
-    def __init__(self, debug=False):
+    def __init__(self):
         super().__init__()
-        self.debug = debug
-
-        if self.debug:
-            print("debug mode is on - a lot of extra info will be printed")
 
     @abstractmethod
     def declare_relation(self, relation_decl: RelationDeclaration) -> None:
@@ -289,7 +288,6 @@ class SqliteEngine(RgxlogEngineBase):
     in this implementation of the engine, we use python's sqlite3, which allows creating an SQL database easily, without using servers.
     the engine is called from `GenericExecution`, and uses `run_sql` as an interface to the database, which queries/modifies a table.
     each `operator` method implements a relational algebra operator by constructing an SQL command and executing it.
-    use `debug=True` to print all the SQL commands executed.
     """
 
     # useful prefixes
@@ -307,14 +305,13 @@ class SqliteEngine(RgxlogEngineBase):
     DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
 
     # TODO@niv: refactor everything to jinja2
-    def __init__(self, debug=False, database_name=None):
+    def __init__(self, database_name=None):
         """
         Creates/opens an SQL database file + connection.
 
-        @param debug: print stuff related to the inner workings of the engine.
         @param database_name: open an existing database instead of a new one.
         """
-        super().__init__(debug=debug)
+        super().__init__()
         self.unique_relation_id_counter = count()
         self.rules_history = dict()
 
@@ -327,17 +324,15 @@ class SqliteEngine(RgxlogEngineBase):
             temp_db_file.close()
             self.db_filename = temp_db_file.name
 
-        if self.debug:
-            print(f"using database file: {self.db_filename}")
+        logger.info(f"using database file: {self.db_filename}")
 
         self.sql_conn = sqlite.connect(self.db_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
     def run_sql(self, command, command_args=None) -> List:
-        if self.debug:
-            print(f"sql {command=}")
-            if command_args:
-                print(f"...with args: {command_args}")
+        logger.debug(f"sql {command=}")
+        if command_args:
+            logger.debug(f"...with args: {command_args}")
 
         if command_args:
             self.sql_cursor.execute(command, command_args)
@@ -724,6 +719,31 @@ class SqliteEngine(RgxlogEngineBase):
                     sql_conditions.append(f"{first_col_name}={second_col_name}")
 
             sql_command_where += " AND ".join(sql_conditions)
+
+            # """
+        #     data={
+        #         constant_terms_positions=[
+        #                                      (1,"yes"),
+        #                                      (4,"no")
+        #                                  ],
+        #                                  same_variable_positions=[
+        #         (0,2),
+        #         (0,3)
+        #     ]
+        #
+        #     }
+        #
+        #
+        # template =
+        # INSERT . INTO ..  WHERE
+        # {% for index,constant in constant_terms_positions %}
+        # 	col{index}={constant}
+        #
+        # {% for lhs,rhs in same_variable_positions %}
+        # 	{lhs}={rhs}
+        #
+        #
+        # """
 
         else:
             sql_command_where = ""

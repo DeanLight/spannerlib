@@ -69,7 +69,6 @@ def _download_and_install_rust_and_regex():
     # TODO@niv: let's talk about this sometime
     logging.warning(f"{PACKAGE_NAME} was not found on your system")
     logging.info(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
-    print("\nstarting installation")
 
     # i didn't pipe here because i want the user to see the output
     with Popen(RUSTUP_CMD_ARGS) as rustup:

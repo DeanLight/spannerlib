@@ -6,7 +6,7 @@ from rgxlog.engine.execution import SqliteEngine, RelationDeclaration, DataTypes
 def test_add_fact_twice():
     expected_output = [(8, "hihi")]
 
-    my_engine = SqliteEngine(debug=False)
+    my_engine = SqliteEngine()
 
     # add relation
     my_relation = RelationDeclaration("yoyo", [DataTypes.integer, DataTypes.string])

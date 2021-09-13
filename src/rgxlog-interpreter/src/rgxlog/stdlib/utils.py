@@ -5,13 +5,15 @@ from typing import Iterable
 
 import psutil
 from sys import platform
+import logging
 
 WINDOWS_OS = "win32"
 IS_POSIX = (platform != WINDOWS_OS)
+logger = logging.getLogger(__name__)
 
 
 def kill_process_and_children(process: Popen):
-    print("~~~~ process timed out ~~~~")
+    logger.info("~~~~ process timed out ~~~~")
     if process.poll() is not None:
         ps_process = psutil.Process(process.pid)
         for child in ps_process.children(recursive=True):  # first, kill the children :)

@@ -3,15 +3,17 @@ from typing import List
 from rgxlog.engine.datatypes.ast_node_types import Rule
 from rgxlog.engine.passes.lark_passes import GenericPass
 from rgxlog.engine.state.term_graph import EvalState, ComputationTermGraphBase, GraphBase
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # TODO@niv: @tom, can you add a docstring for the class, with a short explanation?
 class AddRulesToComputationTermGraph(GenericPass):
 
-    def __init__(self, debug: bool, **kwargs):
+    def __init__(self, **kwargs):
         self.parse_graph: GraphBase = kwargs["parse_graph"]
         self.term_graph: ComputationTermGraphBase = kwargs["term_graph"]
-        self.debug = debug
 
     def _get_rule_nodes(self) -> List[Rule]:
         """
@@ -48,5 +50,4 @@ class AddRulesToComputationTermGraph(GenericPass):
 
     def run_pass(self, **kwargs):
         self._add_rules_to_computation_graph()
-        if self.debug:
-            print(f"term graph after {self.__class__.__name__}:\n{self.term_graph}")
+        logger.debug(f"term graph after {self.__class__.__name__}:\n{self.term_graph}")
