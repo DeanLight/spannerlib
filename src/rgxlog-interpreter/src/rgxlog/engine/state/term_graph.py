@@ -946,4 +946,3 @@ class TermGraph(TermGraphBase):
             return True
 
         return False
-

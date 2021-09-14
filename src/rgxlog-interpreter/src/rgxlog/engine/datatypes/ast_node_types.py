@@ -194,7 +194,6 @@ class IERelation:
         return self.output_type_list == other.type_list and self.output_term_list == other.term_list
 
 
-
 class AddFact(Relation):
     """
     a representation of an add_fact statement

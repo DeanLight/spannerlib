@@ -94,9 +94,9 @@ def test_lemma():
 @pytest.mark.long
 def test_ner():
     commands = ("""sentence = "While in France, Christine Lagarde discussed short-term stimulus """
-             """efforts in a recent interview with the Wall Street Journal."
-            ner(X, Y, Z) <- NER(sentence) -> (X, Y, Z)
-            ?ner(Token, NER, Span)""")
+                """efforts in a recent interview with the Wall Street Journal."
+               ner(X, Y, Z) <- NER(sentence) -> (X, Y, Z)
+               ?ner(Token, NER, Span)""")
 
     expected_result = f"""{QUERY_RESULT_PREFIX}'ner(Token, NER, Span)':
                        Token   |     NER      |    Span
@@ -114,7 +114,7 @@ def test_ner():
 
 @pytest.mark.long
 def test_entity_mentions():
-    commands = """sentence = "New York Times newspaper is distributed in California." 
+    commands = """sentence = "New York Times newspaper is distributed in California."
             em(X, Y, Z, W, A, B, C, D, E) <- EntityMentions(sentence) -> (X, Y, Z, W, A, B, C, D, E) 
             ?em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text, \
             CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences) """
@@ -324,7 +324,8 @@ def test_clean_xml():
 
 @pytest.mark.long
 def test_quote():
-    commands = """sentence = "In the summer Joe Smith decided to go on vacation.  He said, \\"I'm going to Hawaii.\\"  That July, vacationer Joe went to Hawaii."
+    commands = """sentence = "In the summer Joe Smith decided to go on vacation.  He said, \\"I'm going to Hawaii.\\"  That July, vacationer Joe went to 
+    Hawaii."
                cool_quote(A,S,D,F,G,H,J,K,L,P) <- Quote(sentence) -> (A,S,D,F,G,H,J,K,L,P)
                ?cool_quote(A,S,D,F,G,H,J,K,L,P)"""
 

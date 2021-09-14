@@ -13,3 +13,4 @@ parse
 spanner-nlp
 pytest
 Jinja2
+pycodestyle

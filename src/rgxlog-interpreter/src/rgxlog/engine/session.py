@@ -461,8 +461,7 @@ class Session:
         symbol_table = self._symbol_table
         relation_schema = symbol_table.get_relation_schema(relation_name)
         relation_arity = len(relation_schema)
-        query = (f"?{relation_name}(" +
-                 ", ".join(f"{FREE_VAR_PREFIX}{i}" for i in range(relation_arity)) + ")")
+        query = (f"?{relation_name}(" + ", ".join(f"{FREE_VAR_PREFIX}{i}" for i in range(relation_arity)) + ")")
         return query
 
     def export_relation_into_df(self, relation_name: str):

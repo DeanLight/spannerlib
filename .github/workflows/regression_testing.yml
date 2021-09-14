@@ -28,7 +28,9 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install -e ./src/rgxlog-interpreter
           pip list
+      - name: test pep8
+        run: |
+          pycodestyle --show-source --show-pep8 ./src/rgxlog-interpreter
       - name: Test with pytest
-        # TODO@niv: add mypy tests
         run: |
           pytest ./src/rgxlog-interpreter/tests -s
