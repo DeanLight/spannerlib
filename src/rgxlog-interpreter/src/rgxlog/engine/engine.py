@@ -895,7 +895,8 @@ class SqliteEngine(RgxlogEngineBase):
         if datatype is DataTypes.integer:
             return term
         else:
-            return f'"{str(term)}"'
+            unquoted_term = str(term).strip('"')
+            return f'"{unquoted_term}"'
 
     def __del__(self):
         self.sql_conn.close()

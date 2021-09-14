@@ -324,14 +324,15 @@ def test_clean_xml():
 
 @pytest.mark.long
 def test_quote():
-    commands = """sentence = "In the summer Joe Smith decided to go on vacation.  He said, \\"I'm going to Hawaii.\\" That July, vacationer Joe went to Hawaii."
+    quoted_phrase = r'''\"I'm going to Hawaii.\"'''
+    commands = f"""sentence = "In the summer Joe Smith decided to go on vacation.  He said, {quoted_phrase}. That July, vacationer Joe went to Hawaii."
                cool_quote(A,S,D,F,G,H,J,K,L,P) <- Quote(sentence) -> (A,S,D,F,G,H,J,K,L,P)
                ?cool_quote(A,S,D,F,G,H,J,K,L,P)"""
 
-    expected_result = (f"""{QUERY_RESULT_PREFIX}'cool_quote(A, S, D, F, G, H, J, K, L, P)':
-                       A |            S            |   D |   F |   G |   H |   J |   K |     L     |     P
-                    -----+-------------------------+-----+-----+-----+-----+-----+-----+-----------+-----------
-                       0 | "I'm going to Hawaii.\\" |  62 |  85 |  15 |  23 |   1 |   2 | Joe Smith | Joe Smith
-   """)
+    expected_result = (fr"""{QUERY_RESULT_PREFIX}'cool_quote(A, S, D, F, G, H, J, K, L, P)':
+                       A |           S           |   D |   F |   G |   H |   J |   K |     L     |     P
+                    -----+-----------------------+-----+-----+-----+-----+-----+-----+-----------+-----------
+                       0 | I'm going to Hawaii.\ |  62 |  85 |  15 |  23 |   1 |   2 | Joe Smith | Joe Smith
+                       """)
 
     run_test(commands, expected_result)
