@@ -1,5 +1,7 @@
 """
 this is the settings file for pytest
+use `pytest --log_level=INFO` to remove the debug logs
+use `pytest -s -m "not long"` to run all short tests, and print outputs to screen
 """
 
 import pytest

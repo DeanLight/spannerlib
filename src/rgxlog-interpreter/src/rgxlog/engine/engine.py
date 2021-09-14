@@ -282,6 +282,12 @@ class SqliteEngine(RgxlogEngineBase):
         self.sql_conn = sqlite.connect(self.db_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
+    def run_sql_from_jinja_template(self, sql_template: str, template_dict: Optional[dict] = None):
+        if not template_dict:
+            template_dict = {}
+        sql_command = Template(sql_template).render(**template_dict)
+        self.run_sql(sql_command)
+
     def run_sql(self, command: str, command_args: Optional[List] = None) -> List:
         logger.debug(f"sql {command=}")
         if command_args:
@@ -299,34 +305,17 @@ class SqliteEngine(RgxlogEngineBase):
         Add a row into an existing table.
         """
         num_types = len(fact.type_list)
-        sql_template = strip_lines("""
-        INSERT INTO {{fact.relation_name}} (
-        {%- for col_index in range(num_types) -%}
-            {{engine.RELATION_COLUMN_PREFIX}}{{col_index}}
-            {%- if not loop.last -%}
-            , 
-            {%- endif -%}
-        {% endfor -%}
-        ) VALUES (
-        {%- for i in range(num_types) -%}
-            ?
-            {%- if not loop.last -%}
-            , 
-            {%- endif -%}
-        {%- endfor -%}
-        )
+        col_names = [f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)]
+        col_values = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
+                      zip(fact.type_list, fact.term_list)]
+
+        sql_template = ("""
+        INSERT INTO {{fact.relation_name}} ({{col_names | join(", ")}})
+        VALUES ({{col_values | join(", ")}})
         """)
-        sql_command = Template(sql_template).render(num_types=num_types, fact=fact, engine=self)
 
-        # sql_command = f"INSERT INTO {fact.relation_name} ("
-        # sql_command += ", ".join([f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)])
-        # sql_command += ") VALUES ("
-        # sql_command += ", ".join(["?"] * num_types)
-        # sql_command += ")"
-
-        sql_term_list = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
-                         zip(fact.type_list, fact.term_list)]
-        self.run_sql(sql_command, sql_term_list)
+        template_dict = {"col_values": col_values, "fact": fact, "col_names": col_names}
+        self.run_sql_from_jinja_template(sql_template, template_dict)
 
     def remove_fact(self, fact: RemoveFact) -> None:
         # use a `DELETE` statement
@@ -903,10 +892,10 @@ class SqliteEngine(RgxlogEngineBase):
         return self.DATATYPE_TO_SQL_TYPE[datatype]
 
     def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
-        if datatype == DataTypes.span:
-            return str(term)
-        else:
+        if datatype is DataTypes.integer:
             return term
+        else:
+            return f'"{str(term)}"'
 
     def __del__(self):
         self.sql_conn.close()

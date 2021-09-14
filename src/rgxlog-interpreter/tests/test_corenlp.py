@@ -324,8 +324,7 @@ def test_clean_xml():
 
 @pytest.mark.long
 def test_quote():
-    commands = """sentence = "In the summer Joe Smith decided to go on vacation.  He said, \\"I'm going to Hawaii.\\"  That July, vacationer Joe went to 
-    Hawaii."
+    commands = """sentence = "In the summer Joe Smith decided to go on vacation.  He said, \\"I'm going to Hawaii.\\" That July, vacationer Joe went to Hawaii."
                cool_quote(A,S,D,F,G,H,J,K,L,P) <- Quote(sentence) -> (A,S,D,F,G,H,J,K,L,P)
                ?cool_quote(A,S,D,F,G,H,J,K,L,P)"""
 
