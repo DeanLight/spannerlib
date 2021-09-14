@@ -282,7 +282,7 @@ class SqliteEngine(RgxlogEngineBase):
         self.sql_conn = sqlite.connect(self.db_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
-    def run_sql(self, command, command_args=None) -> List:
+    def run_sql(self, command: str, command_args: Optional[List] = None) -> List:
         logger.debug(f"sql {command=}")
         if command_args:
             logger.debug(f"...with args: {command_args}")
