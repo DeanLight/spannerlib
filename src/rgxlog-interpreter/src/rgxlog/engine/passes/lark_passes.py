@@ -37,6 +37,7 @@ from rgxlog.engine.datatypes.ast_node_types import (Assignment, ReadAssignment, 
                                                     IERelation, RelationDeclaration, Relation)
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
 from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
+from rgxlog.engine.state.graphs import NetxStateGraph
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
                                                fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
 from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node
@@ -973,19 +974,18 @@ class ExecuteAssignments(InterpreterPass):
 
 
 class AddStatementsToNetxParseGraph(InterpreterPass):
-    # TODO@niv: @dean what is `NetworkxExecution`?
     """
-    a lark execution pass.
+    A lark execution pass.
     This pass adds each statement in the input parse tree to the parse graph.
-    This pass is made to work with execution.NetworkxExecution as the execution engine and
-    parse_graph.NetxParseGraph as the parse graph.
+    This pass is made to work with execution.naive_execution as the execution function and
+    term_graph.NetxStateGraph as the parse graph.
 
     Each statement in the parse graph will be a child of the parse graph's root.
 
-    each statement in the parse graph will have a type attribute that contains the statement's name in the
+    Each statement in the parse graph will have a type attribute that contains the statement's name in the
     rgxlog grammar.
 
-    some nodes in the parse graph will contain a value attribute that would contain a relation that describes
+    Some nodes in the parse graph will contain a value attribute that would contain a relation that describes
     that statement.
     e.g. a add_fact node would have a value which is a structured_nodes.AddFact instance
     (which inherits from structured_nodes.Relation) that describes the fact that will be added.
@@ -998,9 +998,9 @@ class AddStatementsToNetxParseGraph(InterpreterPass):
 
     def __init__(self, **kw):
         super().__init__()
-        self.parse_graph = kw['parse_graph']
+        self.parse_graph: NetxStateGraph = kw['parse_graph']
 
-    def _add_statement_to_parse_graph(self, statement_type, statement_value) -> None:
+    def _add_statement_to_parse_graph(self, statement_type: str, statement_value) -> None:
         """
         A utility function that adds a statement to the parse graph, meaning it adds a node that
         represents the statement to the parse graph, then attach the node to the parse graph's root.

@@ -224,7 +224,7 @@ A few words on each pass:
 
 ###  term graph
 
-The term graph implementation can be found at [term_graph.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/term_graph.py).
+The term graph implementation can be found at [term_graph.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/graphs.py).
 it is implemented using networkx.
 
 The term graph does not handle variable assignment statements. Those are handled in the 'ResolveVariablesReferences' and 'ExecuteAssignments' passes

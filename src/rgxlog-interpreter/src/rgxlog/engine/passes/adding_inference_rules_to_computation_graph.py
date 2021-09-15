@@ -2,7 +2,7 @@ from typing import List
 
 from rgxlog.engine.datatypes.ast_node_types import Rule
 from rgxlog.engine.passes.lark_passes import GenericPass
-from rgxlog.engine.state.term_graph import EvalState, TermGraphBase, GraphBase
+from rgxlog.engine.state.graphs import EvalState, TermGraphBase, GraphBase
 import logging
 
 logger = logging.getLogger(__name__)
