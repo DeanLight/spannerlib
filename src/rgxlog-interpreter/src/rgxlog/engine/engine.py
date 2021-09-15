@@ -332,10 +332,6 @@ class SqliteEngine(RgxlogEngineBase):
         template_dict = {"fact": fact, "condition_pairs": condition_pairs}
         self.run_sql_from_jinja_template(sql_template, template_dict)
 
-        # sql_command = (f"DELETE FROM {fact.relation_name} WHERE"
-        #                f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
-        # self.run_sql(sql_command)
-
     def query(self, query: Query, allow_duplicates=False) -> List[tuple]:
         """
         Outputs a preformatted query result, e.g. [("a",5),("b",6)].
@@ -352,9 +348,6 @@ class SqliteEngine(RgxlogEngineBase):
         @param query: the query to be performed.
         @return: a query results which is True, False, or a list of tuples.
         """
-        # note: this is an engine query (which asks a single question),
-        # not a session query (which can do anything).
-        # so we only need to select + project here
         query_free_var_indexes = self._get_free_variable_indexes(query.type_list)
         has_free_vars = bool(query_free_var_indexes)
         select_info = query.get_select_cols_values_and_types()
@@ -375,6 +368,7 @@ class SqliteEngine(RgxlogEngineBase):
         self.remove_table(selected_relation_name)
         self.remove_table(projected_relation_name)
 
+        # we need to convert values of type `True` and `Span` into their true form. `False` is already in its true form.
         if (not has_free_vars) and query_result != FALSE_VALUE:
             query_result = TRUE_VALUE
 
