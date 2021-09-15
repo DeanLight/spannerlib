@@ -187,7 +187,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def operator_join(self, relations: List[Relation], prefix: str = "") -> Relation:
+    def operator_join(self, relations: List[Relation]) -> Relation:
         """
         Performs a join between all of the relations in the relation list and saves the result to a new relation.
         the results of the join are filtered so they only include columns in the relations that were defined by
@@ -197,7 +197,6 @@ class RgxlogEngineBase(ABC):
         for an example and more details see RgxlogEngineBase.join_relations.
 
         @param relations: a list of normal relations.
-        @param prefix: a prefix for the name of the joined relation.
         @return: a new relation as described above.
         """
         pass
@@ -288,7 +287,7 @@ class SqliteEngine(RgxlogEngineBase):
         sql_command = Template(strip_lines(sql_template)).render(**template_dict)
         self.run_sql(sql_command)
 
-    def run_sql(self, command: str, command_args: Optional[List] = None) -> List:
+    def run_sql(self, command: str, command_args: Optional[List] = None, do_commit: bool = False) -> List:
         logger.debug(f"sql {command=}")
         if command_args:
             logger.debug(f"...with args: {command_args}")
@@ -298,6 +297,10 @@ class SqliteEngine(RgxlogEngineBase):
         else:
             self.sql_cursor.execute(command)
 
+        if do_commit:
+            # save to file
+            self.sql_conn.commit()
+
         return self.sql_cursor.fetchall()
 
     def add_fact(self, fact: AddFact) -> None:
@@ -305,7 +308,7 @@ class SqliteEngine(RgxlogEngineBase):
         Add a row into an existing table.
         """
         num_types = len(fact.type_list)
-        col_names = [f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)]
+        col_names = [f"{self._get_col_name(i)}" for i in range(num_types)]
         col_values = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
                       zip(fact.type_list, fact.term_list)]
 
@@ -319,7 +322,7 @@ class SqliteEngine(RgxlogEngineBase):
 
     def remove_fact(self, fact: RemoveFact) -> None:
         num_types = len(fact.type_list)
-        col_names = [f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)]
+        col_names = [f"{self._get_col_name(i)}" for i in range(num_types)]
         col_values = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
                       zip(fact.type_list, fact.term_list)]
         condition_pairs = [f"{col_name}={col_value}" for col_name, col_value in zip(col_names, col_values)]
@@ -363,7 +366,7 @@ class SqliteEngine(RgxlogEngineBase):
         else:
             projected_relation_name = selected_relation_name
 
-        query_result = self.run_sql(f"{self.SQL_SELECT} * FROM {projected_relation_name}")
+        query_result = self.run_sql(f"{self.SQL_SELECT} * FROM {projected_relation_name}", do_commit=True)
 
         self.remove_table(selected_relation_name)
         self.remove_table(projected_relation_name)
@@ -593,7 +596,7 @@ class SqliteEngine(RgxlogEngineBase):
     def declare_relation(self, relation_decl: RelationDeclaration) -> None:
         """
         Declares a relation as an SQL table, whose types are named t0, t1, ...
-        if the relation is already declared does nothing.
+        if the relation is already declared, do nothing.
 
         @param relation_decl: the declaration info.
         """
@@ -604,183 +607,170 @@ class SqliteEngine(RgxlogEngineBase):
             return
 
         # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
-        sql_command = f"CREATE TABLE {relation_decl.relation_name} ("
-        sql_command += ", ".join([f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(len(relation_decl.type_list))])
-        sql_command += ")"
+        col_names = [f"{self._get_col_name(i)}" for i in range(len(relation_decl.type_list))]
+        sql_template = 'CREATE TABLE {{rel_name}} ({{col_names | join(", ")}})'
+        template_dict = {"rel_name": relation_decl.relation_name, "col_names": col_names}
 
-        self.run_sql(sql_command)
+        self.run_sql_from_jinja_template(sql_template, template_dict)
 
-        # save to file
-        self.sql_conn.commit()
-
-    def operator_select(self, src_relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
+    def operator_select(self, src_relation: Relation, constant_variables_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
         """
-        Performs sql WHERE.
+        Performs sql WHERE, whose conditions are based on `select_info`
 
         @param src_relation: the relation from which we select tuples.
-        @param select_info: set of tuples. each tuple contains the index of the column, the value to select
-                            and the type of the column.
+        @param constant_variables_info: a set of tuples. each tuple contains the index of the column, the value to select (a constant variable),
+                                        and the type of the column.
 
         @return: a filtered relation.
         """
-        # get the columns based on `select_info`
-        src_relation_name = src_relation.relation_name
 
-        new_arity = len(src_relation.term_list)
-        new_term_list = src_relation.term_list
-        new_type_list = src_relation.type_list
+        constant_var_pairs = []
+        equal_var_pairs = []
 
-        new_relation_name = self._create_unique_relation(new_arity,
-                                                         prefix=f"{src_relation_name}{self.SQL_SEPARATOR}{self.SELECT_PREFIX}")
+        def _create_new_relation_for_select_result():
+            new_term_list = src_relation.term_list
+            new_arity = len(new_term_list)
+            new_type_list = src_relation.type_list
+            new_relation_name = self._create_unique_relation(new_arity, prefix=f"{src_relation.relation_name}{self.SQL_SEPARATOR}{self.SELECT_PREFIX}")
+            return Relation(new_relation_name, new_term_list, new_type_list)
 
-        selected_relation = Relation(new_relation_name, new_term_list, new_type_list)
+        def _extract_constant_variable_pairs():
+            """
+            generate conditions based on `constant_variables_info`
 
-        # sql part
-        sql_command = f'INSERT INTO {new_relation_name} {self.SQL_SELECT} * FROM {src_relation_name}'
-        sql_args = []
-
-        # get variables in var_dict that repeat - used below to add conditions
-        src_relation_var_dict = get_free_var_to_relations_dict({src_relation})
-        repeating_vars_in_relation = [(free_var, pairs) for (free_var, pairs) in
-                                      src_relation_var_dict.items() if (len(pairs) > 1)]
-        if (len(select_info) > 0) or repeating_vars_in_relation:
-            # TODO@niv: refactor this into new helper method
-            sql_command_where = " WHERE "
-            sql_conditions = []
-            # add conditions based on `select_info`
-            for i, value, _ in select_info:
+            @return: column + constant pairs, which are used as conditions for `select`
+            """
+            for i, value, datatype in constant_variables_info:
                 col_name = self._get_col_name(i)
-                if type(value) is Span:
-                    # sql does not accept spans
-                    value = str(value)
-                sql_args.append(value)
-                sql_conditions.append(f"{col_name}=?")
+                value = self._convert_relation_term_to_string(datatype, value)
+                constant_var_pairs.append((col_name, value))
+            return constant_var_pairs
 
-            # add conditions based on repeating free variables like a(X,X) - check if they are equal
+        def _extract_equal_variable_pairs() -> List[Tuple[str, str]]:
+            """
+            add conditions based on repeating free variables like a(X,X) - check if they are equal
+
+            @return: pairs of equal columns
+            """
+            # get variables in var_dict that repeat - used below to add conditions
+
+            src_relation_var_dict = get_free_var_to_relations_dict({src_relation})
+            repeating_vars_in_relation = [(free_var, pairs) for (free_var, pairs) in src_relation_var_dict.items() if (len(pairs) > 1)]
+
+            # convert repeated variables to pairs of columns which should be equal
             for free_var, pairs in repeating_vars_in_relation:
                 first_pair, other_pairs = pairs[0], pairs[1:]
                 first_index = first_pair[1]
                 first_col_name = self._get_col_name(first_index)
                 for _, second_index in other_pairs:
                     second_col_name = self._get_col_name(second_index)
-                    sql_conditions.append(f"{first_col_name}={second_col_name}")
+                    equal_var_pairs.append((first_col_name, second_col_name))
+            return equal_var_pairs
 
-            sql_command_where += " AND ".join(sql_conditions)
+        selected_relation = _create_new_relation_for_select_result()
 
-            # """
-        #     data={
-        #         constant_terms_positions=[
-        #                                      (1,"yes"),
-        #                                      (4,"no")
-        #                                  ],
-        #                                  same_variable_positions=[
-        #         (0,2),
-        #         (0,3)
-        #     ]
-        #
-        #     }
-        #
-        #
-        # template =
-        # INSERT . INTO ..  WHERE
-        # {% for index,constant in constant_terms_positions %}
-        # 	col{index}={constant}
-        #
-        # {% for lhs,rhs in same_variable_positions %}
-        # 	{lhs}={rhs}
-        #
-        #
-        # """
+        # TODO@niv: @dean, these pairs of unprepared data (int,int pairs) can't be used with join in jinja, so i use the prepared strings instead.
+        constant_var_pairs = _extract_constant_variable_pairs()
+        constant_conditions = [f"{col}={value}" for col, value in constant_var_pairs]
 
-        else:
-            sql_command_where = ""
+        equal_var_pairs = _extract_equal_variable_pairs()
+        equal_var_conditions = [f"{first_col}={second_col}" for first_col, second_col in equal_var_pairs]
 
-        sql_command += sql_command_where
+        all_conditions = constant_conditions + equal_var_conditions
 
-        self.run_sql(sql_command, sql_args)
+        sql_template = ("""
+        INSERT INTO {{new_rel_name}} {{sql_select}} * FROM {{src_rel_name}}
+        {%- if all_conditions %}
+            WHERE {{ all_conditions | join(" AND ") }}
+        {%- endif -%}
+        """)
+
+        template_dict = {"new_rel_name": selected_relation.relation_name, "sql_select": self.SQL_SELECT, "src_rel_name": src_relation.relation_name,
+                         "all_conditions": all_conditions}
+        self.run_sql_from_jinja_template(sql_template, template_dict)
+
         return selected_relation
 
-    def operator_join(self, relations: List[Relation], prefix: str = "") -> Relation:
+    def operator_join(self, relations: List[Relation]) -> Relation:
         """
         note: SQL's inner_join without `IN` is actually cross-join (product), so this covers product as well.
 
         @param relations: a list of normal relations.
-        @param prefix: a prefix for the name of the joined relation.
         @return: a new relation as described above.
         """
+        on_conditions_list = []
+        inner_join_list = []
+        free_var_cols = []
 
-        def _create_new_relation_for_join_result(relation_terms, relation_prefix):
+        def _create_new_relation_for_join_result():
+            # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
+            free_var_sets = [get_output_free_var_names(relation) for relation in relations]
+            free_vars = set().union(*free_var_sets)
+            joined_relation_terms = list(free_vars)
+
             # get the type list of the joined relation (all of the terms are free variables)
-            relation_arity = len(relation_terms)
+            relation_arity = len(joined_relation_terms)
             relation_types = [DataTypes.free_var_name] * relation_arity
 
             # declare the joined relation in sql and get its name
-            joined_relation_name = self._create_unique_relation(relation_arity,
-                                                                prefix=f"{relation_prefix}{self.SQL_SEPARATOR}{self.JOIN_PREFIX}")
+            joined_relation_name = self._create_unique_relation(relation_arity, prefix=self.JOIN_PREFIX)
 
             # create a structured node of the joined relation
-            return Relation(joined_relation_name, relation_terms, relation_types)
+            return Relation(joined_relation_name, joined_relation_terms, relation_types)
+
+        def _extract_col_names_and_conditions():
+            # iterate over the free_vars and do 2 things:
+            for i, free_var in enumerate(joined_relation.term_list):
+                free_var_pairs: List[Tuple[Union[Relation, IERelation], int]] = var_dict[free_var]
+                first_pair, other_pairs = free_var_pairs[0], free_var_pairs[1:]
+
+                relation_with_free_var, first_index = first_pair
+                name_of_relation_with_free_var = relation_temp_names[relation_with_free_var]
+                new_col_name = self._get_col_name(i)
+                first_col_name = self._get_col_name(first_index)
+
+                # 1. name the new columns. the columns should be named col0, col1, etc.
+                free_var_cols.append(f"{name_of_relation_with_free_var}.{first_col_name} AS {new_col_name}")
+
+                # 2. create the comparison between all of them, using `ON`
+                for (second_relation, second_index) in other_pairs:
+                    second_col_name = self._get_col_name(second_index)
+                    name_of_second_relation = relation_temp_names[second_relation]
+                    on_conditions_list.append(f"{name_of_relation_with_free_var}.{first_col_name}="
+                                              f"{name_of_second_relation}.{second_col_name}")
 
         assert len(relations) > 0, "can't join an empty list"
         if len(relations) == 1:
             return self.operator_copy(relations[0])
 
         # create a mapping between the relations and their temporary names for sql
-        relation_sql_names = {relation: f"table{i}" for (i, relation) in enumerate(relations)}
+        relation_temp_names = {relation: f"table{i}" for (i, relation) in enumerate(relations)}
         var_dict = get_free_var_to_relations_dict(set(relations))
 
-        # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
-        free_var_sets = [get_output_free_var_names(relation) for relation in relations]
-        free_vars = set().union(*free_var_sets)
-        joined_relation_terms = list(free_vars)
+        joined_relation = _create_new_relation_for_join_result()
+        _extract_col_names_and_conditions()
 
-        joined_relation = _create_new_relation_for_join_result(joined_relation_terms, prefix)
-
-        # construct the sql join command
-        on_conditions_list = []
-        inner_join_list = []
-        free_var_cols = []
-
-        # iterate over the free_vars and do 2 things:
-        for i, free_var in enumerate(joined_relation_terms):
-            free_var_pairs: List[Tuple[Union[Relation, IERelation], int]] = var_dict[free_var]
-            first_pair, other_pairs = free_var_pairs[0], free_var_pairs[1:]
-
-            relation_with_free_var, first_index = first_pair
-            name_of_relation_with_free_var = relation_sql_names[relation_with_free_var]
-            new_col_name = self._get_col_name(i)
-            first_col_name = self._get_col_name(first_index)
-
-            # 1. name the new columns. the columns should be named col0, col1, etc.
-            free_var_cols.append(f"{name_of_relation_with_free_var}.{first_col_name} AS {new_col_name}")
-
-            # 2. create the comparison between all of them, using `ON`
-            for (second_relation, second_index) in other_pairs:
-                second_col_name = self._get_col_name(second_index)
-                name_of_second_relation = relation_sql_names[second_relation]
-                on_conditions_list.append(f"{name_of_relation_with_free_var}.{first_col_name}="
-                                          f"{name_of_second_relation}.{second_col_name}")
-
-        # first relation - just `FROM`
+        # first relation - used after `FROM`
         first_relation, other_relations = relations[0], relations[1:]
 
-        # for every next relation: `INNER JOIN`
+        # every next relation is used after `INNER JOIN`
         for relation in other_relations:
-            inner_join_list.append(f"INNER JOIN {relation.relation_name} AS {relation_sql_names[relation]}")
+            inner_join_list.append(f"INNER JOIN {relation.relation_name} AS {relation_temp_names[relation]}")
 
-        # add the join conditions (`ON`)
-        if on_conditions_list:
-            on_conditions_str = " ON " + " AND ".join(on_conditions_list)
-        else:
-            on_conditions_str = ""
+        sql_template = ("""
+        INSERT INTO {{ new_rel_name }}
+        {{ sql_select }} {{ new_cols | join(", ") }}
+        FROM {{ first_rel_name }} AS {{ first_rel_temp_name }}
+        {{ rels_temp_names | join(" ") }}
+        {%- if join_conditions %}
+            ON {{ join_conditions | join(" AND ") }}
+        {%- endif -%}
+        """)
 
-        sql_command = f"INSERT INTO {joined_relation.relation_name} {self.SQL_SELECT} "
-        sql_command += ", ".join(free_var_cols)
-        sql_command += f" FROM {first_relation.relation_name} AS {relation_sql_names[first_relation]} "
-        sql_command += " ".join(inner_join_list)
-        sql_command += on_conditions_str
-
-        self.run_sql(sql_command)
+        template_dict = {"new_rel_name": joined_relation.relation_name, "sql_select": self.SQL_SELECT, "new_cols": free_var_cols,
+                         "first_rel_name": first_relation.relation_name, "first_rel_temp_name": relation_temp_names[first_relation],
+                         "rels_temp_names": inner_join_list, "join_conditions": on_conditions_list}
+        self.run_sql_from_jinja_template(sql_template, template_dict)
 
         return joined_relation
 
@@ -792,36 +782,38 @@ class SqliteEngine(RgxlogEngineBase):
         @param project_vars: a list of variables on which we project.
         @return: the projected relation.
         """
-        # get the indexes to project from (in `src_relation`) based on `var_dict`
-        var_dict: Dict[str, List[Tuple[Union[Relation, IERelation], int]]] = get_free_var_to_relations_dict(
-            {src_relation})
         project_indexes = []
-        for var in project_vars:
-            var_index_in_src = (var_dict[var][0][1])
-            project_indexes.append(var_index_in_src)
-
-        src_type_list = src_relation.type_list
-        new_type_list = [src_type_list[i] for i in project_indexes]
-
-        new_arity = len(project_vars)
-
-        src_relation_name = src_relation.relation_name
-        new_relation_name = self._create_unique_relation(new_arity, prefix=self.PROJECT_PREFIX)
-
-        new_relation = Relation(new_relation_name, project_vars, new_type_list)
-
         dest_col_list = []
-        for new_col_num, src_col_num in enumerate(project_indexes):
-            new_col = self._get_col_name(new_col_num)
-            src_col = self._get_col_name(src_col_num)
-            if new_col == src_col:
-                # this prevents selecting "colX AS colX", for aesthetic reasons
-                dest_col_list.append(src_col)
-            else:
-                dest_col_list.append(f"{src_col} AS {new_col}")
 
-        sql_command = (f"INSERT INTO {new_relation_name} {self.SQL_SELECT} {', '.join(dest_col_list)}"
-                       f" FROM {src_relation_name}")
+        def _create_new_relation_for_project_result() -> Relation:
+            # get the indexes to project from (in `src_relation`) based on `var_dict`
+            var_dict: Dict[str, List[Tuple[Union[Relation, IERelation], int]]] = get_free_var_to_relations_dict({src_relation})
+
+            for var in project_vars:
+                var_index_in_src = (var_dict[var][0][1])
+                project_indexes.append(var_index_in_src)
+
+            src_type_list = src_relation.type_list
+            new_type_list = [src_type_list[i] for i in project_indexes]
+            new_arity = len(project_vars)
+            new_relation_name = self._create_unique_relation(new_arity, prefix=f"{src_relation.relation_name}{self.SQL_SEPARATOR}{self.PROJECT_PREFIX}")
+            return Relation(new_relation_name, project_vars, new_type_list)
+
+        def _extract_project_col_names() -> None:
+            for new_col_num, src_col_num in enumerate(project_indexes):
+                new_col = self._get_col_name(new_col_num)
+                src_col = self._get_col_name(src_col_num)
+                if new_col == src_col:
+                    # this prevents selecting "colX AS colX", for aesthetic reasons
+                    dest_col_list.append(src_col)
+                else:
+                    dest_col_list.append(f"{src_col} AS {new_col}")
+
+        new_relation = _create_new_relation_for_project_result()
+        _extract_project_col_names()
+
+        sql_command = (f"INSERT INTO {new_relation.relation_name} {self.SQL_SELECT} {', '.join(dest_col_list)}"
+                       f" FROM {src_relation.relation_name}")
 
         self.run_sql(sql_command)
         return new_relation
@@ -831,32 +823,42 @@ class SqliteEngine(RgxlogEngineBase):
         @param relations: a list of relations to unite.
         @return: the united relation.
         """
+        union_list = []
+
+        def _create_new_relation_for_union() -> Relation:
+            new_relation_name = self._create_unique_relation(len(relations[0].term_list), prefix=self.UNION_PREFIX)
+            new_term_list = relations[0].term_list
+            new_type_list = relations[0].type_list
+            return Relation(new_relation_name, new_term_list, new_type_list)
+
+        def _extract_union_selections() -> None:
+            """
+            create the union command by iterating over the relations and finding the index of each term
+            @return: None
+            """
+
+            for relation in relations:
+                # we assume the same order in the source and the destination, so no need to use 'AS'
+                selection_list = [self._get_col_name(col_index) for col_index in range(len(united_relation.term_list))]
+
+                # render a jinja template into an SQL select
+                relation_string_template = '{{sql_select}} {{ selected_cols | join(", ") }} FROM {{rel_name}}'
+                template_dict = {"sql_select": self.SQL_SELECT, "selected_cols": selection_list, "rel_name": relation.relation_name}
+                rendered_relation_string = Template(strip_lines(relation_string_template)).render(**template_dict)
+                union_list.append(rendered_relation_string)
+
         new_arity = len(relations)
         assert new_arity > 0, "cannot perform union on an empty list"
         if new_arity == 1:
             return relations[0]
 
-        new_relation_name = self._create_unique_relation(len(relations[0].term_list), prefix=self.UNION_PREFIX)
-        new_term_list = relations[0].term_list
-        new_type_list = relations[0].type_list
-        new_relation = Relation(new_relation_name, new_term_list, new_type_list)
+        united_relation = _create_new_relation_for_union()
+        _extract_union_selections()
 
-        # create the union command by iterating over the relations and finding the index of each term
-        union_list = []
-        for relation in relations:
-            curr_relation_string = f"{self.SQL_SELECT} "
-            selection_list = []
-            for col_index, term in enumerate(new_term_list):
-                # we assume the same order in the source and the destination, so no need to use 'AS'
-                col_name = self._get_col_name(col_index)
-                selection_list.append(f"{col_name}")
-            curr_relation_string += ", ".join(selection_list) + f" FROM {relation.relation_name}"
-            union_list.append(curr_relation_string)
-
-        sql_command = f"INSERT INTO {new_relation_name} {' UNION '.join(union_list)}"
+        sql_command = f"INSERT INTO {united_relation.relation_name} {' UNION '.join(union_list)}"
 
         self.run_sql(sql_command)
-        return new_relation
+        return united_relation
 
     def operator_copy(self, src_rel: Relation, output_relation: Optional[Relation] = None) -> Relation:
         src_rel_name = src_rel.relation_name
