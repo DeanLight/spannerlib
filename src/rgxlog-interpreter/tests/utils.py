@@ -53,7 +53,7 @@ def table_to_query_free_vars_tuples(table: str) -> Iterable:
     # tuple[0] is the print statement, tuple[1] is true/false.
     if tuples[1] in ["[()]", "[]"]:
         return tuples
-    # if table is not empty than: tuple[0] is the print statement, tuple[1] are the free vars and tuple[3:] contains
+    # if table is not empty, then: tuple[0] is the print statement, tuple[1] are the free vars and tuple[3:] contains
     # all the tuples inside the table .
     else:  # query   |free vars|     tuples
         return tuples[0], tuples[1], set(tuples[3:])

@@ -285,7 +285,7 @@ class SqliteEngine(RgxlogEngineBase):
     def run_sql_from_jinja_template(self, sql_template: str, template_dict: Optional[dict] = None):
         if not template_dict:
             template_dict = {}
-        sql_command = Template(sql_template).render(**template_dict)
+        sql_command = Template(strip_lines(sql_template)).render(**template_dict)
         self.run_sql(sql_command)
 
     def run_sql(self, command: str, command_args: Optional[List] = None) -> List:
@@ -318,12 +318,23 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql_from_jinja_template(sql_template, template_dict)
 
     def remove_fact(self, fact: RemoveFact) -> None:
-        # use a `DELETE` statement
-        sql_terms = fact.term_list  # add quotes here
+        num_types = len(fact.type_list)
+        col_names = [f"{self.RELATION_COLUMN_PREFIX}{i}" for i in range(num_types)]
+        col_values = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
+                      zip(fact.type_list, fact.term_list)]
+        condition_pairs = [f"{col_name}={col_value}" for col_name, col_value in zip(col_names, col_values)]
 
-        sql_command = (f"DELETE FROM {fact.relation_name} WHERE"
-                       f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
-        self.run_sql(sql_command)
+        sql_template = ("""
+        DELETE FROM {{fact.relation_name}} WHERE 
+        ({{condition_pairs | join(", ")}})
+        """)
+
+        template_dict = {"fact": fact, "condition_pairs": condition_pairs}
+        self.run_sql_from_jinja_template(sql_template, template_dict)
+
+        # sql_command = (f"DELETE FROM {fact.relation_name} WHERE"
+        #                f"(t1='{sql_terms[0]}' AND t2='{sql_terms[1]}')")
+        # self.run_sql(sql_command)
 
     def query(self, query: Query, allow_duplicates=False) -> List[tuple]:
         """

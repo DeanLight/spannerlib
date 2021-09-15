@@ -1,3 +1,4 @@
+from rgxlog import Session
 from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
@@ -399,5 +400,37 @@ def test_query_false_value():
     expected_result = f"""{QUERY_RESULT_PREFIX}'A(2)':
     []
     """
+
+    run_test(commands, expected_result)
+
+
+def test_nothing():
+    # we can't use run_test when there is no output
+    commands = ""
+
+    expected_result = "[]"
+
+    commands_result = Session().run_statements(commands, print_results=True)
+    assert expected_result == commands_result, "expected string != result string"
+
+
+def test_add_remove_fact():
+    commands = """
+                new rel(int)
+                rel(8) <- True
+                rel(16)
+                rel(16) <- False
+                rel(32)
+                rel(16)
+                rel(32) <- False
+                ?rel(X)
+                """
+
+    expected_result = f"""{QUERY_RESULT_PREFIX}'rel(X)':
+                           X
+                        -----
+                           8
+                          16
+                        """
 
     run_test(commands, expected_result)
