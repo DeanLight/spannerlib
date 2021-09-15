@@ -410,7 +410,7 @@ def test_nothing():
 
     expected_result = "[]"
 
-    commands_result = Session().run_statements(commands, print_results=True)
+    commands_result = str(Session().run_statements(commands, print_results=True))
     assert expected_result == commands_result, "expected string != result string"
 
 
