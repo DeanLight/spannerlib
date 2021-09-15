@@ -24,7 +24,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxParseGraph, GenericPass)
 from rgxlog.engine.state.symbol_table import SymbolTable, SymbolTableBase
-from rgxlog.engine.state.term_graph import TermGraph, NetxStateGraph, GraphBase
+from rgxlog.engine.state.graphs import TermGraph, NetxStateGraph, GraphBase
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
 from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull

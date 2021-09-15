@@ -8,7 +8,7 @@ from rgxlog.engine.datatypes.ast_node_types import (DataTypes, Relation, AddFact
                                                     RelationDeclaration, IERelation)
 from rgxlog.engine.engine import RgxlogEngineBase, SqliteEngine
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.state.term_graph import EvalState, GraphBase, TermGraph
+from rgxlog.engine.state.graphs import EvalState, GraphBase, TermGraph
 
 VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
@@ -43,6 +43,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
 
     more precisely, the execution traverses the parse tree, when it reaches a query node it compute the relevant
     relation using the term graph (i.e. if the query is ?A(X) it will compute the relation A).
+    read the docstring of compute_rule function to understand how the computation is done.
 
     @param parse_graph: a term graph to execute.
     @param term_graph: a term graph.
@@ -54,6 +55,18 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
     def compute_rule(relation_name: str, to_reset: bool = True) -> None:
         """
         Computes the rule (including the mutual recursive rules).
+        This function traverses the term graph and dynamically building the computation graph of th rule (note that we
+        don't really build the computational graph it's more a conceptual thing).
+        During the traversal when we reach a root of another rule relation we build it's computational graph as well.
+        We do that in the following way:
+            if the relation is mutually recursive we use it's current value.
+            if the relation isn't mutually recursive we compute it recursively (calling compute_rule on it).
+
+        Finally, we compute together all the mutually recursive relation in the following way:
+            we iterate over all the mutually recursive relations:
+                each relation is computed using the current states of it's mutually recursive relation
+            we stop iterating only when there was no change in all the mutually recursive relation at the same
+            iteration (we reach a fixed point).
 
         @param relation_name: the name of the relation to compute.
         @param to_reset: if set to True we reset the nodes after the computation.
@@ -66,6 +79,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
         # stores all the nodes that were visited during the dfs
         visited_nodes = set()
         mutually_recursive = term_graph.get_mutually_recursive_relations(relation_name)
+        current_computed_relation = None
 
         def compute_postorder(node_id) -> None:
             """
@@ -87,7 +101,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
 
                 # we here if the rule_rel is mutually recursive with the relation we are computing
                 # if rule rel is the rule we're currently computing - continue the dfs
-                if rule_rel.relation_name != relation_name:
+                if rule_rel.relation_name != current_computed_relation:
                     # in case of dependent rule we use the current state of that rule
                     term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, rule_rel)
                     return
@@ -106,12 +120,12 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
         while not fixed_point:
             # computes one iteration for all of the mutually recursive rules
             fixed_point = True
-            # the variable must be called relation_name because it's used in compute_postorder
-            for relation_name in mutually_recursive:
+            for relation in mutually_recursive:
+                current_computed_relation = relation
                 visited_nodes = set()
-                initial_len = rgxlog_engine.get_table_len(relation_name)
-                compute_postorder(relation_name)
-                is_stopped = rgxlog_engine.get_table_len(relation_name) == initial_len
+                initial_len = rgxlog_engine.get_table_len(current_computed_relation)
+                compute_postorder(current_computed_relation)
+                is_stopped = rgxlog_engine.get_table_len(current_computed_relation) == initial_len
 
                 # we stop iterating when all the rules converged at the same step
                 fixed_point = fixed_point and is_stopped
