@@ -52,24 +52,38 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
     """
 
     # it's an inner function because it needs to access all naive_execution's params
-    def compute_rule(relation_name: str, to_reset: bool = True) -> None:
+    def compute_rule(relation_name: str, do_reset: bool = True) -> None:
         """
         Computes the rule (including the mutual recursive rules).
-        This function traverses the term graph and dynamically building the computation graph of th rule (note that we
-        don't really build the computational graph it's more a conceptual thing).
-        During the traversal when we reach a root of another rule relation we build it's computational graph as well.
+        This function traverses the term graph and dynamically generates the computation graph of the rule (note that we
+        don't really create a computational graph object; it's more of a conceptual thing).
+        During the traversal, when we reach a root of another rule relation, we build its computational graph as well.
         We do that in the following way:
-            if the relation is mutually recursive we use it's current value.
-            if the relation isn't mutually recursive we compute it recursively (calling compute_rule on it).
+            * if the relation is mutually recursive, we use its current value.
+            * if the relation isn't mutually recursive, we compute it recursively (calling compute_rule on it).
 
-        Finally, we compute together all the mutually recursive relation in the following way:
+        Finally, we compute together all the mutually recursive relations in the following way:
             we iterate over all the mutually recursive relations:
-                each relation is computed using the current states of it's mutually recursive relation
-            we stop iterating only when there was no change in all the mutually recursive relation at the same
+                each relation is computed using the current states of its mutually recursive relations
+            we stop iterating only after there was no change in all the mutually recursive relations at the same
             iteration (we reach a fixed point).
 
+        the following abstract example might help understand this process:
+        let's say we have 2 mutually recursive relations, `a` and `b`, which depend on one another:
+        ...
+        a(X) <- b(X)
+        ...
+        b(X) <- a(X)
+        ...
+
+        at the beginning, the imaginary relations a_0 and b_0 are empty.
+        during the first iteration, the imaginary relation a_1 is created, and it may contain some rows of data (based on the rules).
+        then b_1 is created, and it is affected by a_1 (because of the rule `b(X) <- a(X)`), so it will have all of a_1's rows, maybe more.
+        after `i` iterations, a_i and b_i are not changed, and therefore we reached a fixed point. now we stop iteration,
+        and relations `a` and `b` are `COMPUTED`.
+
         @param relation_name: the name of the relation to compute.
-        @param to_reset: if set to True we reset the nodes after the computation.
+        @param do_reset: if set to True, we reset the nodes after the computation.
         """
 
         # check if the relation is base relation
@@ -96,7 +110,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
                 rule_rel = term_attrs[VALUE_ATTRIBUTE]
                 if rule_rel.relation_name not in mutually_recursive:
                     # computes the independent rule and stop
-                    compute_rule(rule_rel.relation_name, to_reset=False)
+                    compute_rule(rule_rel.relation_name, do_reset=False)
                     return
 
                 # we here if the rule_rel is mutually recursive with the relation we are computing
@@ -130,7 +144,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
                 # we stop iterating when all the rules converged at the same step
                 fixed_point = fixed_point and is_stopped
 
-        state = EvalState.NOT_COMPUTED if to_reset else EvalState.COMPUTED
+        state = EvalState.NOT_COMPUTED if do_reset else EvalState.COMPUTED
         for term_id in term_graph.post_order_dfs_from(relation_name):
             term_graph.set_node_attribute(term_id, "state", state)
 
