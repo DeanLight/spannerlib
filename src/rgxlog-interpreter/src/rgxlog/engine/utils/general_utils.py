@@ -76,16 +76,6 @@ def get_output_free_var_names(relation: Union[Relation, IERelation]) -> Set[str]
     return get_free_var_names(relation.get_term_list(), relation.get_type_list())
 
 
-# TODO@tom: @niv, why do we need this function if all they do is calling another function?
-def get_numbered_output_free_var_names(relation: Union[Relation, IERelation]) -> List[Tuple[int, str]]:
-    """
-    @param relation: a relation (either a normal relation or an ie relation).
-    @return: a set of the free variable names used as output terms in the relation.
-    """
-
-    return position_freevar_pairs(relation)
-
-
 def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) -> (
         Dict[str, List[Tuple[Union[Relation, IERelation], int]]]):
     """
@@ -99,7 +89,7 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
     @return: a mapping between each free var to the relations and corresponding columns in which it appears.
     """
     # note: don't remove variables with less than 2 uses here, we need them as well
-    free_var_positions = {relation: get_numbered_output_free_var_names(relation) for relation in relations}
+    free_var_positions = {relation: position_freevar_pairs(relation) for relation in relations}
     free_var_set = {var for pair_list in free_var_positions.values() for (_, var) in pair_list}
 
     # create a triple of every relation, free var position, and free var name. these will be united inside var_dict.
