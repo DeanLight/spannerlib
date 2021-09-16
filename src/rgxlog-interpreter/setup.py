@@ -1,13 +1,10 @@
-import setuptools
-from setuptools.command.develop import develop
-from setuptools.command.install import install
-
 from glob import glob
 from os.path import basename
 from os.path import splitext
 
-import sys
-from subprocess import check_output
+import setuptools
+from setuptools.command.develop import develop
+from setuptools.command.install import install
 
 
 class PostDevelopCommand(develop):
@@ -59,7 +56,7 @@ setuptools.setup(
         'jsonpath-ng',
         'psutil',
         'install-jdk',
-        'spanner-nlp',
+        'spanner-nlp>=0.0.6',
         'Jinja2'
     ],
     dependency_links=[
