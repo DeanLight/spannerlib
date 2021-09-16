@@ -62,7 +62,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def query(self, query: Query)  -> List[Tuple]:
+    def query(self, query: Query) -> List[Tuple]:
         """
         Queries the rgxlog engine.
         Outputs a preformatted query result, e.g. [("a",5),("b",6)].

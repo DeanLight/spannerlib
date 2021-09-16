@@ -158,6 +158,7 @@ def tabulate_result(result: Union[DataFrame, List]):
 
     return result_string
 
+
 def queries_to_string(query_results: List[Tuple[Query, List]]) -> str:
     """
     Takes in a list of results from the engine and converts them into a single string, which contains
@@ -494,7 +495,7 @@ if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
-    my_session.register(lambda x: [(x, )], "ID", [DataTypes.integer], [DataTypes.integer])
+    my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
     statements = """
                 new C(int)
                 C(1)

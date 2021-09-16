@@ -67,6 +67,7 @@ def get_input_free_var_names(relation: Union[Relation, IERelation]) -> Set[Any]:
     else:
         return set()
 
+
 def get_output_free_var_names(relation: Union[Relation, IERelation]) -> Set[str]:
     """
     @param relation: a relation (either a normal relation or an ie relation).
