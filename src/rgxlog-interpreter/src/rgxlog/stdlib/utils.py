@@ -1,11 +1,11 @@
+import logging
 import shlex
 from subprocess import Popen, PIPE
+from sys import platform
 from threading import Timer
 from typing import Iterable
 
 import psutil
-from sys import platform
-import logging
 
 WINDOWS_OS = "win32"
 IS_POSIX = (platform != WINDOWS_OS)
@@ -48,8 +48,7 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
         my_timer.start()
 
     # get output
-    while True:
-        output = process.stdout.readline()  # type(output) == bytes
+    for output in process.stdout:
         output = output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
         if output:
             logger.debug(f"output from {command_list[0]}: {output}")
