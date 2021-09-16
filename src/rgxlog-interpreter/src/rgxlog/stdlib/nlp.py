@@ -10,6 +10,7 @@ import json
 import logging
 from io import BytesIO
 from os import popen
+from urllib.request import urlopen
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -20,7 +21,8 @@ from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 MIN_VERSION = 1.8
 
-NLP_ZIP_PATH = Path(__file__).parent / "stanford-corenlp-4.1.0.zip"
+# TODO@niv: we need a server with a copy of this file, their server is not very stable
+NLP_URL = "https://nlp.stanford.edu/software/stanford-corenlp-4.1.0.zip"
 
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
 CURR_DIR = Path(__file__).parent
@@ -41,7 +43,7 @@ def _is_installed_nlp():
 
 def _install_nlp():
     logging.info(f"Installing {NLP_DIR_NAME} into {CURR_DIR}.")
-    with open(NLP_ZIP_PATH, "rb") as zipresp:
+    with urlopen(NLP_URL) as zipresp:
         with ZipFile(BytesIO(zipresp.read())) as zfile:
             logging.info(f"Extracting files from the zip folder...")
             zfile.extractall(CURR_DIR)
