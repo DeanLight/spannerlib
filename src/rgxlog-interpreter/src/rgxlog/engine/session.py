@@ -33,6 +33,8 @@ from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
 from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
 
+CSV_DELIMITER = ";"
+
 PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, JsonPathFull, Tokenize, SSplit, POS, Lemma, NER,
                        EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
 
@@ -206,18 +208,6 @@ class Session:
         self._engine = rgxlog.engine.engine.SqliteEngine()
         self._execution = naive_execution
 
-        # TODO@niv: a simple hack to make the stanford nlp methods more efficient:
-        #  add here:
-        #  `self.stanford_nlp = StanfordCoreNLP(NLP_DIR_PATH)`
-        #  add in __del__:
-        #  ```
-        #  try:
-        #   self.stanford_nlp.close()
-        #  except:
-        #   pass
-        #  ```
-        #  or, modify the spanner_nlp repo and add it there
-
         self._pass_stack = [
             RemoveTokens,
             FixStrings,
@@ -388,7 +378,7 @@ class Session:
         for fact in facts:
             engine.add_fact(fact)
 
-    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=";"):
+    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=CSV_DELIMITER):
         if not Path(csv_file_name).is_file():
             raise IOError("csv file does not exist")
 
@@ -422,8 +412,7 @@ class Session:
 
         self._add_imported_relation_to_engine(data, relation_name, relation_types)
 
-    # TODO@niv: also change in tutorials/md
-    def send_commands_result_into_csv(self, commands: str, csv_file_name: str, delimiter: str = ";") -> None:
+    def send_commands_result_into_csv(self, commands: str, csv_file_name: str, delimiter: str = CSV_DELIMITER) -> None:
         """
         run commands as usual and output their formatted results into a csv file (the commands should contain a query)
         @param commands: the commands to run
@@ -468,7 +457,7 @@ class Session:
         query = self._relation_name_to_query(relation_name)
         return self.send_commands_result_into_df(query)
 
-    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";"):
+    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=CSV_DELIMITER):
         query = self._relation_name_to_query(relation_name)
         return self.send_commands_result_into_csv(query, csv_file_name, delimiter)
 
@@ -506,7 +495,7 @@ if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
     # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
-    commands = """
+    statements = """
                 new C(int)
                 C(1)
                 C(2)
@@ -519,4 +508,4 @@ if __name__ == "__main__":
                 ?A(X)
                 """
 
-    my_session.run_statements(commands)
+    my_session.run_statements(statements)

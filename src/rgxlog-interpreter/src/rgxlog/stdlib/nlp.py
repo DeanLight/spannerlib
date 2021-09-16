@@ -174,7 +174,7 @@ EntityMentions = dict(ie_function=entitymentions_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO: I can't find how pattern should look like
+# TODO@tom: I can't find how pattern should look like
 def regexner_wrapper(sentence, pattern):
     # with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
     #     for res in core_nlp_engine.regexner(sentence, pattern):
@@ -190,7 +190,7 @@ RGXNer = dict(ie_function=regexner_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO: I can't find how pattern should look like, ADD LINK TO STANFORD NLP
+# TODO@tom: I can't find how pattern should look like, ADD LINK TO STANFORD NLP
 def tokensregex_wrapper(sentence, pattern):
     # with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
     #     for res in core_nlp_engine.tokensregex(sentence, pattern):
@@ -355,7 +355,7 @@ TrueCase = dict(ie_function=truecase_wrapper,
 
 # ********************************************************************************************************************
 
-# TODO: a present for the future generations
+# TODO: a present for future generations
 def udfeats_wrapper(sentence: str):
     # with StanfordCoreNLP(NLP_DIR_PATH) as core_nlp_engine:
     #     for token in core_nlp_engine.udfeats(sentence):

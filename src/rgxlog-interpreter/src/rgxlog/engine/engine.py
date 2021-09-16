@@ -256,7 +256,6 @@ class SqliteEngine(RgxlogEngineBase):
     SQL_SEPARATOR = "_"
     DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
 
-    # TODO@niv: refactor everything to jinja2
     def __init__(self, database_name=None):
         """
         Creates/opens an SQL database file + connection.

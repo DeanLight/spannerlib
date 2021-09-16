@@ -806,7 +806,7 @@ def rgx(text, regex_pattern, out_type: str):
         else:
             assert False, "illegal out_type"
 
-        regex_output = format_function(run_command(rust_regex_args, stderr=True))
+        regex_output = format_function(run_cli_command(rust_regex_args, stderr=True))
 
         for out in regex_output:
             yield out
@@ -826,12 +826,15 @@ RGX_STRING = dict(ie_function=rgx_string,
 ```
 <!-- #endregion -->
 
-`run_command` is an STDLIB function used in rgxlog, which basically runs a command using python's `Popen`.
+`run_cli_command` is an STDLIB function used in rgxlog, which basically runs a command using python's `Popen`.
 
+in order to denote regex groups, use `(?P<name>pattern)`. the output is in alphabetical order.
 Let's run the ie function:
 
 ```python
 %%rgxlog
-string_rel(X) <- rgx_string("bb",".+") -> (X)
-?string_rel(X)
+text = "zcacc"
+pattern = "(?P<group_not_c>[^c]+)(?P<group_c>[c]+)"
+string_rel(X,Y) <- rgx_string(text, pattern) -> (X,Y)
+?string_rel(X,Y)
 ```

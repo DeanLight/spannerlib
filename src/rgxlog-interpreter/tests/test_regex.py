@@ -28,9 +28,6 @@ def test_rust_regex():
 
 
 def test_rust_regex_groups():
-    # @niv: @dean, how does the user know what order to expect, regarding the capture groups?
-    # @response, when introducing this default ie function, you should tell him with some examples
-    # TODO@niv: add example for the order in the introduction
     text = "aab"
     pattern = "(?P<group_all>(?P<group_a>a+)(?P<group_b>b+))"
 

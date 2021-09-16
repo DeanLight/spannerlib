@@ -51,6 +51,8 @@ SPAN_PATTERN = re.compile(r"(?P<start>\d+), ?(?P<end>\d+)")
 # etc
 TEMP_FILE_NAME = "temp"
 
+logger = logging.getLogger(__name__)
+
 
 def _download_and_install_rust_and_regex():
     # don't use "cargo -V" because it starts downloading stuff sometimes
@@ -63,12 +65,8 @@ def _download_and_install_rust_and_regex():
     if errcode:
         raise IOError(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
 
-    # @dean: why do you have a print here?
-    #  the installation messages should be warnings too since they are not standard control flow and cause unexpected delay for the user
-    #  additionally, the default is warning level and currently the install only shows the warning in the notebook
-    # TODO@niv: let's talk about this sometime
-    logging.warning(f"{PACKAGE_NAME} was not found on your system")
-    logging.info(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
+    logger.warning(f"{PACKAGE_NAME} was not found on your system")
+    logger.warning(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
 
     # i didn't pipe here because i want the user to see the output
     with Popen(RUSTUP_CMD_ARGS) as rustup:
@@ -80,7 +78,7 @@ def _download_and_install_rust_and_regex():
     if not _is_installed_package():
         raise Exception("installation failed - check the output")
 
-    logging.info("installation completed")
+    logger.warning("installation completed")
 
 
 def _is_installed_package():
