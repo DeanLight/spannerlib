@@ -140,13 +140,6 @@ class SymbolTableBase(ABC):
             self.register_ie_function(**ie_func)
 
     @abstractmethod
-    def print_registered_ie_functions(self):
-        """
-        Prints information about the registered ie functions.
-        """
-        pass
-
-    @abstractmethod
     def remove_ie_function(self, name: str):
         """
         Removes a function from the symbol table.

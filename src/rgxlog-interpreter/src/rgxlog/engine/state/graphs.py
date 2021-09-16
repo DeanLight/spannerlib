@@ -676,7 +676,7 @@ class TermGraph(TermGraphBase):
         """
 
         # holds the ie relation that are bounded
-        bounded_ie_relations = set()
+        bounded_ie_relations: Set[IERelation] = set()
 
         # maps each ie relation to it's bounding relations
         bounding_graph = OrderedDict()
@@ -690,7 +690,7 @@ class TermGraph(TermGraphBase):
             @return: set of the bounding relations.
             """
 
-            bounded_vars = set()
+            bounded_vars: Set[str] = set()
             bounding_relations_ = set()  # the trailing underscore is used to avoid shadowing the outer scope
             ie_input_terms = get_input_free_var_names(ie_rel)
 
@@ -708,7 +708,7 @@ class TermGraph(TermGraphBase):
                 return bounding_relations_
             else:
                 # the ie relation can't be bounded yet
-                return
+                return None
 
         # The function will eventually stop since the rule is safe.
         while True:
@@ -774,7 +774,7 @@ class TermGraph(TermGraphBase):
         """
 
         # maps each relation to it's node id in the term graph.
-        relation_to_branch_id: Dict[Union[Relation, IERelation, int]] = dict()
+        relation_to_branch_id: Dict[Union[Relation, IERelation], int] = {}
 
         # stores the nodes that were added to to execution graph
         nodes = set()
@@ -848,7 +848,7 @@ class TermGraph(TermGraphBase):
             @param join_node_id_: the join node to which the relation will be connected.
             """
 
-            # check if the branch already exists
+            # check if the branch already exists (if relations is ie relation the branch already exists)
             if relation in relation_to_branch_id:
                 self.add_edge(join_node_id_, relation_to_branch_id[relation])
                 return

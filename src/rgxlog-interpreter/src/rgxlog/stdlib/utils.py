@@ -21,7 +21,7 @@ def kill_process_and_children(process: Popen):
         process.kill()  # lastly, kill the process
 
 
-def run_cli_command(command: str, stderr=False, shell=False, timeout=-1) -> Iterable[str]:
+def run_cli_command(command: str, stderr: bool = False, shell: bool = False, timeout: float = -1) -> Iterable[str]:
     """
     This utility can be used to run any cli command, and iterate over the output.
 

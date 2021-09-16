@@ -65,7 +65,7 @@ def split_to_tables(result: str) -> List[str]:
     @return: List of strings, each string represents a table.
     """
 
-    # in rgloxg's output, all tables are separated by two consecutive \n.
+    # in rgxlog's output, all tables are separated by two consecutive \n.
     return result.split("\n\n")
 
 
@@ -85,9 +85,7 @@ def compare_strings(expected: str, output: str) -> bool:
 
     # check that all the tables are equal
     for expected_table, output_table in zip(expected_tables, output_tables):
-        expected_table = table_to_query_free_vars_tuples(expected_table)
-        output_table = table_to_query_free_vars_tuples(output_table)
-        if expected_table != output_table:
+        if table_to_query_free_vars_tuples(expected_table) != table_to_query_free_vars_tuples(output_table):
             return False
 
     return True

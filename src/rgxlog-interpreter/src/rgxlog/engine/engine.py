@@ -16,8 +16,8 @@ from rgxlog.engine.utils.general_utils import strip_lines, string_to_span, get_f
 # rgx constants
 RESERVED_RELATION_PREFIX = "__rgxlog__"
 
-FALSE_VALUE = []
-TRUE_VALUE = [tuple()]
+FALSE_VALUE: List = []
+TRUE_VALUE: List[Tuple] = [tuple()]
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def query(self, query: Query):
+    def query(self, query: Query)  -> List[Tuple]:
         """
         Queries the rgxlog engine.
         Outputs a preformatted query result, e.g. [("a",5),("b",6)].
@@ -202,10 +202,10 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def operator_project(self, relation: Relation, project_vars: Set[str]) -> Relation:
+    def operator_project(self, relation: Relation, project_vars: List[str]) -> Relation:
         """
         @param relation: the relation on which we project.
-        @param project_vars: a set of variables on which we project.
+        @param project_vars: a list of variables on which we project.
         @return: the projected relation.
         """
         pass
@@ -334,7 +334,7 @@ class SqliteEngine(RgxlogEngineBase):
         template_dict = {"fact": fact, "condition_pairs": condition_pairs}
         self.run_sql_from_jinja_template(sql_template, template_dict)
 
-    def query(self, query: Query, allow_duplicates=False) -> List[tuple]:
+    def query(self, query: Query, allow_duplicates=False) -> List[Tuple]:
         """
         Outputs a preformatted query result, e.g. [("a",5),("b",6)].
         notice that `query` isn't a string; it's a `Query` object which inherits from `Relation`.
@@ -379,7 +379,7 @@ class SqliteEngine(RgxlogEngineBase):
         return spanned_query_result
 
     @staticmethod
-    def convert_strings_to_spans_in_query_result(query_result: List[tuple]) -> List[tuple]:
+    def convert_strings_to_spans_in_query_result(query_result: List[Tuple]) -> List[Tuple]:
         """
         convert strings that look like spans into spans
         @param query_result: the list of tuples which may contain strings that should be converted to spans
@@ -387,7 +387,7 @@ class SqliteEngine(RgxlogEngineBase):
         """
         spanned_query_result = []
         for row in query_result:
-            converted_row = []
+            converted_row: List[Union[str, int, Span]] = []
             for value in row:
                 if isinstance(value, str):
                     transformed_string = string_to_span(value)
@@ -822,7 +822,7 @@ class SqliteEngine(RgxlogEngineBase):
         @param relations: a list of relations to unite.
         @return: the united relation.
         """
-        union_list = []
+        union_list: List[str] = []
 
         def _create_new_relation_for_union() -> Relation:
             new_relation_name = self._create_unique_relation(len(relations[0].term_list), prefix=self.UNION_PREFIX)
@@ -922,3 +922,21 @@ class SqliteEngine(RgxlogEngineBase):
         sql_command = f"SELECT COUNT(*) FROM {table}"
         table_len, = self.run_sql(sql_command)[0]
         return table_len
+
+
+if __name__ == "__main__":
+    my_engine = SqliteEngine()
+    print("hello world")
+
+    # add relation
+    my_relation = RelationDeclaration("yoyo", [DataTypes.integer, DataTypes.string])
+    my_engine.declare_relation(my_relation)
+
+    # add fact
+    my_fact = AddFact("yoyo", [8, "hihi"], [DataTypes.integer, DataTypes.string])
+    my_engine.add_fact(my_fact)
+
+    my_query = Query("yoyo", ["X", "Y"], [DataTypes.free_var_name, DataTypes.free_var_name])
+    print(my_engine.query(my_query))
+
+    print(my_engine.get_table_len("yoyo"))
