@@ -10,7 +10,7 @@ from sys import platform
 from typing import Iterable
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
-from rgxlog.stdlib.utils import run_command
+from rgxlog.stdlib.utils import run_cli_command
 
 # types
 RUST_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
@@ -145,7 +145,7 @@ def rgx(text, regex_pattern, out_type: str):
         else:
             assert False, "illegal out_type"
 
-        regex_output = format_function(run_command(rust_regex_args, stderr=True))
+        regex_output = format_function(run_cli_command(rust_regex_args, stderr=True))
 
         for out in regex_output:
             yield out

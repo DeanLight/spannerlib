@@ -21,13 +21,11 @@ def kill_process_and_children(process: Popen):
         process.kill()  # lastly, kill the process
 
 
-# TODO@niv: when we finish the loggers, add stderr+stdout to log
-def run_command(command: str, stdout=True, stderr=False, shell=False, timeout=-1) -> Iterable[str]:
+def run_cli_command(command: str, stderr=False, shell=False, timeout=-1) -> Iterable[str]:
     """
     This utility can be used to run any cli command, and iterate over the output.
 
     @param timeout: if positive, kill the process after `timeout` seconds. default: `-1`.
-    @param stdout: if true, yield output from stdout. default: `True`.
     @param stderr: if true, suppress stderr output. default: `False`.
     @param shell: if true, spawn shell process (e.g. /bin/sh), which allows using system variables (e.g. $HOME),
         but is considered a security risk (see:
@@ -37,7 +35,7 @@ def run_command(command: str, stdout=True, stderr=False, shell=False, timeout=-1
     """
     # `shlex.split` just splits the command into a list properly
     command_list = shlex.split(command, posix=IS_POSIX)
-    stdout = PIPE if stdout else None
+    stdout = PIPE  # we always use stdout
     stderr = PIPE if stderr else None
 
     process = Popen(command_list, stdout=stdout, stderr=stderr, shell=shell)
@@ -54,6 +52,7 @@ def run_command(command: str, stdout=True, stderr=False, shell=False, timeout=-1
         output = process.stdout.readline()  # type(output) == bytes
         output = output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
         if output:
+            logger.debug(f"output from {command_list[0]}: {output}")
             yield output
         elif process.poll() is not None:  # process died
             if my_timer is not None:
