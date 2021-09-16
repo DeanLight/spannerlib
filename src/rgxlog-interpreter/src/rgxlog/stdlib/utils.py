@@ -1,16 +1,18 @@
 import logging
 import shlex
 from subprocess import Popen, PIPE
+from pathlib import Path
 from sys import platform
 from threading import Timer
-from typing import Iterable
-
 import psutil
 import requests
+from typing import Iterable
+
+logger = logging.getLogger(__name__)
 
 WINDOWS_OS = "win32"
 IS_POSIX = (platform != WINDOWS_OS)
-logger = logging.getLogger(__name__)
+
 
 # google drive
 GOOGLE_DRIVE_URL = "https://docs.google.com/uc?export=download"
@@ -64,17 +66,16 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
             return
 
 
-def download_file_from_google_drive(file_id, destination):
+def download_file_from_google_drive(file_id: int, destination: Path) -> None:
     """
-    downloads a file from google drive
-    taken from https://stackoverflow.com/questions/25010369/wget-curl-large-file-from-google-drive/39225039#39225039
+    Downloads a file from google drive.
+    Taken from https://stackoverflow.com/questions/25010369/wget-curl-large-file-from-google-drive/39225039#39225039.
 
-    @param file_id: the id of the file to download
-    @param destination: the path to which the file will be downloaded
-    @return:
+    @param file_id: the id of the file to download.
+    @param destination: the path to which the file will be downloaded.
     """
-    session = requests.Session()
-    response = session.get(GOOGLE_DRIVE_URL, params={'id': file_id}, stream=True)
+    requests_session = requests.Session()
+    response = requests_session.get(GOOGLE_DRIVE_URL, params={'id': file_id}, stream=True)
 
     def get_confirm_token():
         for key, value in response.cookies.items():
@@ -93,6 +94,6 @@ def download_file_from_google_drive(file_id, destination):
 
     if token:
         params = {'id': file_id, 'confirm': token}
-        response = session.get(GOOGLE_DRIVE_URL, params=params, stream=True)
+        response = requests_session.get(GOOGLE_DRIVE_URL, params=params, stream=True)
 
     save_response_content()
