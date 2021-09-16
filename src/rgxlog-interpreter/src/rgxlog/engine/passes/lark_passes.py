@@ -584,7 +584,7 @@ class CheckRuleSafety(VisitorRecursivePass):
 
         # get the free variables in the rule body that serve as output terms.
         rule_body_output_free_var_sets = [get_output_free_var_names(relation) for relation in body_relation_list]
-        rule_body_output_free_vars = set().union(*rule_body_output_free_var_sets)
+        rule_body_output_free_vars = set.union(*rule_body_output_free_var_sets)
 
         # make sure that every free variable in the rule head appears at least once as an output term
         # in the rule body
@@ -641,7 +641,7 @@ class CheckRuleSafety(VisitorRecursivePass):
         rule_body_input_free_var_sets = [get_input_free_var_names(relation)
                                          for relation, relation_type in
                                          zip(body_relation_list, body_relation_type_list)]
-        rule_body_input_free_vars = set().union(*rule_body_input_free_var_sets)
+        rule_body_input_free_vars = set.union(*rule_body_input_free_var_sets)
 
         # assert there aren't any unbound free variables
         unbound_free_vars = rule_body_input_free_vars.difference(bound_free_vars)

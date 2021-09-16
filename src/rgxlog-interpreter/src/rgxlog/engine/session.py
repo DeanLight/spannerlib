@@ -6,14 +6,14 @@ from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable
 
 import rgxlog
 import rgxlog.engine.engine
-from rgxlog.engine.datatypes.primitive_types import Span
+from rgxlog.engine.datatypes.ast_node_types import AddFact, RelationDeclaration
+from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
 from rgxlog.engine.engine import FALSE_VALUE, TRUE_VALUE
-from rgxlog.engine.execution import (AddFact, DataTypes, RelationDeclaration, Query,
-                                     FREE_VAR_PREFIX, naive_execution)
+from rgxlog.engine.execution import (Query, FREE_VAR_PREFIX, naive_execution)
 from rgxlog.engine.passes.adding_inference_rules_to_computation_graph import AddRulesToComputationTermGraph
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
@@ -23,8 +23,8 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxParseGraph, GenericPass)
+from rgxlog.engine.state.graphs import TermGraph, NetxStateGraph, GraphBase, TermGraphBase
 from rgxlog.engine.state.symbol_table import SymbolTable, SymbolTableBase
-from rgxlog.engine.state.graphs import TermGraph, NetxStateGraph, GraphBase
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
 from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # @niv: add rust_rgx_*_from_file (ask dean)
 # @dean: i dont understand this question. Please elaborate
 # TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
-def _infer_relation_type(row: iter):
+def _infer_relation_type(row: Iterable):
     """
     Guess the relation type based on the data.
     We support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`).
@@ -57,18 +57,15 @@ def _infer_relation_type(row: iter):
     relation_types = []
     for cell in row:
         try:
-            is_num = int(cell)
-        except (ValueError, TypeError):
-            is_num = None
-
-        if is_num is not None:
+            int(cell)  # check if the cell can be converted to integer
             relation_types.append(DataTypes.integer)
-        elif isinstance(cell, Span) or re.match(SPAN_PATTERN, cell):
-            relation_types.append(DataTypes.span)
-        elif re.match(STRING_PATTERN, cell):
-            relation_types.append(DataTypes.string)
-        else:
-            raise ValueError(f"value doesn't match any datatype: {cell}")
+        except (ValueError, TypeError):
+            if isinstance(cell, Span) or re.match(SPAN_PATTERN, cell):
+                relation_types.append(DataTypes.span)
+            elif re.match(STRING_PATTERN, cell):
+                relation_types.append(DataTypes.string)
+            else:
+                raise ValueError(f"value doesn't match any datatype: {cell}")
 
     return relation_types
 
@@ -162,7 +159,7 @@ def tabulate_result(result: Union[DataFrame, List]):
     return result_string
 
 
-def queries_to_string(query_results: List[Tuple[Query, List]]):
+def queries_to_string(query_results: List[Tuple[Query, List]]) -> str:
     """
     Takes in a list of results from the engine and converts them into a single string, which contains
     either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.
@@ -193,18 +190,21 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 
 class Session:
     def __init__(self, symbol_table: Optional[SymbolTableBase] = None, parse_graph: Optional[GraphBase] = None,
-                 term_graph: Optional[GraphBase] = None):
+                 term_graph: Optional[TermGraphBase] = None):
         """
         parse_graph is the lark graph which contains is the result of parsing a single statement,
         term_graph is the combined tree of all statements so far, which describes the connection between relations.
         """
-        self._symbol_table = symbol_table
+
         if symbol_table is None:
-            self._symbol_table = SymbolTable()
+            self._symbol_table: SymbolTableBase = SymbolTable()
             self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
 
+        else:
+            self._symbol_table = symbol_table
+
         self._parse_graph = NetxStateGraph() if parse_graph is None else parse_graph
-        self._term_graph = TermGraph() if term_graph is None else term_graph
+        self._term_graph: TermGraphBase = TermGraph() if term_graph is None else term_graph
         self._engine = rgxlog.engine.engine.SqliteEngine()
         self._execution = naive_execution
 
@@ -493,19 +493,14 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    # logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
+    my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
     statements = """
                 new C(int)
                 C(1)
-                C(2)
-                C(3)
-
-                B(X) <- C(X)
-                A(X) <- B(X)
-                B(X) <- A(X)
-
-                ?A(X)
+                D(X) <- C(Y), ID(Y) ->(X)
+                ?D(X)
                 """
 
     my_session.run_statements(statements)

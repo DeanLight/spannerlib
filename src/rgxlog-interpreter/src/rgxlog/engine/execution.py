@@ -2,13 +2,13 @@
 this modules contains implementations of an execution function
 """
 
-from typing import (Tuple, Dict, List)
+from typing import (Tuple, Dict, List, Callable)
 
-from rgxlog.engine.datatypes.ast_node_types import (DataTypes, Relation, AddFact, Query,
-                                                    RelationDeclaration, IERelation)
-from rgxlog.engine.engine import RgxlogEngineBase, SqliteEngine
+from rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
+                                                    IERelation)
+from rgxlog.engine.engine import RgxlogEngineBase
+from rgxlog.engine.state.graphs import EvalState, GraphBase, TermGraphBase
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.state.graphs import EvalState, GraphBase, TermGraph
 
 VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
@@ -16,7 +16,7 @@ OUT_REL_ATTRIBUTE = "output_rel"
 FREE_VAR_PREFIX = "COL"
 
 
-def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
+def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
                     symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase) -> Tuple[Query, List]:
     """
     Executes a parse graph
@@ -199,7 +199,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
         #   1. the sql operator to call
         #   2. a flag that is True if the node type has only one child.
         #   3. a flag that is True if the 'value' attribute of the node should be passed to the operator
-        term_type_to_meta_data = {
+        term_type_to_meta_data: Dict[str, Tuple[Callable, bool, bool]] = {
             "rule_rel": (rgxlog_engine.operator_copy, True, True),
             "union": (rgxlog_engine.operator_union, False, False),
             "join": (rgxlog_engine.operator_join, False, False),
@@ -217,8 +217,8 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
             output_relation = term_attrs[VALUE_ATTRIBUTE]
 
         elif term_type == "calc":
-            children = get_children_relations(node_id)
-            rel_in = children[0] if children else None
+            children_relations = get_children_relations(node_id)
+            rel_in = children_relations[0] if children_relations else None
             # note: we use the same `VALUE_ATTRIBUTE` keyword for different things to be able to print it easily
             # when printing the tree
             ie_rel_in: IERelation = term_attrs[VALUE_ATTRIBUTE]
@@ -241,7 +241,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
         term_graph.set_node_attribute(node_id, 'state', compute_status)
 
     exec_result = None
-    node_type_to_action = {
+    node_type_to_action: Dict[str, Callable] = {
         "rule": lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
         "relation_declaration": rgxlog_engine.declare_relation,
         "add_fact": rgxlog_engine.add_fact,
@@ -279,21 +279,3 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraph,
             action(parse_node_attrs[VALUE_ATTRIBUTE])
 
     return exec_result
-
-
-if __name__ == "__main__":
-    my_engine = SqliteEngine()
-    print("hello world")
-
-    # add relation
-    my_relation = RelationDeclaration("yoyo", [DataTypes.integer, DataTypes.string])
-    my_engine.declare_relation(my_relation)
-
-    # add fact
-    my_fact = AddFact("yoyo", [8, "hihi"], [DataTypes.integer, DataTypes.string])
-    my_engine.add_fact(my_fact)
-
-    my_query = Query("yoyo", ["X", "Y"], [DataTypes.free_var_name, DataTypes.free_var_name])
-    print(my_engine.query(my_query))
-
-    print(my_engine.get_table_len("yoyo"))

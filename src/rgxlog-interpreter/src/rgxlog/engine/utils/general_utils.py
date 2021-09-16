@@ -34,7 +34,7 @@ def fixed_point(start, step: Callable, distance: Callable, thresh: int = 0):
     return x
 
 
-def get_free_var_names(term_list: List, type_list: List) -> Set[Any]:
+def get_free_var_names(term_list: List, type_list: List) -> Set[str]:
     """
     @param term_list: a list of terms.
     @param type_list: a list of the term types.
@@ -45,14 +45,14 @@ def get_free_var_names(term_list: List, type_list: List) -> Set[Any]:
     return free_var_names
 
 
-def position_freevar_pairs(relation: Union[Relation, IERelation]) -> List[Tuple]:
+def position_freevar_pairs(relation: Union[Relation, IERelation]) -> List[Tuple[int, str]]:
     """
     @param relation: a relation.
     @return: a list of all (index, free_var) pairs based on term_list.
     """
     term_list, type_list = relation.get_term_list(), relation.get_type_list()
-    pos_var_pairs = list(((i, term) for i, (term, term_type) in enumerate(zip(term_list, type_list))
-                          if term_type is DataTypes.free_var_name))
+    pos_var_pairs = [(i, term) for i, (term, term_type) in enumerate(zip(term_list, type_list))
+                     if term_type is DataTypes.free_var_name]
     return pos_var_pairs
 
 
@@ -68,7 +68,7 @@ def get_input_free_var_names(relation: Union[Relation, IERelation]) -> Set[Any]:
         return set()
 
 
-def get_output_free_var_names(relation: Union[Relation, IERelation]) -> Set[Any]:
+def get_output_free_var_names(relation: Union[Relation, IERelation]) -> Set[str]:
     """
     @param relation: a relation (either a normal relation or an ie relation).
     @return: a set of the free variable names used as output terms in the relation.
@@ -76,7 +76,8 @@ def get_output_free_var_names(relation: Union[Relation, IERelation]) -> Set[Any]
     return get_free_var_names(relation.get_term_list(), relation.get_type_list())
 
 
-def get_numbered_output_free_var_names(relation: Union[Relation, IERelation]) -> List[Tuple]:
+# TODO@tom: @niv, why do we need this function if all they do is calling another function?
+def get_numbered_output_free_var_names(relation: Union[Relation, IERelation]) -> List[Tuple[int, str]]:
     """
     @param relation: a relation (either a normal relation or an ie relation).
     @return: a set of the free variable names used as output terms in the relation.
@@ -182,7 +183,7 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation], relatio
     return relation_is_properly_typed
 
 
-def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase) -> Tuple[Dict, Set]:
+def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase) -> Tuple[Dict[str, DataTypes], Set[str]]:
     """
     Free variables in rules get their type from the relations in the rule body.
     it is possible for a free variable to be expected to be more than one type (meaning it has conflicting types).
@@ -196,8 +197,8 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase) -> Tupl
         conflicted_free_vars: a set of all the conflicted free variables
     """
 
-    free_var_to_type = dict()
-    conflicted_free_vars = set()
+    free_var_to_type: Dict[str, DataTypes] = {}
+    conflicted_free_vars: Set[str] = set()
 
     for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
 

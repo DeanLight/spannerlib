@@ -1,5 +1,7 @@
 import pytest
-from rgxlog.engine.execution import RelationDeclaration, DataTypes, AddFact, Query
+
+from rgxlog.engine.datatypes.ast_node_types import RelationDeclaration, AddFact, Query
+from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.engine import SqliteEngine
 
 

@@ -61,7 +61,9 @@ class Span:
 
         return self.span_start < other.span_start
 
-    def __eq__(self, other: "Span"):
+    def __eq__(self, other):
+        if not isinstance(other, Span):
+            return False
         return self.span_start == other.span_start and self.span_end == other.span_end
 
     # used for sorting `Span`s in dataframes
