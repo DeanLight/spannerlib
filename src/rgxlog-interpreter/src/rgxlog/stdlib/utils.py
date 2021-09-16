@@ -6,10 +6,15 @@ from threading import Timer
 from typing import Iterable
 
 import psutil
+import requests
 
 WINDOWS_OS = "win32"
 IS_POSIX = (platform != WINDOWS_OS)
 logger = logging.getLogger(__name__)
+
+# google drive
+GOOGLE_DRIVE_URL = "https://docs.google.com/uc?export=download"
+GOOGLE_DRIVE_CHUNK_SIZE = 32768
 
 
 def kill_process_and_children(process: Popen):
@@ -57,3 +62,37 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
             if my_timer is not None:
                 my_timer.cancel()
             return
+
+
+def download_file_from_google_drive(file_id, destination):
+    """
+    downloads a file from google drive
+    taken from https://stackoverflow.com/questions/25010369/wget-curl-large-file-from-google-drive/39225039#39225039
+
+    @param file_id: the id of the file to download
+    @param destination: the path to which the file will be downloaded
+    @return:
+    """
+    session = requests.Session()
+    response = session.get(GOOGLE_DRIVE_URL, params={'id': file_id}, stream=True)
+
+    def get_confirm_token():
+        for key, value in response.cookies.items():
+            if key.startswith('download_warning'):
+                return value
+
+        return None
+
+    def save_response_content():
+        with open(destination, "wb") as f:
+            for chunk in response.iter_content(GOOGLE_DRIVE_CHUNK_SIZE):
+                if chunk:  # filter out keep-alive new chunks
+                    f.write(chunk)
+
+    token = get_confirm_token()
+
+    if token:
+        params = {'id': file_id, 'confirm': token}
+        response = session.get(GOOGLE_DRIVE_URL, params=params, stream=True)
+
+    save_response_content()

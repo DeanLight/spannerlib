@@ -111,5 +111,7 @@ venv.bak/
 **/bin/enum-spanner-rs
 **/bin/enum-spanner-rs.exe
 *.crates.toml
-**/stanford-corenlp-4.1.0
 
+# nlp
+**/stanford-corenlp-4.1.0
+/src/rgxlog-interpreter/src/rgxlog/stdlib/stanford-corenlp-4.1.0.zip

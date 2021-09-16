@@ -10,7 +10,6 @@ import json
 import logging
 from io import BytesIO
 from os import popen
-from urllib.request import urlopen
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -18,11 +17,12 @@ import jdk
 from spanner_nlp.StanfordCoreNLP import StanfordCoreNLP
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
+from rgxlog.stdlib.utils import download_file_from_google_drive
 
 MIN_VERSION = 1.8
 
 # TODO@niv: we need a server with a copy of this file, their server is not very stable
-NLP_URL = "https://nlp.stanford.edu/software/stanford-corenlp-4.1.0.zip"
+NLP_URL = "https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
 CURR_DIR = Path(__file__).parent
@@ -32,10 +32,14 @@ JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = Path.home()
 INSTALLATION_PATH = _USER_DIR / ".jre"
 
-
 # @dean: why is enum_spanner_regex and stanford-corenlp in the git tree, did you forget to add them to gitignore?
 # TODO@niv: @dean, no - i use enum_spanner_regex for the installation (convenient because we don't have to mess with
 #  temporary folders and stuff like that), and stanford-corenlp isn't in the tree
+
+STANFORD_ZIP_GOOGLE_DRIVE_ID = "1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
+STANFORD_ZIP_NAME = "stanford-corenlp-4.1.0.zip"
+STANFORD_ZIP_PATH = CURR_DIR / STANFORD_ZIP_NAME
+
 
 def _is_installed_nlp():
     return Path(NLP_DIR_PATH).is_dir()
@@ -43,10 +47,15 @@ def _is_installed_nlp():
 
 def _install_nlp():
     logging.info(f"Installing {NLP_DIR_NAME} into {CURR_DIR}.")
-    with urlopen(NLP_URL) as zipresp:
+
+    if not STANFORD_ZIP_PATH.is_file():
+        download_file_from_google_drive(STANFORD_ZIP_GOOGLE_DRIVE_ID, STANFORD_ZIP_PATH)
+
+    with open(STANFORD_ZIP_PATH, "rb") as zipresp:
         with ZipFile(BytesIO(zipresp.read())) as zfile:
             logging.info(f"Extracting files from the zip folder...")
             zfile.extractall(CURR_DIR)
+
     logging.info("installation completed.")
 
 
