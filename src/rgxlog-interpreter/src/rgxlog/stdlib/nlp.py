@@ -19,11 +19,9 @@ from spanner_nlp.StanfordCoreNLP import StanfordCoreNLP
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.stdlib.utils import download_file_from_google_drive
 
-MIN_VERSION = 1.8
+JAVA_MIN_VERSION = 1.8
 
-# TODO@niv: we need a server with a copy of this file, their server is not very stable
 NLP_URL = "https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
-
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
 CURR_DIR = Path(__file__).parent
 NLP_DIR_PATH = str(Path(CURR_DIR) / NLP_DIR_NAME)
@@ -63,7 +61,7 @@ def _is_installed_java():
     version = popen(
         "java -version 2>&1 | grep 'version' 2>&1 | awk -F\\\" '{ split($2,a,\".\"); print a[1]\".\"a[2]}'").read()
 
-    if len(version) != 0 and float(version) >= MIN_VERSION:
+    if len(version) != 0 and float(version) >= JAVA_MIN_VERSION:
         return True
 
     return Path(INSTALLATION_PATH).is_dir()

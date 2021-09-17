@@ -460,6 +460,22 @@ class SqliteEngine(RgxlogEngineBase):
                                   queried from it.
         @return: a normal relation that contains all of the resulting tuples in the rgxlog engine.
         """
+
+        def _looks_like_span(checked_value):
+            """
+            checks whether `term` is a tuple of 2 numbers
+            @param checked_value: the value to check
+            @return: True/False according to the above description
+            """
+            if isinstance(checked_value, tuple) and len(checked_value) == 2:
+                try:
+                    _, _ = int(checked_value[0]), int(checked_value[1])
+                    return True
+                except ValueError:
+                    # an item in the tuple could not be converted to int
+                    return False
+            return False
+
         ie_relation_name = ie_relation.relation_name
 
         # create the output relation for the ie function, and also declare it inside SQL
@@ -510,7 +526,7 @@ class SqliteEngine(RgxlogEngineBase):
                     ie_output = list(ie_output)
                     # the user is allowed to represent a span in an ie output as a tuple of length 2
                     # convert said tuples to spans
-                    ie_output = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
+                    ie_output = [Span(int(term[0]), int(term[1])) if _looks_like_span(term)
                                  else term for term in ie_output]
 
                 # assert the ie output is properly typed
@@ -557,7 +573,7 @@ class SqliteEngine(RgxlogEngineBase):
         @param ie_output_schema: the expected schema for ie_output.
         @param ie_relation: the ie relation for which the output was computed (will be used to print an exception
             in case the output is not properly typed).
-        @raise Exception: if there is output term of an unsupported type or the output relation is not properly typed.
+        @raise TypeError: if there is output term of an unsupported type or the output relation is not properly typed.
         """
 
         # get a list of the ie output's term types
@@ -572,7 +588,7 @@ class SqliteEngine(RgxlogEngineBase):
                 output_type = DataTypes.span
             else:
                 # encountered an output term of an unsupported type
-                raise Exception(f'executing ie relation {ie_relation}\n'
+                raise TypeError(f'executing ie relation {ie_relation}\n'
                                 f'with the input {ie_input}\n'
                                 f'failed because one of the outputs had an unsupported term type\n'
                                 f'the output: {ie_output}\n'
@@ -585,7 +601,7 @@ class SqliteEngine(RgxlogEngineBase):
         # assert that the ie output is properly typed
         ie_output_is_properly_typed = ie_output_term_types == list(ie_output_schema)
         if not ie_output_is_properly_typed and len(ie_output_term_types) != 0:
-            raise Exception(f'executing ie relation {ie_relation}\n'
+            raise TypeError(f'executing ie relation {ie_relation}\n'
                             f'with the input {ie_input}\n'
                             f'failed because one of the outputs had unexpected term types\n'
                             f'the output: {ie_output}\n'

@@ -1,4 +1,4 @@
-from typing import Iterable, Callable, Union, Tuple
+from typing import Iterable, Callable, Union, Tuple, List
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
@@ -10,7 +10,7 @@ class IEFunction:
     """
 
     def __init__(self, ie_function_def: Callable, in_types: Iterable[DataTypes],
-                 out_types: Union[Iterable[DataTypes], Callable[[int], Iterable[DataTypes]]]):
+                 out_types: Union[List[DataTypes], Callable[[int], Iterable[DataTypes]]]):
         """
         @param ie_function_def : the user defined ie function implementation.
         @param in_types        : iterable of the input types to the function.
@@ -41,7 +41,7 @@ class IEFunction:
         """
         return self.in_types
 
-    def get_output_types(self, output_arity: int) -> Iterable[DataTypes]:
+    def get_output_types(self, output_arity: int) -> List[DataTypes]:
         """
         @return: given an expected output arity returns an iterable of the output types to the function.
         if the ie function cannot return an output of length output_arity, should return None.
