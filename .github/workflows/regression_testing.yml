@@ -37,5 +37,4 @@ jobs:
       - name: test mypy
         run: |
             pip install mypy
-            mypy --install-types
-            mypy ./src/rgxlog-interpreter --ignore-missing-imports
+            mypy --ignore-missing-imports --install-types --non-interactive ./src/rgxlog-interpreter
