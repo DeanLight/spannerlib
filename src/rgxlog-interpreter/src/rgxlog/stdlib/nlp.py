@@ -40,6 +40,7 @@ STANFORD_ZIP_PATH = CURR_DIR / STANFORD_ZIP_NAME
 
 logger = logging.getLogger(__name__)
 
+
 def _is_installed_nlp():
     return Path(NLP_DIR_PATH).is_dir()
 
