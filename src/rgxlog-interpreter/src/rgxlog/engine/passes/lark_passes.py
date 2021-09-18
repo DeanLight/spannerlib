@@ -26,12 +26,11 @@ A short tutorial on lark:
 https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
 from abc import ABC, abstractmethod
-from pathlib import Path
-
 from lark import Transformer
 from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
-from typing import List, Set
+from pathlib import Path
+from typing import List
 
 from rgxlog.engine.datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule,
                                                     IERelation, RelationDeclaration, Relation)
@@ -40,7 +39,7 @@ from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.graphs import NetxStateGraph
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
                                                fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
-from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node
+from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node, get_size_difference, get_bound_free_vars
 
 
 def get_tree(**kwargs):
@@ -604,38 +603,8 @@ class CheckRuleSafety(VisitorRecursivePass):
         # b. if a relation is safe, mark its output free variables as bound.
         # c. repeat step 'a' until no new bound free variables are found.
 
-        def get_size_difference(set1: Set, set2: Set) -> int:
-            """
-            A utility function to be used as the distance function of the fixed point algorithm.
-
-            @return: the size difference of set1 and set2.
-            """
-            size_difference = abs(len(set1) - len(set2))
-            return size_difference
-
-        def get_bound_free_vars(known_bound_free_vars: Set) -> Set:
-            """
-            a utility function to be used as the step function of the fixed point algorithm.
-            this function iterates over all of the rule body relations, checking if each one of them is safe.
-            if a rule is found to be safe, this function will mark its output free variables as bound.
-
-            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound.
-            @return: a union of 'known_bound_free_vars' with the bound free variables that were found.
-            """
-
-            for relation, relation_type in zip(body_relation_list, body_relation_type_list):
-                # check if all of its input free variable terms of the relation are bound
-                input_free_vars = get_input_free_var_names(relation)
-                unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
-                if len(unbound_input_free_vars) == 0:
-                    # all input free variables are bound, mark the relation's output free variables as bound
-                    output_free_vars = get_output_free_var_names(relation)
-                    known_bound_free_vars = known_bound_free_vars.union(output_free_vars)
-
-            return known_bound_free_vars
-
         # get the bound free variables
-        bound_free_vars = fixed_point(start=set(), step=get_bound_free_vars, distance=get_size_difference, thresh=0)
+        bound_free_vars = fixed_point(start=set(), step=lambda x: get_bound_free_vars(rule, x), distance=get_size_difference, thresh=0)
 
         # get all of the input free variables that were used in the rule body
         rule_body_input_free_var_sets = [get_input_free_var_names(relation)
@@ -689,46 +658,8 @@ class ReorderRuleBody(VisitorRecursivePass):
         reordered_relations_list = []
         reordered_relations_type_list = []  # note that we also need to update the type list of the relations
 
-        def get_size_difference(set1: Set, set2: Set) -> int:
-            """
-            A utility function to be used as the distance function of the fixed point algorithm.
-
-            @return: the size difference of set1 and set2.
-            """
-            size_difference = abs(len(set1) - len(set2))
-            return size_difference
-
-        def get_bound_free_vars(known_bound_free_vars: Set):
-            """
-            A utility function to be used as the step function of the fixed point algorithm.
-            this function iterates over all of the rule body relations, checking if each one of them is safe.
-            if a rule is found to be safe, this function will mark its output free variables as bound, and
-            add it to the reordered relations list (thus finding a valid body relations order).
-
-            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound.
-            @return: a union of 'known_bound_free_vars' with the bound free variables that were found.
-            """
-
-            # try to find new safe relations
-            for relation, relation_type in zip(body_relation_list, body_relation_type_list):
-                if relation not in reordered_relations_list:
-                    # this relation was not marked as safe yet.
-                    # check if all of its input free variable terms are bound
-                    input_free_vars = get_input_free_var_names(relation)
-                    unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
-                    if len(unbound_input_free_vars) == 0:
-                        # all input free variables are bound, mark the relation as safe by adding it to the
-                        # reordered list. also save its type.
-                        reordered_relations_list.append(relation)
-                        reordered_relations_type_list.append(relation_type)
-                        # mark the relation's output free variables as bound
-                        output_free_vars = get_output_free_var_names(relation)
-                        known_bound_free_vars = known_bound_free_vars.union(output_free_vars)
-
-            return known_bound_free_vars
-
         # use the fixed point algorithm to find a valid order of the relations
-        fixed_point(start=set(), step=get_bound_free_vars, distance=get_size_difference, thresh=0)
+        fixed_point(start=set(), step=lambda x: get_bound_free_vars(rule, x), distance=get_size_difference, thresh=0)
 
         # assert that all of the relations were reordered
         all_relations_were_reordered = len(reordered_relations_list) == len(body_relation_list)

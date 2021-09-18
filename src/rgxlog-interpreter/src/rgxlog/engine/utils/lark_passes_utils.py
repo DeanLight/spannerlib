@@ -1,10 +1,12 @@
 """
 this module contains helper functions and function decorators that are used in lark passes
 """
-
 from lark import Tree as LarkNode
+from typing import Set
 
+from rgxlog.engine.datatypes.ast_node_types import Rule
 from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
+from rgxlog.engine.utils.general_utils import get_input_free_var_names, get_output_free_var_names
 
 
 def assert_expected_node_structure_aux(lark_node):
@@ -72,3 +74,36 @@ def unravel_lark_node(func):
         return func(visitor, structured_node)
 
     return wrapped_method
+
+
+def get_size_difference(set1: Set, set2: Set) -> int:
+    """
+    A utility function to be used as the distance function of the fixed point algorithm.
+
+    @return: the size difference of set1 and set2.
+    """
+    size_difference = abs(len(set1) - len(set2))
+    return size_difference
+
+
+def get_bound_free_vars(rule: Rule, known_bound_free_vars: Set) -> Set:
+    """
+    a utility function to be used as the step function of the fixed point algorithm.
+    this function iterates over all of the rule body relations, checking if each one of them is safe.
+    if a rule is found to be safe, this function will mark its output free variables as bound.
+
+    @param rule: a rule
+    @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound.
+    @return: a union of 'known_bound_free_vars' with the bound free variables that were found.
+    """
+
+    for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+        # check if all of its input free variable terms of the relation are bound
+        input_free_vars = get_input_free_var_names(relation)
+        unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
+        if len(unbound_input_free_vars) == 0:
+            # all input free variables are bound, mark the relation's output free variables as bound
+            output_free_vars = get_output_free_var_names(relation)
+            known_bound_free_vars = known_bound_free_vars.union(output_free_vars)
+
+    return known_bound_free_vars

@@ -1,18 +1,18 @@
-import logging
 import shlex
-from subprocess import Popen, PIPE
-from pathlib import Path
-from sys import platform
-from threading import Timer
+
+import logging
 import psutil
 import requests
+from pathlib import Path
+from subprocess import Popen, PIPE
+from sys import platform
+from threading import Timer
 from typing import Iterable
 
 logger = logging.getLogger(__name__)
 
 WINDOWS_OS = "win32"
 IS_POSIX = (platform != WINDOWS_OS)
-
 
 # google drive
 GOOGLE_DRIVE_URL = "https://docs.google.com/uc?export=download"
