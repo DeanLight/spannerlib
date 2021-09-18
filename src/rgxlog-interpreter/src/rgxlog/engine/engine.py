@@ -3,10 +3,9 @@ import sqlite3 as sqlite
 import tempfile
 from abc import ABC, abstractmethod
 from itertools import count
+from jinja2 import Template
 from pathlib import Path
 from typing import Iterable, Optional, Set, Tuple, Any, List, Union, Dict
-
-from jinja2 import Template
 
 from rgxlog.engine.datatypes.ast_node_types import RelationDeclaration, AddFact, RemoveFact, Query, IERelation, Relation
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
@@ -526,8 +525,7 @@ class SqliteEngine(RgxlogEngineBase):
                     ie_output = list(ie_output)
                     # the user is allowed to represent a span in an ie output as a tuple of length 2
                     # convert said tuples to spans
-                    ie_output = [Span(int(term[0]), int(term[1])) if _looks_like_span(term)
-                                 else term for term in ie_output]
+                    ie_output = [Span(int(term[0]), int(term[1])) if _looks_like_span(term) else term for term in ie_output]  # type: ignore
 
                 # assert the ie output is properly typed
                 self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)

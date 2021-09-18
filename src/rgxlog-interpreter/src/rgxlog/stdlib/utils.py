@@ -43,7 +43,7 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     # `shlex.split` just splits the command into a list properly
     command_list = shlex.split(command, posix=IS_POSIX)
     stdout = PIPE  # we always use stdout
-    stderr = PIPE if stderr else None
+    stderr = PIPE if stderr else None  # type: ignore
 
     process = Popen(command_list, stdout=stdout, stderr=stderr, shell=shell)
 

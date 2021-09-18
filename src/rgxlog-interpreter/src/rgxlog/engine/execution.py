@@ -278,4 +278,4 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             action = node_type_to_action[parse_node_type]
             action(parse_node_attrs[VALUE_ATTRIBUTE])
 
-    return exec_result
+    return exec_result  # type: ignore

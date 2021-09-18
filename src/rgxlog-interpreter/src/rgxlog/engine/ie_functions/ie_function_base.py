@@ -41,7 +41,7 @@ class IEFunction:
         """
         return self.in_types
 
-    def get_output_types(self, output_arity: int) -> List[DataTypes]:
+    def get_output_types(self, output_arity: int) -> Iterable[DataTypes]:
         """
         @return: given an expected output arity returns an iterable of the output types to the function.
         if the ie function cannot return an output of length output_arity, should return None.

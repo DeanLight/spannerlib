@@ -2,8 +2,7 @@
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
 import re
-from typing import Callable, Any
-from typing import (Union, Tuple, Set, Dict, List, Optional)
+from typing import (Union, Tuple, Set, Dict, List, Optional, Callable, Any, no_type_check)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, IERelation, Rule)
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
@@ -132,6 +131,7 @@ def check_properly_typed_term_list(term_list: list, type_list: list,
     return True
 
 
+@no_type_check
 def check_properly_typed_relation(relation: Union[Relation, IERelation], relation_type: str,
                                   symbol_table: SymbolTableBase) -> bool:
     """

@@ -859,7 +859,7 @@ class TermGraph(TermGraphBase):
             # check if there is a constant (A("4")), or there is a free var that appears multiple times (A(X, X))
             if len(free_vars) != len(term_list) or len(term_list) != len(set(term_list)):
                 # create select node and connect relation branch to it
-                select_info = relation.get_select_cols_values_and_types()
+                select_info = relation.get_select_cols_values_and_types()  # type: ignore
                 select_node_id = self.add_node(type="select", value=select_info)
                 add_node(select_node_id)
                 self.add_edge(join_node_id_, select_node_id)
@@ -900,7 +900,7 @@ class TermGraph(TermGraphBase):
         add_node(project_id)
 
         # connect all regular relations to join node
-        join_node_id = add_join_branch(project_id, relations, ie_relations)
+        join_node_id = add_join_branch(project_id, relations, ie_relations)  # type: ignore
 
         # iterate over ie relations in the same order they were bounded
         for ie_relation in bounding_graph:

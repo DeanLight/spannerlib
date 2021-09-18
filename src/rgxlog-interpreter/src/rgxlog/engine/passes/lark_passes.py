@@ -30,7 +30,7 @@ from lark import Transformer
 from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
 from pathlib import Path
-from typing import List
+from typing import List, no_type_check, Set
 
 from rgxlog.engine.datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule,
                                                     IERelation, RelationDeclaration, Relation)
@@ -39,7 +39,7 @@ from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.graphs import NetxStateGraph
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
                                                fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
-from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node, get_size_difference, get_bound_free_vars
+from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node, get_size_difference
 
 
 def get_tree(**kwargs):
@@ -118,6 +118,7 @@ class CheckReservedRelationNames(InterpreterPass):
     def __init__(self, **kw):
         super().__init__()
 
+    @no_type_check
     @assert_expected_node_structure
     def relation_name(self, relation_name_node: LarkNode):
         relation_name = relation_name_node.children[0]
@@ -135,6 +136,7 @@ class FixStrings(VisitorRecursivePass):
     def __init__(self, **kw):
         super().__init__()
 
+    @no_type_check
     @assert_expected_node_structure
     def string(self, string_node: LarkNode):
         # get and fix the string that is stored in the node
@@ -157,6 +159,7 @@ class ConvertSpanNodesToSpanInstances(VisitorRecursivePass):
     def __init__(self, **kw):
         super().__init__()
 
+    @no_type_check
     @assert_expected_node_structure
     def span(self, span_node: LarkNode):
         # get the span start and end
@@ -178,6 +181,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
     def __init__(self, **kw):
         super().__init__()
 
+    @no_type_check
     @assert_expected_node_structure
     def assignment(self, assignment_node: LarkNode):
 
@@ -193,6 +197,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         structured_assignment_node = Assignment(var_name, value, value_type)
         assignment_node.children = [structured_assignment_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def read_assignment(self, assignment_node: LarkNode):
 
@@ -208,6 +213,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         structured_assignment_node = ReadAssignment(var_name, read_arg, read_arg_type)
         assignment_node.children = [structured_assignment_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def add_fact(self, fact_node: LarkNode):
 
@@ -218,6 +224,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         structured_fact_node = AddFact(relation.relation_name, relation.term_list, relation.type_list)
         fact_node.children = [structured_fact_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def remove_fact(self, fact_node: LarkNode):
 
@@ -228,6 +235,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         structured_fact_node = RemoveFact(relation.relation_name, relation.term_list, relation.type_list)
         fact_node.children = [structured_fact_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def query(self, query_node: LarkNode):
 
@@ -238,6 +246,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         structured_query_node = Query(relation.relation_name, relation.term_list, relation.type_list)
         query_node.children = [structured_query_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def relation_declaration(self, relation_decl_node: LarkNode):
         relation_name_node = relation_decl_node.children[0]
@@ -261,6 +270,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         relation_decl_struct_node = RelationDeclaration(relation_name, type_list)
         relation_decl_node.children = [relation_decl_struct_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def rule(self, rule_node: LarkNode):
         rule_head_node = rule_node.children[0]
@@ -294,6 +304,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         rule_node.children = [structured_rule_node]
 
     @staticmethod
+    @no_type_check
     def _create_structured_relation_node(relation_node: LarkNode) -> Relation:
         """
         a utility function that constructs a structured relation node.
@@ -319,6 +330,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         return structured_relation_node
 
     @staticmethod
+    @no_type_check
     def _create_structured_ie_relation_node(ie_relation_node: LarkNode) -> IERelation:
         """
         a utility function that constructs a structured ie relation node.
@@ -603,8 +615,29 @@ class CheckRuleSafety(VisitorRecursivePass):
         # b. if a relation is safe, mark its output free variables as bound.
         # c. repeat step 'a' until no new bound free variables are found.
 
+        def get_bound_free_vars(known_bound_free_vars: Set[str]) -> Set[str]:
+            """
+            a utility function to be used as the step function of the fixed point algorithm.
+            this function iterates over all of the rule body relations, checking if each one of them is safe.
+            if a rule is found to be safe, this function will mark its output free variables as bound.
+
+            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound.
+            @return: a union of 'known_bound_free_vars' with the bound free variables that were found.
+            """
+
+            for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
+                # check if all of its input free variable terms of the relation are bound
+                input_free_vars = get_input_free_var_names(relation)
+                unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
+                if len(unbound_input_free_vars) == 0:
+                    # all input free variables are bound, mark the relation's output free variables as bound
+                    output_free_vars = get_output_free_var_names(relation)
+                    known_bound_free_vars = known_bound_free_vars.union(output_free_vars)
+
+            return known_bound_free_vars
+
         # get the bound free variables
-        bound_free_vars = fixed_point(start=set(), step=lambda x: get_bound_free_vars(rule, x), distance=get_size_difference, thresh=0)
+        bound_free_vars = fixed_point(start=set(), step=get_bound_free_vars, distance=get_size_difference, thresh=0)
 
         # get all of the input free variables that were used in the rule body
         rule_body_input_free_var_sets = [get_input_free_var_names(relation)
@@ -619,58 +652,6 @@ class CheckRuleSafety(VisitorRecursivePass):
             raise Exception(f'The rule "{rule}" \n'
                             f'is not safe because the following free variables are not bound:\n'
                             f'{unbound_free_vars}')
-
-
-class ReorderRuleBody(VisitorRecursivePass):
-    """
-    A lark tree optimization pass.
-    Reorders each rule body relations list so that each relation in the list has its input free variables bound by
-    previous relations in the list, or it has no input free variables terms.
-    for example: the rule "B(Z) <- RGX(X,Y)->(Z), A(X), A(Y)"
-           will change to "B(Z) <- A(X), A(Y), RGX(X,Y)->(Z)"
-    This way it is possible to easily compute the rule body relations from the start of the list to its end.
-    for more details on the execution of rules see execution.GenericExecution.
-    """
-
-    def __init__(self, **kw):
-        super().__init__()
-
-    @unravel_lark_node
-    def rule(self, rule: Rule):
-        body_relation_list = rule.body_relation_list
-        body_relation_type_list = rule.body_relation_type_list
-
-        # in order to reorder the relations, we will use a similar fixed point algorithm to the one in
-        # the 'CheckRuleSafety' pass.
-        # when a safe relation is found, it will be inserted into a list. This way, an order in which each
-        # relation's input free variables are bound by previous relations in the list is found.
-
-        # use a fix point iteration algorithm to find a valid order:
-        # a. iterate over all of the rule body relations and check if they are safe, meaning all their input
-        # free variable terms are bound by the current relations in the reordered list
-        # (or they have no input free variables).
-        # b. if a new safe relation was found, mark its output free variables as bound, and add the relation
-        # to the reordered relations list
-        # c. repeat step 'a' until no new bound free variables were found (meaning also that no new safe relations
-        # were found)
-
-        # initialize assuming every relation is not safe
-        reordered_relations_list = []
-        reordered_relations_type_list = []  # note that we also need to update the type list of the relations
-
-        # use the fixed point algorithm to find a valid order of the relations
-        fixed_point(start=set(), step=lambda x: get_bound_free_vars(rule, x), distance=get_size_difference, thresh=0)
-
-        # assert that all of the relations were reordered
-        all_relations_were_reordered = len(reordered_relations_list) == len(body_relation_list)
-        if not all_relations_were_reordered:
-            raise Exception(f'The rule "{rule}"\n'
-                            f'is not safe. This pass assumes its input rule is safe, '
-                            f'so make sure to check for rule safety before using it')
-
-        # replace the current relation list with the reordered relation list
-        rule.body_relation_list = reordered_relations_list
-        rule.body_relation_type_list = reordered_relations_type_list
 
 
 class TypeCheckAssignments(InterpreterPass):
