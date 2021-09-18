@@ -6,7 +6,7 @@ from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check
 
 import rgxlog
 import rgxlog.engine.engine
@@ -258,6 +258,7 @@ class Session:
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
 
     # TODO@niv: refactor into run_commands (including tutorials/md) when dean approves
+    @no_type_check
     def run_statements(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
@@ -272,7 +273,7 @@ class Session:
         parse_tree = self._parser.parse(query)
 
         for statement in parse_tree.children:
-            self._run_passes(statement, self._pass_stack)  # type: ignore
+            self._run_passes(statement, self._pass_stack)
             exec_result = self._execution(parse_graph=self._parse_graph,
                                           symbol_table=self._symbol_table,
                                           rgxlog_engine=self._engine,

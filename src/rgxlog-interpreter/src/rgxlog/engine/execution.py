@@ -2,7 +2,7 @@
 this modules contains implementations of an execution function
 """
 
-from typing import (Tuple, Dict, List, Callable)
+from typing import (Tuple, Dict, List, Callable, no_type_check, Optional)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
                                                     IERelation)
@@ -17,7 +17,7 @@ FREE_VAR_PREFIX = "COL"
 
 
 def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
-                    symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase) -> Tuple[Query, List]:
+                    symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase) -> Optional[Tuple[Query, List]]:
     """
     Executes a parse graph
     this execution is generic, meaning it does not require any specific kind of term graph, symbol table or
@@ -240,7 +240,6 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         compute_status = EvalState.COMPUTED if is_node_computed(node_id) else EvalState.VISITED
         term_graph.set_node_attribute(node_id, 'state', compute_status)
 
-    exec_result = None
     node_type_to_action: Dict[str, Callable] = {
         "rule": lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
         "relation_declaration": rgxlog_engine.declare_relation,
@@ -251,6 +250,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
     # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
     # are ordered the same way as they were in the original program
     parse_node_ids = parse_graph.post_order_dfs()
+    exec_result = None
 
     # execute each non computed statement in the parse graph
     for parse_id in parse_node_ids:
@@ -270,7 +270,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
 
         elif parse_node_type == "query":
             # we return the query as well as the result, because we print as part of the output
-            query = parse_node_attrs[VALUE_ATTRIBUTE]
+            query: Query = parse_node_attrs[VALUE_ATTRIBUTE]
             compute_rule(query.relation_name)
             exec_result = (query, rgxlog_engine.query(query))
 
@@ -278,4 +278,4 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             action = node_type_to_action[parse_node_type]
             action(parse_node_attrs[VALUE_ATTRIBUTE])
 
-    return exec_result  # type: ignore
+    return exec_result

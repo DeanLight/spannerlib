@@ -1,9 +1,8 @@
-import tempfile
-from pathlib import Path
-from typing import List, Optional, Iterable, Dict
-
 import numpy as np
+import tempfile
 from pandas import DataFrame
+from pathlib import Path
+from typing import List, Optional, Iterable, Dict, no_type_check
 
 from rgxlog.engine.session import queries_to_string, Session
 
@@ -91,6 +90,7 @@ def compare_strings(expected: str, output: str) -> bool:
     return True
 
 
+@no_type_check
 def run_test(commands: str, expected_output: Optional[str] = None, functions_to_import: Iterable[Dict] = tuple(),
              test_session: Optional[Session] = None) -> Session:
     """
@@ -113,7 +113,7 @@ def run_test(commands: str, expected_output: Optional[str] = None, functions_to_
     commands_result = test_session.run_statements(commands, print_results=True)
 
     if expected_output is not None:
-        commands_result_string = queries_to_string(commands_result)  # type: ignore
+        commands_result_string = queries_to_string(commands_result)
         assert compare_strings(expected_output, commands_result_string), "expected string != result string"
 
     return test_session

@@ -17,7 +17,7 @@ from enum import Enum
 import networkx as nx
 from abc import ABC, abstractmethod, ABCMeta
 from itertools import count
-from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType
+from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType, no_type_check
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, Rule, IERelation
 from rgxlog.engine.utils.general_utils import get_input_free_var_names, get_output_free_var_names, \
@@ -757,6 +757,7 @@ class TermGraph(TermGraphBase):
         union_id, = self.get_children(relation_name)  # relation has only one child (the union node).
         return union_id
 
+    @no_type_check
     def add_rule_to_term_graph(self, rule: Rule) -> None:
         """
         Generates the execution tree of the rule and adds it to the term graph.
@@ -839,6 +840,7 @@ class TermGraph(TermGraphBase):
             if self.has_node(relation.relation_name):
                 self.add_edge(get_rel_id, relation.relation_name)
 
+        @no_type_check
         def add_relation_branch(relation: Union[Relation, IERelation], join_node_id_: int) -> None:
             """
             Adds relation to the join node.
@@ -859,7 +861,7 @@ class TermGraph(TermGraphBase):
             # check if there is a constant (A("4")), or there is a free var that appears multiple times (A(X, X))
             if len(free_vars) != len(term_list) or len(term_list) != len(set(term_list)):
                 # create select node and connect relation branch to it
-                select_info = relation.get_select_cols_values_and_types()  # type: ignore
+                select_info = relation.get_select_cols_values_and_types()
                 select_node_id = self.add_node(type="select", value=select_info)
                 add_node(select_node_id)
                 self.add_edge(join_node_id_, select_node_id)
@@ -900,7 +902,7 @@ class TermGraph(TermGraphBase):
         add_node(project_id)
 
         # connect all regular relations to join node
-        join_node_id = add_join_branch(project_id, relations, ie_relations)  # type: ignore
+        join_node_id = add_join_branch(project_id, relations, ie_relations)
 
         # iterate over ie relations in the same order they were bounded
         for ie_relation in bounding_graph:

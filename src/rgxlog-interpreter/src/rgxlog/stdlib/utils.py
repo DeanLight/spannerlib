@@ -7,7 +7,7 @@ from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
 from threading import Timer
-from typing import Iterable
+from typing import Iterable, no_type_check
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ def kill_process_and_children(process: Popen):
         process.kill()  # lastly, kill the process
 
 
+@no_type_check
 def run_cli_command(command: str, stderr: bool = False, shell: bool = False, timeout: float = -1) -> Iterable[str]:
     """
     This utility can be used to run any cli command, and iterate over the output.
@@ -43,9 +44,9 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     # `shlex.split` just splits the command into a list properly
     command_list = shlex.split(command, posix=IS_POSIX)
     stdout = PIPE  # we always use stdout
-    stderr = PIPE if stderr else None  # type: ignore
+    stderr_channel = PIPE if stderr else None
 
-    process = Popen(command_list, stdout=stdout, stderr=stderr, shell=shell)
+    process = Popen(command_list, stdout=stdout, stderr=stderr_channel, shell=shell)
 
     # set timer
     my_timer = None
@@ -55,7 +56,7 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
         my_timer.start()
 
     # get output
-    for output in process.stdout:  # type: ignore
+    for output in process.stdout:
         output = output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
         if output:
             logger.debug(f"output from {command_list[0]}: {output}")
