@@ -272,7 +272,7 @@ class Session:
         parse_tree = self._parser.parse(query)
 
         for statement in parse_tree.children:
-            self._run_passes(statement, self._pass_stack)
+            self._run_passes(statement, self._pass_stack)  # type: ignore
             exec_result = self._execution(parse_graph=self._parse_graph,
                                           symbol_table=self._symbol_table,
                                           rgxlog_engine=self._engine,

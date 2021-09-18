@@ -2,11 +2,8 @@
 this module contains helper functions and function decorators that are used in lark passes
 """
 from lark import Tree as LarkNode
-from typing import Set
 
-from rgxlog.engine.datatypes.ast_node_types import Rule
 from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
-from rgxlog.engine.utils.general_utils import get_input_free_var_names, get_output_free_var_names
 
 
 def assert_expected_node_structure_aux(lark_node):
@@ -74,13 +71,3 @@ def unravel_lark_node(func):
         return func(visitor, structured_node)
 
     return wrapped_method
-
-
-def get_size_difference(set1: Set, set2: Set) -> int:
-    """
-    A utility function to be used as the distance function of the fixed point algorithm.
-
-    @return: the size difference of set1 and set2.
-    """
-    size_difference = abs(len(set1) - len(set2))
-    return size_difference

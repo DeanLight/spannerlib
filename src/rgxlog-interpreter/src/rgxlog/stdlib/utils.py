@@ -55,7 +55,7 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
         my_timer.start()
 
     # get output
-    for output in process.stdout:
+    for output in process.stdout:  # type: ignore
         output = output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
         if output:
             logger.debug(f"output from {command_list[0]}: {output}")

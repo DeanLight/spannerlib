@@ -39,7 +39,7 @@ from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.graphs import NetxStateGraph
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
                                                fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
-from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node, get_size_difference
+from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node
 
 
 def get_tree(**kwargs):
@@ -614,6 +614,15 @@ class CheckRuleSafety(VisitorRecursivePass):
         # free variable terms are bound.
         # b. if a relation is safe, mark its output free variables as bound.
         # c. repeat step 'a' until no new bound free variables are found.
+
+        def get_size_difference(set1: Set, set2: Set) -> int:
+            """
+            A utility function to be used as the distance function of the fixed point algorithm.
+
+            @return: the size difference of set1 and set2.
+            """
+            size_difference = abs(len(set1) - len(set2))
+            return size_difference
 
         def get_bound_free_vars(known_bound_free_vars: Set[str]) -> Set[str]:
             """

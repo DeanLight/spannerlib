@@ -113,7 +113,7 @@ def run_test(commands: str, expected_output: Optional[str] = None, functions_to_
     commands_result = test_session.run_statements(commands, print_results=True)
 
     if expected_output is not None:
-        commands_result_string = queries_to_string(commands_result)
+        commands_result_string = queries_to_string(commands_result)  # type: ignore
         assert compare_strings(expected_output, commands_result_string), "expected string != result string"
 
     return test_session
