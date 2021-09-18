@@ -66,7 +66,7 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
             return
 
 
-def download_file_from_google_drive(file_id: int, destination: Path) -> None:
+def download_file_from_google_drive(file_id: str, destination: Path) -> None:
     """
     Downloads a file from google drive.
     Taken from https://stackoverflow.com/questions/25010369/wget-curl-large-file-from-google-drive/39225039#39225039.
@@ -91,6 +91,7 @@ def download_file_from_google_drive(file_id: int, destination: Path) -> None:
                     f.write(chunk)
 
     token = get_confirm_token()
+    logger.debug(f"got token from google: {token}")
 
     if token:
         params = {'id': file_id, 'confirm': token}
