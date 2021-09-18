@@ -91,6 +91,7 @@ def download_file_from_google_drive(file_id: str, destination: Path) -> None:
                     f.write(chunk)
 
     token = get_confirm_token()
+    logger.debug(f"got token from google: {token}")
 
     if token:
         params = {'id': file_id, 'confirm': token}

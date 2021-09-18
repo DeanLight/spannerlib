@@ -38,15 +38,17 @@ STANFORD_ZIP_GOOGLE_DRIVE_ID = "1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 STANFORD_ZIP_NAME = "stanford-corenlp-4.1.0.zip"
 STANFORD_ZIP_PATH = CURR_DIR / STANFORD_ZIP_NAME
 
+logger = logging.getLogger(__name__)
 
 def _is_installed_nlp():
     return Path(NLP_DIR_PATH).is_dir()
 
 
 def _install_nlp():
-    logging.info(f"Installing {NLP_DIR_NAME} into {CURR_DIR}.")
+    logger.info(f"Installing {NLP_DIR_NAME} into {CURR_DIR}.")
 
     if not STANFORD_ZIP_PATH.is_file():
+        logger.info(f"downloading {STANFORD_ZIP_NAME}...")
         download_file_from_google_drive(STANFORD_ZIP_GOOGLE_DRIVE_ID, STANFORD_ZIP_PATH)
 
     with open(STANFORD_ZIP_PATH, "rb") as zipresp:
