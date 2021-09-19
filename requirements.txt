@@ -14,3 +14,4 @@ spanner-nlp
 pytest
 Jinja2
 pycodestyle
+mypy
