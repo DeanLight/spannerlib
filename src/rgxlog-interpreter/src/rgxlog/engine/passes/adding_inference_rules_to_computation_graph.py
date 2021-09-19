@@ -1,15 +1,18 @@
+import logging
 from typing import List
 
 from rgxlog.engine.datatypes.ast_node_types import Rule
 from rgxlog.engine.passes.lark_passes import GenericPass
 from rgxlog.engine.state.graphs import EvalState, TermGraphBase, GraphBase
-import logging
 
 logger = logging.getLogger(__name__)
 
 
-# TODO@niv: @tom, can you add a docstring for the class, with a short explanation?
 class AddRulesToComputationTermGraph(GenericPass):
+    """
+    This class traverses the parse graph and finds all the new rules.
+    It adds these rules to the term graph (using term_graph's add rule method).
+    """
 
     def __init__(self, **kwargs):
         self.parse_graph: GraphBase = kwargs["parse_graph"]

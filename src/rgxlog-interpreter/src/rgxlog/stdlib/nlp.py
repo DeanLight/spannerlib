@@ -178,7 +178,7 @@ EntityMentions = dict(ie_function=entitymentions_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO@tom: I can't find how pattern should look like
+# TODO: add implementation according to: https://stanfordnlp.github.io/CoreNLP/regexner.html
 def regexner_wrapper(sentence, pattern):
     # for res in CoreNLPEngine.regexner(sentence, pattern):
     raise NotImplementedError()
@@ -193,7 +193,7 @@ RGXNer = dict(ie_function=regexner_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO@tom: I can't find how pattern should look like, ADD LINK TO STANFORD NLP
+# TODO: add implementation according to: https://stanfordnlp.github.io/CoreNLP/tokensregex.html
 def tokensregex_wrapper(sentence, pattern):
     # for res in CoreNLPEngine.tokensregex(sentence, pattern):
     raise NotImplementedError()
@@ -348,7 +348,7 @@ TrueCase = dict(ie_function=truecase_wrapper,
 
 # ********************************************************************************************************************
 
-# TODO: a present for future generations
+# TODO: add implementation according to: https://stanfordnlp.github.io/CoreNLP/udfeats.html
 def udfeats_wrapper(sentence: str):
     # for token in CoreNLPEngine.udfeats(sentence):
     raise NotImplementedError()
