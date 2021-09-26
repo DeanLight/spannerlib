@@ -10,7 +10,7 @@ from typing import Iterable, Optional, Set, Tuple, Any, List, Union, Dict, no_ty
 from rgxlog.engine.datatypes.ast_node_types import RelationDeclaration, AddFact, RemoveFact, Query, IERelation, Relation
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
-from rgxlog.engine.utils.general_utils import strip_lines, string_to_span, get_free_var_to_relations_dict, get_output_free_var_names
+from rgxlog.engine.utils.general_utils import strip_lines, string_to_span, get_free_var_to_relations_dict, get_output_free_var_names, extract_one_relation
 
 # rgx constants
 RESERVED_RELATION_PREFIX = "__rgxlog__"
@@ -176,7 +176,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def operator_select(self, relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
+    def operator_select(self, relation: Relation, select_info: Set[Tuple[int, Any, DataTypes]], *args) -> Relation:
         """
         @param relation: the relation from which we select tuples.
         @param select_info: set of tuples. each tuple contains the index of the column, the value to select
@@ -186,7 +186,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def operator_join(self, relations: List[Relation]) -> Relation:
+    def operator_join(self, relations: List[Relation], *args) -> Relation:
         """
         Performs a join between all of the relations in the relation list and saves the result to a new relation.
         the results of the join are filtered so they only include columns in the relations that were defined by
@@ -201,7 +201,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def operator_project(self, relation: Relation, project_vars: List[str]) -> Relation:
+    def operator_project(self, relation: Relation, project_vars: List[str], *args) -> Relation:
         """
         @param relation: the relation on which we project.
         @param project_vars: a list of variables on which we project.
@@ -210,7 +210,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def operator_union(self, relations: List[Relation]) -> Relation:
+    def operator_union(self, relations: List[Relation], *args) -> Relation:
         """
         Relation union.
         @note: we assume that all the relations have same free_vars in the same order.
@@ -222,7 +222,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def operator_copy(self, src_rel: Relation, output_relation: Optional[Relation] = None) -> Relation:
+    def operator_copy(self, src_rel: Relation, output_relation: Optional[Relation] = None, *args) -> Relation:
         """
         Copies computed_relation to rule_relation.
 
@@ -354,13 +354,13 @@ class SqliteEngine(RgxlogEngineBase):
         select_info = query.get_select_cols_values_and_types()
 
         # create temporary tables for the select/project, and delete them
-        selected_relation = self.operator_select(query, select_info)
+        selected_relation = self.operator_select((query,), select_info)
         selected_relation_name = selected_relation.relation_name
 
         free_var_names_for_project = [term for term, term_type in zip(query.term_list, query.type_list)
                                       if term_type is DataTypes.free_var_name]
         if has_free_vars:
-            projected_relation_name = self.operator_project(selected_relation, free_var_names_for_project).relation_name
+            projected_relation_name = self.operator_project((selected_relation,), free_var_names_for_project).relation_name
         else:
             projected_relation_name = selected_relation_name
 
@@ -627,7 +627,8 @@ class SqliteEngine(RgxlogEngineBase):
 
         self.run_sql_from_jinja_template(sql_template, template_dict)
 
-    def operator_select(self, src_relation: Relation, constant_variables_info: Set[Tuple[int, Any, DataTypes]]) -> Relation:
+    @extract_one_relation
+    def operator_select(self, src_relation: Relation, constant_variables_info: Set[Tuple[int, Any, DataTypes]], *args) -> Relation:
         """
         Performs sql WHERE, whose conditions are based on `select_info`
 
@@ -705,7 +706,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         return selected_relation
 
-    def operator_join(self, relations: List[Relation]) -> Relation:
+    def operator_join(self, relations: List[Relation], *args) -> Relation:
         """
         note: SQL's inner_join without `IN` is actually cross-join (product), so this covers product as well.
 
@@ -755,7 +756,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         assert len(relations) > 0, "can't join an empty list"
         if len(relations) == 1:
-            return self.operator_copy(relations[0])
+            return relations[0]
 
         # create a mapping between the relations and their temporary names for sql
         relation_temp_names = {relation: f"table{i}" for (i, relation) in enumerate(relations)}
@@ -788,7 +789,8 @@ class SqliteEngine(RgxlogEngineBase):
 
         return joined_relation
 
-    def operator_project(self, src_relation: Relation, project_vars: List[str]) -> Relation:
+    @extract_one_relation
+    def operator_project(self, src_relation: Relation, project_vars: List[str], *args) -> Relation:
         """
         Performs SQL select.
 
@@ -832,7 +834,7 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command)
         return new_relation
 
-    def operator_union(self, relations: List[Relation]) -> Relation:
+    def operator_union(self, relations: List[Relation], *args) -> Relation:
         """
         @param relations: a list of relations to unite.
         @return: the united relation.
@@ -874,7 +876,8 @@ class SqliteEngine(RgxlogEngineBase):
         self.run_sql(sql_command)
         return united_relation
 
-    def operator_copy(self, src_rel: Relation, output_relation: Optional[Relation] = None) -> Relation:
+    @extract_one_relation
+    def operator_copy(self, src_rel: Relation, output_relation: Optional[Relation] = None, *args) -> Relation:
         src_rel_name = src_rel.relation_name
         if output_relation:
             dest_rel_name = output_relation.relation_name

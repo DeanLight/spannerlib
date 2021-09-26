@@ -1,8 +1,8 @@
 """
-this modules contains implementations of an execution function
+this modules contains implementation of an execution function
 """
 
-from typing import (Tuple, Dict, List, Callable, no_type_check, Optional)
+from typing import (Tuple, Dict, List, Callable, Optional)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
                                                     IERelation)
@@ -183,28 +183,12 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             relations = [rel_node[OUT_REL_ATTRIBUTE] for rel_node in relations_nodes]
             return relations
 
-        def get_child_relation(node_id_) -> Relation:
-            """
-            Gets the node's child output relation.
-            @note: this method is called when we know that the node has at most one child.
-
-            @param node_id_: a node.
-            @return: the output relation of the node's child.
-            """
-            children = get_children_relations(node_id_)
-            assert len(children) <= 1, "this node should have exactly one child"
-            return children[0]
-
-        # maps between the term type to:
-        #   1. the sql operator to call
-        #   2. a flag that is True if the node type has only one child.
-        #   3. a flag that is True if the 'value' attribute of the node should be passed to the operator
-        term_type_to_meta_data: Dict[str, Tuple[Callable, bool, bool]] = {
-            "rule_rel": (rgxlog_engine.operator_copy, True, True),
-            "union": (rgxlog_engine.operator_union, False, False),
-            "join": (rgxlog_engine.operator_join, False, False),
-            "project": (rgxlog_engine.operator_project, True, True),
-            "select": (rgxlog_engine.operator_select, True, True)
+        term_type_to_engine_op: Dict[str, Callable] = {
+            "rule_rel": rgxlog_engine.operator_copy,
+            "union": rgxlog_engine.operator_union,
+            "join": rgxlog_engine.operator_join,
+            "project": rgxlog_engine.operator_project,
+            "select": rgxlog_engine.operator_select
         }
 
         term_attrs = term_graph[node_id]
@@ -226,13 +210,9 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             output_relation = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
 
         else:
-            operator, has_one_child, pass_value_attr = term_type_to_meta_data[term_type]
-            input_relation = get_child_relation(node_id) if has_one_child else get_children_relations(node_id)
-            operator_args = [input_relation]
-            if pass_value_attr:
-                operator_args.append(term_attrs[VALUE_ATTRIBUTE])
-
-            output_relation = operator(*operator_args)
+            operator = term_type_to_engine_op[term_type]
+            input_relations = get_children_relations(node_id)
+            output_relation = operator(input_relations, term_attrs.get(VALUE_ATTRIBUTE))
 
         term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, output_relation)
 

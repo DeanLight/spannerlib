@@ -1,6 +1,8 @@
 """
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
+import functools
+
 import re
 from typing import (Union, Tuple, Set, Dict, List, Optional, Callable, Any, no_type_check)
 
@@ -271,3 +273,18 @@ def string_to_span(string_of_span: str) -> Optional[Span]:
         return None
     start, end = int(span_match.group(SPAN_GROUP1)), int(span_match.group(SPAN_GROUP2))
     return Span(span_start=start, span_end=end)
+
+
+def extract_one_relation(func):
+    """
+    This decorator is used by engine operators that expect to get exactly one input relation but actually get a list of relations.
+    """
+    @functools.wraps(func)
+    def wrapper(ref, relations_list, *args, **kwargs):
+        """
+        Flattens the relations list.
+        """
+        assert len(relations_list) == 1
+        return func(ref, relations_list[0], *args, **kwargs)
+
+    return wrapper

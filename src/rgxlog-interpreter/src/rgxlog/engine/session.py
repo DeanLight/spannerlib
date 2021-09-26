@@ -497,11 +497,13 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
     my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-    statements = """
-                new C(int)
-                C(1)
-                D(X) <- C(Y), ID(Y) ->(X)
-                ?D(X)
-                """
+    commands = """
+            new B(int, int)
+            B(1, 1)
+            B(1, 2)
+            B(2, 3)
+            A(X, Y) <- B(X, Y)
+            ?A(X, Y)
+        """
 
-    my_session.run_statements(statements)
+    my_session.run_statements(commands)
