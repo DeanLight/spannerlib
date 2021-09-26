@@ -5,7 +5,6 @@ this module contains the implementations of symbol tables
 from abc import ABC, abstractmethod
 from typing import Iterable, Dict, Set, Callable
 
-from rgxlog.engine.datatypes.ast_node_types import peel_token
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 
@@ -245,7 +244,6 @@ class SymbolTable(SymbolTableBase):
 
     def add_relation_schema(self, relation_name: str, schema: Iterable[DataTypes], is_rule: bool):
         # rule can be defined multiple times with same head (unlike relation)
-        relation_name = peel_token(relation_name)
         if is_rule:
             err_msg = f'relation "{relation_name}" already has a different schema'
             # if the rule is already defined the current schema must be equal to the rule's schema

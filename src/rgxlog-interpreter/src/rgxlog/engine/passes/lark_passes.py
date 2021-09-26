@@ -26,7 +26,7 @@ A short tutorial on lark:
 https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
 from abc import ABC, abstractmethod
-from lark import Transformer
+from lark import Transformer, Token
 from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
 from pathlib import Path
@@ -86,6 +86,11 @@ class RemoveTokens(TransformerPass):
         super().__init__(visit_tokens=True)
 
     @staticmethod
+    def string_handler(args):
+        name_string: Token = args
+        return name_string.value
+
+    @staticmethod
     def INT(args):
         string_of_integer = args
         integer = int(string_of_integer)
@@ -93,13 +98,11 @@ class RemoveTokens(TransformerPass):
 
     @staticmethod
     def LOWER_CASE_NAME(args):
-        name_string = args
-        return name_string
+        return RemoveTokens.string_handler(args)
 
     @staticmethod
     def UPPER_CASE_NAME(args):
-        name_string = args
-        return name_string
+        return RemoveTokens.string_handler(args)
 
     @staticmethod
     def STRING(args):
@@ -936,25 +939,20 @@ class AddStatementsToNetxParseGraph(InterpreterPass):
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
-        fact.peel_off_token_wrappers()
         self._add_statement_to_parse_graph("add_fact", fact)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
-        fact.peel_off_token_wrappers()
         self._add_statement_to_parse_graph("remove_fact", fact)
 
     @unravel_lark_node
     def query(self, query: Query):
-        query.peel_off_token_wrappers()
         self._add_statement_to_parse_graph("query", query)
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
-        relation_decl.peel_off_token_wrappers()
         self._add_statement_to_parse_graph("relation_declaration", relation_decl)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
-        rule.peel_off_token_wrappers()
         self._add_statement_to_parse_graph("rule", rule)

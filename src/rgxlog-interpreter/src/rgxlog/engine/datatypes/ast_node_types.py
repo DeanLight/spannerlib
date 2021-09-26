@@ -5,8 +5,7 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
-from lark import Token
-from typing import List, Any, Tuple, Set, Iterable, no_type_check
+from typing import List, Any, Tuple, Set
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
@@ -26,16 +25,6 @@ def get_term_list_string(term_list, type_list):
                                  for term, term_type in zip(term_list, type_list)]
     term_list_string = ', '.join(terms_with_quoted_strings)
     return term_list_string
-
-
-def peel_list(lst: Iterable) -> Iterable[str]:
-    return [peel_token(token) for token in lst]
-
-
-def peel_token(token) -> str:
-    if isinstance(token, Token):
-        return str(token.value)
-    return str(token)
 
 
 class RelationDeclaration:
@@ -68,9 +57,6 @@ class RelationDeclaration:
 
     def __repr__(self):
         return str(self)
-
-    def peel_off_token_wrappers(self) -> None:
-        self.relation_name = peel_token(self.relation_name)
 
 
 class Relation:
@@ -111,11 +97,6 @@ class Relation:
                 col_value_type.add((i, value, var_type))
 
         return col_value_type
-
-    @no_type_check
-    def peel_off_token_wrappers(self) -> None:
-        self.term_list = peel_list(self.term_list)
-        self.relation_name = peel_token(self.relation_name)
 
     def as_relation_declaration(self) -> RelationDeclaration:
         return RelationDeclaration(self.relation_name, self.type_list)
@@ -178,12 +159,6 @@ class IERelation:
 
     def get_type_list(self):
         return self.output_type_list
-
-    @no_type_check
-    def peel_off_token_wrappers(self) -> None:
-        self.input_term_list = peel_list(self.input_term_list)
-        self.output_term_list = peel_list(self.output_term_list)
-        self.relation_name = peel_token(self.relation_name)
 
     def has_same_terms_and_types(self, other: Relation) -> bool:
         """
@@ -252,11 +227,6 @@ class Rule:
 
     def __repr__(self):
         return str(self)
-
-    def peel_off_token_wrappers(self) -> None:
-        self.head_relation.peel_off_token_wrappers()
-        for relation in self.body_relation_list:
-            relation.peel_off_token_wrappers()
 
     def get_relations_by_type(self) -> Tuple[Set[Relation], Set[IERelation]]:
         relations, ie_relations = set(), set()
