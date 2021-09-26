@@ -3,9 +3,9 @@ this module contains the implementations of symbol tables
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Dict, Set, List, Callable
+from typing import Iterable, Dict, Set, Callable
 
-from rgxlog.engine.datatypes.ast_node_types import peel_list, peel_token
+from rgxlog.engine.datatypes.ast_node_types import peel_token
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 
@@ -63,7 +63,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def add_relation_schema(self, relation_name: str, schema: List, is_rule: bool):
+    def add_relation_schema(self, relation_name: str, schema: Iterable[DataTypes], is_rule: bool):
         """
         Adds a new relation schema to the symbol table.
         @note: Trying to add two schemas for the same relation will result in an exception as relation redefinitions
@@ -243,9 +243,8 @@ class SymbolTable(SymbolTableBase):
     def contains_variable(self, var_name: str):
         return var_name in self._var_to_type
 
-    def add_relation_schema(self, relation_name: str, schema: List, is_rule: bool):
+    def add_relation_schema(self, relation_name: str, schema: Iterable[DataTypes], is_rule: bool):
         # rule can be defined multiple times with same head (unlike relation)
-        peeled_schema = peel_list(schema)
         relation_name = peel_token(relation_name)
         if is_rule:
             err_msg = f'relation "{relation_name}" already has a different schema'
@@ -254,7 +253,7 @@ class SymbolTable(SymbolTableBase):
                 # check that relation name was actually defines as a rule and not as a relation
                 if relation_name not in self._rule_relations:
                     raise Exception(err_msg)
-                if not self._relation_to_schema[relation_name] == peeled_schema:
+                if not self._relation_to_schema[relation_name] == schema:
                     raise Exception(err_msg)
                 return
 
@@ -263,7 +262,7 @@ class SymbolTable(SymbolTableBase):
             if relation_name in self._relation_to_schema:
                 raise Exception(f'relation "{relation_name}" already has a schema')
 
-        self._relation_to_schema[relation_name] = peeled_schema
+        self._relation_to_schema[relation_name] = schema
         if is_rule:
             self._rule_relations.add(relation_name)
 
