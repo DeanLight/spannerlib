@@ -3,9 +3,10 @@ this module contains the implementations of symbol tables
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Dict, Set, List
+from typing import Iterable, Dict, Set, List, Callable
 
 from rgxlog.engine.datatypes.ast_node_types import peel_list, peel_token
+from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
 
 
@@ -19,7 +20,7 @@ class SymbolTableBase(ABC):
     """
 
     @abstractmethod
-    def set_var_value_and_type(self, var_name, var_value, var_type):
+    def set_var_value_and_type(self, var_name: str, var_value, var_type):
         """
         Sets the type and value of a variable in the symbol table.
 
@@ -30,7 +31,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def get_variable_type(self, var_name):
+    def get_variable_type(self, var_name: str):
         """
         @param var_name: a variable name.
         @return: the variable's type.
@@ -38,7 +39,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def get_variable_value(self, var_name):
+    def get_variable_value(self, var_name: str):
         """
         @param var_name: a variable name.
         @return: the variable's value.
@@ -54,7 +55,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def contains_variable(self, var_name):
+    def contains_variable(self, var_name: str):
         """
         @param var_name: a variable name.
         @return: true if the variable is in the symbol table, else false.
@@ -62,7 +63,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def add_relation_schema(self, relation_name, schema, is_rule: bool):
+    def add_relation_schema(self, relation_name: str, schema: List, is_rule: bool):
         """
         Adds a new relation schema to the symbol table.
         @note: Trying to add two schemas for the same relation will result in an exception as relation redefinitions
@@ -75,7 +76,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def get_relation_schema(self, relation_name):
+    def get_relation_schema(self, relation_name: str):
         """
         @param relation_name: a relation name.
         @return: the relation's schema.
@@ -91,7 +92,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def contains_relation(self, relation_name):
+    def contains_relation(self, relation_name: str):
         """
         @param relation_name: a relation name.
         @return: true if the relation exists in the symbol table, else false.
@@ -99,7 +100,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel):
+    def register_ie_function(self, ie_function: Callable, ie_function_name: str, in_rel: Iterable[DataTypes], out_rel):
         """
         Adds a new ie function to the symbol table.
         @see params in IEFunction's __init__.
@@ -107,7 +108,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def contains_ie_function(self, ie_func_name):
+    def contains_ie_function(self, ie_func_name: str):
         """
         @param ie_func_name: a name of an information extraction function.
         @return: true if the ie function exists in the symbol table, else false.
@@ -115,7 +116,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def get_ie_func_data(self, ie_func_name):
+    def get_ie_func_data(self, ie_func_name: str):
         """
         @param ie_func_name: a name of an information extraction function.
         @return: the ie function's data (see ie_function_base.IEFunctionData for more information on
@@ -221,14 +222,14 @@ class SymbolTable(SymbolTableBase):
         self._registered_ie_functions: Dict[str, IEFunction] = {}
         self._rule_relations: Set[str] = set()
 
-    def set_var_value_and_type(self, var_name, var_value, var_type):
+    def set_var_value_and_type(self, var_name: str, var_value, var_type):
         self._var_to_value[var_name] = var_value
         self._var_to_type[var_name] = var_type
 
-    def get_variable_type(self, var_name):
+    def get_variable_type(self, var_name: str):
         return self._var_to_type[var_name]
 
-    def get_variable_value(self, var_name):
+    def get_variable_value(self, var_name: str):
         return self._var_to_value[var_name]
 
     def get_all_variables(self):
@@ -239,12 +240,12 @@ class SymbolTable(SymbolTableBase):
             all_vars.append((var_name, var_type, var_value))
         return all_vars
 
-    def contains_variable(self, var_name):
+    def contains_variable(self, var_name: str):
         return var_name in self._var_to_type
 
-    def add_relation_schema(self, relation_name, schema: List, is_rule: bool):
+    def add_relation_schema(self, relation_name: str, schema: List, is_rule: bool):
         # rule can be defined multiple times with same head (unlike relation)
-        schema = peel_list(schema)
+        peeled_schema = peel_list(schema)
         relation_name = peel_token(relation_name)
         if is_rule:
             err_msg = f'relation "{relation_name}" already has a different schema'
@@ -253,7 +254,7 @@ class SymbolTable(SymbolTableBase):
                 # check that relation name was actually defines as a rule and not as a relation
                 if relation_name not in self._rule_relations:
                     raise Exception(err_msg)
-                if not self._relation_to_schema[relation_name] == schema:
+                if not self._relation_to_schema[relation_name] == peeled_schema:
                     raise Exception(err_msg)
                 return
 
@@ -262,7 +263,7 @@ class SymbolTable(SymbolTableBase):
             if relation_name in self._relation_to_schema:
                 raise Exception(f'relation "{relation_name}" already has a schema')
 
-        self._relation_to_schema[relation_name] = schema
+        self._relation_to_schema[relation_name] = peeled_schema
         if is_rule:
             self._rule_relations.add(relation_name)
 
@@ -274,19 +275,19 @@ class SymbolTable(SymbolTableBase):
     def get_all_relations(self):
         return ((relation, schema) for relation, schema in self._relation_to_schema.items())
 
-    def contains_relation(self, relation_name):
+    def contains_relation(self, relation_name: str):
         return relation_name in self._relation_to_schema
 
-    def register_ie_function(self, ie_function, ie_function_name, in_rel, out_rel):
+    def register_ie_function(self, ie_function: Callable, ie_function_name: str, in_rel: Iterable[DataTypes], out_rel):
         self._registered_ie_functions[ie_function_name] = IEFunction(ie_function, in_rel, out_rel)
 
-    def register_ie_function_object(self, ie_function_object: IEFunction, ie_function_name):
+    def register_ie_function_object(self, ie_function_object: IEFunction, ie_function_name: str):
         self._registered_ie_functions[ie_function_name] = ie_function_object
 
-    def contains_ie_function(self, ie_func_name):
+    def contains_ie_function(self, ie_func_name: str):
         return ie_func_name in self._registered_ie_functions
 
-    def get_ie_func_data(self, ie_func_name):
+    def get_ie_func_data(self, ie_func_name: str):
         if self.contains_ie_function(ie_func_name):
             return self._registered_ie_functions[ie_func_name]
         else:

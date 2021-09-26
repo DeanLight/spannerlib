@@ -126,6 +126,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
                 compute_postorder(child)
 
             compute_node(node_id)
+            return
 
         # clear all the mutually recursive tables.
         rgxlog_engine.clear_tables(mutually_recursive)
@@ -147,6 +148,8 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         state = EvalState.NOT_COMPUTED if do_reset else EvalState.COMPUTED
         for term_id in term_graph.post_order_dfs_from(relation_name):
             term_graph.set_node_attribute(term_id, "state", state)
+
+        return
 
     def compute_node(node_id: int) -> None:
         """
@@ -202,11 +205,9 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
 
         elif term_type == "calc":
             children_relations = get_children_relations(node_id)
-            rel_in = children_relations[0] if children_relations else None
-            # note: we use the same `VALUE_ATTRIBUTE` keyword for different things to be able to print it easily
-            # when printing the tree
-            ie_rel_in: IERelation = term_attrs[VALUE_ATTRIBUTE]
-            ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)
+            rel_in = children_relations[0] if children_relations else None  # tmp bounding relation of the ie rel (join over all the bounding relations)
+            ie_rel_in: IERelation = term_attrs[VALUE_ATTRIBUTE]  # the ie relation to compute
+            ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)  # the ie function that correspond to the ie relation
             output_relation = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
 
         else:

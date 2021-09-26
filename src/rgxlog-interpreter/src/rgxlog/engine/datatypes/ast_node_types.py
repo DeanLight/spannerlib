@@ -5,9 +5,8 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
-from typing import List, Any, Tuple, Set
-
 from lark import Token
+from typing import List, Any, Tuple, Set, Iterable, no_type_check
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
@@ -29,14 +28,14 @@ def get_term_list_string(term_list, type_list):
     return term_list_string
 
 
-def peel_list(lst: List) -> List[str]:
+def peel_list(lst: Iterable) -> Iterable[str]:
     return [peel_token(token) for token in lst]
 
 
 def peel_token(token) -> str:
     if isinstance(token, Token):
-        return token.value
-    return token
+        return str(token.value)
+    return str(token)
 
 
 class RelationDeclaration:
@@ -113,6 +112,7 @@ class Relation:
 
         return col_value_type
 
+    @no_type_check
     def peel_off_token_wrappers(self) -> None:
         self.term_list = peel_list(self.term_list)
         self.relation_name = peel_token(self.relation_name)
@@ -141,7 +141,7 @@ class IERelation:
     calls, and matches the values inside the tuples to free variables.
     """
 
-    def __init__(self, relation_name, input_term_list: list, input_type_list, output_term_list: list, output_type_list):
+    def __init__(self, relation_name, input_term_list: List, input_type_list: List[DataTypes], output_term_list: List, output_type_list: List[DataTypes]):
         """
         @param relation_name: the name of the information extraction relation.
         @param input_term_list: a list of the input terms for the ie function.
@@ -179,6 +179,7 @@ class IERelation:
     def get_type_list(self):
         return self.output_type_list
 
+    @no_type_check
     def peel_off_token_wrappers(self) -> None:
         self.input_term_list = peel_list(self.input_term_list)
         self.output_term_list = peel_list(self.output_term_list)
