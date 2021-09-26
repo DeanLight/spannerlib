@@ -221,11 +221,16 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         compute_status = EvalState.COMPUTED if is_node_computed(node_id) else EvalState.VISITED
         term_graph.set_node_attribute(node_id, 'state', compute_status)
 
+    def no_op(*args):
+        return
+
     node_type_to_action: Dict[str, Callable] = {
         "rule": lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
         "relation_declaration": rgxlog_engine.declare_relation,
         "add_fact": rgxlog_engine.add_fact,
         "remove_fact": rgxlog_engine.remove_fact,
+        "root": no_op,
+        "relation": no_op
     }
 
     # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
@@ -246,10 +251,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         # the parse node is not computed, get its type and compute it accordingly
         parse_node_type = parse_node_attrs["type"]
 
-        if parse_node_type in ("root", "relation"):
-            continue
-
-        elif parse_node_type == "query":
+        if parse_node_type == "query":
             # we return the query as well as the result, because we print as part of the output
             query: Query = parse_node_attrs[VALUE_ATTRIBUTE]
             compute_rule(query.relation_name)
@@ -257,6 +259,6 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
 
         else:
             action = node_type_to_action[parse_node_type]
-            action(parse_node_attrs[VALUE_ATTRIBUTE])
+            action(parse_node_attrs.get(VALUE_ATTRIBUTE))
 
     return exec_result
