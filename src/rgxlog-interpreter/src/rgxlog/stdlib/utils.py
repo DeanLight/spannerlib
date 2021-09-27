@@ -56,8 +56,10 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
         my_timer.start()
 
     # get output
+    process.stdout.flush()
     for output in process.stdout:
         output = output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
+        # TODO@niv: change the logging back to debug once the error is found
         logger.info(f"output from {command_list[0]}: {output}")
         if output:
             yield output
