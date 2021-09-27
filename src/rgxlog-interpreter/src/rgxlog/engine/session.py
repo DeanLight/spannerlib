@@ -275,9 +275,9 @@ class Session:
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
             query_result = self._execution(parse_graph=self._parse_graph,
-                                          symbol_table=self._symbol_table,
-                                          rgxlog_engine=self._engine,
-                                          term_graph=self._term_graph)
+                                           symbol_table=self._symbol_table,
+                                           rgxlog_engine=self._engine,
+                                           term_graph=self._term_graph)
             if query_result is not None:
                 query_results.append(query_result)
                 if print_results:
