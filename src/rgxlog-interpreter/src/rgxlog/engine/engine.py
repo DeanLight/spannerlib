@@ -354,13 +354,13 @@ class SqliteEngine(RgxlogEngineBase):
         select_info = query.get_select_cols_values_and_types()
 
         # create temporary tables for the select/project, and delete them
-        selected_relation = self.operator_select((query,), select_info)
+        selected_relation = self.operator_select(query, select_info)
         selected_relation_name = selected_relation.relation_name
 
         free_var_names_for_project = [term for term, term_type in zip(query.term_list, query.type_list)
                                       if term_type is DataTypes.free_var_name]
         if has_free_vars:
-            projected_relation_name = self.operator_project((selected_relation,), free_var_names_for_project).relation_name
+            projected_relation_name = self.operator_project(selected_relation, free_var_names_for_project).relation_name
         else:
             projected_relation_name = selected_relation_name
 
