@@ -534,7 +534,7 @@ class SqliteEngine(RgxlogEngineBase):
                 # add the output as a fact to the output relation
                 # notice - repetitions are ignored here (results are in a set)
                 if len(ie_output) != 0:
-                    output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
+                    output_fact = AddFact(output_relation.relation_name, ie_output, list(ie_output_schema))
                     self.add_fact(output_fact)
 
         return output_relation
