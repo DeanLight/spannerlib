@@ -254,6 +254,7 @@ class SqliteEngine(RgxlogEngineBase):
     SQL_TABLE_OF_TABLES = 'sqlite_master'
     SQL_SEPARATOR = "_"
     DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
+    DATABASE_SUFFIX = "_sqlite"
 
     def __init__(self, database_name=None):
         """
@@ -270,7 +271,7 @@ class SqliteEngine(RgxlogEngineBase):
                 raise IOError(f"database file: {database_name} was not found")
             self.db_filename = database_name
         else:
-            temp_db_file = tempfile.NamedTemporaryFile(delete=False)
+            temp_db_file = tempfile.NamedTemporaryFile(delete=False, suffix=self.DATABASE_SUFFIX)
             temp_db_file.close()
             self.db_filename = temp_db_file.name
 

@@ -129,7 +129,7 @@ def test_export_relation_into_csv(im_ex_session: Session):
         such summer:420
         much heat:42"""
 
-    im_ex_session.run_statements(commands, print_results=False)
+    im_ex_session.run_commands(commands, print_results=False)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_csv = Path(temp_dir) / TEMP_FILE_NAME
@@ -148,7 +148,7 @@ def test_commands_into_df(im_ex_session: Session):
         df_query_rel("jump")
         df_query_rel("king")"""
 
-    im_ex_session.run_statements(commands, print_results=False)
+    im_ex_session.run_commands(commands, print_results=False)
 
     query_for_df = "?df_query_rel(X)"
 
@@ -168,7 +168,7 @@ def test_export_relation_into_df(im_ex_session: Session):
 
     expected_df = DataFrame([[Span(1, 3), "aa"], [Span(2, 4), "bb"]], columns=column_names)
 
-    im_ex_session.run_statements(commands)
+    im_ex_session.run_commands(commands)
     result_df = im_ex_session.export_relation_into_df(relation_name)
 
     assert is_equal_dataframes_ignore_order(result_df, expected_df)

@@ -259,7 +259,7 @@ class Session:
 
     # TODO@niv: refactor into run_commands (including tutorials/md) when dean approves
     @no_type_check
-    def run_statements(self, query: str, print_results: bool = True, format_results: bool = False) -> (
+    def run_commands(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
         Generates an AST and passes it through the pass stack.
@@ -269,24 +269,24 @@ class Session:
         @param print_results: whether to print the results to stdout or not.
         @return: the results of every query, in a list.
         """
-        exec_results = []
+        query_results = []
         parse_tree = self._parser.parse(query)
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            exec_result = self._execution(parse_graph=self._parse_graph,
-                                          symbol_table=self._symbol_table,
-                                          rgxlog_engine=self._engine,
-                                          term_graph=self._term_graph)
-            if exec_result is not None:
-                exec_results.append(exec_result)
+            query_result = self._execution(parse_graph=self._parse_graph,
+                                           symbol_table=self._symbol_table,
+                                           rgxlog_engine=self._engine,
+                                           term_graph=self._term_graph)
+            if query_result is not None:
+                query_results.append(query_result)
                 if print_results:
-                    print(queries_to_string([exec_result]))
+                    print(queries_to_string([query_result]))
 
         if format_results:
-            return [format_query_results(*exec_result) for exec_result in exec_results]
+            return [format_query_results(*query_result) for query_result in query_results]
         else:
-            return exec_results
+            return query_results
 
     def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes], out_rel) -> None:
         """
@@ -421,7 +421,7 @@ class Session:
         @param delimiter: a csv separator between values
         @return: None
         """
-        commands_results = self.run_statements(commands, print_results=False)
+        commands_results = self.run_commands(commands, print_results=False)
         if len(commands_results) != 1:
             raise Exception("the commands must have exactly one output")
 
@@ -441,7 +441,7 @@ class Session:
         @param commands: the commands to run
         @return: formatted results (possibly a dataframe)
         """
-        commands_results = self.run_statements(commands, print_results=False)
+        commands_results = self.run_commands(commands, print_results=False)
         if len(commands_results) != 1:
             raise Exception("the commands must have exactly one output")
 
@@ -506,4 +506,4 @@ if __name__ == "__main__":
             ?A(X, Y)
         """
 
-    my_session.run_statements(commands)
+    my_session.run_commands(commands)
