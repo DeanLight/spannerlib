@@ -269,24 +269,24 @@ class Session:
         @param print_results: whether to print the results to stdout or not.
         @return: the results of every query, in a list.
         """
-        exec_results = []
+        query_results = []
         parse_tree = self._parser.parse(query)
 
         for statement in parse_tree.children:
             self._run_passes(statement, self._pass_stack)
-            exec_result = self._execution(parse_graph=self._parse_graph,
+            query_result = self._execution(parse_graph=self._parse_graph,
                                           symbol_table=self._symbol_table,
                                           rgxlog_engine=self._engine,
                                           term_graph=self._term_graph)
-            if exec_result is not None:
-                exec_results.append(exec_result)
+            if query_result is not None:
+                query_results.append(query_result)
                 if print_results:
-                    print(queries_to_string([exec_result]))
+                    print(queries_to_string([query_result]))
 
         if format_results:
-            return [format_query_results(*exec_result) for exec_result in exec_results]
+            return [format_query_results(*query_result) for query_result in query_results]
         else:
-            return exec_results
+            return query_results
 
     def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes], out_rel) -> None:
         """

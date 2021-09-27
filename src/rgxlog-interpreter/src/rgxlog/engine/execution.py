@@ -236,7 +236,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
     # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
     # are ordered the same way as they were in the original program
     parse_node_ids = parse_graph.post_order_dfs()
-    exec_result = None
+    query_result = None
 
     # execute each non computed statement in the parse graph
     for parse_id in parse_node_ids:
@@ -255,10 +255,10 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             # we return the query as well as the result, because we print as part of the output
             query: Query = parse_node_attrs[VALUE_ATTRIBUTE]
             compute_rule(query.relation_name)
-            exec_result = (query, rgxlog_engine.query(query))
+            query_result = (query, rgxlog_engine.query(query))
 
         else:
             action = node_type_to_action[parse_node_type]
             action(parse_node_attrs.get(VALUE_ATTRIBUTE))
 
-    return exec_result
+    return query_result
