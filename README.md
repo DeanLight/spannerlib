@@ -32,7 +32,7 @@ commands = '''
         ?ancestor(Ancestor, Descendant)
         '''
 
-session.run_statements(commands)
+session.run_commands(commands)
 ```
 
 ```text

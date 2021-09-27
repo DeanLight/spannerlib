@@ -9,6 +9,6 @@ class RgxlogMagic(Magics):
         from rgxlog import magic_session
 
         if cell:
-            magic_session.run_statements(cell, print_results=True)
+            magic_session.run_commands(cell, print_results=True)
         else:
-            magic_session.run_statements(line, print_results=True)
+            magic_session.run_commands(line, print_results=True)

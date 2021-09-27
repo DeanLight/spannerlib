@@ -259,7 +259,7 @@ class Session:
 
     # TODO@niv: refactor into run_commands (including tutorials/md) when dean approves
     @no_type_check
-    def run_statements(self, query: str, print_results: bool = True, format_results: bool = False) -> (
+    def run_commands(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
         Generates an AST and passes it through the pass stack.
@@ -421,7 +421,7 @@ class Session:
         @param delimiter: a csv separator between values
         @return: None
         """
-        commands_results = self.run_statements(commands, print_results=False)
+        commands_results = self.run_commands(commands, print_results=False)
         if len(commands_results) != 1:
             raise Exception("the commands must have exactly one output")
 
@@ -441,7 +441,7 @@ class Session:
         @param commands: the commands to run
         @return: formatted results (possibly a dataframe)
         """
-        commands_results = self.run_statements(commands, print_results=False)
+        commands_results = self.run_commands(commands, print_results=False)
         if len(commands_results) != 1:
             raise Exception("the commands must have exactly one output")
 
@@ -506,4 +506,4 @@ if __name__ == "__main__":
             ?A(X, Y)
         """
 
-    my_session.run_statements(commands)
+    my_session.run_commands(commands)

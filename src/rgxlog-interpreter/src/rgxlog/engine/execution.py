@@ -1,5 +1,5 @@
 """
-this modules contains implementation of an execution function
+this module contains the implementation of the naive execution function
 """
 
 from typing import (Tuple, Dict, List, Callable, Optional)

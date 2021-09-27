@@ -30,14 +30,14 @@ session = rgxlog.magic_session
 ```
 
 ```python
-result = session.run_statements('''
+result = session.run_commands('''
     new uncle(str, str)
     uncle("benjen", "jon")''')
 ```
 
 ```python
-for maybe_uncle in ['ned','robb','benjen']:
-    result = session.run_statements(f'?uncle("{maybe_uncle}",Y)')
+for maybe_uncle in ['ned', 'robb', 'benjen']:
+    result = session.run_commands(f'?uncle("{maybe_uncle}",Y)')
 ```
 
 # Changing the session of the magic cells
@@ -114,7 +114,7 @@ gpa(Student,Grade) <- py_rgx_string(gpa_str, "(\w+).*?(\d+)")->(Student, Grade),
 Now we are going to define the rules using a for loop
 
 ```python
-subjects=[
+subjects = [
     "chemistry",
     "physics",
     "operation_systems",
@@ -122,11 +122,11 @@ subjects=[
 ]
 
 for subject in subjects:
-    rule=f"""
+    rule = f"""
     gpa_of_{subject}_students(Student, Grade) <- gpa(Student, Grade), enrolled(Student, "{subject}")
     """
-    session.run_statements(rule)
-    print(rule) # we print the rule here to show you what strings are sent to the session
+    session.run_commands(rule)
+    print(rule)  # we print the rule here to show you what strings are sent to the session
 ```
 
 As you can see, we can use the dynamically defined rules in a magic cell
@@ -139,7 +139,7 @@ As you can see, we can use the dynamically defined rules in a magic cell
 And we can also query dynamically
 
 ```python
-subjects=[
+subjects = [
     "chemistry",
     "physics",
     "operation_systems",
@@ -147,10 +147,10 @@ subjects=[
 ]
 
 for subject in subjects:
-    query=f"""
+    query = f"""
     ?gpa_of_{subject}_students(Student, Grade)
     """
-    session.run_statements(query)
+    session.run_commands(query)
 ```
 
 # Processing the result of a query in python and using the result in a new query
@@ -162,7 +162,7 @@ we can add `format_results=True` to `run_statements` to get the output as one of
 3. `pandas.DataFrame`, otherwise-
 
 ```python
-results = session.run_statements(f'''
+results = session.run_commands(f'''
     new friends(str, str, str)
     friends("bob", "greg", "clyde")
     friends("steven", "benny", "horace")
@@ -175,12 +175,12 @@ res = results[0].values.tolist()
 filtered = tuple(filter(lambda friends: 'bob' in friends or 'lenny' in friends, res))
 
 # and feed the matching tuples into a new query:
-session.run_statements('new buddies(str, str)')
+session.run_commands('new buddies(str, str)')
 
 for first, second, _ in filtered:
-    session.run_statements(f'buddies("{first}", "{second}")')
+    session.run_commands(f'buddies("{first}", "{second}")')
 
-result = session.run_statements("?buddies(First, Second)")
+result = session.run_commands("?buddies(First, Second)")
 ```
 
 # Import a relation from a `DataFrame`
@@ -205,30 +205,30 @@ sometimes we can save time by creating rgxlog code dynamically:
 ```python
 from rgxlog import magic_session
 
-%rgxlog new sibling(str,str)
-%rgxlog new parent(str,str)
+%rgxlog new sibling(str, str)
+%rgxlog new parent(str, str)
 %rgxlog parent("jonathan", "george")
 %rgxlog parent("george", "joseph")
 %rgxlog parent("joseph", "holy")
 %rgxlog parent("holy", "jotaro")
 %rgxlog sibling("dio", "jonathan")
 
-a = ["parent","uncle_aunt","grandparent", "sibling"]
-# sibling(X,Y) <- parent(Z,X), parent(Z,Y)
-d = {"uncle_aunt":["sibling","parent"], "grandparent":["parent","parent"], "great_aunt_uncle": ["sibling","parent","parent"]}
+a = ["parent", "uncle_aunt", "grandparent", "sibling"]
+d = {"uncle_aunt": ["sibling", "parent"], "grandparent": ["parent", "parent"], "great_aunt_uncle": ["sibling", "parent", "parent"]}
+
 for key, steps in d.items():
     # add the start of the rule
     result = key + "(A,Z) <- "
     for num, step in enumerate(steps):
         # for every step in the list, add the condition: step(letter, next letter).
         #  the first letter is always `A`, and the last is always `Z`
-        curr_letter = chr(num+ord("A"))
+        curr_letter = chr(num + ord("A"))
         result += step + "(" + curr_letter + ","
-        if (num == len(steps)-1):
+        if (num == len(steps) - 1):
             result += "Z)"
         else:
             result += chr(1 + ord(curr_letter)) + "), "
     print("running:", result)
-    magic_session.run_statements(result)
-    magic_session.run_statements(f"?{key}(X,Y)")
+    magic_session.run_commands(result)
+    magic_session.run_commands(f"?{key}(X,Y)")
 ```
