@@ -58,9 +58,10 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     # get output
     for output in process.stdout:
         output = output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
+        logger.info(f"output from {command_list[0]}: {output}")
         if output:
-            logger.debug(f"output from {command_list[0]}: {output}")
             yield output
+            process.stdout.flush()
         elif process.poll() is not None:  # process died
             if my_timer is not None:
                 my_timer.cancel()
