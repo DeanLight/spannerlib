@@ -230,7 +230,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         "add_fact": rgxlog_engine.add_fact,
         "remove_fact": rgxlog_engine.remove_fact,
         "root": no_op,
-        "relation": no_op
+        "relation": no_op  # relations are being added to the symbol table in one of the other passes therefore in this pass we have nothing to do with them
     }
 
     # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
