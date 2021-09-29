@@ -311,12 +311,13 @@ class SqliteEngine(RgxlogEngineBase):
         col_values = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
                       zip(fact.type_list, fact.term_list)]
 
+        template_dict = {"col_values": col_values, "fact": fact, "col_names": col_names}
+
         sql_template = ("""
         INSERT INTO {{fact.relation_name}} ({{col_names | join(", ")}})
         VALUES ({{col_values | join(", ")}})
         """)
 
-        template_dict = {"col_values": col_values, "fact": fact, "col_names": col_names}
         self.run_sql_from_jinja_template(sql_template, template_dict)
 
     def remove_fact(self, fact: RemoveFact) -> None:
@@ -326,12 +327,13 @@ class SqliteEngine(RgxlogEngineBase):
                       zip(fact.type_list, fact.term_list)]
         condition_pairs = [f"{col_name}={col_value}" for col_name, col_value in zip(col_names, col_values)]
 
+        template_dict = {"fact": fact, "condition_pairs": condition_pairs}
+
         sql_template = ("""
         DELETE FROM {{fact.relation_name}} WHERE 
         ({{condition_pairs | join(", ")}})
         """)
 
-        template_dict = {"fact": fact, "condition_pairs": condition_pairs}
         self.run_sql_from_jinja_template(sql_template, template_dict)
 
     def query(self, query: Query, allow_duplicates=False) -> List[Tuple]:
@@ -623,8 +625,8 @@ class SqliteEngine(RgxlogEngineBase):
 
         # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
         col_names = [f"{self._get_col_name(i)}" for i in range(len(relation_decl.type_list))]
-        sql_template = 'CREATE TABLE {{rel_name}} ({{col_names | join(", ")}})'
         template_dict = {"rel_name": relation_decl.relation_name, "col_names": col_names}
+        sql_template = 'CREATE TABLE {{rel_name}} ({{col_names | join(", ")}})'
 
         self.run_sql_from_jinja_template(sql_template, template_dict)
 
@@ -694,6 +696,9 @@ class SqliteEngine(RgxlogEngineBase):
 
         all_conditions = constant_conditions + equal_var_conditions
 
+        template_dict = {"new_rel_name": selected_relation.relation_name, "sql_select": self.SQL_SELECT, "src_rel_name": src_relation.relation_name,
+                         "all_conditions": all_conditions}
+
         sql_template = ("""
         INSERT INTO {{new_rel_name}} {{sql_select}} * FROM {{src_rel_name}}
         {%- if all_conditions %}
@@ -701,8 +706,6 @@ class SqliteEngine(RgxlogEngineBase):
         {%- endif -%}
         """)
 
-        template_dict = {"new_rel_name": selected_relation.relation_name, "sql_select": self.SQL_SELECT, "src_rel_name": src_relation.relation_name,
-                         "all_conditions": all_conditions}
         self.run_sql_from_jinja_template(sql_template, template_dict)
 
         return selected_relation
@@ -773,6 +776,10 @@ class SqliteEngine(RgxlogEngineBase):
         for relation in other_relations:
             inner_join_list.append(f"INNER JOIN {relation.relation_name} AS {relation_temp_names[relation]}")
 
+        template_dict = {"new_rel_name": joined_relation.relation_name, "sql_select": self.SQL_SELECT, "new_cols": free_var_cols,
+                         "first_rel_name": first_relation.relation_name, "first_rel_temp_name": relation_temp_names[first_relation],
+                         "rels_temp_names": inner_join_list, "join_conditions": on_conditions_list}
+
         sql_template = ("""
         INSERT INTO {{ new_rel_name }}
         {{ sql_select }} {{ new_cols | join(", ") }}
@@ -783,9 +790,6 @@ class SqliteEngine(RgxlogEngineBase):
         {%- endif -%}
         """)
 
-        template_dict = {"new_rel_name": joined_relation.relation_name, "sql_select": self.SQL_SELECT, "new_cols": free_var_cols,
-                         "first_rel_name": first_relation.relation_name, "first_rel_temp_name": relation_temp_names[first_relation],
-                         "rels_temp_names": inner_join_list, "join_conditions": on_conditions_list}
         self.run_sql_from_jinja_template(sql_template, template_dict)
 
         return joined_relation
