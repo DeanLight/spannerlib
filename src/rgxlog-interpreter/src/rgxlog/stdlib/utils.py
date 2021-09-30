@@ -79,7 +79,6 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     logger.info(f"stdout after the process ended: {extra_stdout}")
 
 
-
 def download_file_from_google_drive(file_id: str, destination: Path) -> None:
     """
     Downloads a file from google drive.
