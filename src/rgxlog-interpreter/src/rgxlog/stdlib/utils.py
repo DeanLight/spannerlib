@@ -48,12 +48,9 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     stdout = PIPE  # we always use stdout
     stderr_channel = PIPE if stderr else None
 
-    # TODO@niv: this is temporary until the rgx issue is solved
-    time.sleep(2)
     process = Popen(command_list, stdout=stdout, stderr=stderr_channel, shell=shell)
 
     # set timer
-    process_timer = None
     if timeout > 0:
         # set timer to kill the process
         process_timer = Timer(timeout, kill_process_and_children, [process])
@@ -61,22 +58,11 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
 
     # get output
     process.stdout.flush()
-    for output in process.stdout:
-        # convert to `str` and remove the `\n` at the end of every line
-        output = output.decode("utf-8").strip()
-        # TODO@niv: change the logging back to debug once the error is found
-        logger.info(f"output from {command_list[0]}: {output}")
+    extra_stdout, extra_stderr = process.communicate()
+    for output in extra_stdout.decode("utf-8").splitlines():
+        output = output.strip()
         if output:
             yield output
-            process.stdout.flush()
-        elif process.poll() is not None:  # process died
-            if process_timer is not None:
-                process_timer.cancel()
-            break
-
-    extra_stdout, extra_stderr = process.communicate()
-    logger.info(f"stdout after the process ended: {extra_stdout}")
-    logger.info(f"stderr after the process ended: {extra_stderr}")
 
 
 def download_file_from_google_drive(file_id: str, destination: Path) -> None:
