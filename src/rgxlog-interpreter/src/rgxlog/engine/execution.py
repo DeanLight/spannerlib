@@ -1,952 +1,264 @@
 """
-this modules contains implementations of 'RgxlogEngineBase' which is an abstraction for the rgxlog engine
-and also implementations of 'ExecutionBase' which serves as an abstraction for an interface between a term graph
-and an rgxlog engine.
+this module contains the implementation of the naive execution function
 """
 
-# TODO remove import * where not needed
-from abc import ABC, abstractmethod
-from itertools import count
-from typing import List, Tuple
+from typing import (Tuple, Dict, List, Callable, Optional)
 
-from pyDatalog import pyDatalog
-from rgxlog.engine.datatypes.ast_node_types import *
-from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.ie_functions.ie_function_base import IEFunction
+from rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
+                                                    IERelation)
+from rgxlog.engine.engine import RgxlogEngineBase
+from rgxlog.engine.state.graphs import EvalState, GraphBase, TermGraphBase
 from rgxlog.engine.state.symbol_table import SymbolTableBase
-from rgxlog.engine.state.term_graph import EvalState, TermGraphBase
-from rgxlog.engine.utils.general_utils import get_output_free_var_names
+
+VALUE_ATTRIBUTE = 'value'
+OUT_REL_ATTRIBUTE = "output_rel"
+
+FREE_VAR_PREFIX = "COL"
 
 
-class RgxlogEngineBase(ABC):
+def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
+                    symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase) -> Optional[Tuple[Query, List]]:
     """
-    An abstraction for a rgxlog execution engine
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.prints_buffer = []
-
-    def flush_prints_buffer(self) -> str:
-        """
-        some of the methods in this class should print their results, but since this project uses jupyter notebook's
-        magic system, printing inside the methods may cause the project to behave incorrectly (for example, the prints
-        may appear in the wrong cell).
-
-        so instead of printing, the methods of this class should append the strings they want to print to
-        self.prints_buffer, and the user of this class can get the string that he should print using this method
-
-        this method also clears the prints buffer
-
-        Returns: a single string that represents all of the prints buffer content. this string should be printed
-        by the caller
-        """
-        ret_string = '\n'.join(self.prints_buffer)
-        self.prints_buffer.clear()
-        return ret_string
-
-    @abstractmethod
-    def declare_relation(self, relation_decl):
-        """
-        declares a relation in the rgxlog engine
-
-        @param relation_decl: a relation declaration
-        """
-        pass
-
-    @abstractmethod
-    def add_fact(self, fact):
-        """
-        add a fact to the rgxlog engine
-
-        @param fact: the fact to be added
-        """
-        pass
-
-    @abstractmethod
-    def remove_fact(self, fact):
-        """
-        remove a fact from the rgxlog engine
-
-        @param fact: the fact to be removed
-        """
-        pass
-
-    @abstractmethod
-    def remove_rule(self, rule: str):
-        """
-        remove a rule from the rgxlog engine
-
-        @param rule: the rule to be removed
-        """
-
-    @abstractmethod
-    def query(self, query):
-        """
-        queries the rgxlog engine
-
-        @param query: a query for the rgxlog engine
-        @return: a list of tuples that are the query's results
-        """
-        pass
-
-    @abstractmethod
-    def add_rule(self, rule_head, rule_body_relation_list):
-        """
-        add a rule to the rgxlog engine.
-        this method assumes that all the relations in the rule body are normal relations (non ie relations)
-        this means that the rule will be added as it is, without any micro operations (e.g. computing an ie relation)
-
-        @param rule_head: a relation that defines the rule head
-        @param rule_body_relation_list: a list of relations that defines the rule body
-        """
-        pass
-
-    @abstractmethod
-    def compute_ie_relation(self, ie_relation, ie_func_data, bounding_relation):
-        """
-        computes an information extraction relation, returning the result as a normal relation.
-
-        since ie relations may have input free variables, we need to use another relation to determine the inputs
-        for ie_relation.
-        Each free variable that appears as an ie_relation input term must appear at least once in the
-        bounding_relation terms.
-        Should the ie relation not have any input free variables, bounding_relation can (but not must) be None
-
-        note the an ie relation is effectively two relations: a relation that defines the inputs to an ie function
-        and a relation that filters the output of the ie functions.
-        seeing that, we can define a general algorithm for this function:
-
-        1. using the input relation to the ie function, filter "bounding_relation" into a relation who's
-        tuples are all of the inputs to the ie function. if the input relation has no free variable terms,
-        it is basically a fact, i.e., a single tuple, meaning we could skip this step and just use that tuple
-        as an input instead.
-
-        2. run the ie function on each one of the tuples of the relation we created in step 1, and save the
-        results to a new relation (the output relation)
-
-        3. use the output relation of the ie function, filter the results we got in step 2 to a new relation
-
-        example:
-        let's follow the steps for the ie relation "RGX<X,Y>->(Z,[1,2))" with the bounding relation "bind(X,Y,W)":
-
-        1. input_relation(X,Y) <- bind(X,Y,W)  # filter the bounding relation tuples into the input relation
-
-        2. for each tuple in input_relation(X,Y), use it as an input for RGX(x,y) and save the result to a new
-        relation called output_relation
-
-        3. filter the outputs of the ie function into a relation like this
-        final_ie_result(X,Y,Z) <- input_relation(X,Y), output_relation(Z,[1,2))
-        for details on this join operation see "RgxlogEngineBase.join_relations"
-
-        note that "final_ie_result" is defined using only free variables, as an ie relation in rgxlog is merely
-        a part of a rule body, which serves to define the rule head relation. the rule head only "cares" about
-        free variables, so we can throw away all of the columns defined by constant terms.
-
-        @param ie_relation: an ie relation that determines the input and output terms of the ie function
-        @param ie_func_data: the data for the ie function that will be used to compute the ie relation
-        @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
-                                  queried from it
-        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine
-        """
-        pass
-
-    @abstractmethod
-    def join_relations(self, relation_list, name=""):
-        """
-        perform a join between all of the relations in the relation list and saves the result to a new relation.
-        the results of the join are filtered so they only include columns in the relations that were defined by
-        a free variable term.
-        all of the relation in relation_list must be normal (not ie relations)
-
-        for example, if the relations are [A(X,Y,3), B(X,Z,W,"some_str")], this function should return a relation
-        that is defined like this:
-        new_relation(X,Y,Z,W) <- A(X,Y,3), B(X,Z,W,"some_str")
-
-        note that "new_relation" is defined only by free variable terms and all of the free variable terms
-        that appear in the rule body, also appear in the rule head
-
-        this method is helpful for saving intermediate results while computing a rule body and also
-        for filtering the results of an ie function
-
-        @param relation_list: a list of normal relations
-        @param name: the name for the joined relation (to be used as a part of a temporary relation name)
-        @return: a new relation as described above
-        """
-        pass
-
-    @staticmethod
-    def clear_all():
-        """
-        removes all facts and clauses from the engine
-        """
-        pass
-
-
-class PydatalogEngine(RgxlogEngineBase):
-    """
-    implementation of a rgxlog engine using pyDatalog
-    pyDatalog is an implementation of datalog in python
-
-    the official documentation can be found at: https://sites.google.com/site/pydatalog/home
-    note that you do not have to read too deep into pyDatalog as we only use a small part of it that is relatively
-    simple to the rest of the language
-
-    in our implementation, we load statements into the pyDatalog engine using python
-    you can read more about it in https://sites.google.com/site/pydatalog/advanced-topics
-    under section 'Dynamic datalog statements'
-
-    more details on how we execute each pyDatalog statement can be found under the relevant method in this class.
-    """
-
-    def __init__(self, debug=False):
-        """
-        @param debug: print the commands that are loaded into pyDatalog
-        """
-        super().__init__()
-        self.temp_relation_id_counter = count()
-        self.debug = debug
-        self.rules_history = dict()
-
-    def declare_relation(self, relation_decl: RelationDeclaration):
-        """
-        declares a relation in the pyDatalog engine
-
-        @param relation_decl: a relation declaration
-        """
-
-        # unlike rgxlog, pyDatalog does not have a relation declaration statement and typechecking, but pyDatalog
-        # will always act as if a relation reference is valid if a fact was ever added to said relation.
-        # we will exploit this by adding a fact in which all terms are 'None', then remove said fact, thus effectively
-        # declaring an empty relation
-        relation_name = relation_decl.relation_name
-
-        # get a 'None' term only terms list as a string in pyDatalog
-        # note that while there's no typechecking in pyDatalog, the arity is checked, that's why we use the arity
-        # of the original relation declaration
-        relation_arity = len(relation_decl.type_list)
-        decl_terms = ['None'] * relation_arity
-        decl_terms_string = ', '.join(decl_terms)
-
-        # create the fact string that we'll use
-        temp_fact_string = f'{relation_name}({decl_terms_string})'
-
-        # create the string that we will use to declare the relation (add and remove the same fact)
-        relation_decl_statement = f'+{temp_fact_string}\n' + \
-                                  f'-{temp_fact_string}'
-
-        # declare the relation in pyDatalog
-        pyDatalog.load(relation_decl_statement)
-
-    def add_fact(self, fact: AddFact):
-        """
-        add a fact in the pyDatalog engine
-
-        @param fact: the fact to be added
-        """
-        relation_string = self._get_relation_string(fact)
-        # the syntax for a 'add fact' statement in pyDatalog is '+some_relation(term_list)' create that statement
-        add_fact_statement = f'+{relation_string}'
-        if self.debug:
-            self.prints_buffer.append(add_fact_statement)
-        # add the fact in pyDatalog
-        pyDatalog.load(add_fact_statement)
-
-    def remove_fact(self, fact: RemoveFact):
-        """
-        remove a fact from the pyDatalog engine
-
-        @param fact: the fact to be removed
-        """
-        relation_string = self._get_relation_string(fact)
-        # the syntax for a 'remove fact' statement in pyDatalog is '-some_relation(term_list)' create that statement
-        remove_fact_statement = f'-{relation_string}'
-        if self.debug:
-            self.prints_buffer.append(remove_fact_statement)
-        # remove the fact in pyDatalog
-        pyDatalog.load(remove_fact_statement)
-
-    def remove_rule(self, rule: str):
-        """
-        remove a rule from the pyDatalog engine
-
-        @param rule: the fact to be removed
-        @raise Exception: if the rule is not inside rules_history.
-        """
-        # the syntax for a 'remove rule' statement in pyDatalog is '-(rule_definition)'
-        # transform rule in RGXLog's syntax into PyDatalog's syntax
-        # i.e, ancestor(X,Y) <- parent(X,Z), ancestor(Z,Y) will be transformed to:
-        # ancestor(X,Y) <= parent(X,Z)& ancestor(Z,Y)
-
-        # The user must supply exact same rule as the one in print_all_rules
-
-        rule_head = rule.split("(")[0]
-        if rule_head not in self.rules_history:
-            raise Exception(f"{rule} was never registered (you can run 'print_all_rules' to see all the registered "
-                            f"rules)")
-        else:
-            for i, (rgxlog_rule, pydatalog_rule) in enumerate(self.rules_history[rule_head]):
-                if rgxlog_rule == rule:
-                    remove_rule_statement = f'-({pydatalog_rule})'
-                    # remove the rule in pyDatalog
-                    pyDatalog.load(remove_rule_statement)
-                    # remove rule from history
-                    del self.rules_history[rule_head][i]
-                    if len(self.rules_history[rule_head]) == 0:
-                        del self.rules_history[rule_head]
-                    if self.debug:
-                        self.prints_buffer.append(remove_rule_statement)
-                    break
-            else:
-                # if we are here then the rule doesn't exist
-                raise Exception(f"{rule} was never registered (you can run 'print_all_rules' to see all the registered "
-                                f"rules)")
-
-    def remove_all_rules(self, rule_head):
-        """
-        Removes all rules from PyDatalog's engine.
-        @param rule_head: we print all rules with rule_head. if it None we remove all rules.
-        """
-
-        if rule_head is None:
-            for head in self.rules_history:
-                self.remove_all_rules_with_head(head)
-            self.rules_history = dict()
-        else:
-            self.remove_all_rules_with_head(rule_head)
-            del self.rules_history[rule_head]
-
-    def remove_all_rules_with_head(self, rule_head):
-        """
-        Removes all rules with specific head from PyDatalog's engine.
-        @param rule_head: we print all rules with rule_head.
-        @raise Exception: if there is no rule with rule_head.
-        """
-
-        if rule_head not in self.rules_history:
-            raise Exception(f"There is not rule with head {rule_head}")
-
-        for (_, rule) in self.rules_history[rule_head]:
-            remove_rule_statement = f'-({rule})'
-            if self.debug:
-                self.prints_buffer.append(remove_rule_statement)
-            pyDatalog.load(remove_rule_statement)
-
-    # TODO: remove this, put the docstring in run_query somehow
-    def print_query(self, query: Query):
-        """
-        queries pyDatalog and saves the resulting string to the prints buffer (to get it use flush_prints_buffer())
-        the resulting string is a table that contains all of the resulting tuples of the query.
-        the headers of the table are the free variables used in the query.
-        above the table there will be a title that contains the query as it was written by the user
-
-        for example:
-
-        printing results for query 'lecturer_of(X, "abigail")':
-          X
--       -------
-        linus
-        walter
-
-        there are two cases where a table cannot be printed:
-        1. the query returned no results. in this case '[]' will be printed
-        2. the query returned a single empty tuple, in this case '[()]' will be printed
-
-        @param query: a query for pyDatalog
-        """
-        raise NotImplementedError
-
-    def query(self, query: Query):
-        """
-        @param query: a query for pyDatalog
-        @return: a list of tuples that are the query's results
-        """
-
-        # create the query. note that we don't use a question mark when we expect pyDatalog to return the query's
-        # results instead of printing them. the syntax is 'some_relation(term_list)' (a normal relation representation)
-        query_statement = self._get_relation_string(query)
-
-        if self.debug:
-            self.prints_buffer.append(f'query: {query_statement}')
-
-        # loading the query into pyDatalog this way returns an object that contains a list of the resulting tuples
-        py_datalog_answer_object = pyDatalog.ask(query_statement)
-
-        # get the actual results out of the object and return them
-        if py_datalog_answer_object is None:
-            # special case when the query yields no results. return an empty list
-            query_results = []
-        else:
-            # there's at least one resulting tuple, get the list of resulting tuples by accessing the 'answers' field
-            query_results = py_datalog_answer_object.answers
-        return query_results
-
-    def rule_to_string(self, rule_head: Relation, rule_body_relation_list: List,
-                       rule_format: str = "PyDatalog") -> str:
-        """
-
-        @param rule_head: a relation that defines the rule head.
-        @param rule_body_relation_list: a list of relations that defines the rule body.
-        @param rule_format: return format of the string.
-        @return: a string that represents the rule in PyDatalog's/RGXlog's format.
-        """
-
-        assert rule_format in ["PyDatalog", "RGXlog"]
-        arrow, delimiter = ("<=", " & ") if rule_format == "PyDatalog" else ("<-", ", ")
-        rule_head_string = self._get_relation_string(rule_head)
-        rule_body_relation_strings = [str(relation) for relation in rule_body_relation_list]
-        rule_body_string = delimiter.join(rule_body_relation_strings)
-        return f'{rule_head_string} {arrow} {rule_body_string}'
-
-    def add_rule(self, rule_head: Relation, rule_body_relation_list: List[Relation]) -> str:
-        """
-        adds a rule to the pydatalog engine.
-
-        @param rule_head: a relation that defines the rule head
-        @param rule_body_relation_list: a list of relations that defines the rule body
-        @return: the rule we registered to pydataog.
-        """
-
-        # get a string that represents the rule in pyDatalog
-        rule_string = self.rule_to_string(rule_head, rule_body_relation_list)
-
-        if self.debug:
-            self.prints_buffer.append(rule_string)
-
-        # add the rule to pyDatalog
-        pyDatalog.load(rule_string)
-
-        return rule_string
-
-    def add_and_save_rule(self, rule_head: Relation, rule_body_relation_list: List[Relation],
-                          rule_body_original_list: List):
-        """
-        A wrapper to add_rule. It adds the rule to PyDatalogs engine and save a binding between the original rule
-        and the rule we actually passed to PyDatalog.
-
-        @param rule_head: a relation that defines the rule head
-        @param rule_body_relation_list: a list of relations that defines the rule body
-        @param rule_body_original_list: a List of the original relations that defined
-        @return:
-        """
-
-        pydatalog_rule_string = self.add_rule(rule_head, rule_body_relation_list)
-        rgxlog_rule_string = self.rule_to_string(rule_head, rule_body_original_list, "RGXlog")
-
-        rule_head_str = self._get_relation_string(rule_head)
-        # get relation name (without schema)
-        rule_head_name = rule_head_str.split("(")[0]
-
-        # don't save temp rgxlog rules
-        if not rule_head_name.startswith("__rgxlog"):
-            rule_binding = (rgxlog_rule_string, pydatalog_rule_string)
-            if rule_head_name in self.rules_history:
-                self.rules_history[rule_head_name].append(rule_binding)
-            else:
-                self.rules_history[rule_head_name] = [rule_binding]
-
-    def print_all_rules(self, rule_head: str = None):
-        """
-        prints all the rules that are registered.
-
-        @param rule_head: if rule head is not none we print all rules with rule_head
-        """
-
-        if rule_head is None:
-            print("Printing all rules:")
-            for head in self.rules_history:
-                self.print_all_rules_with_head(head)
-        else:
-            print(f"Printing all rules with head {rule_head}:")
-            self.print_all_rules_with_head(rule_head)
-
-        # looks better with new line (\n)
-        print()
-
-    def print_all_rules_with_head(self, rule_head: str):
-        """
-        prints all the rules with rule_head that are registered.
-
-        @param rule_head: we print all rules with rule_head
-        @raise Exception: if rule head was specified but there is no rule with that rule head.
-        """
-        if rule_head not in self.rules_history:
-            raise Exception(f"No rules with head {rule_head} were registered.")
-
-        for rule, _ in self.rules_history[rule_head]:
-            print(rule)
-
-    def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
-                            bounding_relation: Relation):
-        """
-        computes an information extraction relation, returning the result as a normal relation.
-        for more details see RgxlogEngineBase.compute_ie_relation.
-
-        @param ie_relation: an ie relation that determines the input and output terms of the ie function
-        @param ie_func: the ie function that will be used to compute the ie relation
-        @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
-                                  queried from it
-        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine
-        """
-
-        ie_relation_name = ie_relation.relation_name
-
-        # create the input relation for the ie function, and also declare it inside pyDatalog
-        input_relation_arity = len(ie_relation.input_term_list)
-        input_relation_name = self._create_new_temp_relation(input_relation_arity, name=f'{ie_relation_name}_input')
-        input_relation = Relation(input_relation_name, ie_relation.input_term_list, ie_relation.input_type_list)
-
-        # create the output relation for the ie function, and also declare it inside pyDatalog
-        output_relation_arity = len(ie_relation.output_term_list)
-        output_relation_name = self._create_new_temp_relation(output_relation_arity, name=f'{ie_relation_name}_output')
-        output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
-
-        # define the ie input relation
-        if bounding_relation is None:
-            # special case where the ie relation is the first rule body relation
-            # in this case, the ie input relation is defined exclusively by constant terms, i.e, by a single tuple
-            # add that tuple as a fact to the input relation
-            self.add_fact(
-                AddFact(input_relation.relation_name, ie_relation.input_term_list, ie_relation.input_type_list))
-        else:
-            # filter the bounding relation into the input relation using a rule.
-            self.add_rule(input_relation, [bounding_relation])
-
-        # get a list of inputs to the ie function.
-        ie_inputs = self._get_all_relation_tuples(input_relation)
-
-        # get the schema for the ie outputs
-        ie_output_schema = ie_func.get_output_types(output_relation_arity)
-
-        # run the ie function on each input and process the outputs
-        for ie_input in ie_inputs:
-
-            # run the ie function on the input, resulting in a list of tuples
-            ie_outputs = ie_func.ie_function(*ie_input)
-            # process each ie output and add it to the output relation
-            for ie_output in ie_outputs:
-                # the output should be a tuple, but if a single value is returned, we accept it as well
-                if isinstance(ie_output, str) or isinstance(ie_output, int) or isinstance(ie_output, Span):
-                    ie_output = [ie_output]
-                else:
-                    ie_output = list(ie_output)
-
-                # assert the ie output is properly typed
-                self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)
-
-                # the user is allowed to represent a span in an ie output as a tuple of length 2
-                # convert said tuples to spans
-                ie_output = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
-                             else term
-                             for term in ie_output]
-
-                # add the output as a fact to the output relation
-                # notice - repetitions are ignored here (results are in a set)
-                if len(ie_output) != 0:
-                    output_fact = AddFact(output_relation.relation_name, ie_output, ie_output_schema)
-                    self.add_fact(output_fact)
-
-        # create and return the result relation. it's a relation that is the join of the input and output relations
-        result_relation = self.join_relations([input_relation, output_relation], name=ie_relation_name)
-        return result_relation
-
-    def join_relations(self, relation_list: List[Relation], name=""):
-        """
-        perform a join between all of the relations in the relation list and saves the result to a new relation.
-        the results of the join are filtered so they only include columns in the relations that were defined by
-        a free variable term.
-        all of the relation in relation_list must be normal (not ie relations)
-
-        for an example and more details see RgxlogEngineBase.join_relations
-
-        @param relation_list: a list of normal relations
-        @param name: a name for the joined relation (will be used as a part of a temporary relation name)
-        @return: a new relation as described above
-        """
-
-        # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
-        free_var_sets = [get_output_free_var_names(relation, 'relation') for relation in relation_list]
-        free_vars = set().union(*free_var_sets)
-        joined_relation_terms = list(free_vars)
-
-        # get the type list of the joined relation (all of the terms are free variables)
-        joined_relation_arity = len(joined_relation_terms)
-        joined_relation_types = [DataTypes.free_var_name] * joined_relation_arity
-
-        # declare the joined relation in pyDatalog and get its name
-        joined_relation_name = self._create_new_temp_relation(joined_relation_arity, name=name)
-
-        # created a structured node of the joined relation
-        joined_relation = Relation(joined_relation_name, joined_relation_terms, joined_relation_types)
-
-        # use a rule to filter the tuples of the relations in relation_list into the joined relation
-        self.add_rule(joined_relation, relation_list)
-
-        return joined_relation
-
-    def _get_term_string(self, term, term_type):
-        """
-        the pyDatalog execution engine receives instructions via strings.
-        return a string representation of a term in pyDatalog.
-
-        @param term: a term of any type
-        @param term_type: the type of the term
-        @return: a string representation of the term in pyDatalog
-        """
-
-        if term_type is DataTypes.string:
-            # add quotes to strings to avoid pyDatalog thinking a string is a variable
-            return f"\"{term}\""
-        elif term_type is DataTypes.span:
-            return self._get_span_string(term)
-        else:
-            return str(term)
-
-    @staticmethod
-    def _get_span_string(span: Span):
-        """
-        the pyDatalog execution engine receives instructions via strings.
-        return a string representation of a span term in pyDatalog.
-        since there's no built in representation of a span in pyDatalog, and custom classes do not seem to work
-        as intended , so we represent a span using a tuple of length 2.
-
-        @param span: a span
-        @return: a pyDatalog string representation of the span
-        """
-
-        span_string = f'({span.span_start}, {span.span_end})'
-        return span_string
-
-    def _get_relation_string(self, relation: Relation):
-        """
-        the pyDatalog execution engine receives instructions via strings.
-        return a relation string representation of a relation in pyDatalog.
-        quotes are added to string terms so pyDatalog will not be confused between strings and variables.
-        spans are represented as tuples of length 2 (see PydatalogEngine.__get_span_string())
-
-        @param relation: a relation
-        @return: a pydatalog string representation of the relation
-        """
-
-        # create a string representation of the relation's term list in pyDatalog
-        pydatalog_string_terms = [self._get_term_string(term, term_type)
-                                  for term, term_type in zip(relation.term_list, relation.type_list)]
-        pydatalog_string_term_list = ', '.join(pydatalog_string_terms)
-
-        # create a string representation of the relation in pydatalog and return it
-        pydatalog_string_relation = f"{relation.relation_name}({pydatalog_string_term_list})"
-        return pydatalog_string_relation
-
-    def _get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
-        """
-        @param relation: a relation to be queried
-        @return: all the tuples of 'relation' as a list of tuples
-        """
-
-        relation_name = relation.relation_name
-        relation_arity = len(relation.term_list)
-
-        # in order to get all of the tuples of the relation, we'll query the relation with a query that only has
-        # free variable terms, where each one of the free variables has a different name
-        # for example for the relation 'Parent(str, str)', we'll construct the query '?Parent(X0, X1)'
-        query_relation_name = relation_name
-        query_terms = [f'X{i}' for i in range(relation_arity)]
-        query_term_types = [DataTypes.free_var_name] * relation_arity
-        query = Query(query_relation_name, query_terms, query_term_types)
-
-        # query the relation using the query we've constructed, and return the result
-        all_relation_tuples = self.query(query)
-        return all_relation_tuples
-
-    def _create_new_temp_relation(self, arity, name=""):
-        """
-        declares a new temporary relation with the requested arity in pyDatalog
-        note that the relation's schema is not needed as there's no typechecking in pyDatalog
-
-        @param arity: the temporary relation's arity (needed for declaring the new relation inside pyDatalog)
-        @param name: will be used as a part of the temporary relation's name. for example for the name 'RGX',
-                     the temporary relation's name could be __rgxlog__RGX_0
-        @return: the new temporary relation's name
-        """
-
-        if len(name) != 0:
-            # if the temporary relation should have a name, add an underscore to separate the name from the id
-            name = f'{name}_'
-
-        # create the name of the new temporary relation
-        temp_relation_id = next(self.temp_relation_id_counter)
-        temp_relation_name = f'__rgxlog__{name}{temp_relation_id}'
-
-        # in pyDatalog there's no typechecking so we just need to make sure that the schema has the correct arity
-        temp_relation_schema = [DataTypes.free_var_name] * arity
-
-        # create the declaration.
-        temp_relation_decl = RelationDeclaration(temp_relation_name, temp_relation_schema)
-
-        # declare the relation in pyDatalog, and return its name
-        self.declare_relation(temp_relation_decl)
-        return temp_relation_name
-
-    @staticmethod
-    def _assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation):
-        """
-        even though rgxlog performs typechecking during the semantic checks phase, information extraction functions
-        are written by the users and could yield results that are not properly typed.
-        this method asserts an information extraction function's output is properly typed
-
-        @param ie_input: the input of the ie function (used in the exception when the type check fails)
-        @param ie_output: an output of the ie function
-        @param ie_output_schema: the expected schema for ie_output
-        @param ie_relation: the ie relation for which the output was computed (will be used to print an exception
-            in case the output is not properly typed)
-        @raise Exception: if there is output term of an unsupported type or the output relation is not properly typed.
-        """
-
-        # get a list of the ie output's term types
-        ie_output_term_types = []
-        for output_term in ie_output:
-            if isinstance(output_term, int):
-                output_type = DataTypes.integer
-            elif isinstance(output_term, str):
-                output_type = DataTypes.string
-            elif (isinstance(output_term, tuple) and len(output_term) == 2) or isinstance(output_term, Span):
-                # allow the user to return a span as either a tuple of length 2 or a datatypes.Span instance
-                output_type = DataTypes.span
-            else:
-                # encountered an output term of an unsupported type
-                raise Exception(f'executing ie relation {ie_relation}\n'
-                                f'with the input {ie_input}\n'
-                                f'failed because one of the outputs had an unsupported term type\n'
-                                f'the output: {ie_output}\n'
-                                f'the invalid term: {output_term}\n'
-                                f'the invalid term type: {type(output_term)}\n'
-                                f'note that only strings, spans and integers are supported\n'
-                                f'spans can be represented as a tuple of length 2 or as a datatypes.span instance')
-            ie_output_term_types.append(output_type)
-
-        # assert that the ie output is properly typed
-        ie_output_is_properly_typed = ie_output_term_types == list(ie_output_schema)
-        if not ie_output_is_properly_typed and len(ie_output_term_types) != 0:
-            raise Exception(f'executing ie relation {ie_relation}\n'
-                            f'with the input {ie_input}\n'
-                            f'failed because one of the outputs had unexpected term types\n'
-                            f'the output: {ie_output}\n'
-                            f'the output term types: {ie_output_term_types}\n'
-                            f'the expected types: {ie_output_schema}')
-
-    @staticmethod
-    def clear_all():
-        """
-        removes all the data from the pydatalog engine. without this, all sessions share their facts and relations
-        """
-        pyDatalog.clear()
-
-
-class ExecutionBase(ABC):
-    """
-    Abstraction for a class that gets a term graph and executes it
-    """
-
-    def __init__(self, term_graph, symbol_table, rgxlog_engine):
-        """
-        @param term_graph: a term graph to execute
-        @param symbol_table: a symbol table
-        @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph
-        """
-
-        super().__init__()
-        self.term_graph = term_graph
-        self.symbol_table = symbol_table
-        self.rgxlog_engine = rgxlog_engine
-
-    @abstractmethod
-    def execute(self) -> Tuple[Query, List]:
-        """
-        executes the term graph
-        """
-        pass
-
-
-class GenericExecution(ExecutionBase):
-    """
-    Executes a term graph
+    Executes a parse graph
     this execution is generic, meaning it does not require any specific kind of term graph, symbol table or
     rgxlog engine in order to work.
     this execution performs no special optimization and merely serves as an interface between the term graph
     and the rgxlog engine.
-    The only exception for this is the 'rule' execution, you can read more about it in the utility method:
-    GenericExecution.__execute_rule_aux()
+
+    the main idea behind this class is that it uses the `term_graph` to understand how relations are related to
+    one another, and thanks to that information, it is able to execute the commands in the `parse_graph`.
+    for example, let's say the parse graph looks like this:
+
+    ```
+    (root) -> (query relation a)
+    ```
+
+    and the term graph looks like this:
+
+    (a)  --> union --> (b)
+                   --> (c)
+
+    the execution class will perform a union over `b` and `c`, and put it in a new relation, let's say `union_b_c`.
+    then it will copy `union_b_c` into `a`, and finally it will query `a` and return the result.
+
+    more precisely, the execution traverses the parse tree, when it reaches a query node it compute the relevant
+    relation using the term graph (i.e. if the query is ?A(X) it will compute the relation A).
+    read the docstring of compute_rule function to understand how the computation is done.
+
+    @param parse_graph: a term graph to execute.
+    @param term_graph: a term graph.
+    @param symbol_table: a symbol table.
+    @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph.
     """
 
-    def __init__(self, term_graph: TermGraphBase, symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase):
-        super().__init__(term_graph, symbol_table, rgxlog_engine)
-
-    def execute(self) -> Tuple[Query, List]:
-        term_graph = self.term_graph
-        rgxlog_engine = self.rgxlog_engine
-        exec_result = None
-
-        # get the term ids. note that the order of the ids does not actually matter as long as the statements
-        # are ordered the same way as they were in the original program
-        term_ids = term_graph.post_order_dfs()
-
-        # execute each non computed statement in the term graph
-        for term_id in term_ids:
-
-            term_attrs = term_graph.get_term_attributes(term_id)
-
-            if term_attrs['state'] is EvalState.COMPUTED:
-                continue
-
-            # the term is not computed, get its type and compute it accordingly
-            term_type = term_attrs['type']
-
-            if term_type == "relation_declaration":
-                relation_decl = term_attrs['value']
-                rgxlog_engine.declare_relation(relation_decl)
-
-            elif term_type == "add_fact":
-                fact = term_attrs['value']
-                rgxlog_engine.add_fact(fact)
-
-            elif term_type == "remove_fact":
-                fact = term_attrs['value']
-                rgxlog_engine.remove_fact(fact)
-
-            elif term_type == "query":
-                query = term_attrs['value']
-                # TODO: change this - enable returning the pre-formatted query
-                exec_result = (query, rgxlog_engine.query(query))
-
-            elif term_type == "rule":
-                self._execute_rule_aux(term_id)
-
-            # statement was executed, mark it as "computed"
-            term_graph.set_term_attribute(term_id, 'state', EvalState.COMPUTED)
-
-        return exec_result
-
-    def _execute_rule_aux(self, rule_term_id):
+    # it's an inner function because it needs to access all naive_execution's params
+    def compute_rule(relation_name: str, do_reset: bool = True) -> None:
         """
-        rule_term_id is expected to be a root of a subtree in the term graph that represents a single rule
-        the children of rule_term_id node should be:
-        1. a rule head relation node
-        2. a rule body relation list, who's children are all the body relations of the rule
+        Computes the rule (including the mutual recursive rules).
+        This function traverses the term graph and dynamically generates the computation graph of the rule (note that we
+        don't really create a computational graph object; it's more of a conceptual thing).
+        During the traversal, when we reach a root of another rule relation, we build its computational graph as well.
+        We do that in the following way:
+            * if the relation is mutually recursive, we use its current value.
+            * if the relation isn't mutually recursive, we compute it recursively (calling compute_rule on it).
 
-        This rule execution assumes that a previous pass reordered the rule body relations in a way that
-        each relation's input free variables (should they exist) are bounded by relations to the relation's
-        left. lark_passes.ReorderRuleBody is an example for such a pass.
+        Finally, we compute together all the mutually recursive relations in the following way:
+            we iterate over all the mutually recursive relations:
+                each relation is computed using the current states of its mutually recursive relations
+            we stop iterating only after there was no change in all the mutually recursive relations at the same
+            iteration (we reach a fixed point).
 
-        the following algorithm is used:
+        the following abstract example might help understand this process:
+        let's say we have 2 mutually recursive relations, `a` and `b`, which depend on one another:
+        ...
+        a(X) <- b(X)
+        ...
+        b(X) <- a(X)
+        ...
 
-        1. for each rule body relation (from left to right):
+        at the beginning, the imaginary relations a_0 and b_0 are empty.
+        during the first iteration, the imaginary relation a_1 is created, and it may contain some rows of data (based on the rules).
+        then b_1 is created, and it is affected by a_1 (because of the rule `b(X) <- a(X)`), so it will have all of a_1's rows, maybe more.
+        after `i` iterations, a_i and b_i are not changed, and therefore we reached a fixed point. now we stop iteration,
+        and relations `a` and `b` are `COMPUTED`.
 
-        a. compute the relation.
-
-        b. if it is the leftmost relation in the rule body, save the relation from step 1 as an intermediate relation,
-        else join the relation from step 1 with the intermediate relation, and save the result as the new intermediate
-        relation.
-
-        2. define the rule head relation by filtering the resulting intermediate relation from step 1 into it
-
-        example:
-
-        A(X) <- B(Z), C(X), D(X)->(X,Y)  # original input
-
-        these are the steps that will be taken to compute A(X):
-        temp1(Z) <- B(Z)
-        temp2(X) <- C(X)
-        temp3(Z,X) <- temp1(Z), temp2(X)  # join the results
-        input_d(X) <- temp3(Z,X)  # temp3 is used as a bounding relation for input_d
-        output_d(X,Y) <- results from running 'D' ie func on all of the tuples in input_d
-        temp4(X,Y) <- input_d(X), output_d(X,Y) # the final result from computing the 'D' ie relation
-        temp5(X,Y,Z) <- temp3(Z,X), temp4(X,Y)  # join the results
-        A(X) <- temp5(X,Y,Z)  # filter the results into the head relation
-
-        note that in this implementation we don't actually compute normal relations, we will just use them
-        as they are defined. (for example the step 'temp1(Z) <- B(Z)' is skipped and we just use B(Z) as the
-        intermediate relation)
+        @param relation_name: the name of the relation to compute.
+        @param do_reset: if set to True, we reset the nodes after the computation.
         """
+
+        # check if the relation is base relation
+        if not term_graph.has_node(relation_name):
+            return
+
+        # stores all the nodes that were visited during the dfs
+        visited_nodes = set()
+        mutually_recursive = term_graph.get_mutually_recursive_relations(relation_name)
+        current_computed_relation = None
+
+        def compute_postorder(node_id) -> None:
+            """
+            Runs postorder dfs over the term graph and evaluates the tree.
+
+            @param node_id: the current node.
+            """
+            term_attrs = term_graph[node_id]
+            if node_id in visited_nodes or term_attrs["state"] is EvalState.COMPUTED:
+                return
+
+            # if type is not rule_rel it's fine to continue the dfs
+            if term_attrs["type"] == "rule_rel":
+                rule_rel = term_attrs[VALUE_ATTRIBUTE]
+                if rule_rel.relation_name not in mutually_recursive:
+                    # computes the independent rule and stop
+                    compute_rule(rule_rel.relation_name, do_reset=False)
+                    return
+
+                # we here if the rule_rel is mutually recursive with the relation we are computing
+                # if rule rel is the rule we're currently computing - continue the dfs
+                if rule_rel.relation_name != current_computed_relation:
+                    # in case of dependent rule we use the current state of that rule
+                    term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, rule_rel)
+                    return
+
+            visited_nodes.add(node_id)
+            children = term_graph.get_children(node_id)
+            for child in children:
+                compute_postorder(child)
+
+            compute_node(node_id)
+            return
+
+        # clear all the mutually recursive tables.
+        rgxlog_engine.clear_tables(mutually_recursive)
+
+        fixed_point = False
+        while not fixed_point:
+            # computes one iteration for all of the mutually recursive rules
+            fixed_point = True
+            for relation in mutually_recursive:
+                current_computed_relation = relation
+                visited_nodes = set()
+                initial_len = rgxlog_engine.get_table_len(current_computed_relation)
+                compute_postorder(current_computed_relation)
+                is_stopped = rgxlog_engine.get_table_len(current_computed_relation) == initial_len
+
+                # we stop iterating when all the rules converged at the same step
+                fixed_point = fixed_point and is_stopped
+
+        state = EvalState.NOT_COMPUTED if do_reset else EvalState.COMPUTED
+        for term_id in term_graph.post_order_dfs_from(relation_name):
+            term_graph.set_node_attribute(term_id, "state", state)
+
+        return
+
+    def compute_node(node_id: int) -> None:
         """
-        TODO possible optimizations:
-        1. in a different pass, reorder the terms in a way that relations that contain free variables
-        that are not used in other relations are on the right side of the rule (so they are computed
-        at the very end of the rule)
+        Computes the current node based on its type.
 
-        For example for the rule
-        A(X,Y) <- B(K), C(X), D(X)->(Y)
-        we notice that B's free variable K is not used by the other relations, so we could optimize the
-        rule computations by reordering the rule like this:
-        A(X,Y) <- C(X), D(X)->(Y), B(K)
-
-        2. An improvement of optimization 1: 
-        a. create a dependency graph of rule body relations 
-        (where an edge from relation e1 to relation e2 means that e2 depends on the results of e1)
-        b. using the dependency graph, compute relations in a way that you only join results to a 
-        temporary relation when you have to.
-
-        for example for the rule A(Z) <- C(X),D(X,Y),B(Z),G(Z)->(Z),F(Y,Z)->(Y,Z):
-        a. the bounding graph is:
-            C -> D
-            B -> G
-            G -> F
-            D -> F
-        b. we could for example compute this rule in the following way:
-        * compute C, use it to compute D, join the results to temp1
-        * compute B, use it to compute G, join the results to temp2
-        * join temp1 and temp2 to temp3
-        * use temp3 to compute F, join the result and temp3 to temp4
-        * filter temp4 into the rule head relation A(Z)
+        @param node_id: the current node.
         """
-        term_graph = self.term_graph
-        rgxlog_engine = self.rgxlog_engine
-        symbol_table = self.symbol_table
 
-        rule_head_id, rule_body_id = term_graph.get_children(rule_term_id)
-        body_relation_id_list = term_graph.get_children(rule_body_id)
+        def is_node_computed(node_id_) -> bool:
+            """
+            Finds out whether the node is computed.
 
-        body_relation_original_list = list()
+            @param node_id_: the node for which we check the status.
+            @return: True if all the children of the node are computed or it has no children, False otherwise.
+            """
 
-        # compute the rule body relations from left to right and save the intermediate results in
-        # 'intermediate_relation'
-        intermediate_relation = None
-        for relation_id in body_relation_id_list:
+            children = term_graph.get_children(node_id_)
+            if not children:
+                return True
 
-            relation_term_attrs = term_graph.get_term_attributes(relation_id)
+            children_statuses_is_computed = [term_graph[child_id]["state"] is EvalState.COMPUTED
+                                             for child_id in children]
+            return all(children_statuses_is_computed)
 
-            relation = relation_term_attrs['value']
-            relation_type = relation_term_attrs['type']
+        def get_children_relations(node_id_) -> List[Relation]:
+            """
+            Gets the node's children output relations.
 
-            body_relation_original_list.append(relation)
+            @param node_id_: a node.
+            @return: a list containing the children output relations.
+            """
+            relations_ids = term_graph.get_children(node_id_)
+            relations_nodes = [term_graph[rel_id] for rel_id in relations_ids]
+            relations = [rel_node[OUT_REL_ATTRIBUTE] for rel_node in relations_nodes]
+            return relations
 
-            # compute the relation in the engine if needed
-            if relation_type == 'relation':
-                # no special computation is required, take the relation as is
-                result_relation = relation
-            elif relation_type == 'ie_relation':
-                # compute the ie relation
-                ie_func_data = symbol_table.get_ie_func_data(relation.relation_name)
-                result_relation = rgxlog_engine.compute_ie_relation(relation, ie_func_data,
-                                                                    intermediate_relation)
-            else:
-                raise Exception(f'unexpected relation type: {relation_type}')
+        term_type_to_engine_op: Dict[str, Callable] = {
+            "rule_rel": rgxlog_engine.operator_copy,
+            "union": rgxlog_engine.operator_union,
+            "join": rgxlog_engine.operator_join,
+            "project": rgxlog_engine.operator_project,
+            "select": rgxlog_engine.operator_select
+        }
 
-            # save the resulting relation in the term graph
-            term_graph.set_term_attribute(relation_id, 'value', result_relation)
+        term_attrs = term_graph[node_id]
+        if term_attrs["state"] is EvalState.COMPUTED:
+            return
 
-            # join the resulting relation with the intermediate relation
-            if intermediate_relation is None:
-                intermediate_relation = result_relation
-            else:
-                intermediate_relation = rgxlog_engine.join_relations(
-                    [intermediate_relation, result_relation], name="temp_join")
+        term_type = term_attrs["type"]
 
-        # declare the rule head in the rgxlog engine
-        rule_head_attrs = term_graph.get_term_attributes(rule_head_id)
-        rule_head_relation = rule_head_attrs['value']
-        rule_head_declaration = RelationDeclaration(
-            rule_head_relation.relation_name, symbol_table.get_relation_schema(rule_head_relation.relation_name))
-        rgxlog_engine.declare_relation(rule_head_declaration)
+        if term_type == "get_rel":
+            output_relation = term_attrs[VALUE_ATTRIBUTE]
 
-        # define the rule head in the rgxlog engine by filtering the tuples of the intermediate relation into it
-        rgxlog_engine.add_and_save_rule(rule_head_relation, [intermediate_relation], body_relation_original_list)
+        elif term_type == "calc":
+            children_relations = get_children_relations(node_id)
+            rel_in = children_relations[0] if children_relations else None  # tmp bounding relation of the ie rel (join over all the bounding relations)
+            ie_rel_in: IERelation = term_attrs[VALUE_ATTRIBUTE]  # the ie relation to compute
+            ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)  # the ie function that correspond to the ie relation
+            output_relation = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
+
+        else:
+            operator = term_type_to_engine_op[term_type]
+            input_relations = get_children_relations(node_id)
+            output_relation = operator(input_relations, term_attrs.get(VALUE_ATTRIBUTE))
+
+        term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, output_relation)
+
+        # statement was executed, mark it as "computed" or "visited"
+        compute_status = EvalState.COMPUTED if is_node_computed(node_id) else EvalState.VISITED
+        term_graph.set_node_attribute(node_id, 'state', compute_status)
+
+    def no_op(*args):
+        return
+
+    node_type_to_action: Dict[str, Callable] = {
+        "rule": lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
+        "relation_declaration": rgxlog_engine.declare_relation,
+        "add_fact": rgxlog_engine.add_fact,
+        "remove_fact": rgxlog_engine.remove_fact,
+        "root": no_op,
+        "relation": no_op  # relations are being added to the symbol table in one of the other passes therefore in this pass we have nothing to do with them
+    }
+
+    # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
+    # are ordered the same way as they were in the original program
+    parse_node_ids = parse_graph.post_order_dfs()
+    query_result = None
+
+    # execute each non computed statement in the parse graph
+    for parse_id in parse_node_ids:
+        parse_node_attrs = parse_graph[parse_id]
+
+        if parse_node_attrs["state"] is EvalState.COMPUTED:
+            continue
+
+        # mark node as "computed"
+        parse_graph.set_node_attribute(parse_id, "state", EvalState.COMPUTED)
+
+        # the parse node is not computed, get its type and compute it accordingly
+        parse_node_type = parse_node_attrs["type"]
+
+        if parse_node_type == "query":
+            # we return the query as well as the result, because we print as part of the output
+            query: Query = parse_node_attrs[VALUE_ATTRIBUTE]
+            compute_rule(query.relation_name)
+            query_result = (query, rgxlog_engine.query(query))
+
+        else:
+            action = node_type_to_action[parse_node_type]
+            action(parse_node_attrs.get(VALUE_ATTRIBUTE))
+
+    return query_result

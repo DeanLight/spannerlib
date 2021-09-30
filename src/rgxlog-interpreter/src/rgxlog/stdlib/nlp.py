@@ -1,44 +1,62 @@
+"""
+this module supports nlp methods. for documentation:
+https://stanfordnlp.github.io/CoreNLP/index.html
+
+we are aware that starting the engine inside each method affects efficiency.
+still, don't set `core_nlp_engine` as a global variable,
+because that way, the java processes will not be killed.
+"""
 import json
 import logging
 from io import BytesIO
-from os import path
 from os import popen
-from urllib.request import urlopen
+from pathlib import Path
 from zipfile import ZipFile
 
 import jdk
 from spanner_nlp.StanfordCoreNLP import StanfordCoreNLP
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
+from rgxlog.stdlib.utils import download_file_from_google_drive
 
+JAVA_MIN_VERSION = 1.8
 
-MIN_VERSION = 1.8
-
-NLP_URL = "https://nlp.stanford.edu/software/stanford-corenlp-4.1.0.zip"
-
+NLP_URL = "https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
-CURR_DIR = path.dirname(__file__)
-NLP_DIR_PATH = path.join(CURR_DIR, NLP_DIR_NAME)
+CURR_DIR = Path(__file__).parent
+NLP_DIR_PATH = str(Path(CURR_DIR) / NLP_DIR_NAME)
 
 JAVA_DOWNLOADER = "install-jdk"
-_USER_DIR = path.expanduser("~")
-INSTALLATION_PATH = path.join(_USER_DIR, ".jre")
+_USER_DIR = Path.home()
+INSTALLATION_PATH = _USER_DIR / ".jre"
 
-
-# @span_with, why is enum_spanner_regex and stanford-corenlp in the git tree, did you forget to add them to gitignore?
+# @dean: why is enum_spanner_regex and stanford-corenlp in the git tree, did you forget to add them to gitignore?
 # TODO@niv: @dean, no - i use enum_spanner_regex for the installation (convenient because we don't have to mess with
 #  temporary folders and stuff like that), and stanford-corenlp isn't in the tree
 
+STANFORD_ZIP_GOOGLE_DRIVE_ID = "1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
+STANFORD_ZIP_NAME = "stanford-corenlp-4.1.0.zip"
+STANFORD_ZIP_PATH = CURR_DIR / STANFORD_ZIP_NAME
+
+logger = logging.getLogger(__name__)
+
+
 def _is_installed_nlp():
-    return path.isdir(NLP_DIR_PATH)
+    return Path(NLP_DIR_PATH).is_dir()
 
 
 def _install_nlp():
-    logging.info(f"Installing {NLP_DIR_NAME} into {CURR_DIR}.")
-    with urlopen(NLP_URL) as zipresp:
+    logger.info(f"Installing {NLP_DIR_NAME} into {CURR_DIR}.")
+
+    if not STANFORD_ZIP_PATH.is_file():
+        logger.info(f"downloading {STANFORD_ZIP_NAME}...")
+        download_file_from_google_drive(STANFORD_ZIP_GOOGLE_DRIVE_ID, STANFORD_ZIP_PATH)
+
+    with open(STANFORD_ZIP_PATH, "rb") as zipresp:
         with ZipFile(BytesIO(zipresp.read())) as zfile:
             logging.info(f"Extracting files from the zip folder...")
             zfile.extractall(CURR_DIR)
+
     logging.info("installation completed.")
 
 
@@ -46,10 +64,10 @@ def _is_installed_java():
     version = popen(
         "java -version 2>&1 | grep 'version' 2>&1 | awk -F\\\" '{ split($2,a,\".\"); print a[1]\".\"a[2]}'").read()
 
-    if len(version) != 0 and float(version) >= MIN_VERSION:
+    if len(version) != 0 and float(version) >= JAVA_MIN_VERSION:
         return True
 
-    return path.isdir(INSTALLATION_PATH)
+    return Path(INSTALLATION_PATH).is_dir()
 
 
 def _run_installation():
@@ -59,8 +77,10 @@ def _run_installation():
     if not _is_installed_java():
         logging.info(f"Installing JRE into {INSTALLATION_PATH}.")
         jdk.install('8', jre=True)
-        logging.info("installation completed.")
-        # assert _is_installed_java()
+        if _is_installed_java():
+            logging.info("installation completed.")
+        else:
+            raise IOError("installation failed")
 
 
 _run_installation()
@@ -68,7 +88,6 @@ CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
 
 
 # ********************************************************************************************************************
-
 
 def tokenize_wrapper(sentence: str):
     for token in CoreNLPEngine.tokenize(sentence):
@@ -159,10 +178,10 @@ EntityMentions = dict(ie_function=entitymentions_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO: I can't find how pattern should look like
+# TODO: add implementation according to: https://stanfordnlp.github.io/CoreNLP/regexner.html
 def regexner_wrapper(sentence, pattern):
-    for res in CoreNLPEngine.regexner(sentence, pattern):
-        raise NotImplementedError()
+    # for res in CoreNLPEngine.regexner(sentence, pattern):
+    raise NotImplementedError()
 
 
 RGXNer = dict(ie_function=regexner_wrapper,
@@ -174,10 +193,10 @@ RGXNer = dict(ie_function=regexner_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO: I can't find how pattern should look like, ADD LINK TO STANFORD NLP
+# TODO: add implementation according to: https://stanfordnlp.github.io/CoreNLP/tokensregex.html
 def tokensregex_wrapper(sentence, pattern):
-    for res in CoreNLPEngine.tokensregex(sentence, pattern):
-        raise NotImplementedError()
+    # for res in CoreNLPEngine.tokensregex(sentence, pattern):
+    raise NotImplementedError()
 
 
 TokensRegex = dict(ie_function=tokensregex_wrapper,
@@ -205,9 +224,9 @@ CleanXML = dict(ie_function=cleanxml_wrapper,
 
 def parse_wrapper(sentence):
     for res in CoreNLPEngine.parse(sentence):
-        # pyDatalog doesn't allow '\n' inside a string, <nl> represents new-line
-        # notice - this yields a tuple
-        yield (res.replace("\n", "<nl>").replace("\r", ""),)
+        # note #1: this yields a tuple
+        # note #2: we replace the newlines with `<nl> because it is difficult to tell the results apart otherwise
+        yield res.replace("\n", "<nl>").replace("\r", ""),
 
 
 Parse = dict(ie_function=parse_wrapper,
@@ -235,9 +254,9 @@ DepParse = dict(ie_function=dependency_parse_wrapper,
 
 def coref_wrapper(sentence):
     for res in CoreNLPEngine.coref(sentence):
-        yield res['id'], res['text'], res['type'], res['number'], res['gender'], res['animacy'], res['startIndex'], \
-              res['endIndex'], res['headIndex'], res['sentNum'], \
-              tuple(res['position']), str(res['isRepresentativeMention'])
+        yield (res['id'], res['text'], res['type'], res['number'], res['gender'], res['animacy'], res['startIndex'],
+               res['endIndex'], res['headIndex'], res['sentNum'],
+               tuple(res['position']), str(res['isRepresentativeMention']))
 
 
 Coref = dict(ie_function=coref_wrapper,
@@ -254,8 +273,8 @@ Coref = dict(ie_function=coref_wrapper,
 def openie_wrapper(sentence):
     for lst in CoreNLPEngine.openie(sentence):
         for res in lst:
-            yield res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']), \
-                  res['object'], tuple(res['objectSpan'])
+            yield (res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']),
+                   res['object'], tuple(res['objectSpan']))
 
 
 OpenIE = dict(ie_function=openie_wrapper,
@@ -271,8 +290,8 @@ OpenIE = dict(ie_function=openie_wrapper,
 def kbp_wrapper(sentence):
     for lst in CoreNLPEngine.kbp(sentence):
         for res in lst:
-            yield res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']), \
-                  res['object'], tuple(res['objectSpan'])
+            yield (res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']),
+                   res['object'], tuple(res['objectSpan']))
 
 
 KBP = dict(ie_function=kbp_wrapper,
@@ -285,9 +304,6 @@ KBP = dict(ie_function=kbp_wrapper,
 # ********************************************************************************************************************
 
 
-# TODO@niv: tom, are you sure? the second half of the yield wasn't yielded because it wasn't inside parentheses,
-#  that might've been the issue
-# doesn't works because regexlog parser doesn't support strings such as "\"hello\"" (with escapes)
 def quote_wrapper(sentence):
     for res in CoreNLPEngine.quote(sentence):
         yield (res['id'], res['text'], res['beginIndex'], res['endIndex'], res['beginToken'], res['endToken'],
@@ -332,11 +348,10 @@ TrueCase = dict(ie_function=truecase_wrapper,
 
 # ********************************************************************************************************************
 
-# TODO@niv: @dean
-# I don't understand the schema (list of dicts with values of list)
+# TODO: add implementation according to: https://stanfordnlp.github.io/CoreNLP/udfeats.html
 def udfeats_wrapper(sentence: str):
-    for token in CoreNLPEngine.udfeats(sentence):
-        raise NotImplementedError()
+    # for token in CoreNLPEngine.udfeats(sentence):
+    raise NotImplementedError()
 
 
 UDFeats = dict(ie_function=udfeats_wrapper,

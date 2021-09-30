@@ -22,10 +22,6 @@ jupyter:
 When rgxlog is loaded, a default session (`rgxlog.magic_session`) is created behind the scenes. This is the session that %%rgxlog uses.
 
 
-NOTE: currently, all sessions share the same engine (same rules and clauses stored inside `PyDatalog`),
-so it's probably a bad idea to use more than one at a time.
-
-
 Using a session manually enables one to dynamically generate queries, facts, and rules
 
 ```python
@@ -34,18 +30,15 @@ session = rgxlog.magic_session
 ```
 
 ```python
-result = session.run_query('''
+result = session.run_commands('''
     new uncle(str, str)
     uncle("benjen", "jon")''')
 ```
 
 ```python
-for maybe_uncle in ['ned','robb','benjen']:
-    result = session.run_query(f'?uncle("{maybe_uncle}",Y)')
+for maybe_uncle in ['ned', 'robb', 'benjen']:
+    result = session.run_commands(f'?uncle("{maybe_uncle}",Y)')
 ```
-
-# TODO@niv: remove this whole section after @dean responds
-
 
 # Changing the session of the magic cells
 
@@ -57,20 +50,27 @@ import rgxlog  # default session starts here
 from rgxlog import Session
 
 another_session=Session()
+old_magic_session = rgxlog.magic_session
+rgxlog.magic_session = another_session
 ```
 
 ```python
 %%rgxlog
-# still using the default session
-# TODO@niv: dean, why do the sessions share their execution? is this intentional?
-# new uncle(str, str)
+# we're now using the new session
+new uncle(str, str)
 uncle("bob", "greg")
 ?uncle(X,Y)
 ```
 
 ```python
-print(rgxlog.magic_session._term_graph)
-print(another_session._term_graph)
+# back to the old session
+rgxlog.magic_session = old_magic_session
+%rgxlog uncle("jim", "dwight")
+```
+
+```python
+print(rgxlog.magic_session._parse_graph)
+print(another_session._parse_graph)
 ```
 
 # Mixing magics with dynamic session calls
@@ -101,7 +101,6 @@ enrolled("howard", "physics")
 
 
 gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
-
 ```
 
 ```python
@@ -115,7 +114,7 @@ gpa(Student,Grade) <- py_rgx_string(gpa_str, "(\w+).*?(\d+)")->(Student, Grade),
 Now we are going to define the rules using a for loop
 
 ```python
-subjects=[
+subjects = [
     "chemistry",
     "physics",
     "operation_systems",
@@ -123,11 +122,11 @@ subjects=[
 ]
 
 for subject in subjects:
-    rule=f"""
+    rule = f"""
     gpa_of_{subject}_students(Student, Grade) <- gpa(Student, Grade), enrolled(Student, "{subject}")
     """
-    session.run_query(rule)
-    print(rule) # we print the rule here to show you what strings are sent to the session
+    session.run_commands(rule)
+    print(rule)  # we print the rule here to show you what strings are sent to the session
 ```
 
 As you can see, we can use the dynamically defined rules in a magic cell
@@ -140,7 +139,7 @@ As you can see, we can use the dynamically defined rules in a magic cell
 And we can also query dynamically
 
 ```python
-subjects=[
+subjects = [
     "chemistry",
     "physics",
     "operation_systems",
@@ -148,22 +147,22 @@ subjects=[
 ]
 
 for subject in subjects:
-    query=f"""
+    query = f"""
     ?gpa_of_{subject}_students(Student, Grade)
     """
-    session.run_query(query)
+    session.run_commands(query)
 ```
 
 # Processing the result of a query in python and using the result in a new query
 
 
-we can add `format_results=True` to `run_query` to get the output as one of the following:
+we can add `format_results=True` to `run_statements` to get the output as one of the following:
 1. `[]`, if the result is false,
 2. `[tuple()]`, if the result if true (the tuple is empty), or
 3. `pandas.DataFrame`, otherwise-
 
 ```python
-results = session.run_query(f'''
+results = session.run_commands(f'''
     new friends(str, str, str)
     friends("bob", "greg", "clyde")
     friends("steven", "benny", "horace")
@@ -176,12 +175,12 @@ res = results[0].values.tolist()
 filtered = tuple(filter(lambda friends: 'bob' in friends or 'lenny' in friends, res))
 
 # and feed the matching tuples into a new query:
-session.run_query('new buddies(str, str)')
+session.run_commands('new buddies(str, str)')
 
 for first, second, _ in filtered:
-    session.run_query(f'buddies("{first}", "{second}")')
+    session.run_commands(f'buddies("{first}", "{second}")')
 
-result = session.run_query("?buddies(First, Second)")
+result = session.run_commands("?buddies(First, Second)")
 ```
 
 # Import a relation from a `DataFrame`
@@ -206,30 +205,30 @@ sometimes we can save time by creating rgxlog code dynamically:
 ```python
 from rgxlog import magic_session
 
-%rgxlog new sibling(str,str)
-%rgxlog new parent(str,str)
+%rgxlog new sibling(str, str)
+%rgxlog new parent(str, str)
 %rgxlog parent("jonathan", "george")
 %rgxlog parent("george", "joseph")
 %rgxlog parent("joseph", "holy")
 %rgxlog parent("holy", "jotaro")
 %rgxlog sibling("dio", "jonathan")
 
-a = ["parent","uncle_aunt","grandparent", "sibling"]
-# sibling(X,Y) <- parent(Z,X), parent(Z,Y)
-d = {"uncle_aunt":["sibling","parent"], "grandparent":["parent","parent"], "great_aunt_uncle": ["sibling","parent","parent"]}
+a = ["parent", "uncle_aunt", "grandparent", "sibling"]
+d = {"uncle_aunt": ["sibling", "parent"], "grandparent": ["parent", "parent"], "great_aunt_uncle": ["sibling", "parent", "parent"]}
+
 for key, steps in d.items():
     # add the start of the rule
     result = key + "(A,Z) <- "
     for num, step in enumerate(steps):
         # for every step in the list, add the condition: step(letter, next letter).
         #  the first letter is always `A`, and the last is always `Z`
-        curr_letter = chr(num+ord("A"))
+        curr_letter = chr(num + ord("A"))
         result += step + "(" + curr_letter + ","
-        if (num == len(steps)-1):
+        if (num == len(steps) - 1):
             result += "Z)"
         else:
             result += chr(1 + ord(curr_letter)) + "), "
     print("running:", result)
-    magic_session.run_query(result)
-    magic_session.run_query(f"?{key}(X,Y)")
+    magic_session.run_commands(result)
+    magic_session.run_commands(f"?{key}(X,Y)")
 ```

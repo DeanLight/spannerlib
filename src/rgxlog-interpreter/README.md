@@ -1,7 +1,4 @@
-========
-Overview
-========
-
+======== Overview ========
 
 TODO
 
@@ -9,9 +6,7 @@ TODO
 Installation
 ============
 
-
     pip install rgxlog_interpreter
-
 
 Documentation
 =============

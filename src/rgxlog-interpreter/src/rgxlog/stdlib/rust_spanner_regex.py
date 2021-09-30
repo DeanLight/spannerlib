@@ -2,16 +2,15 @@
 this module contains implementation of regex ie functions using the rust package `enum-spanner-rs`
 """
 import logging
-import os
 import re
 import tempfile
-from os import path
+from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
 from typing import Iterable
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
-from rgxlog.stdlib.utils import run_command
+from rgxlog.stdlib.utils import run_cli_command
 
 # types
 RUST_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
@@ -19,16 +18,17 @@ RUST_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
 # rust
 DOWNLOAD_RUST_URL = "https://rustup.rs/"
 
-# package info
+# package info - @niv: i use my fork here because it's more stable than the original
 PACKAGE_GIT_URL = "https://github.com/NNRepos/enum-spanner-rs"
 PACKAGE_NAME = "enum-spanner-rs"
+PACKAGE_WIN_FILENAME = PACKAGE_NAME + ".exe"
 REGEX_FOLDER_NAME = "enum_spanner_regex"
 
 # installation paths
-REGEX_FOLDER_PATH = path.join(path.dirname(__file__), REGEX_FOLDER_NAME)
-REGEX_TEMP_PATH = path.join(REGEX_FOLDER_PATH, "temp{}.txt")
-REGEX_EXE_PATH_POSIX = path.join(REGEX_FOLDER_PATH, "bin", PACKAGE_NAME)
-REGEX_EXE_PATH_WIN = path.join(REGEX_FOLDER_PATH, "bin", PACKAGE_NAME + ".exe")
+REGEX_FOLDER_PATH = Path(__file__).parent / REGEX_FOLDER_NAME
+REGEX_TEMP_PATH = Path(REGEX_FOLDER_PATH) / "temp{}.txt"
+REGEX_EXE_PATH_POSIX = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_NAME
+REGEX_EXE_PATH_WIN = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_WIN_FILENAME
 
 # commands
 RUSTUP_TOOLCHAIN = "1.34"
@@ -51,6 +51,8 @@ SPAN_PATTERN = re.compile(r"(?P<start>\d+), ?(?P<end>\d+)")
 # etc
 TEMP_FILE_NAME = "temp"
 
+logger = logging.getLogger(__name__)
+
 
 def _download_and_install_rust_and_regex():
     # don't use "cargo -V" because it starts downloading stuff sometimes
@@ -63,12 +65,8 @@ def _download_and_install_rust_and_regex():
     if errcode:
         raise IOError(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
 
-    # TODO why do you have a print here
-    # the installation messages should be warnings too since they are not standard control flow and cause unexpected delay for the user
-    # additionally, the default is warning level and currently the install only shows the warning in the notebook
-    logging.warning(f"{PACKAGE_NAME} was not found on your system")
-    logging.info(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
-    print("\nstarting installation")
+    logger.warning(f"{PACKAGE_NAME} was not found on your system")
+    logger.warning(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
 
     # i didn't pipe here because i want the user to see the output
     with Popen(RUSTUP_CMD_ARGS) as rustup:
@@ -80,11 +78,11 @@ def _download_and_install_rust_and_regex():
     if not _is_installed_package():
         raise Exception("installation failed - check the output")
 
-    logging.info("installation completed")
+    logger.warning("installation completed")
 
 
 def _is_installed_package():
-    return path.isfile(REGEX_EXE_PATH)
+    return Path(REGEX_EXE_PATH).is_file()
 
 
 def rgx_span_out_type(output_arity):
@@ -122,9 +120,17 @@ def _format_spanner_span_output(output: Iterable[str]):
     return output_lists
 
 
-def rgx(text, regex_pattern, out_type):
+def rgx(text, regex_pattern, out_type: str):
+    """
+    An IE function which runs regex using rust's `enum-spanner-rs` and yields tuples of strings/spans (not both).
+
+    @param text: the string on which regex is run.
+    @param regex_pattern: the pattern to run.
+    @param out_type: string/span - decides which one will be returned.
+    @return: a tuple of strings/spans.
+    """
     with tempfile.TemporaryDirectory() as temp_dir:
-        rgx_temp_file_name = os.path.join(temp_dir, TEMP_FILE_NAME)
+        rgx_temp_file_name = Path(temp_dir) / TEMP_FILE_NAME
         with open(rgx_temp_file_name, "w+") as f:
             f.write(text)
 
@@ -137,7 +143,7 @@ def rgx(text, regex_pattern, out_type):
         else:
             assert False, "illegal out_type"
 
-        regex_output = format_function(run_command(rust_regex_args, stderr=True))
+        regex_output = format_function(run_cli_command(rust_regex_args, stderr=True))
 
         for out in regex_output:
             yield out
@@ -145,10 +151,9 @@ def rgx(text, regex_pattern, out_type):
 
 def rgx_span(text, regex_pattern):
     """
-    @param text: The input text for the regex operation
-    @param regex_pattern: the pattern of the regex operation
-
-    @return: tuples of spans that represents the results
+    @param text: The input text for the regex operation.
+    @param regex_pattern: the pattern of the regex operation.
+    @return: tuples of spans that represents the results.
     """
     return rgx(text, regex_pattern, "span")
 
@@ -161,10 +166,9 @@ RGX = dict(ie_function=rgx_span,
 
 def rgx_string(text, regex_pattern):
     """
-    @param text: The input text for the regex operation
-    @param regex_pattern: the pattern of the regex operation
-
-    @return: tuples of strings that represents the results
+    @param text: The input text for the regex operation.
+    @param regex_pattern: the pattern of the regex operation.
+    @return: tuples of strings that represents the results.
     """
     return rgx(text, regex_pattern, "string")
 

@@ -25,39 +25,84 @@ https://lark-parser.readthedocs.io/en/stable/lark_cheatsheet.pdf
 A short tutorial on lark:
 https://github.com/lark-parser/lark/blob/master/docs/json_tutorial.md
 """
+from abc import ABC, abstractmethod
+from lark import Transformer, Token
+from lark import Tree as LarkNode
+from lark.visitors import Interpreter, Visitor_Recursive, Visitor
+from pathlib import Path
+from typing import List, no_type_check, Set
 
-from lark import Transformer
-from lark.visitors import Interpreter, Visitor_Recursive
-from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.utils.lark_passes_utils import *
-from rgxlog.engine.utils.general_utils import *
+from rgxlog.engine.datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule,
+                                                    IERelation, RelationDeclaration, Relation)
+from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
+from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
+from rgxlog.engine.state.graphs import NetxStateGraph
+from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
+                                               fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
+from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node
 
 
-class RemoveTokens(Transformer):
+def get_tree(**kwargs):
+    tree = kwargs.get("tree", None)
+    if tree is None:
+        raise Exception("Expected tree parameter")
+    return tree
+
+
+class GenericPass(ABC):
+    @abstractmethod
+    def run_pass(self, **kwargs):
+        pass
+
+
+class VisitorPass(Visitor, GenericPass):
+    def run_pass(self, **kwargs):
+        self.visit(get_tree(**kwargs))
+
+
+class VisitorRecursivePass(Visitor_Recursive, GenericPass):
+    def run_pass(self, **kwargs):
+        self.visit(get_tree(**kwargs))
+
+
+class InterpreterPass(Interpreter, GenericPass):
+    def run_pass(self, **kwargs):
+        self.visit(get_tree(**kwargs))
+
+
+class TransformerPass(Transformer, GenericPass):
+    def run_pass(self, **kwargs):
+        return self.transform(get_tree(**kwargs))
+
+
+class RemoveTokens(TransformerPass):
     """
     a lark pass that should be used before the semantic checks
     transforms the lark tree by removing the redundant tokens
-    note that we inherit from 'Transformer' in order to be able to visit token nodes
+    note that we inherit from 'Transformer' in order to be able to visit token nodes.
     """
 
     def __init__(self, **kw):
         super().__init__(visit_tokens=True)
 
     @staticmethod
+    def string_handler(args):
+        name_string: Token = args
+        return name_string.value
+
+    @staticmethod
     def INT(args):
-        string_of_integer = args[0:]
+        string_of_integer = args
         integer = int(string_of_integer)
         return integer
 
     @staticmethod
     def LOWER_CASE_NAME(args):
-        name_string = args[0:]
-        return name_string
+        return RemoveTokens.string_handler(args)
 
     @staticmethod
     def UPPER_CASE_NAME(args):
-        name_string = args[0:]
-        return name_string
+        return RemoveTokens.string_handler(args)
 
     @staticmethod
     def STRING(args):
@@ -66,34 +111,35 @@ class RemoveTokens(Transformer):
         return unquoted_string
 
 
-class CheckReservedRelationNames(Interpreter):
+class CheckReservedRelationNames(InterpreterPass):
     """
     A lark tree semantic check.
-    Checks if there are relations in the program with a name that starts with "__rgxlog__"
+    Checks if there are relations in the program with a name that starts with `RESERVED_RELATION_PREFIX`
     if such relations exist, throw an exception as this is a reserved name for rgxlog.
     """
 
     def __init__(self, **kw):
         super().__init__()
 
+    @no_type_check
     @assert_expected_node_structure
     def relation_name(self, relation_name_node: LarkNode):
-        # get the name of the relation and check if it is not reserved (starts with '__rgxlog__')
         relation_name = relation_name_node.children[0]
-        if relation_name.startswith("__rgxlog__"):
+        if RESERVED_RELATION_PREFIX in relation_name:
             raise Exception(f'encountered relation name: {relation_name}. '
-                            f'names starting with __rgxlog__ are reserved')
+                            f'names containing {RESERVED_RELATION_PREFIX} are reserved')
 
 
-class FixStrings(Visitor_Recursive):
+class FixStrings(VisitorRecursivePass):
     """
      Fixes the strings in the lark tree.
-     Removes the line overflow escapes from strings
+     Removes the line overflow escapes from strings.
      """
 
     def __init__(self, **kw):
         super().__init__()
 
+    @no_type_check
     @assert_expected_node_structure
     def string(self, string_node: LarkNode):
         # get and fix the string that is stored in the node
@@ -105,7 +151,7 @@ class FixStrings(Visitor_Recursive):
         string_node.children[0] = fixed_string_value
 
 
-class ConvertSpanNodesToSpanInstances(Visitor_Recursive):
+class ConvertSpanNodesToSpanInstances(VisitorRecursivePass):
     """
     Converts each span node in the ast to a span instance.
     This means that a span in the tree will be represented by a single value (a "DataTypes.Span" instance)
@@ -116,6 +162,7 @@ class ConvertSpanNodesToSpanInstances(Visitor_Recursive):
     def __init__(self, **kw):
         super().__init__()
 
+    @no_type_check
     @assert_expected_node_structure
     def span(self, span_node: LarkNode):
         # get the span start and end
@@ -126,17 +173,18 @@ class ConvertSpanNodesToSpanInstances(Visitor_Recursive):
         span_node.children = [Span(span_start, span_end)]
 
 
-class ConvertStatementsToStructuredNodes(Visitor_Recursive):
+class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
     """
     converts each statement node in the tree to a structured node, making it easier to parse in future passes.
     a structured node is a class representation of a node in the abstract syntax tree.
     note that after using this pass, non statement nodes will no longer appear in the tree, so passes that
-    should work on said nodes need to be used before this pass in the passes pipeline (e.g. FixString)
+    should work on said nodes need to be used before this pass in the passes pipeline (e.g. FixString).
     """
 
     def __init__(self, **kw):
         super().__init__()
 
+    @no_type_check
     @assert_expected_node_structure
     def assignment(self, assignment_node: LarkNode):
 
@@ -152,6 +200,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         structured_assignment_node = Assignment(var_name, value, value_type)
         assignment_node.children = [structured_assignment_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def read_assignment(self, assignment_node: LarkNode):
 
@@ -167,6 +216,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         structured_assignment_node = ReadAssignment(var_name, read_arg, read_arg_type)
         assignment_node.children = [structured_assignment_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def add_fact(self, fact_node: LarkNode):
 
@@ -177,6 +227,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         structured_fact_node = AddFact(relation.relation_name, relation.term_list, relation.type_list)
         fact_node.children = [structured_fact_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def remove_fact(self, fact_node: LarkNode):
 
@@ -187,6 +238,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         structured_fact_node = RemoveFact(relation.relation_name, relation.term_list, relation.type_list)
         fact_node.children = [structured_fact_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def query(self, query_node: LarkNode):
 
@@ -197,6 +249,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         structured_query_node = Query(relation.relation_name, relation.term_list, relation.type_list)
         query_node.children = [structured_query_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def relation_declaration(self, relation_decl_node: LarkNode):
         relation_name_node = relation_decl_node.children[0]
@@ -220,6 +273,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         relation_decl_struct_node = RelationDeclaration(relation_name, type_list)
         relation_decl_node.children = [relation_decl_struct_node]
 
+    @no_type_check
     @assert_expected_node_structure
     def rule(self, rule_node: LarkNode):
         rule_head_node = rule_node.children[0]
@@ -253,19 +307,19 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         rule_node.children = [structured_rule_node]
 
     @staticmethod
+    @no_type_check
     def _create_structured_relation_node(relation_node: LarkNode) -> Relation:
         """
-        an utility function that constructs a structured relation node.
+        a utility function that constructs a structured relation node.
         while a relation node isn't a statement in and of itself, it is useful for defining
         a structured rule node (which is constructed from multiple relations).
         This is also a useful method for getting the attributes of a relation that defines a fact or a query
-        (as facts and queries are actions that are defined by a relation)
+        (as facts and queries are actions that are defined by a relation).
 
-        Args:
-            relation_node: a lark node that is structured like a relation (e.g. relation, add_fact, query)
-
-        Returns: a structured node that represents the relation (structured_nodes.Relation instance)
+        @param relation_node: a lark node that is structured like a relation (e.g. relation, add_fact, query).
+        @return: a structured node that represents the relation (structured_nodes.Relation instance).
         """
+
         relation_name_node = relation_node.children[0]
         term_list_node = relation_node.children[1]
 
@@ -279,17 +333,17 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         return structured_relation_node
 
     @staticmethod
+    @no_type_check
     def _create_structured_ie_relation_node(ie_relation_node: LarkNode) -> IERelation:
         """
-        an utility function that constructs a structured ie relation node.
+        a utility function that constructs a structured ie relation node.
         while an ie relation node isn't a statement in and of itself, it is useful for defining
         a structured rule node (which is constructed from multiple relations which may include ie relations).
 
-        Args:
-            ie_relation_node: an ie_relation lark node
-
-        Returns: a structured node that represents the ie relation (a structured_nodes.IERelation instance)
+        @param ie_relation_node: an ie_relation lark node.
+        @return: a structured node that represents the ie relation (a structured_nodes.IERelation instance).
         """
+
         relation_name_node = ie_relation_node.children[0]
         input_term_list_node = ie_relation_node.children[1]
         output_term_list_node = ie_relation_node.children[2]
@@ -311,7 +365,7 @@ class ConvertStatementsToStructuredNodes(Visitor_Recursive):
         return structured_ie_relation_node
 
 
-class CheckDefinedReferencedVariables(Interpreter):
+class CheckDefinedReferencedVariables(InterpreterPass):
     """
     A lark tree semantic check.
     checks whether each variable reference refers to a defined variable.
@@ -321,25 +375,23 @@ class CheckDefinedReferencedVariables(Interpreter):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def _assert_var_defined(self, var_name):
+    def _assert_var_defined(self, var_name: str) -> None:
         """
-        an utility function that checks if a variable is a defined variable in the symbol table
+        A utility function that checks if a variable is a defined variable in the symbol table.
         if not, raises an exception
 
-        Args:
-            var_name: the name of the variable that will be checked
+        @param var_name: the name of the variable that will be checked
         """
         if not self.symbol_table.contains_variable(var_name):
             raise Exception(f'variable "{var_name}" is not defined')
 
-    def _assert_var_terms_defined(self, term_list, type_list):
+    def _assert_var_terms_defined(self, term_list: List[str], type_list: List[DataTypes]) -> None:
         """
-        an utility function that checks if the non free variables in a term list are defined
-        if one of them is not defined, raises an exception
+        A utility function that checks if the non free variables in a term list are defined
+        if one of them is not defined, raises an exception.
 
-        Args:
-            term_list: a list of terms
-            type_list: the type of terms in term_list
+        @param term_list: a list of terms.
+        @param type_list: the type of terms in term_list.
         """
         for term, term_type in zip(term_list, type_list):
             if term_type is DataTypes.var_name:
@@ -384,50 +436,8 @@ class CheckDefinedReferencedVariables(Interpreter):
             else:
                 raise Exception(f'unexpected relation type: {relation_type}')
 
-# We don't use this pass anymore.
-# We catch relation redefinitions in SymbolTable -> add_relation_schema.
 
-# class CheckForRelationRedefinitions(Interpreter):
-#     """
-#     A lark tree semantic check.
-#     checks if a relation is being redefined, and raises an exception if this is the case.
-#     relations can be defined either by a relation declaration or by appearing in a rule head
-#     """
-#     """
-#     TODO: in a future version of rgxlog we might want to allow for a rule head to be "redefined", meaning
-#      a relation could be defined by multiple rule heads, allowing for recursion.
-#      This would mean changing this pass as it does not allow a relation to appear in multiple rule heads.
-#     """
-#
-#     def __init__(self, **kw):
-#         super().__init__()
-#         self.symbol_table = kw['symbol_table']
-#
-#     def _assert_relation_not_defined(self, relation_name):
-#         """
-#         an utility function that checks if a relation is already defined and raises an exception
-#         if it does.
-#
-#         Args:
-#             relation_name: the relation name to be checked for redefinition
-#         """
-#         if self.symbol_table.contains_relation(relation_name):
-#             raise Exception(f'relation "{relation_name}" is already defined. relation redefinitions are not allowed')
-#
-#     @unravel_lark_node
-#     def relation_declaration(self, relation_decl: RelationDeclaration):
-#         self._assert_relation_not_defined(relation_decl.relation_name)
-#
-#     @unravel_lark_node
-#     def rule(self, rule: Rule):
-#         """
-#         a rule is a definition of the relation that appears in the rule head.
-#         this function checks that the relation that appears in the rule head is not being redefined.
-#         """
-#         self._assert_relation_not_defined(rule.head_relation.relation_name)
-
-
-class CheckReferencedRelationsExistenceAndArity(Interpreter):
+class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     """
     A lark tree semantic check.
     Checks whether each normal relation (that is not an ie relation) reference refers to a defined relation.
@@ -438,10 +448,10 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
-    def _assert_relation_exists_and_correct_arity(self, relation: Relation):
+    def _assert_relation_exists_and_correct_arity(self, relation: Relation) -> None:
         """
-        An utility function that checks if a relation exists in the symbol table
-        and if the correct arity was used
+        A utility function that checks if a relation exists in the symbol table
+        and if the correct arity was used.
 
         @param relation: the relation that will be checked.
         """
@@ -482,7 +492,7 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
     @unravel_lark_node
     def rule(self, rule: Rule):
         """
-        a rule is a definition of the relation in the rule head. Therefore the rule head reference does not
+        A rule is a definition of the relation in the rule head. Therefore the rule head reference does not
         need to be checked.
         The rule body references relations that should already exist. Those will be checked in this method.
         """
@@ -493,14 +503,14 @@ class CheckReferencedRelationsExistenceAndArity(Interpreter):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
-class CheckReferencedIERelationsExistenceAndArity(Visitor_Recursive):
+class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     """
     A lark tree semantic check.
     Checks whether each ie relation reference refers to a defined ie function.
     Also checks if the correct input arity and output arity for the ie function were used.
 
     currently, an ie relation can only be found in a rule's body, so this is the only place where this
-    check will be performed
+    check will be performed.
     """
 
     def __init__(self, **kw):
@@ -539,7 +549,7 @@ class CheckReferencedIERelationsExistenceAndArity(Visitor_Recursive):
                                     f' {used_output_arity} (should be {correct_output_arity})')
 
 
-class CheckRuleSafety(Visitor_Recursive):
+class CheckRuleSafety(VisitorRecursivePass):
     """
     A lark tree semantic check.
     checks whether the rules in the programs are safe.
@@ -587,10 +597,8 @@ class CheckRuleSafety(Visitor_Recursive):
         rule_head_free_vars = get_free_var_names(head_relation.term_list, head_relation.type_list)
 
         # get the free variables in the rule body that serve as output terms.
-        rule_body_output_free_var_sets = [get_output_free_var_names(relation, relation_type)
-                                          for relation, relation_type in
-                                          zip(body_relation_list, body_relation_type_list)]
-        rule_body_output_free_vars = set().union(*rule_body_output_free_var_sets)
+        rule_body_output_free_var_sets = [get_output_free_var_names(relation) for relation in body_relation_list]
+        rule_body_output_free_vars = set.union(*rule_body_output_free_var_sets)
 
         # make sure that every free variable in the rule head appears at least once as an output term
         # in the rule body
@@ -610,33 +618,32 @@ class CheckRuleSafety(Visitor_Recursive):
         # b. if a relation is safe, mark its output free variables as bound.
         # c. repeat step 'a' until no new bound free variables are found.
 
-        def get_size_difference(set1: set, set2: set):
+        def get_size_difference(set1: Set, set2: Set) -> int:
             """
-            an utility function to be used as the distance function of the fixed point algorithm
+            A utility function to be used as the distance function of the fixed point algorithm.
 
-            @return: the size difference of set1 and set2
+            @return: the size difference of set1 and set2.
             """
             size_difference = abs(len(set1) - len(set2))
             return size_difference
 
-        def get_bound_free_vars(known_bound_free_vars: set) -> set:
+        def get_bound_free_vars(known_bound_free_vars: Set[str]) -> Set[str]:
             """
-            an utility function to be used as the step function of the fixed point algorithm.
+            a utility function to be used as the step function of the fixed point algorithm.
             this function iterates over all of the rule body relations, checking if each one of them is safe.
-            if a rule is found to be safe, this function will mark its output free variables as bound
+            if a rule is found to be safe, this function will mark its output free variables as bound.
 
-            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound
-
-            @return: a union of 'known_bound_free_vars' with the bound free variables that were found
+            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound.
+            @return: a union of 'known_bound_free_vars' with the bound free variables that were found.
             """
 
-            for relation, relation_type in zip(body_relation_list, body_relation_type_list):
+            for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
                 # check if all of its input free variable terms of the relation are bound
-                input_free_vars = get_input_free_var_names(relation, relation_type)
+                input_free_vars = get_input_free_var_names(relation)
                 unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
                 if len(unbound_input_free_vars) == 0:
                     # all input free variables are bound, mark the relation's output free variables as bound
-                    output_free_vars = get_output_free_var_names(relation, relation_type)
+                    output_free_vars = get_output_free_var_names(relation)
                     known_bound_free_vars = known_bound_free_vars.union(output_free_vars)
 
             return known_bound_free_vars
@@ -645,10 +652,10 @@ class CheckRuleSafety(Visitor_Recursive):
         bound_free_vars = fixed_point(start=set(), step=get_bound_free_vars, distance=get_size_difference, thresh=0)
 
         # get all of the input free variables that were used in the rule body
-        rule_body_input_free_var_sets = [get_input_free_var_names(relation, relation_type)
+        rule_body_input_free_var_sets = [get_input_free_var_names(relation)
                                          for relation, relation_type in
                                          zip(body_relation_list, body_relation_type_list)]
-        rule_body_input_free_vars = set().union(*rule_body_input_free_var_sets)
+        rule_body_input_free_vars = set.union(*rule_body_input_free_var_sets)
 
         # assert there aren't any unbound free variables
         unbound_free_vars = rule_body_input_free_vars.difference(bound_free_vars)
@@ -659,102 +666,11 @@ class CheckRuleSafety(Visitor_Recursive):
                             f'{unbound_free_vars}')
 
 
-class ReorderRuleBody(Visitor_Recursive):
-    """
-    A lark tree optimization pass.
-    Reorders each rule body relations list so that each relation in the list has its input free variables bound by
-    previous relations in the list, or it has no input free variables terms.
-    for example: the rule "B(Z) <- RGX(X,Y)->(Z), A(X), A(Y)"
-           will change to "B(Z) <- A(X), A(Y), RGX(X,Y)->(Z)"
-    This way it is possible to easily compute the rule body relations from the start of the list to its end.
-    for more details on the execution of rules see execution.GenericExecution
-    """
-
-    def __init__(self, **kw):
-        super().__init__()
-
-    @unravel_lark_node
-    def rule(self, rule: Rule):
-        body_relation_list = rule.body_relation_list
-        body_relation_type_list = rule.body_relation_type_list
-
-        # in order to reorder the relations, we will use a similar fixed point algorithm to the one in
-        # the 'CheckRuleSafety' pass.
-        # when a safe relation is found, it will be inserted into a list. This way, an order in which each
-        # relation's input free variables are bound by previous relations in the list is found.
-
-        # use a fix point iteration algorithm to find a valid order:
-        # a. iterate over all of the rule body relations and check if they are safe, meaning all their input
-        # free variable terms are bound by the current relations in the reordered list
-        # (or they have no input free variables).
-        # b. if a new safe relation was found, mark its output free variables as bound, and add the relation
-        # to the reordered relations list
-        # c. repeat step 'a' until no new bound free variables were found (meaning also that no new safe relations
-        # were found)
-
-        # initialize assuming every relation is not safe
-        reordered_relations_list = []
-        reordered_relations_type_list = []  # note that we also need to update the type list of the relations
-
-        def get_size_difference(set1: set, set2: set):
-            """
-            an utility function to be used as the distance function of the fixed point algorithm
-
-            @return: the size difference of set1 and set2
-            """
-            size_difference = abs(len(set1) - len(set2))
-            return size_difference
-
-        def get_bound_free_vars(known_bound_free_vars: set):
-            """
-            an utility function to be used as the step function of the fixed point algorithm.
-            this function iterates over all of the rule body relations, checking if each one of them is safe.
-            if a rule is found to be safe, this function will mark its output free variables as bound, and
-            add it to the reordered relations list (thus finding a valid body relations order).
-
-            @param known_bound_free_vars: a set of the free variables in the rule that are known to be bound
-
-            @return: a union of 'known_bound_free_vars' with the bound free variables that were found
-            """
-
-            # try to find new safe relations
-            for relation, relation_type in zip(body_relation_list, body_relation_type_list):
-                if relation not in reordered_relations_list:
-                    # this relation was not marked as safe yet.
-                    # check if all of its input free variable terms are bound
-                    input_free_vars = get_input_free_var_names(relation, relation_type)
-                    unbound_input_free_vars = input_free_vars.difference(known_bound_free_vars)
-                    if len(unbound_input_free_vars) == 0:
-                        # all input free variables are bound, mark the relation as safe by adding it to the
-                        # reordered list. also save its type.
-                        reordered_relations_list.append(relation)
-                        reordered_relations_type_list.append(relation_type)
-                        # mark the relation's output free variables as bound
-                        output_free_vars = get_output_free_var_names(relation, relation_type)
-                        known_bound_free_vars = known_bound_free_vars.union(output_free_vars)
-
-            return known_bound_free_vars
-
-        # use the fixed point algorithm to find a valid order of the relations
-        fixed_point(start=set(), step=get_bound_free_vars, distance=get_size_difference, thresh=0)
-
-        # assert that all of the relations were reordered
-        all_relations_were_reordered = len(reordered_relations_list) == len(body_relation_list)
-        if not all_relations_were_reordered:
-            raise Exception(f'The rule "{rule}"\n'
-                            f'is not safe. This pass assumes its input rule is safe, '
-                            f'so make sure to check for rule safety before using it')
-
-        # replace the current relation list with the reordered relation list
-        rule.body_relation_list = reordered_relations_list
-        rule.body_relation_type_list = reordered_relations_type_list
-
-
-class TypeCheckAssignments(Interpreter):
+class TypeCheckAssignments(InterpreterPass):
     """
     a lark semantic check
     performs type checking for assignments
-    in the current version of lark, this type checking is only required for read assignments
+    in the current version of lark, this type checking is only required for read assignments.
     """
 
     def __init__(self, **kw):
@@ -777,7 +693,7 @@ class TypeCheckAssignments(Interpreter):
                             f'because the argument type for read() was {read_arg_type} (must be a string)')
 
 
-class TypeCheckRelations(Interpreter):
+class TypeCheckRelations(InterpreterPass):
     """
     A lark tree semantic check.
     This pass makes the following assumptions and might not work correctly if they are not met
@@ -793,7 +709,7 @@ class TypeCheckRelations(Interpreter):
     example for the semantic check failing on check no. 3:
     new A(str)
     new B(int)
-    C(X) <- A(X), B(X) # error since X is expected to be both an int and a string
+    C(X) <- A(X), B(X) # error since X is expected to be both an int and a string.
     """
 
     def __init__(self, **kw):
@@ -840,13 +756,13 @@ class TypeCheckRelations(Interpreter):
                             f'{conflicted_free_vars}')
 
 
-class SaveDeclaredRelationsSchemas(Interpreter):
+class SaveDeclaredRelationsSchemas(InterpreterPass):
     """
     this pass writes the relation schemas that it finds in relation declarations and rule heads* to the
     symbol table.
     * note that a rule is a relation declaration of the rule head relation and a definition of its contents
 
-    this pass assumes that type checking was already performed on its input
+    this pass assumes that type checking was already performed on its input.
     """
 
     def __init__(self, **kw):
@@ -859,7 +775,6 @@ class SaveDeclaredRelationsSchemas(Interpreter):
 
     @unravel_lark_node
     def rule(self, rule: Rule):
-
         # a rule head relation only contains free variable terms, meaning its schema is defined exclusively by the
         # types of said free variables. a free variable type in a rule can be found using the schemas of relations
         # in the rule body
@@ -872,11 +787,11 @@ class SaveDeclaredRelationsSchemas(Interpreter):
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
 
-class ResolveVariablesReferences(Interpreter):
+class ResolveVariablesReferences(InterpreterPass):
     """
     a lark execution pass
     this pass replaces variable references with their literal values.
-    also replaces DataTypes.var_name types with the real type of the variable
+    also replaces DataTypes.var_name types with the real type of the variable.
     """
 
     def __init__(self, **kw):
@@ -899,15 +814,15 @@ class ResolveVariablesReferences(Interpreter):
             assignment.read_arg = self.symbol_table.get_variable_value(read_arg_var_name)
             assignment.read_arg_type = self.symbol_table.get_variable_type(read_arg_var_name)
 
-    def _resolve_var_terms(self, term_list, type_list):
+    def _resolve_var_terms(self, term_list, type_list) -> None:
         """
-        an utility function for resolving variables in term lists
+        A utility function for resolving variables in term lists
         for each variable term in term_list, replace its value in term_list with its literal value, and
         its DataTypes.var_name type in type_list with its real type
-        the changes to the lists are done in-place
+        the changes to the lists are done in-place.
 
-        @param term_list: a list of terms
-        @param type_list: the type of terms in term_list
+        @param term_list: a list of terms.
+        @param type_list: the type of terms in term_list.
         """
 
         # get the list of terms with resolved variable values
@@ -952,12 +867,12 @@ class ResolveVariablesReferences(Interpreter):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-class ExecuteAssignments(Interpreter):
+class ExecuteAssignments(InterpreterPass):
     """
     a lark execution pass
     executes assignments by saving variables' values and types in the symbol table
     should be used only after variable references are resolved, meaning the assigned values and read() arguments
-    are guaranteed to be literals
+    are guaranteed to be literals.
     """
 
     def __init__(self, **kw):
@@ -971,12 +886,9 @@ class ExecuteAssignments(Interpreter):
 
     @unravel_lark_node
     def read_assignment(self, assignment: ReadAssignment):
-
         # try to read the file and get its content as a single string. this string is the assigned value.
         try:
-            file = open(assignment.read_arg, 'r')
-            assigned_value = file.read()
-            file.close()
+            assigned_value = Path(assignment.read_arg).read_text()
         except Exception:
             raise Exception(f'could not open file "{assignment.read_arg}"')
 
@@ -985,87 +897,62 @@ class ExecuteAssignments(Interpreter):
         self.symbol_table.set_var_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
 
-class AddStatementsToNetxTermGraph(Interpreter):
+class AddStatementsToNetxParseGraph(InterpreterPass):
     """
-    a lark execution pass.
-    This pass adds each statement in the input parse tree to the term graph.
-    This pass is made to work with execution.NetworkxExecution as the execution engine and
-    term_graph.NetxTermGraph as the term graph.
+    A lark execution pass.
+    This pass adds each statement in the input parse tree to the parse graph.
+    This pass is made to work with execution.naive_execution as the execution function and
+    term_graph.NetxStateGraph as the parse graph.
 
-    Each statement in the term graph will be a child of the term graph's root.
+    Each statement in the parse graph will be a child of the parse graph's root.
 
-    each statement in the term graph will have a type attribute that contains the statement's name in the
+    Each statement in the parse graph will have a type attribute that contains the statement's name in the
     rgxlog grammar.
 
-    some nodes in the term graph will contain a value attribute that would contain a relation that describes
+    Some nodes in the parse graph will contain a value attribute that would contain a relation that describes
     that statement.
     e.g. a add_fact node would have a value which is a structured_nodes.AddFact instance
     (which inherits from structured_nodes.Relation) that describes the fact that will be added.
 
     Some statements are more complex and will be described by more than a single node, e.g. a rule node.
     The reason for this is that we want a single netx node to not contain more than one Relation
-    (or IERelation) instance. This will make the term graph a "graph of relation nodes", allowing
+    (or IERelation) instance. This will make the parse graph a "graph of relation nodes", allowing
      for flexibility for optimization in the future.
     """
 
     def __init__(self, **kw):
         super().__init__()
-        self.term_graph = kw['term_graph']
+        self.parse_graph: NetxStateGraph = kw['parse_graph']
 
-    def _add_statement_to_term_graph(self, statement_type, statement_value):
+    def _add_statement_to_parse_graph(self, statement_type: str, statement_value) -> None:
         """
-        An utility function that adds a statement to the term graph, meaning it adds a node that
-        represents the statement to the term graph, then attach the node to the term graph's root.
-        Should only be used for simple statements (i.e. can be described by a single node)
+        A utility function that adds a statement to the parse graph, meaning it adds a node that
+        represents the statement to the parse graph, then attach the node to the parse graph's root.
+        Should only be used for simple statements (i.e. can be described by a single node).
 
         @param statement_type: the type of the statement, (e.g. add_fact). should be the same as the statement's
                                name in the grammar. Will be set as the node's type attribute.
         @param statement_value: will be set as the value attribute of the node.
         """
-        new_statement_node = self.term_graph.add_term(type=statement_type, value=statement_value)
-        self.term_graph.add_edge(self.term_graph.get_root_id(), new_statement_node)
+        new_statement_node = self.parse_graph.add_node(type=statement_type, value=statement_value)
+        self.parse_graph.add_edge(self.parse_graph.get_root_id(), new_statement_node)
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
-        self._add_statement_to_term_graph("add_fact", fact)
+        self._add_statement_to_parse_graph("add_fact", fact)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
-        self._add_statement_to_term_graph("remove_fact", fact)
+        self._add_statement_to_parse_graph("remove_fact", fact)
 
     @unravel_lark_node
     def query(self, query: Query):
-        self._add_statement_to_term_graph("query", query)
+        self._add_statement_to_parse_graph("query", query)
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
-        self._add_statement_to_term_graph("relation_declaration", relation_decl)
+        self._add_statement_to_parse_graph("relation_declaration", relation_decl)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
-        # create the root of the rule statement in the term graph. Note that this is an "empty" node (it does
-        # not contain a value). This is because the rule statement will be defined by the children of this node.
-        tg_rule_node = self.term_graph.add_term(type="rule")
-        # attach the rule node to the term graph root
-        self.term_graph.add_edge(self.term_graph.get_root_id(), tg_rule_node)
-
-        # create the rule head node for the term graph.
-        # since a rule head is defined by a single relation, this node will contain a value which is that relation.
-        tg_head_relation_node = self.term_graph.add_term(type="rule_head", value=rule.head_relation)
-        # attach the rule head node to the rule statement node
-        self.term_graph.add_edge(tg_rule_node, tg_head_relation_node)
-
-        # create the rule body node. Unlike the rule head node, we can't define the rule body node
-        # with a single value since a rule body can be defined by multiple relations.
-        # Instead, each of the rule body relations will be represented by a term graph node
-        # that is a child of the rule body node.
-        tg_rule_body_node = self.term_graph.add_term(type="rule_body")
-        # attach the rule body node to the rule statement node
-        self.term_graph.add_edge(tg_rule_node, tg_rule_body_node)
-
-        # add each rule body relation to the graph as a child node of the rule body node.
-        for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            # add the relation to the term graph
-            tg_body_relation_node = self.term_graph.add_term(type=relation_type, value=relation)
-            # attach the relation to the rule body
-            self.term_graph.add_edge(tg_rule_body_node, tg_body_relation_node)
+        self._add_statement_to_parse_graph("rule", rule)

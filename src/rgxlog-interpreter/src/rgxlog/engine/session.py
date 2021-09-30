@@ -1,76 +1,71 @@
 import csv
+import logging
 import os
 import re
-from pathlib import Path
-from typing import Tuple, List, Union
-
 from lark.lark import Lark
-from lark.visitors import Visitor_Recursive, Interpreter, Visitor, Transformer
 from pandas import DataFrame
+from pathlib import Path
 from tabulate import tabulate
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check
 
 import rgxlog
-from rgxlog.engine import execution
-from rgxlog.engine.datatypes.primitive_types import Span
-from rgxlog.engine.execution import GenericExecution, ExecutionBase, AddFact, DataTypes, RelationDeclaration, Query
+import rgxlog.engine.engine
+from rgxlog.engine.datatypes.ast_node_types import AddFact, RelationDeclaration
+from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
+from rgxlog.engine.engine import FALSE_VALUE, TRUE_VALUE
+from rgxlog.engine.execution import (Query, FREE_VAR_PREFIX, naive_execution)
+from rgxlog.engine.passes.adding_inference_rules_to_computation_graph import AddRulesToComputationTermGraph
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
                                               CheckReferencedRelationsExistenceAndArity,
                                               CheckReferencedIERelationsExistenceAndArity, CheckRuleSafety,
                                               TypeCheckAssignments, TypeCheckRelations,
-                                              SaveDeclaredRelationsSchemas, ReorderRuleBody, ResolveVariablesReferences,
-                                              ExecuteAssignments, AddStatementsToNetxTermGraph)
-from rgxlog.engine.state.symbol_table import SymbolTable
-from rgxlog.engine.state.term_graph import NetxTermGraph
+                                              SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
+                                              ExecuteAssignments, AddStatementsToNetxParseGraph, GenericPass)
+from rgxlog.engine.state.graphs import TermGraph, NetxStateGraph, GraphBase, TermGraphBase
+from rgxlog.engine.state.symbol_table import SymbolTable, SymbolTableBase
+from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
+from rgxlog.engine.utils.lark_passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
                                OpenIE, KBP, Quote, Sentiment, TrueCase)
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
 from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
 
+CSV_DELIMITER = ";"
+
 PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, JsonPathFull, Tokenize, SSplit, POS, Lemma, NER,
                        EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
 
-SPAN_GROUP1 = "start"
-SPAN_GROUP2 = "end"
-
-# as of now, we don't support negative/float numbers (for both spans and integers)
-SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
-# rgx constants
-FALSE_VALUE = []
-TRUE_VALUE = [tuple()]
+logger = logging.getLogger(__name__)
 
 
 # @niv: add rust_rgx_*_from_file (ask dean)
 # @dean: i dont understand this question. Please elaborate
 # TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
-
-def _infer_relation_type(row: iter):
-    # TODO@tom: @niv add documentation to row param
+def _infer_relation_type(row: Iterable):
     """
-    guess the relation type based on the data.
-    we support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`)
-    @param row:
-    @raise Exception: if there is a cell inside the dataframe with illegal type.
+    Guess the relation type based on the data.
+    We support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`).
+
+    @param row: an iterable of values, extracted from a csv file or a dataframe.
+    @raise ValueError: if there is a cell inside `row` of an illegal type.
     """
     relation_types = []
     for cell in row:
         try:
-            is_num = int(cell)
-        except (ValueError, TypeError):
-            is_num = None
-
-        if is_num is not None:
+            int(cell)  # check if the cell can be converted to integer
             relation_types.append(DataTypes.integer)
-        elif isinstance(cell, Span) or re.match(SPAN_PATTERN, cell):
-            relation_types.append(DataTypes.span)
-        elif re.match(STRING_PATTERN, cell):
-            relation_types.append(DataTypes.string)
-        else:
-            raise Exception(f"illegal type in csv: {cell}")
+        except (ValueError, TypeError):
+            if isinstance(cell, Span) or re.match(SPAN_PATTERN, cell):
+                relation_types.append(DataTypes.span)
+            elif re.match(STRING_PATTERN, cell):
+                relation_types.append(DataTypes.string)
+            else:
+                raise ValueError(f"value doesn't match any datatype: {cell}")
 
     return relation_types
 
@@ -87,9 +82,8 @@ def _text_to_typed_data(line, relation_types):
             if isinstance(str_or_object, Span):
                 transformed_line.append(str_or_object)
             else:
-                span_match = re.match(SPAN_PATTERN, str_or_object)
-                start, end = span_match.group(SPAN_GROUP1), span_match.group(SPAN_GROUP2)
-                transformed_line.append(Span(span_start=start, span_end=end))
+                transformed_span = string_to_span(str_or_object)
+                transformed_line.append(transformed_span)
         elif rel_type == DataTypes.integer:
             transformed_line.append(int(str_or_object))
         else:
@@ -100,12 +94,12 @@ def _text_to_typed_data(line, relation_types):
 
 
 def format_query_results(query: Query, query_results: List) -> Union[DataFrame, List]:
-    # TODO@tom: @niv add documentation to params
     """
-    formats a single result from the engine into a usable format
-    @param query:
-    @param query_results:
-    @return:
+    Formats a single result from the engine into a usable format.
+
+    @param query: the query that was executed, and outputted `query_results`.
+    @param query_results: the results after executing the aforementioned query.
+    @return: a false value, a true value, or a dataframe representing the query + its results.
     """
     assert isinstance(query_results, list), "illegal results format"
 
@@ -120,8 +114,7 @@ def format_query_results(query: Query, query_results: List) -> Union[DataFrame, 
         # convert the resulting tuples to a more organized format
         results_matrix = []
         for result in query_results:
-            # we saved spans as tuples of length 2 in pyDatalog, convert them back to spans so when printed,
-            # they will be printed as a span instead of a tuple
+            # span tuples are converted to Span objects
             converted_span_result = [Span(term[0], term[1]) if (isinstance(term, tuple) and len(term) == 2)
                                      else term
                                      for term in result]
@@ -136,6 +129,22 @@ def format_query_results(query: Query, query_results: List) -> Union[DataFrame, 
 
 
 def tabulate_result(result: Union[DataFrame, List]):
+    """
+    Organizes a query result in a table
+    for example:
+        {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
+          X
+       -------
+        linus
+        walter
+
+    there are two cases where a table will not be printed:
+    1. the query returned no results. in this case '[]' will be printed
+    2. the query returned a single empty tuple, in this case '[()]' will be printed
+
+    @param result: the query result (free variable names are the dataframe's column names).
+    @return: a tabulated string.
+    """
     if isinstance(result, DataFrame):
         # query results can be printed as a table
         result_string = tabulate(result, headers="keys", tablefmt="presto", stralign="center", showindex=False)
@@ -150,36 +159,28 @@ def tabulate_result(result: Union[DataFrame, List]):
     return result_string
 
 
-def queries_to_string(query_results: List[Tuple[Query, List]]):
-    # @niv: maybe we should remove the "printing results" thing?
-    # @dean: what are the pros and cons? Did you consider user experience
-    #  I need more to go on to understand if we should do this
-    # TODO@niv: @dean this is why i've opened the issue - i think it's easier to discuss things there.
-    #  pros - that's how most interpreters work, since the users know the input that they insert.
-    #   also, this way we don't have to save it, which allows us to use cleaner structures.
-    #  cons - more difficult to debug, perhaps less convenient for beginners, especially when running multiple commands
-    #   in a single query
+def queries_to_string(query_results: List[Tuple[Query, List]]) -> str:
     """
-    takes in a list of results from PyDatalog and converts them into a single string, which contains
+    Takes in a list of results from the engine and converts them into a single string, which contains
     either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.
 
     for example:
 
-    printing results for query 'lecturer_of(X, "abigail")':
+    {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
       X
     --------
     linus
     walter
 
 
-    @param query_results: List[the Query object used in execution, the execution's results (from PyDatalog)]
+    @param query_results: List[the Query object used in execution, the execution's results (from engine)].
     """
 
     all_result_strings = []
     query_results = list(filter(None, query_results))  # remove Nones
     for query, results in query_results:
         query_result_string = tabulate_result(format_query_results(query, results))
-        query_title = f"printing results for query '{query}':"
+        query_title = f"{QUERY_RESULT_PREFIX}'{query}':"
 
         # combine the title and table to a single string and save it to the prints buffer
         titled_result_string = f'{query_title}\n{query_result_string}\n'
@@ -188,11 +189,24 @@ def queries_to_string(query_results: List[Tuple[Query, List]]):
 
 
 class Session:
-    def __init__(self, debug=False):
-        self._symbol_table = SymbolTable()
-        self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
-        self._term_graph = NetxTermGraph()
-        self._execution = execution.PydatalogEngine(debug)
+    def __init__(self, symbol_table: Optional[SymbolTableBase] = None, parse_graph: Optional[GraphBase] = None,
+                 term_graph: Optional[TermGraphBase] = None):
+        """
+        parse_graph is the lark graph which contains is the result of parsing a single statement,
+        term_graph is the combined tree of all statements so far, which describes the connection between relations.
+        """
+
+        if symbol_table is None:
+            self._symbol_table: SymbolTableBase = SymbolTable()
+            self._symbol_table.register_predefined_ie_functions(PREDEFINED_IE_FUNCS)
+
+        else:
+            self._symbol_table = symbol_table
+
+        self._parse_graph = NetxStateGraph() if parse_graph is None else parse_graph
+        self._term_graph: TermGraphBase = TermGraph() if term_graph is None else term_graph
+        self._engine = rgxlog.engine.engine.SqliteEngine()
+        self._execution = naive_execution
 
         self._pass_stack = [
             RemoveTokens,
@@ -207,123 +221,139 @@ class Session:
             TypeCheckAssignments,
             TypeCheckRelations,
             SaveDeclaredRelationsSchemas,
-            ReorderRuleBody,
             ResolveVariablesReferences,
             ExecuteAssignments,
-            AddStatementsToNetxTermGraph,
-            GenericExecution
+            AddStatementsToNetxParseGraph,
+            AddRulesToComputationTermGraph
         ]
 
-        grammar_file_path = os.path.dirname(rgxlog.grammar.__file__)
+        grammar_file_path = Path(rgxlog.grammar.__file__).parent
         grammar_file_name = 'grammar.lark'
-        with open(f'{grammar_file_path}/{grammar_file_name}', 'r') as grammar_file:
+        with open(grammar_file_path / grammar_file_name, 'r') as grammar_file:
             self._grammar = grammar_file.read()
 
-        self._parser = Lark(self._grammar, parser='lalr', debug=True)
-        # self._register_default_functions()
+        self._parser = Lark(self._grammar, parser='lalr')
 
-    def _run_passes(self, tree, pass_list) -> Tuple[Query, List]:
+    def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
         """
         Runs the passes in pass_list on tree, one after another.
         """
-        exec_result = None
-        for cur_pass in pass_list:
-            if issubclass(cur_pass, (Visitor, Visitor_Recursive, Interpreter)):
-                cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).visit(tree)
-            elif issubclass(cur_pass, Transformer):
-                tree = cur_pass(symbol_table=self._symbol_table, term_graph=self._term_graph).transform(tree)
-            elif issubclass(cur_pass, ExecutionBase):
-                # the execution is always the last pass, and there is always only one per statement, so there's
-                # no need to have a list of results here
-                exec_result = cur_pass(
-                    term_graph=self._term_graph,
-                    symbol_table=self._symbol_table,
-                    rgxlog_engine=self._execution
-                ).execute()
-            else:
-                raise Exception(f'invalid pass: {cur_pass}')
-        return exec_result
+        logger.debug(f"initial lark tree:\n{lark_tree.pretty()}")
+        logger.debug(f"initial term graph:\n{self._term_graph}")
+
+        for curr_pass in pass_list:
+            curr_pass_object = curr_pass(parse_graph=self._parse_graph,
+                                         symbol_table=self._symbol_table,
+                                         term_graph=self._term_graph)
+            new_tree = curr_pass_object.run_pass(tree=lark_tree)
+
+            if new_tree is not None:
+                lark_tree = new_tree
+                logger.debug(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
 
     def __repr__(self):
-        return [repr(self._symbol_table), repr(self._term_graph)]
+        return "\n".join([repr(self._symbol_table), repr(self._parse_graph)])
 
     def __str__(self):
-        return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._term_graph)}'
+        return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
 
-    def run_query(self, query: str, print_results: bool = True, format_results=False) -> (
+    # TODO@niv: refactor into run_commands (including tutorials/md) when dean approves
+    @no_type_check
+    def run_commands(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
         """
-        generates an AST and passes it through the pass stack
+        Generates an AST and passes it through the pass stack.
 
-        @param format_results: if this is true, return the formatted result instead of the `[Query, List]` pair
-        @param query: the user's input
-        @param print_results: whether to print the results to stdout or not
-        @return the results of every query, in a list
+        @param format_results: if this is true, return the formatted result instead of the `[Query, List]` pair.
+        @param query: the user's input.
+        @param print_results: whether to print the results to stdout or not.
+        @return: the results of every query, in a list.
         """
-        exec_results = []
+        query_results = []
         parse_tree = self._parser.parse(query)
 
         for statement in parse_tree.children:
-            exec_result = self._run_passes(statement, self._pass_stack)
-            if exec_result is not None:
-                exec_results.append(exec_result)
+            self._run_passes(statement, self._pass_stack)
+            query_result = self._execution(parse_graph=self._parse_graph,
+                                           symbol_table=self._symbol_table,
+                                           rgxlog_engine=self._engine,
+                                           term_graph=self._term_graph)
+            if query_result is not None:
+                query_results.append(query_result)
                 if print_results:
-                    print(queries_to_string([exec_result]))
+                    print(queries_to_string([query_result]))
 
         if format_results:
-            return [format_query_results(*exec_result) for exec_result in exec_results]
+            return [format_query_results(*query_result) for query_result in query_results]
         else:
-            return exec_results
+            return query_results
 
-    def register(self, ie_function, ie_function_name, in_rel, out_rel):
+    def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes], out_rel) -> None:
+        """
+        Registers an ie function.
+
+        @see params in IEFunction's __init__.
+        """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    def get_pass_stack(self):
+    def get_pass_stack(self) -> List[str]:
         """
-        @return: the current pass stack
+        @return: the current pass stack.
         """
+
         return [pass_.__name__ for pass_ in self._pass_stack]
 
-    def set_pass_stack(self, user_stack: List):
+    def set_pass_stack(self, user_stack: List[Type[GenericPass]]):
         """
-        sets a new pass stack instead of the current one
-        @param user_stack: a user supplied pass stack
+        Sets a new pass stack instead of the current one.
 
-        @return: success message with the new pass stack
+        @param user_stack: a user supplied pass stack.
+        @return: success message with the new pass stack.
         """
 
         if type(user_stack) is not list:
             raise TypeError('user stack should be a list of passes')
         for pass_ in user_stack:
-            if not issubclass(pass_, (Visitor, Visitor_Recursive, Interpreter, Transformer, ExecutionBase)):
-                raise TypeError('user stack should be a subclass of '
-                                'Visitor/Visitor_Recursive/Interpreter/Transformer/ExecutionBase')
+            if not issubclass(pass_, GenericPass):
+                raise TypeError('user stack should be a subclass of `GenericPass`')
 
         self._pass_stack = user_stack.copy()
         return self.get_pass_stack()
 
+    def _remove_rule_relation_from_symbols_and_engine(self, relation_name: str) -> None:
+        """
+        Removes the relation from the symbol table and the execution tables.
+
+        @param relation_name: the name of the relation ot remove.
+        """
+        self._symbol_table.remove_rule_relation(relation_name)
+        self._engine.remove_table(relation_name)
+
     def remove_rule(self, rule: str):
         """
-        remove a rule from the rgxlog engine
+        Remove a rule from the rgxlog's engine.
 
-        @param rule: the rule to be removed
+        @param rule: the rule to be removed.
         """
-        self._execution.remove_rule(rule)
+        is_last = self._term_graph.remove_rule(rule)
+        if is_last:
+            relation_name = rule_to_relation_name(rule)
+            self._remove_rule_relation_from_symbols_and_engine(relation_name)
 
-    def remove_rule(self, rule: str):
+    def remove_all_rules(self, rule_head: Optional[str] = None):
         """
-        remove a rule from the rgxlog engine
+        Removes all rules from the engine.
 
-        @param rule: the rule to be removed
+        @param rule_head: if rule head is not none we remove all rules with rule_head.
         """
-        self._execution.remove_rule(rule)
 
-    def remove_all_rules(self, rule_head: str = None):
-        """
-        Removes all rules from PyDatalog's engine.
-        @param rule_head: if rule head is not none we remove all rules with rule_head
-        """
-        self._execution.remove_all_rules(rule_head)
+        if rule_head is None:
+            self._term_graph = TermGraph()
+            relations_names = self._symbol_table.remove_all_rule_relations()
+            self._engine.remove_tables(relations_names)
+        else:
+            self._term_graph.remove_rules_with_head(rule_head)
+            self._remove_rule_relation_from_symbols_and_engine(rule_head)
 
     @staticmethod
     def _unknown_task_type():
@@ -331,7 +361,7 @@ class Session:
 
     def _add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
         symbol_table = self._symbol_table
-        engine = self._execution
+        engine = self._engine
         # first make sure the types are legal, then we add them to the engine (to make sure
         #  we don't add them in case of an error)
         facts = []
@@ -349,8 +379,8 @@ class Session:
         for fact in facts:
             engine.add_fact(fact)
 
-    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=";"):
-        if not os.path.isfile(csv_file_name):
+    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=CSV_DELIMITER):
+        if not Path(csv_file_name).is_file():
             raise IOError("csv file does not exist")
 
         if os.stat(csv_file_name).st_size == 0:
@@ -383,13 +413,19 @@ class Session:
 
         self._add_imported_relation_to_engine(data, relation_name, relation_types)
 
-    def query_into_csv(self, query: str, csv_file_name: str, delimiter=";"):
-        # run a query normally and get formatted results:
-        query_results = self.run_query(query, print_results=False)
-        if len(query_results) != 1:
-            raise Exception("a query into csv must have exactly one output")
+    def send_commands_result_into_csv(self, commands: str, csv_file_name: str, delimiter: str = CSV_DELIMITER) -> None:
+        """
+        run commands as usual and output their formatted results into a csv file (the commands should contain a query)
+        @param commands: the commands to run
+        @param csv_file_name: the file into which the output will be written
+        @param delimiter: a csv separator between values
+        @return: None
+        """
+        commands_results = self.run_commands(commands, print_results=False)
+        if len(commands_results) != 1:
+            raise Exception("the commands must have exactly one output")
 
-        formatted_result = format_query_results(*query_results[0])
+        formatted_result = format_query_results(*commands_results[0])
 
         if isinstance(formatted_result, DataFrame):
             formatted_result.to_csv(csv_file_name, index=False, sep=delimiter)
@@ -399,70 +435,75 @@ class Session:
                 writer = csv.writer(f, delimiter=delimiter)
                 writer.writerows(formatted_result)
 
-    def query_into_df(self, query: str) -> Union[DataFrame, List]:
-        # run a query normally and get formatted results:
-        query_results = self.run_query(query, print_results=False)
-        if len(query_results) != 1:
-            raise Exception("the query must have exactly one output")
+    def send_commands_result_into_df(self, commands: str) -> Union[DataFrame, List]:
+        """
+        run commands as usual and output their formatted results into a dataframe (the commands should contain a query)
+        @param commands: the commands to run
+        @return: formatted results (possibly a dataframe)
+        """
+        commands_results = self.run_commands(commands, print_results=False)
+        if len(commands_results) != 1:
+            raise Exception("the commands must have exactly one output")
 
-        return format_query_results(*query_results[0])
+        return format_query_results(*commands_results[0])
 
     def _relation_name_to_query(self, relation_name: str):
         symbol_table = self._symbol_table
         relation_schema = symbol_table.get_relation_schema(relation_name)
         relation_arity = len(relation_schema)
-        query = "?" + relation_name + "(" + ", ".join(f"T{i}" for i in range(relation_arity)) + ")"
+        query = (f"?{relation_name}(" + ", ".join(f"{FREE_VAR_PREFIX}{i}" for i in range(relation_arity)) + ")")
         return query
 
     def export_relation_into_df(self, relation_name: str):
         query = self._relation_name_to_query(relation_name)
-        return self.query_into_df(query)
+        return self.send_commands_result_into_df(query)
 
-    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=";"):
+    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=CSV_DELIMITER):
         query = self._relation_name_to_query(relation_name)
-        return self.query_into_csv(query, csv_file_name, delimiter)
+        return self.send_commands_result_into_csv(query, csv_file_name, delimiter)
 
     def print_registered_ie_functions(self):
         """
-            Prints information about the registered ie functions
+        Prints information about the registered ie functions.
         """
         self._symbol_table.print_registered_ie_functions()
 
     def remove_ie_function(self, name: str):
         """
-        removes a function from the symbol table
+        Removes a function from the symbol table.
 
-        @param name: the name of the ie function to remove
+        @param name: the name of the ie function to remove.
         """
         self._symbol_table.remove_ie_function(name)
 
     def remove_all_ie_functions(self):
         """
-        removes all the ie functions from the symbol table
+        Removes all the ie functions from the symbol table.
         """
         self._symbol_table.remove_all_ie_functions()
 
-    def print_all_rules(self, rule_head: str = None):
+    def print_all_rules(self, head: Optional[str] = None):
         """
-        prints all the rules that are registered.
+        Prints all the rules that are registered.
 
-        @param rule_head: if rule head is not none we print all rules with rule_head
+        @param head: if specified it will print only rules with the given head relation name.
         """
 
-        self._execution.print_all_rules(rule_head)
+        self._term_graph.print_all_rules(head)
 
 
 if __name__ == "__main__":
-    session = Session()
-    query = '''
-        json_string = " \
-        {'abigail': {'chemistry': 80, 'operation systems': 99}, \
-        'jordan':  {'chemistry': 65, 'physics': 70}, \
-        'gale':    {'operation systems': 100}, \
-        'howard':  {'chemistry': 90, 'physics':91, 'biology':92} \
-        }"
-        json_table(Student, Subject, Grade) <- JsonPathFull(json_string, "*.*") -> (Student, Subject, Grade)
-        ?json_table(Student, Subject, Grade)
-        '''
+    # this is for debugging. don't shadow variables like `query`, that's annoying
+    logging.basicConfig(level=logging.DEBUG)
+    my_session = Session()
+    my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
+    commands = """
+            new B(int, int)
+            B(1, 1)
+            B(1, 2)
+            B(2, 3)
+            A(X, Y) <- B(X, Y)
+            ?A(X, Y)
+        """
 
-    session.run_query(query)
+    my_session.run_commands(commands)

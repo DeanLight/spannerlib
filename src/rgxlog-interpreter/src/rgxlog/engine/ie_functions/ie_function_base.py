@@ -1,4 +1,5 @@
-from typing import Iterable, List, Callable, Union
+from typing import Iterable, Callable, Union, Tuple, List
+
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 
@@ -9,7 +10,7 @@ class IEFunction:
     """
 
     def __init__(self, ie_function_def: Callable, in_types: Iterable[DataTypes],
-                 out_types: Union[Iterable[DataTypes], Callable[[int], Iterable[DataTypes]]]):
+                 out_types: Union[List[DataTypes], Callable[[int], Iterable[DataTypes]]]):
         """
         @param ie_function_def : the user defined ie function implementation.
         @param in_types        : iterable of the input types to the function.
@@ -19,7 +20,7 @@ class IEFunction:
         self.in_types = in_types
         self.out_types = out_types
 
-    def ie_function(self, *args) -> Iterable[Iterable]:
+    def ie_function(self, *args) -> Iterable[Iterable[Union[str, int, Tuple[int, int]]]]:   # Tuple[int, int] represents a Span
         """
         The actual information extraction function that will be used
         the function must return a list of lists/tuples that represents the results, another option is to yield the
@@ -31,20 +32,18 @@ class IEFunction:
         a span could be returned either as a tuple of length 2, or as a datatypes.Span instance
         """
         output = self.ie_function_def(*args)
-        # if not isinstance(output, collections.Iterable):
-        #     return (output,)
         return output
 
-    def get_input_types(self) -> List[DataTypes]:
+    def get_input_types(self) -> Iterable[DataTypes]:
         """
-        returns an iterable of the input types to the function
+        @return: an iterable of the input types to the function
         This function must be defined as it is used for type checking in semantic passes and execution.
         """
         return self.in_types
 
-    def get_output_types(self, output_arity: int) -> List[DataTypes]:
+    def get_output_types(self, output_arity: int) -> Iterable[DataTypes]:
         """
-        given an expected output arity returns an iterable of the output types to the function.
+        @return: given an expected output arity returns an iterable of the output types to the function.
         if the ie function cannot return an output of length output_arity, should return None.
         This function must be defined as it is used for type checking in semantic passes and execution.
         """
@@ -53,10 +52,13 @@ class IEFunction:
             return self.out_types(output_arity)
 
         # output is constant
-        if not output_arity == len(self.out_types):
+        if not output_arity == len(list(self.out_types)):
             raise Exception("Output arity doesn't match the declared arity.")
         return self.out_types
 
     def get_meta_data(self) -> str:
+        """
+        @return: metadata about the ie function.
+        """
         metadata = f"""Input types: {self.in_types}.\nOutput types: {self.out_types}"""
         return metadata

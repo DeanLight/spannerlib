@@ -20,7 +20,7 @@ class DataTypes(Enum):
 
     def __str__(self):
         """
-        returns a string representation of a datatype.
+        @return: a string representation of a datatype.
         The string is also the same string used as a node type of said datatype in the grammar and passes
         e.g. a node that contains a Datatype.string value is of type "string" in the grammar and passes
         """
@@ -29,7 +29,7 @@ class DataTypes(Enum):
     @staticmethod
     def from_string(datatype_string):
         """
-        returns a datatype enum representation of a string type.
+        @return: a datatype enum representation of a string type.
         The string has to be the same string used as a node type of a datatype in the grammar and passes
         """
         try:
@@ -42,11 +42,13 @@ class DataTypes(Enum):
 class Span:
     """A representation of a span"""
 
-    def __init__(self, span_start, span_end):
+    def __init__(self, span_start: int, span_end: int):
         """
-        @param span_start: the first (included) index of the span
-        @param span_end: the last (excluded) index of the span
+        @param span_start: the first (included) index of the span.
+        @param span_end: the last (excluded) index of the span.
         """
+        if not isinstance(span_start, int) and isinstance(span_end, int):
+            raise TypeError("Span's start/end must be integers")
         self.span_start = span_start
         self.span_end = span_end
 
@@ -59,7 +61,9 @@ class Span:
 
         return self.span_start < other.span_start
 
-    def __eq__(self, other: "Span"):
+    def __eq__(self, other):
+        if not isinstance(other, Span):
+            return False
         return self.span_start == other.span_start and self.span_end == other.span_end
 
     # used for sorting `Span`s in dataframes

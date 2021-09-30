@@ -5,6 +5,7 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
+from typing import List, Any, Tuple, Set
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
@@ -26,12 +27,42 @@ def get_term_list_string(term_list, type_list):
     return term_list_string
 
 
-# TODO: understand why this causes a bug (rule safety something)
-# @dataclasses.dataclass(init=False)
+class RelationDeclaration:
+    """a representation of a relation_declaration statement"""
+
+    def __init__(self, relation_name, type_list):
+        """
+        @param relation_name: the name of the relation
+        @param type_list: a list of the types of the terms in the relation's tuples
+        @raise Exception: if there is invalid term type in term list.
+        """
+        self.relation_name: str = relation_name
+        self.type_list: List[DataTypes] = type_list
+
+    def __str__(self):
+        type_strings = []
+        for term_type in self.type_list:
+            if term_type is DataTypes.string:
+                type_strings.append('str')
+            elif term_type is DataTypes.span:
+                type_strings.append('span')
+            elif term_type is DataTypes.integer:
+                type_strings.append('int')
+            else:
+                raise ValueError(f"invalid term type ({term_type})")
+
+        type_list_string = ', '.join(type_strings)
+        relation_declaration_string = f"{self.relation_name}({type_list_string})"
+        return relation_declaration_string
+
+    def __repr__(self):
+        return str(self)
+
+
 class Relation:
     """a representation of a normal relation"""
 
-    def __init__(self, relation_name, term_list, type_list):
+    def __init__(self, relation_name: str, term_list: List[Any], type_list: List[DataTypes]):
         """
         @param relation_name: the name of the relation
         @param term_list: a list of the relation terms.
@@ -50,6 +81,33 @@ class Relation:
         relation_string = f"{self.relation_name}({term_list_string})"
         return relation_string
 
+    def __repr__(self):
+        return str(self)
+
+    def get_term_list(self):
+        return self.term_list
+
+    def get_type_list(self):
+        return self.type_list
+
+    def get_select_cols_values_and_types(self):
+        col_value_type = set()
+        for i, (var_type, value) in enumerate(zip(self.type_list, self.term_list)):
+            if var_type != DataTypes.free_var_name:
+                col_value_type.add((i, value, var_type))
+
+        return col_value_type
+
+    def as_relation_declaration(self) -> RelationDeclaration:
+        return RelationDeclaration(self.relation_name, self.type_list)
+
+    def has_same_terms_and_types(self, other: "Relation") -> bool:
+        """
+        Checks only term list and type list equivalence.
+        """
+
+        return self.type_list == other.type_list and self.term_list == other.term_list
+
 
 class IERelation:
     """
@@ -64,16 +122,16 @@ class IERelation:
     calls, and matches the values inside the tuples to free variables.
     """
 
-    def __init__(self, relation_name, input_term_list, input_type_list, output_term_list, output_type_list):
+    def __init__(self, relation_name, input_term_list: List, input_type_list: List[DataTypes], output_term_list: List, output_type_list: List[DataTypes]):
         """
-        @param relation_name: the name of the information extraction relation
+        @param relation_name: the name of the information extraction relation.
         @param input_term_list: a list of the input terms for the ie function.
                                 must be either literal values or free variables
-        @param input_type_list: a list of the term types in input_term_list
+        @param input_type_list: a list of the term types in input_term_list.
         @param output_term_list: a list of the output terms for the ie function.
-                                 must be either literal values or free variables
-        @param output_type_list: a list of the term types in output_term_list
-        @raise Exception: if lenght of in/out term list doesn't match length of in/out type_list.
+                                 must be either literal values or free variables.
+        @param output_type_list: a list of the term types in output_term_list.
+        @raise Exception: if length of in/out term list doesn't match length of in/out type_list.
         """
         if len(input_term_list) != len(input_type_list):
             raise Exception(f"received different lengths of input_term_list ({len(input_term_list)}) "
@@ -93,44 +151,32 @@ class IERelation:
         ie_relation_string = f"{self.relation_name}({input_term_list_string}) -> ({output_term_list_string})"
         return ie_relation_string
 
+    def __repr__(self):
+        return str(self)
 
-class RelationDeclaration:
-    """a representation of a relation_declaration statement"""
+    def get_term_list(self):
+        return self.output_term_list
 
-    def __init__(self, relation_name, type_list):
+    def get_type_list(self):
+        return self.output_type_list
+
+    def has_same_terms_and_types(self, other: Relation) -> bool:
         """
-        @param relation_name: the name of the relation
-        @param type_list: a list of the types of the terms in the relation's tuples
-        @raise Exception: if there is invalid term type in term list.
+        Checks that everything besides names is equivalent.
         """
-        self.relation_name = relation_name
-        self.type_list = type_list
 
-    def __str__(self):
-        type_strings = []
-        for term_type in self.type_list:
-            if term_type is DataTypes.string:
-                type_strings.append('str')
-            elif term_type is DataTypes.span:
-                type_strings.append('span')
-            elif term_type is DataTypes.integer:
-                type_strings.append('int')
-            else:
-                raise Exception(f"invalid term type ({term_type})")
-        type_list_string = ', '.join(type_strings)
-        relation_declaration_string = f"{self.relation_name}({type_list_string})"
-        return relation_declaration_string
+        return self.output_type_list == other.type_list and self.output_term_list == other.term_list
 
 
 class AddFact(Relation):
     """
     a representation of an add_fact statement
-    inherits from relation as a fact can be defined by a relation
+    inherits from relation as a fact can be defined by a relation.
     """
 
     def __init__(self, relation_name, term_list, type_list):
         """
-        see documentation of Relation's __init__.
+        @see documentation of Relation's __init__.
         """
         super().__init__(relation_name, term_list, type_list)
 
@@ -138,12 +184,12 @@ class AddFact(Relation):
 class RemoveFact(Relation):
     """
     a representation of a remove_fact statement
-    inherits from relation as a fact can be defined by a relation
+    inherits from relation as a fact can be defined by a relation.
     """
 
     def __init__(self, relation_name, term_list, type_list):
         """
-        see documentation of Relation's __init__.
+        @see documentation of Relation's __init__.
         """
         super().__init__(relation_name, term_list, type_list)
 
@@ -156,47 +202,53 @@ class Query(Relation):
 
     def __init__(self, relation_name, term_list, type_list):
         """
-        see documentation of Relation's __init__.
+        @see documentation of Relation's __init__.
         """
         super().__init__(relation_name, term_list, type_list)
 
 
 class Rule:
     """
-    a representation of a rule statement
+    a representation of a rule statement.
     """
 
     def __init__(self, head_relation: Relation, body_relation_list, body_relation_type_list):
         """
-        @param head_relation: the rule head, which is represented by a single relation
-        @param body_relation_list: a list of the rule body relations
-        @param body_relation_type_list: a list of the rule body relations types (e.g. "relation", "ie_relation")
+        @param head_relation: the rule head, which is represented by a single relation.
+        @param body_relation_list: a list of the rule body relations.
+        @param body_relation_type_list: a list of the rule body relations types (e.g. "relation", "ie_relation").
         """
         self.head_relation = head_relation
         self.body_relation_list = body_relation_list
         self.body_relation_type_list = body_relation_type_list
 
     def __str__(self):
-        # get the string of the head relation
-        head_relation_string = str(self.head_relation)
-        # get the string of the rule body
-        body_relation_strings_list = [str(relation) for relation in self.body_relation_list]
-        rule_body_string = ', '.join(body_relation_strings_list)
-        # create the string of the rule and return it
-        rule_string = f'{head_relation_string} <- {rule_body_string}'
-        return rule_string
+        return f"{self.head_relation} <- {', '.join(map(str, self.body_relation_list))}"
+
+    def __repr__(self):
+        return str(self)
+
+    def get_relations_by_type(self) -> Tuple[Set[Relation], Set[IERelation]]:
+        relations, ie_relations = set(), set()
+        for rel, rel_type in zip(self.body_relation_list, self.body_relation_type_list):
+            if rel_type == "relation":
+                relations.add(rel)
+            else:
+                ie_relations.add(rel)
+
+        return relations, ie_relations
 
 
 class Assignment:
     """
-    a representation of an assignment statement
+    a representation of an assignment statement.
     """
 
     def __init__(self, var_name, value, value_type):
         """
-        @param var_name: the variable name to be assigned a value
-        @param value: the assigned value
-        @param value_type: the assigned value's type
+        @param var_name: the variable name to be assigned a value.
+        @param value: the assigned value.
+        @param value_type: the assigned value's type.
         """
         self.var_name = var_name
         self.value = value
@@ -210,17 +262,20 @@ class Assignment:
             value_string = str(self.value)
         return f'{self.var_name} = {value_string}'
 
+    def __repr__(self):
+        return str(self)
+
 
 class ReadAssignment:
     """
-    a representation of a read_assignment statement
+    a representation of a read_assignment statement.
     """
 
     def __init__(self, var_name, read_arg, read_arg_type):
         """
-        @param var_name: the variable name to be assigned a value
-        @param read_arg: the argument that is passed to the read() function (e.g. "some_file" in 's = read("some_file")')
-        @param read_arg_type: the type of the argument that is passed to the read function
+        @param var_name: the variable name to be assigned a value.
+        @param read_arg: the argument that is passed to the read() function (e.g. "some_file" in 's = read("some_file")').
+        @param read_arg_type: the type of the argument that is passed to the read function.
         """
         if read_arg_type not in [DataTypes.string, DataTypes.var_name]:
             raise Exception(
@@ -237,3 +292,6 @@ class ReadAssignment:
         else:
             read_arg_string = str(self.read_arg)
         return f'{self.var_name} = read({read_arg_string})'
+
+    def __repr__(self):
+        return str(self)

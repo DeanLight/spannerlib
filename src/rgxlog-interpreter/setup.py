@@ -1,13 +1,11 @@
-import setuptools
-from setuptools.command.develop import develop
-from setuptools.command.install import install
-
 from glob import glob
 from os.path import basename
 from os.path import splitext
+from typing import Dict
 
-import sys
-from subprocess import check_output
+import setuptools
+from setuptools.command.develop import develop
+from setuptools.command.install import install
 
 
 class PostDevelopCommand(develop):
@@ -27,6 +25,11 @@ class PostInstallCommand(install):
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+cmdclass_dict: Dict = {
+    'develop': PostDevelopCommand,
+    'install': PostInstallCommand,
+}
+
 setuptools.setup(
     name="rgxlog",
     version="0.0.22",
@@ -45,22 +48,19 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
-    cmdclass={
-        'develop': PostDevelopCommand,
-        'install': PostInstallCommand,
-    },
+    cmdclass=cmdclass_dict,
     python_requires='>=3.8',
     install_requires=[
         'lark-parser',
         'networkx',
         'docopt',
         'tabulate',
-        'pyDatalog',
         'pandas',
         'jsonpath-ng',
         'psutil',
         'install-jdk',
-        'spanner-nlp'
+        'spanner-nlp>=0.0.6',
+        'Jinja2'
     ],
     dependency_links=[
     ]
