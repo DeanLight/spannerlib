@@ -54,25 +54,30 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     time.sleep(2)
 
     # set timer
-    my_timer = None
+    process_timer = None
     if timeout > 0:
         # set timer to kill the process
-        my_timer = Timer(timeout, kill_process_and_children, [process])
-        my_timer.start()
+        process_timer = Timer(timeout, kill_process_and_children, [process])
+        process_timer.start()
 
     # get output
     process.stdout.flush()
     for output in process.stdout:
-        output = output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
+        # convert to `str` and remove the `\n` at the end of every line
+        output = output.decode("utf-8").strip()
         # TODO@niv: change the logging back to debug once the error is found
         logger.info(f"output from {command_list[0]}: {output}")
         if output:
             yield output
             process.stdout.flush()
         elif process.poll() is not None:  # process died
-            if my_timer is not None:
-                my_timer.cancel()
+            if process_timer is not None:
+                process_timer.cancel()
             return
+
+    extra_stdout, _ = process.communicate()
+    logger.info(f"stdout after the process ended: {extra_stdout}")
+
 
 
 def download_file_from_google_drive(file_id: str, destination: Path) -> None:

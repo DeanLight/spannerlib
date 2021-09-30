@@ -143,7 +143,7 @@ def rgx(text, regex_pattern, out_type: str):
         else:
             assert False, "illegal out_type"
 
-        regex_output = format_function(run_cli_command(rust_regex_args, stderr=True))
+        regex_output = format_function(run_cli_command(rust_regex_args, stderr=True, shell=True))
 
         for out in regex_output:
             yield out
