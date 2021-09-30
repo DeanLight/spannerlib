@@ -256,6 +256,8 @@ class SqliteEngine(RgxlogEngineBase):
     DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
     DATABASE_SUFFIX = "_sqlite"
 
+    # TODO@niv: reorder into init, non-logic, logic, util
+
     def __init__(self, database_name=None):
         """
         Creates/opens an SQL database file + connection.
@@ -671,7 +673,13 @@ class SqliteEngine(RgxlogEngineBase):
             @return: pairs of equal columns
             """
             # get variables in var_dict that repeat - used below to add conditions
-
+            # TODO@niv:
+            """
+            Finds for each free var in any of the relations, all the relations that contain it.
+    also return the free vars' index in each relation (as pairs).
+    for example:
+        relations = [a(X,Y), b(Y)] ->
+        dict = {X:[(a(X,Y),0)], Y:[(a(X,Y),1),(b(Y),0)]"""
             src_relation_var_dict = get_free_var_to_relations_dict({src_relation})
             repeating_vars_in_relation = [(free_var, pairs) for (free_var, pairs) in src_relation_var_dict.items() if (len(pairs) > 1)]
 
@@ -687,13 +695,12 @@ class SqliteEngine(RgxlogEngineBase):
 
         selected_relation = _create_new_relation_for_select_result()
 
-        # TODO@niv: @dean, these pairs of unprepared data (int,int pairs) can't be used with join in jinja, so i use the prepared strings instead.
         constant_var_pairs = _extract_constant_variable_pairs()
         constant_conditions = [f"{col}={value}" for col, value in constant_var_pairs]
 
         equal_var_pairs = _extract_equal_variable_pairs()
         equal_var_conditions = [f"{first_col}={second_col}" for first_col, second_col in equal_var_pairs]
-
+        # TODO@niv: rename to column_constraints
         all_conditions = constant_conditions + equal_var_conditions
 
         template_dict = {"new_rel_name": selected_relation.relation_name, "sql_select": self.SQL_SELECT, "src_rel_name": src_relation.relation_name,
@@ -776,13 +783,14 @@ class SqliteEngine(RgxlogEngineBase):
         for relation in other_relations:
             inner_join_list.append(f"INNER JOIN {relation.relation_name} AS {relation_temp_names[relation]}")
 
-        template_dict = {"new_rel_name": joined_relation.relation_name, "sql_select": self.SQL_SELECT, "new_cols": free_var_cols,
+        template_dict = {"new_rel_name": joined_relation.relation_name, "SELECT": self.SQL_SELECT, "new_cols": free_var_cols,
                          "first_rel_name": first_relation.relation_name, "first_rel_temp_name": relation_temp_names[first_relation],
                          "rels_temp_names": inner_join_list, "join_conditions": on_conditions_list}
 
+        # TODO@niv: rename selects
         sql_template = ("""
         INSERT INTO {{ new_rel_name }}
-        {{ sql_select }} {{ new_cols | join(", ") }}
+        {{ SELECT }} {{ new_cols | join(", ") }}
         FROM {{ first_rel_name }} AS {{ first_rel_temp_name }}
         {{ rels_temp_names | join(" ") }}
         {%- if join_conditions %}
@@ -920,15 +928,15 @@ class SqliteEngine(RgxlogEngineBase):
     def _datatype_to_sql_type(self, datatype: DataTypes):
         return self.DATATYPE_TO_SQL_TYPE[datatype]
 
+    def __del__(self):
+        self.sql_conn.close()
+
     def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
         if datatype is DataTypes.integer:
             return term
         else:
             unquoted_term = str(term).strip('"')
             return f'"{unquoted_term}"'
-
-    def __del__(self):
-        self.sql_conn.close()
 
     def _get_col_name(self, col_id: int) -> str:
         return f'{self.RELATION_COLUMN_PREFIX}{col_id}'
