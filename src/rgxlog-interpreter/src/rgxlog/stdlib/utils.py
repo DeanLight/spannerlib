@@ -1,6 +1,8 @@
 import shlex
 
 import logging
+import time
+
 import psutil
 import requests
 from pathlib import Path
@@ -47,6 +49,9 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     stderr_channel = PIPE if stderr else None
 
     process = Popen(command_list, stdout=stdout, stderr=stderr_channel, shell=shell)
+
+    # TODO@niv: this is temporary until the rgx issue is solved
+    time.sleep(2)
 
     # set timer
     my_timer = None
