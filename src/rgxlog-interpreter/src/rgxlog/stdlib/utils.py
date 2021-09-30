@@ -58,11 +58,14 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
 
     # get output
     process.stdout.flush()
-    extra_stdout, extra_stderr = process.communicate()
-    for output in extra_stdout.decode("utf-8").splitlines():
+    process_stdout, process_stderr = process.communicate()
+    for output in process_stdout.decode("utf-8").splitlines():
         output = output.strip()
         if output:
             yield output
+
+    if stderr:
+        logger.info(f"stderr from process {command_list[0]}: {process_stderr}")
 
 
 def download_file_from_google_drive(file_id: str, destination: Path) -> None:

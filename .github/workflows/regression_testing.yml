@@ -24,8 +24,6 @@ jobs:
           toolchain: stable
       - name: install dependencies
         run: |
-          # TODO@niv: remove
-          hostname
           python -m pip install --upgrade pip
           # requirements file should include pytest, pycodestyle, mypy
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
