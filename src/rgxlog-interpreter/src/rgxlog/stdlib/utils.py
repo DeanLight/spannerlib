@@ -72,7 +72,7 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
         elif process.poll() is not None:  # process died
             if process_timer is not None:
                 process_timer.cancel()
-            return
+            break
 
     extra_stdout, extra_stderr = process.communicate()
     logger.info(f"stdout after the process ended: {extra_stdout}")
