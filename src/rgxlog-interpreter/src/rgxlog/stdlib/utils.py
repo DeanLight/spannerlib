@@ -48,10 +48,9 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     stdout = PIPE  # we always use stdout
     stderr_channel = PIPE if stderr else None
 
-    process = Popen(command_list, stdout=stdout, stderr=stderr_channel, shell=shell)
-
     # TODO@niv: this is temporary until the rgx issue is solved
     time.sleep(2)
+    process = Popen(command_list, stdout=stdout, stderr=stderr_channel, shell=shell)
 
     # set timer
     process_timer = None
@@ -75,8 +74,9 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
                 process_timer.cancel()
             return
 
-    extra_stdout, _ = process.communicate()
+    extra_stdout, extra_stderr = process.communicate()
     logger.info(f"stdout after the process ended: {extra_stdout}")
+    logger.info(f"stderr after the process ended: {extra_stderr}")
 
 
 def download_file_from_google_drive(file_id: str, destination: Path) -> None:
