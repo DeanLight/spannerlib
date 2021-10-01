@@ -2,12 +2,14 @@
 This file contains implementation of passes that optimize the term graph structure.
 Note that this passes depend on the structure of the term graph!
 """
-from typing import Dict, Any, Set, Union, List
+from typing import Dict, Any, Set, Union, List, Tuple
 
-from rgxlog.engine.datatypes.ast_node_types import IERelation, Relation
+from rgxlog.engine.datatypes.ast_node_types import IERelation, Relation, Rule
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.passes.lark_passes import GenericPass
-from rgxlog.engine.state.graphs import TermGraphBase
+from rgxlog.engine.state.graphs import TermGraphBase, GraphBase
+from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_input_free_var_names, fixed_point
+from rgxlog.engine.utils.passes_utils import get_new_rule_nodes
 
 
 class PruneUnnecessaryProjectNodes(GenericPass):
@@ -123,3 +125,58 @@ class PruneUnnecessaryProjectNodes(GenericPass):
                 union_to_project_children[node_id] = project_children
 
         return union_to_project_children
+
+
+class RemoveUselessRelationsFromRule(GenericPass):
+    """
+    This pass removes duplicated relations from a rule.
+    For example, the rule A(X) <- B(X), C(Y) contains a redundant relation (C(Y)).
+    After this pass the rule will be A(X) <- B(X).
+
+    @note: in the rule A(X) <- B(X, Y), C(Y); C(Y) is not redundant!
+    """
+
+    def __init__(self, **kwargs):
+        self.parse_graph: GraphBase = kwargs["parse_graph"]
+
+    @staticmethod
+    def remove_useless_relations(rule: Rule) -> None:
+        """
+        Finds redundant relations and removes them from the rule.
+        @param rule: a rule.
+        """
+        relevant_free_vars = set(rule.head_relation.get_term_list())
+        initial_useless_relations_and_types = [(rel, rel_type) for rel, rel_type in zip(rule.body_relation_list, rule.body_relation_type_list)
+                                               if len(get_output_free_var_names(rel)) != 0]  # relation without free vars are always relevant
+
+        def step_function(current_useless_relations_and_types: List[Tuple[Union[Relation, IERelation], str]]) -> List[Tuple[Union[Relation, IERelation], str]]:
+            """
+            Used by fixed pont algorithm.
+
+            @param current_useless_relations_and_types: current useless relations and their types
+            @return: useless relations after considering the new relevant free vars.
+            """
+
+            next_useless_relations_and_types = []
+            for relation, rel_type in current_useless_relations_and_types:
+                term_list = get_output_free_var_names(relation)
+                if len(relevant_free_vars.intersection(term_list)) == 0:
+                    next_useless_relations_and_types.append((relation, rel_type))
+                else:
+                    relevant_free_vars.update(term_list)
+                    relevant_free_vars.update(get_input_free_var_names(relation))
+
+            return next_useless_relations_and_types
+
+        useless_relations_and_types = fixed_point(start=initial_useless_relations_and_types, step=step_function, distance=lambda x, y: int(len(x) != len(y)))
+
+        relevant_relations_and_types = set(zip(rule.body_relation_list, rule.body_relation_type_list)).difference(useless_relations_and_types)
+        new_body_relation_list, new_body_relation_type_list = zip(*relevant_relations_and_types)
+        rule.body_relation_list = list(new_body_relation_list)
+        rule.body_relation_type_list = list(new_body_relation_type_list)
+
+    def run_pass(self, **kwargs):
+        rules = get_new_rule_nodes(self.parse_graph)
+        for rule_node_id in rules:
+            rule: Rule = self.parse_graph[rule_node_id]["value"]
+            RemoveUselessRelationsFromRule.remove_useless_relations(rule)

@@ -2,7 +2,6 @@
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
 import functools
-
 import re
 from typing import (Union, Tuple, Set, Dict, List, Optional, Callable, Any, no_type_check)
 

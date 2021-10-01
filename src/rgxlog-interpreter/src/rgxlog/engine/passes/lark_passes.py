@@ -39,7 +39,7 @@ from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.graphs import NetxStateGraph
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
                                                fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
-from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node
+from rgxlog.engine.utils.passes_utils import assert_expected_node_structure, unravel_lark_node
 
 
 def get_tree(**kwargs):

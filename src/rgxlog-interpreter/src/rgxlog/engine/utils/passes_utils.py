@@ -1,7 +1,12 @@
 """
-this module contains helper functions and function decorators that are used in lark passes
+this module contains helper functions and function decorators that are used in lark passes.
 """
+from typing import List
+
 from lark import Tree as LarkNode
+
+from rgxlog.engine.datatypes.ast_node_types import Rule
+from rgxlog.engine.state.graphs import GraphBase, EvalState
 
 from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
 
@@ -71,3 +76,24 @@ def unravel_lark_node(func):
         return func(visitor, structured_node)
 
     return wrapped_method
+
+
+def get_new_rule_nodes(parse_graph: GraphBase) -> List:
+    """
+    Finds all rules that weren't added to the term graph yet.
+    """
+
+    node_ids = parse_graph.post_order_dfs()
+    rule_nodes: List = list()
+
+    for node_id in node_ids:
+        term_attrs = parse_graph.get_node_attributes(node_id)
+
+        # the term is not computed, get its type and compute it accordingly
+        term_type = term_attrs["type"]
+
+        # make sure that the rule wasn't expanded before
+        if term_type == "rule" and term_attrs["state"] == EvalState.NOT_COMPUTED:
+            rule_nodes.append(node_id)
+
+    return rule_nodes
