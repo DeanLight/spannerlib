@@ -23,6 +23,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxParseGraph, GenericPass)
+from rgxlog.engine.passes.optimizations_passes import PruneUnnecessaryProjectNodes
 from rgxlog.engine.state.graphs import TermGraph, NetxStateGraph, GraphBase, TermGraphBase
 from rgxlog.engine.state.symbol_table import SymbolTable, SymbolTableBase
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
@@ -224,7 +225,8 @@ class Session:
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxParseGraph,
-            AddRulesToComputationTermGraph
+            AddRulesToComputationTermGraph,
+            PruneUnnecessaryProjectNodes
         ]
 
         grammar_file_path = Path(rgxlog.grammar.__file__).parent
@@ -494,16 +496,21 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
+    logger.setLevel(level=logging.DEBUG)
     logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
     my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-    commands = """
-            new B(int, int)
-            B(1, 1)
-            B(1, 2)
-            B(2, 3)
-            A(X, Y) <- B(X, Y)
-            ?A(X, Y)
+
+    cmd = """
+            new B(int)
+            new C(int)
+            new D(int, int)
+            C(5)
+            B(1)
+            D(3, 5)
+
+            A(X) <- B(X)
+            ?A(X)
         """
 
-    my_session.run_commands(commands)
+    my_session.run_commands(cmd)
