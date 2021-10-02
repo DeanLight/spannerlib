@@ -236,9 +236,9 @@ for key, steps in d.items():
 # Adding Optimization Passes to the Pass Stack
 
 
-Before reading this section, we recommend to go over [detailed readme file](long_readme.md) in order to undrestand how passes work.
+Before reading this section, we recommend to go over [detailed readme file](long_readme.md) in order to understand how passes work.
 
-There are three kind of optimization passes:
+There are three kinds of optimization passes:
 1. The first one, manipulates rules before they are added to the `term graph`.
 2. The second one, manipulates the structure of the `term graph`.
     
@@ -248,8 +248,8 @@ In this section, we will implement two simple optimization passes one of each ki
 ## Rule-Manipulation Optimization
 
 
-These kind of optimization travrse the `parse_graph` and rules that weren't added to the `term graph`.
-Then, they update each rule - by modyfieng it's body relations list.
+These kind of optimizations traverse the `parse_graph` and find rules that weren't added to the `term graph`.
+Then, they update each rule - by modifying it's body relations list.
 
 Here are some example of possible optimization passes of this kind:
 1. optimization that removes duplicated relations from a rule.
@@ -260,12 +260,12 @@ Here are some example of possible optimization passes of this kind:
    i.e., the rule `A(X) <- B(X), C(Y)` contains the useless relation `C(Y)`.
    the optimization will transform the rule into `A(X) <- B(X)`.
    
-We will demonsrate how to implement the second example.
+We will demonstrate how to implement the second example.
 
 ```python
-from rgxlog.engine.utils.general_utils import fixed_point  # gets intial value, step function and distance function; computes a fixed point.
-from rgxlog.engine.utils.general_utils import get_output_free_var_names # returns the free vars of the realtion (if it's ie relation it returns the output free vars)
-from rgxlog.engine.utils.general_utils import get_input_free_var_names # returns input free vars of ie relation (if it's regulare relation returns empty set)
+from rgxlog.engine.utils.general_utils import fixed_point  # gets initial value, step function and distance function; computes a fixed point.
+from rgxlog.engine.utils.general_utils import get_output_free_var_names # returns the free vars of the relation (if it's ie relation it returns the output free vars)
+from rgxlog.engine.utils.general_utils import get_input_free_var_names # returns input free vars of ie relation (if it's regular relation returns empty set)
 
 
 
@@ -317,7 +317,7 @@ from rgxlog.engine.state.graphs import GraphBase, EvalState, STATE, TYPE, VALUE
 from rgxlog.engine.utils.passes_utils import ParseNodeType
 
 # now we'll implement a function that traverses the parse graph and finds rule that weren't added to the term graph yet
-# note: this function is already implemented in the passes_utils file, we re-implement it here in order to show how to traverse the parse grpah.
+# note: this function is already implemented in the passes_utils file, we re-implement it here in order to show how to traverse the parse graph.
 def get_new_rule_nodes(parse_graph: GraphBase):
     """
     Finds all rules that weren't added to the term graph yet.
@@ -332,7 +332,7 @@ def get_new_rule_nodes(parse_graph: GraphBase):
         # the term is not computed, get its type and compute it accordingly
         term_type = term_attrs[TYPE]
 
-        # make sure that the rule wasn't adde to term graph before
+        # make sure that the rule wasn't added to term graph before
         if term_type == ParseNodeType.RULE and term_attrs[STATE] == EvalState.NOT_COMPUTED:
             rule_nodes.append(node_id)
 
@@ -343,7 +343,7 @@ def get_new_rule_nodes(parse_graph: GraphBase):
 from rgxlog.engine.passes.lark_passes import GenericPass
     
 
-# finally, the implemntation of the optimization pass
+# finally, the implementation of the optimization pass
 class RemoveUselessRelationsFromRule(GenericPass):
     """
     This pass removes duplicated relations from a rule.
@@ -378,7 +378,7 @@ magic_session = Session()  # reset the magic session
 original_pass_stack = magic_session.get_pass_stack()  # save the original pass stack
 
 new_pass_stack = original_pass_stack.copy()
-term_graph_pass = new_pass_stack.pop()  # remove last pass - adds rules to term graph
+term_graph_pass = new_pass_stack.pop()  # remove last pass (this pass adds rules to term graph)
 new_pass_stack.extend([RemoveUselessRelationsFromRule, term_graph_pass])
 
 magic_session.set_pass_stack(new_pass_stack)
@@ -390,7 +390,7 @@ print("\nPass stack after:")
 print_pass_stack(magic_session.get_pass_stack())
 ```
 
-Now lets look at the affat of this pass on the pars graph
+Now lets look at the affect of this pass on the pars graph:
 
 ```python
 commands = """
@@ -401,7 +401,7 @@ Example(X) <- Good(X), Bad(Y)
 """
 
 def run_first_experiment(session):
-    """runs the command and print the parse graph"""
+    """runs the command and prints the parse graph"""
     session.run_commands(commands)
     print(session._parse_graph)
     
@@ -410,7 +410,7 @@ print("Parse graph of unmodified pass stack:\n")
 run_first_experiment(Session()) 
 print()
 
-print("Parse graph of pass stack with the optimizaion pass:\n")
+print("Parse graph after adding optimization pass:\n")
 run_first_experiment(magic_session) 
 ```
 
@@ -420,8 +420,8 @@ Notice the difference in the rule node!
 ## Term-Graph-Structure Optimization
 
 
-These kind of optimization travrse the `term_graph` and modify it's structure.
-Before you keep reading, make sure you understand how the `term graph` looks like (there is detailed documentation insidee the class docstring) and in order to understand the our terminology.
+These kind of optimizations traverse the `term_graph` and modify it's structure.
+Before you keep reading, make sure you understand how the `term graph` looks like (there is detailed documentation inside the class docstring) and in order to understand the our terminology.
 
 Here are some example of possible optimization passes of this kind:
 1. optimization that removes join nodes that has only one child relation
@@ -429,7 +429,7 @@ Here are some example of possible optimization passes of this kind:
    
 2. optimization that removes project nodes that get relation with one column.
    
-We will demonsrate how to implement the second example.
+We will demonstrate how to implement the second example.
 
 ```python
 from rgxlog.engine.state.graphs import TermGraphBase, TermNodeType
@@ -507,7 +507,7 @@ def find_arity_of_node(term_graph: TermGraphBase, node_id) -> int:
         node_attrs = term_graph[node_id]
         node_type = node_attrs[TYPE]
         
-        # in the follwing cases the input relation is the relation stored in the value attribute of the node
+        # in the following cases the input relation is the relation stored in the value attribute of the node
         if node_type in (TermNodeType.GET_REL, TermNodeType.RULE_REL, TermNodeType.GET_REL.CALC):
             relation = node_attrs[VALUE]
             # if relation has more than one free var we can't prune the project
@@ -520,7 +520,7 @@ def find_arity_of_node(term_graph: TermGraphBase, node_id) -> int:
             # the input of project node is the same as the input of the join node
             return find_arity_of_node(term_graph, node_id)
 
-        # in this case, we extratc the free vars of the relation (since not all the terms ore free vars)
+        # in this case, we extract the free vars of the relation (since not all the terms ore free vars)
         elif node_type is TermNodeType.SELECT:
             relation_child_id = next(iter(term_graph.get_children(node_id)))
             relation = term_graph[relation_child_id][VALUE]
@@ -597,7 +597,7 @@ A(X) <- B(X)
 """
 
 def run_second_experiment(session):
-    """runs the command and print the term graph"""
+    """runs the command and prints the term graph"""
     session.run_commands(commands)
     print(session._term_graph)
     
@@ -606,7 +606,7 @@ print("Term graph of unmodified pass stack:\n")
 run_second_experiment(Session()) 
 print()
 
-print("Term graph of pass stack with the optimizaion pass:\n")
+print("Term graph after adding optimization pass:\n")
 run_second_experiment(magic_session) 
 ```
 
@@ -624,20 +624,20 @@ this example is described in detail in the [readme file](long_readme.md).
 We will show a pseudo implementation of this pass: 
 
 - get all the registered rules by using ```term_graph.get_all_rules```.
-- find overlapping strucre between rules  (this step can be implemented in many different ways).
-- cretae new rule that consists of the overlapping structute.
+- find overlapping structure between rules  (this step can be implemented in many different ways).
+- create new rule that consists of the overlapping structure.
 - add this new rule to the term graph by using ```term_graph.add_rule_to_term_graph```.
 - updated the previous rule to use the newly created rule.
 - added the rules to the term graph.
 - delete the previous versions of the rule from the term graph by using ```term_graph.remove_rule```
 
 For example, 
-if the following rule were registerd:
+if the following rule were registered:
 1. ```D(X,Y) <- A(X),B(Y),C(X,Y,Z)```
 2. ```E(X,Y) <- A(X),C(X,Y,Z), F(Z)```
 
 in the second step of the algorithm we will find that both rules share the structure ```A(X),C(X,Y,Z)```.<br>
-in the third step we will create a new relation ```TEMP(X,Y,Z) <- A(X), C(X,Y,Z)```, and add it to the term grah.<br>
+in the third step we will create a new relation ```TEMP(X,Y,Z) <- A(X), C(X,Y,Z)```, and add it to the term graph.<br>
 in the fifth step we will modify to original rules in the following way:
 1. ```D(X,Y) <- B(Y),TEMP(X,Y,Z)```
 2. ```E(X,Y) <- TEMP(X,Y,Z), F(Z)```
