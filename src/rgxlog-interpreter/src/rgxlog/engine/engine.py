@@ -256,7 +256,6 @@ class SqliteEngine(RgxlogEngineBase):
     DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
     DATABASE_SUFFIX = "_sqlite"
 
-    # TODO@niv: reorder into init, non-logic, logic, util
     # ~~ dunder methods ~~
     def __init__(self, database_name=None):
         """
