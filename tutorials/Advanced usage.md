@@ -248,19 +248,22 @@ In this section, we will implement two simple optimization passes one of each ki
 ## Rule-Manipulation Optimization
 
 
-These kind of optimizations traverse the `parse_graph` and find rules that weren't added to the `term graph`.
-Then, they update each rule - by modifying it's body relations list.
+Optimizations of  this kind traverse the `parse_graph` and find rules that weren't added to the `term graph`.
+Then, they update each rule - by modifying its body relations list.
 
-Here are some example of possible optimization passes of this kind:
-1. optimization that removes duplicated relations from a rule.
+Here are some examples of possible optimization passes of this kind:
+1. An optimization that removes duplicated relations from a rule.
    i.e., the rule `A(X) <- B(X), C(X), B(X)` contains the relation `B(X)` twice.
    the optimization will transform the rule into `A(X) <- B(X), C(X)`.
    
-2. optimization that removes useless relations from a rule.
+2. An optimization that removes useless relations from a rule.
    i.e., the rule `A(X) <- B(X), C(Y)` contains the useless relation `C(Y)`.
    the optimization will transform the rule into `A(X) <- B(X)`.
    
-We will demonstrate how to implement the second example.
+Below is an implementation of the latter example:
+
+
+### Optimization Example: Remove Useless Relations
 
 ```python
 from rgxlog.engine.utils.general_utils import fixed_point  # gets initial value, step function and distance function; computes a fixed point.
@@ -364,7 +367,7 @@ class RemoveUselessRelationsFromRule(GenericPass):
             remove_useless_relations(rule)
 ```
 
-In order to add this optimization into the pass stack you shold do the follwing:
+Modifying the pass stack looks like this:
 
 ```python
 def print_pass_stack(pass_stack):
@@ -390,7 +393,7 @@ print("\nPass stack after:")
 print_pass_stack(magic_session.get_pass_stack())
 ```
 
-Now lets look at the affect of this pass on the pars graph:
+Now let's look at the effect of this pass on the parse graph:
 
 ```python
 commands = """
@@ -417,25 +420,29 @@ run_first_experiment(magic_session)
 Notice the difference in the rule node!
 
 
-## Term-Graph-Structure Optimization
+## Term Graph Structure Optimization
 
 
-These kind of optimizations traverse the `term_graph` and modify it's structure.
-Before you keep reading, make sure you understand how the `term graph` looks like (there is detailed documentation inside the class docstring) and in order to understand the our terminology.
+Optimizations of this kind traverse the `term_graph` and modify its structure.
+Before reading on, it is important to understand how the `term_graph` looks like in order to understand the terminology used - there is detailed documentation inside the class docstring.
 
-Here are some example of possible optimization passes of this kind:
-1. optimization that removes join nodes that has only one child relation
-   note: this optimization already exists so there is no need to implement it.
+Here are some examples of possible optimization passes of this kind:
+1. An optimization that removes join nodes which have only one child relation.
+   Note: this optimization already exists so there is no need to implement it.
    
-2. optimization that removes project nodes that get relation with one column.
+2. An optimization that removes project nodes whose input is a single-column relation.
    
-We will demonstrate how to implement the second example.
+Here's the implementation of the second example:
+
+
+## Optimization Example: Remove Redundant Project Nodes
 
 ```python
 from rgxlog.engine.state.graphs import TermGraphBase, TermNodeType
 
 
-# first, we will implement a function that finds all the union node and their project children (inside the term graph)
+# first, we will implement a function that finds all the union node and
+# their project children (inside the term graph)
 def get_all_union_and_project_nodes(term_graph: TermGraphBase):
     """
     @return: a mapping between union nodes ids to their project children nodes id.
@@ -450,7 +457,7 @@ def get_all_union_and_project_nodes(term_graph: TermGraphBase):
 
         if node_type is TermNodeType.UNION:
             children = term_graph.get_children(node_id)
-            # get all project children
+            # get the children of the project node
             project_children = [node for node in children if term_graph[node][TYPE] is TermNodeType.PROJECT]
             union_to_project_children[node_id] = project_children
 
@@ -458,7 +465,7 @@ def get_all_union_and_project_nodes(term_graph: TermGraphBase):
 ```
 
 ```python
-# now we will implement a function that get a union node and one of it's project children, it will prune the project node
+# a few more helper functions:
 def remove_project_node(term_graph: TermGraphBase, union_node, project_node) -> None:
     """
     Removes the project node from the term graph and connects it's child to the union node that was his parent.
@@ -475,9 +482,6 @@ def remove_project_node(term_graph: TermGraphBase, union_node, project_node) -> 
 
     # delete project node from the term graph
     term_graph.remove_node(project_node)
-```
-
-```python
 
 def is_relation_has_one_free_var(relation) -> bool:
     """
@@ -534,7 +538,7 @@ def find_arity_of_node(term_graph: TermGraphBase, node_id) -> int:
 ```
 
 ```python
-# finally, lets implement the optimization pass
+# finally, lets implement the optimization pass class
 class PruneUnnecessaryProjectNodes(GenericPass):
     """
     This class prunes project nodes that gets a relation with one column (therefore, the project is redundant).
@@ -575,7 +579,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
         return
 ```
 
-Next step is adding this pass to the pass stack:
+The next step is adding this pass to the pass stack:
 
 ```python
 magic_session = Session()  # reset the magic_session
@@ -613,15 +617,17 @@ run_second_experiment(magic_session)
 Notice the changes in the term_graph's structure!
 
 
-#### Now we will show a more advanced optimization pass, but this time we won't implement it.
+### Optimization Example: Overlapping Rules
 
-The optimization will do the following:
-1. find overlapping structure of rules.
-2. than it will merge the overlapping structure and add it to the term graph.
 
-this example is described in detail in the [readme file](long_readme.md).
+Another optimization example, this time without an implementation.
+It does the following:
+1. Finds overlapping structure of rules.
+2. Merges the overlapping structure and adds it to the term graph.
+
+This example is described in detail in the [readme file](https://github.com/DeanLight/spanner_workbench/blob/master/long_readme.md).
     
-We will show a pseudo implementation of this pass: 
+Here's a pseudo implementation of this pass: 
 
 - get all the registered rules by using ```term_graph.get_all_rules```.
 - find overlapping structure between rules  (this step can be implemented in many different ways).
@@ -632,19 +638,15 @@ We will show a pseudo implementation of this pass:
 - delete the previous versions of the rule from the term graph by using ```term_graph.remove_rule```
 
 For example, 
-if the following rule were registered:
+if the following rules were registered:
 1. ```D(X,Y) <- A(X),B(Y),C(X,Y,Z)```
 2. ```E(X,Y) <- A(X),C(X,Y,Z), F(Z)```
 
-in the second step of the algorithm we will find that both rules share the structure ```A(X),C(X,Y,Z)```.<br>
-in the third step we will create a new relation ```TEMP(X,Y,Z) <- A(X), C(X,Y,Z)```, and add it to the term graph.<br>
-in the fifth step we will modify to original rules in the following way:
+In the second step of the algorithm, we will find that both rules share the structure ```A(X),C(X,Y,Z)```.<br>
+In the third step we will create a new relation ```TEMP(X,Y,Z) <- A(X), C(X,Y,Z)```, and add it to the term graph.<br>
+In the fifth step we will modify to original rules in the following way:
 1. ```D(X,Y) <- B(Y),TEMP(X,Y,Z)```
 2. ```E(X,Y) <- TEMP(X,Y,Z), F(Z)```
 
-and then we will add them to the term graph.<br>
-the last step will delete the old rules from the term graph.
-
-```python
-
-```
+And then we will add them to the term graph.<br>
+The last step will delete the old rules from the term graph.
