@@ -32,7 +32,7 @@ class RgxlogEngineBase(ABC):
         super().__init__()
 
     @abstractmethod
-    def declare_relation(self, relation_decl: RelationDeclaration) -> None:
+    def declare_relation_table(self, relation_decl: RelationDeclaration) -> None:
         """
         Declares a relation in the rgxlog engine.
         @note: if the relation is already declared does nothing.
@@ -89,7 +89,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def clear_table(self, table: str) -> None:
+    def clear_relation(self, table: str) -> None:
         """
         Resets the table (deletes all its tuples).
 
@@ -104,7 +104,7 @@ class RgxlogEngineBase(ABC):
         @param tables_names: tables to reset.
         """
         for table in tables_names:
-            self.clear_table(table)
+            self.clear_relation(table)
 
     @abstractmethod
     def get_table_len(self, table: str) -> int:
@@ -257,7 +257,7 @@ class SqliteEngine(RgxlogEngineBase):
     DATABASE_SUFFIX = "_sqlite"
 
     # TODO@niv: reorder into init, non-logic, logic, util
-
+    # ~~ dunder methods ~~
     def __init__(self, database_name=None):
         """
         Creates/opens an SQL database file + connection.
@@ -282,28 +282,10 @@ class SqliteEngine(RgxlogEngineBase):
         self.sql_conn = sqlite.connect(self.db_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
-    def run_sql_from_jinja_template(self, sql_template: str, template_dict: Optional[dict] = None):
-        if not template_dict:
-            template_dict = {}
-        sql_command = Template(strip_lines(sql_template)).render(**template_dict)
-        self.run_sql(sql_command)
+    def __del__(self):
+        self.sql_conn.close()
 
-    def run_sql(self, command: str, command_args: Optional[List] = None, do_commit: bool = False) -> List:
-        logger.debug(f"sql {command=}")
-        if command_args:
-            logger.debug(f"...with args: {command_args}")
-
-        if command_args:
-            self.sql_cursor.execute(command, command_args)
-        else:
-            self.sql_cursor.execute(command)
-
-        if do_commit:
-            # save to file
-            self.sql_conn.commit()
-
-        return self.sql_cursor.fetchall()
-
+    # ~~ simple logic methods ~~
     def add_fact(self, fact: AddFact) -> None:
         """
         Add a row into an existing table.
@@ -320,7 +302,7 @@ class SqliteEngine(RgxlogEngineBase):
         VALUES ({{col_values | join(", ")}})
         """)
 
-        self.run_sql_from_jinja_template(sql_template, template_dict)
+        self._run_sql_from_jinja_template(sql_template, template_dict)
 
     def remove_fact(self, fact: RemoveFact) -> None:
         num_types = len(fact.type_list)
@@ -336,7 +318,7 @@ class SqliteEngine(RgxlogEngineBase):
         ({{condition_pairs | join(", ")}})
         """)
 
-        self.run_sql_from_jinja_template(sql_template, template_dict)
+        self._run_sql_from_jinja_template(sql_template, template_dict)
 
     def query(self, query: Query, allow_duplicates=False) -> List[Tuple]:
         """
@@ -369,7 +351,7 @@ class SqliteEngine(RgxlogEngineBase):
         else:
             projected_relation_name = selected_relation_name
 
-        query_result = self.run_sql(f"{self.SQL_SELECT} * FROM {projected_relation_name}", do_commit=True)
+        query_result = self._run_sql(f"{self.SQL_SELECT} * FROM {projected_relation_name}", do_commit=True)
 
         self.remove_table(selected_relation_name)
         self.remove_table(projected_relation_name)
@@ -378,31 +360,8 @@ class SqliteEngine(RgxlogEngineBase):
         if (not has_free_vars) and query_result != FALSE_VALUE:
             query_result = TRUE_VALUE
 
-        spanned_query_result = self.convert_strings_to_spans_in_query_result(query_result)
+        spanned_query_result = self._convert_strings_to_spans_in_query_result(query_result)
 
-        return spanned_query_result
-
-    @staticmethod
-    def convert_strings_to_spans_in_query_result(query_result: List[Tuple]) -> List[Tuple]:
-        """
-        convert strings that look like spans into spans
-        @param query_result: the list of tuples which may contain strings that should be converted to spans
-        @return: the same list, but with span-looking strings converted to `Span` objects
-        """
-        spanned_query_result = []
-        for row in query_result:
-            converted_row: List[Union[str, int, Span]] = []
-            for value in row:
-                if isinstance(value, str):
-                    transformed_string = string_to_span(value)
-                    if transformed_string is None:
-                        converted_row.append(value)
-                    else:
-                        converted_row.append(transformed_string)
-                else:
-                    converted_row.append(value)
-
-            spanned_query_result.append(tuple(converted_row))
         return spanned_query_result
 
     def remove_tables(self, table_names: Iterable[str]) -> None:
@@ -422,197 +381,9 @@ class SqliteEngine(RgxlogEngineBase):
         """
         if self.is_table_exists(table_name):
             sql_command = f"DROP TABLE {table_name}"
-            self.run_sql(sql_command)
+            self._run_sql(sql_command)
 
-    def _create_unique_relation(self, arity, prefix=""):
-        """
-        Declares a new relation with the requested arity in SQL, the relation will have a unique name.
-
-        @param arity: the relation's arity.
-        @param prefix: will be used as a part of the relation's name.
-                for example: prefix='join' -> full name = __rgxlog__join{counter}.
-        @return: the new relation's name.
-        """
-        # create the name of the new relation
-        unique_relation_id = next(self.unique_relation_id_counter)
-        if RESERVED_RELATION_PREFIX in prefix:
-            # we don't want relations to be called __rgxlog__rgxlog__rgxlog...
-            unique_relation_name = f'{prefix}{unique_relation_id}'
-        else:
-            unique_relation_name = f'{RESERVED_RELATION_PREFIX}{prefix}{unique_relation_id}'
-
-        # in SQLite there's no typechecking so we just need to make sure that the schema has the correct arity
-        unique_relation_schema = [DataTypes.free_var_name] * arity
-
-        # create the declaration
-        unique_relation_decl = RelationDeclaration(unique_relation_name, unique_relation_schema)
-
-        # create the relation's SQL table, and return its name
-        self.declare_relation(unique_relation_decl)
-        return unique_relation_name
-
-    @no_type_check
-    def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
-                            bounding_relation: Optional[Relation]) -> Relation:
-        """
-        Computes an information extraction relation, returning the result as a normal relation.
-        for more details see RgxlogEngineBase.compute_ie_relation.
-        notice comments below regarding constants
-
-        @param ie_relation: an ie relation that determines the input and output terms of the ie function.
-        @param ie_func: the ie function that will be used to compute the ie relation.
-        @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
-                                  queried from it.
-        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine.
-        """
-
-        def _looks_like_span(checked_value):
-            """
-            checks whether `term` is a tuple of 2 numbers
-            @param checked_value: the value to check
-            @return: True/False according to the above description
-            """
-            if isinstance(checked_value, tuple) and len(checked_value) == 2:
-                try:
-                    _, _ = int(checked_value[0]), int(checked_value[1])
-                    return True
-                except ValueError:
-                    # an item in the tuple could not be converted to int
-                    return False
-            return False
-
-        ie_relation_name = ie_relation.relation_name
-
-        # create the output relation for the ie function, and also declare it inside SQL
-        output_relation_arity = len(ie_relation.output_term_list)
-        output_relation_name = self._create_unique_relation(output_relation_arity,
-                                                            prefix=f'{ie_relation_name}{self.SQL_SEPARATOR}output')
-        output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
-
-        # define the ie input relation
-        if bounding_relation is None:
-            # special case where the ie relation is the first rule body relation
-            # in this case, the ie input relation is defined exclusively by constant terms, i.e, by a single tuple
-            # add that tuple as a fact to the input relation
-            # create the input relation for the ie function, and also declare it inside SQL
-            ie_inputs = [tuple(ie_relation.input_term_list)]
-        else:
-            # get a list of inputs to the ie function - some of them may be constants
-            inputs_without_constants = self._get_all_relation_tuples(bounding_relation)
-            ie_inputs = []
-            for bounded_input in inputs_without_constants:
-                result_input_list = []
-                index_in_bounded_input = 0
-                for term, datatype in zip(ie_relation.input_term_list, ie_relation.input_type_list):
-                    if datatype is DataTypes.free_var_name:
-                        # add value from `bounded_input`
-                        result_input_list.append(bounded_input[index_in_bounded_input])
-                        index_in_bounded_input += 1
-                    else:
-                        # add a constant from the ie_relation's input
-                        result_input_list.append(term)
-
-                assert index_in_bounded_input == len(bounded_input), "parsing input relation failed"
-                ie_inputs.append(tuple(result_input_list))
-
-        # get the schema for the ie outputs
-        ie_output_schema = ie_func.get_output_types(output_relation_arity)
-
-        # run the ie function on each input and process the outputs
-        for ie_input in ie_inputs:
-            # run the ie function on the input, resulting in a list of tuples
-            ie_outputs = ie_func.ie_function(*ie_input)
-            # process each ie output and add it to the output relation
-            for ie_output in ie_outputs:
-                # the output should be a tuple, but if a single value is returned, we accept it as well
-                if isinstance(ie_output, (str, int, Span)):
-                    ie_output = [ie_output]
-                else:
-                    ie_output = list(ie_output)
-                    # the user is allowed to represent a span in an ie output as a tuple of length 2
-                    # convert said tuples to spans
-                    ie_output = [Span(int(term[0]), int(term[1])) if _looks_like_span(term) else term for term in ie_output]
-
-                # assert the ie output is properly typed
-                self._assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation)
-
-                # add the output as a fact to the output relation
-                # notice - repetitions are ignored here (results are in a set)
-                if len(ie_output) != 0:
-                    output_fact = AddFact(output_relation.relation_name, ie_output, list(ie_output_schema))
-                    self.add_fact(output_fact)
-
-        return output_relation
-
-    def _get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
-        """
-        @param relation: a relation to be queried.
-        @return: all the tuples of 'relation' as a list of tuples.
-        """
-
-        relation_name = relation.relation_name
-        relation_arity = len(relation.term_list)
-
-        # in order to get all of the tuples of the relation, we'll query the relation with a query that only has
-        # free variable terms, where each one of the free variables has a different name
-        # for example for the relation 'Parent(str, str)', we'll construct the query '?Parent(X0, X1)'
-        query_relation_name = relation_name
-        query_terms = [f'X{i}' for i in range(relation_arity)]
-        query_term_types = [DataTypes.free_var_name] * relation_arity
-        query = Query(query_relation_name, query_terms, query_term_types)
-
-        # query the relation using the query we've constructed, and return the result
-        all_relation_tuples = self.query(query)
-        return all_relation_tuples
-
-    @staticmethod
-    def _assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation):
-        """
-        Even though rgxlog performs typechecking during the semantic checks phase, information extraction functions
-        are written by the users and could yield results that are not properly typed.
-        this method asserts an information extraction function's output is properly typed.
-
-        @param ie_input: the input of the ie function (used in the exception when the type check fails).
-        @param ie_output: an output of the ie function.
-        @param ie_output_schema: the expected schema for ie_output.
-        @param ie_relation: the ie relation for which the output was computed (will be used to print an exception
-            in case the output is not properly typed).
-        @raise TypeError: if there is output term of an unsupported type or the output relation is not properly typed.
-        """
-
-        # get a list of the ie output's term types
-        ie_output_term_types = []
-        for output_term in ie_output:
-            if isinstance(output_term, int):
-                output_type = DataTypes.integer
-            elif isinstance(output_term, str):
-                output_type = DataTypes.string
-            elif isinstance(output_term, Span):
-                # allow the user to return a span as either a tuple of length 2 or a datatypes.Span instance
-                output_type = DataTypes.span
-            else:
-                # encountered an output term of an unsupported type
-                raise TypeError(f'executing ie relation {ie_relation}\n'
-                                f'with the input {ie_input}\n'
-                                f'failed because one of the outputs had an unsupported term type\n'
-                                f'the output: {ie_output}\n'
-                                f'the invalid term: {output_term}\n'
-                                f'the invalid term type: {type(output_term)}\n'
-                                f'note that only strings, spans and integers are supported\n'
-                                f'spans can be represented as a tuple of length 2 or as a datatypes.span instance')
-            ie_output_term_types.append(output_type)
-
-        # assert that the ie output is properly typed
-        ie_output_is_properly_typed = ie_output_term_types == list(ie_output_schema)
-        if not ie_output_is_properly_typed and len(ie_output_term_types) != 0:
-            raise TypeError(f'executing ie relation {ie_relation}\n'
-                            f'with the input {ie_input}\n'
-                            f'failed because one of the outputs had unexpected term types\n'
-                            f'the output: {ie_output}\n'
-                            f'the output term types: {ie_output_term_types}\n'
-                            f'the expected types: {ie_output_schema}')
-
-    def declare_relation(self, relation_decl: RelationDeclaration) -> None:
+    def declare_relation_table(self, relation_decl: RelationDeclaration) -> None:
         """
         Declares a relation as an SQL table, whose types are named t0, t1, ...
         if the relation is already declared, do nothing.
@@ -630,8 +401,29 @@ class SqliteEngine(RgxlogEngineBase):
         template_dict = {"rel_name": relation_decl.relation_name, "col_names": col_names}
         sql_template = 'CREATE TABLE {{rel_name}} ({{col_names | join(", ")}})'
 
-        self.run_sql_from_jinja_template(sql_template, template_dict)
+        self._run_sql_from_jinja_template(sql_template, template_dict)
 
+    def is_table_exists(self, table_name) -> bool:
+        """
+        Checks whether a table exists in the database.
+
+        @param table_name: the table which is checked for existence.
+        @return: True if it exists, else False.
+        """
+        sql_check_if_exists = (f"{self.SQL_SELECT} name FROM {self.SQL_TABLE_OF_TABLES} WHERE "
+                               f"type='table' AND name='{table_name}'")
+        return bool(self._run_sql(sql_check_if_exists))
+
+    def clear_relation(self, table_name: str) -> None:
+        sql_command = f"DELETE FROM {table_name}"
+        self._run_sql(sql_command)
+
+    def get_table_len(self, table_name: str) -> int:
+        sql_command = f"SELECT COUNT(*) FROM {table_name}"
+        table_len, = self._run_sql(sql_command)[0]
+        return table_len
+
+    # ~~ operator methods ~~
     @extract_one_relation
     def operator_select(self, src_relation: Relation, constant_variables_info: Set[Tuple[int, Any, DataTypes]], *args) -> Relation:
         """
@@ -703,17 +495,17 @@ class SqliteEngine(RgxlogEngineBase):
         # TODO@niv: rename to column_constraints
         all_conditions = constant_conditions + equal_var_conditions
 
-        template_dict = {"new_rel_name": selected_relation.relation_name, "sql_select": self.SQL_SELECT, "src_rel_name": src_relation.relation_name,
+        template_dict = {"new_rel_name": selected_relation.relation_name, "SELECT": self.SQL_SELECT, "src_rel_name": src_relation.relation_name,
                          "all_conditions": all_conditions}
 
         sql_template = ("""
-        INSERT INTO {{new_rel_name}} {{sql_select}} * FROM {{src_rel_name}}
+        INSERT INTO {{new_rel_name}} {{SELECT}} * FROM {{src_rel_name}}
         {%- if all_conditions %}
             WHERE {{ all_conditions | join(" AND ") }}
         {%- endif -%}
         """)
 
-        self.run_sql_from_jinja_template(sql_template, template_dict)
+        self._run_sql_from_jinja_template(sql_template, template_dict)
 
         return selected_relation
 
@@ -787,7 +579,6 @@ class SqliteEngine(RgxlogEngineBase):
                          "first_rel_name": first_relation.relation_name, "first_rel_temp_name": relation_temp_names[first_relation],
                          "rels_temp_names": inner_join_list, "join_conditions": on_conditions_list}
 
-        # TODO@niv: rename selects
         sql_template = ("""
         INSERT INTO {{ new_rel_name }}
         {{ SELECT }} {{ new_cols | join(", ") }}
@@ -798,7 +589,7 @@ class SqliteEngine(RgxlogEngineBase):
         {%- endif -%}
         """)
 
-        self.run_sql_from_jinja_template(sql_template, template_dict)
+        self._run_sql_from_jinja_template(sql_template, template_dict)
 
         return joined_relation
 
@@ -844,7 +635,7 @@ class SqliteEngine(RgxlogEngineBase):
         sql_command = (f"INSERT INTO {new_relation.relation_name} {self.SQL_SELECT} {', '.join(dest_col_list)}"
                        f" FROM {src_relation.relation_name}")
 
-        self.run_sql(sql_command)
+        self._run_sql(sql_command)
         return new_relation
 
     def operator_union(self, relations: List[Relation], *args) -> Relation:
@@ -871,8 +662,8 @@ class SqliteEngine(RgxlogEngineBase):
                 selection_list = [self._get_col_name(col_index) for col_index in range(len(united_relation.term_list))]
 
                 # render a jinja template into an SQL select
-                relation_string_template = '{{sql_select}} {{ selected_cols | join(", ") }} FROM {{rel_name}}'
-                template_dict = {"sql_select": self.SQL_SELECT, "selected_cols": selection_list, "rel_name": relation.relation_name}
+                relation_string_template = '{{SELECT}} {{ selected_cols | join(", ") }} FROM {{rel_name}}'
+                template_dict = {"SELECT": self.SQL_SELECT, "selected_cols": selection_list, "rel_name": relation.relation_name}
                 rendered_relation_string = Template(strip_lines(relation_string_template)).render(**template_dict)
                 union_list.append(rendered_relation_string)
 
@@ -886,7 +677,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         sql_command = f"INSERT INTO {united_relation.relation_name} {' UNION '.join(union_list)}"
 
-        self.run_sql(sql_command)
+        self._run_sql(sql_command)
         return united_relation
 
     @extract_one_relation
@@ -897,10 +688,10 @@ class SqliteEngine(RgxlogEngineBase):
 
             # check if the relation already exists
             if self.is_table_exists(dest_rel_name):
-                self.clear_table(dest_rel_name)
+                self.clear_relation(dest_rel_name)
             else:
                 dest_decl_rel = RelationDeclaration(dest_rel_name, src_rel.type_list)
-                self.declare_relation(dest_decl_rel)
+                self.declare_relation_table(dest_decl_rel)
 
         else:
             dest_rel_name = self._create_unique_relation(arity=len(src_rel.type_list),
@@ -910,26 +701,160 @@ class SqliteEngine(RgxlogEngineBase):
 
         # sql part
         sql_command = f"INSERT INTO {dest_rel_name} {self.SQL_SELECT} * FROM {src_rel_name}"
-        self.run_sql(sql_command)
+        self._run_sql(sql_command)
 
         return dest_rel
 
-    def is_table_exists(self, table_name) -> bool:
+    @no_type_check
+    def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
+                            bounding_relation: Optional[Relation]) -> Relation:
         """
-        Checks whether a table exists in the database.
+        Computes an information extraction relation, returning the result as a normal relation.
+        for more details see RgxlogEngineBase.compute_ie_relation.
+        notice comments below regarding constants
 
-        @param table_name: the table which is checked for existence.
-        @return: True if it exists, else False.
+        @param ie_relation: an ie relation that determines the input and output terms of the ie function.
+        @param ie_func: the ie function that will be used to compute the ie relation.
+        @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
+                                  queried from it.
+        @return: a normal relation that contains all of the resulting tuples in the rgxlog engine.
         """
-        sql_check_if_exists = (f"{self.SQL_SELECT} name FROM {self.SQL_TABLE_OF_TABLES} WHERE "
-                               f"type='table' AND name='{table_name}'")
-        return bool(self.run_sql(sql_check_if_exists))
+
+        def _looks_like_span(checked_value):
+            """
+            checks whether `term` is a tuple of 2 numbers
+            @param checked_value: the value to check
+            @return: True/False according to the above description
+            """
+            if isinstance(checked_value, tuple) and len(checked_value) == 2:
+                try:
+                    _, _ = int(checked_value[0]), int(checked_value[1])
+                    return True
+                except ValueError:
+                    # an item in the tuple could not be converted to int
+                    return False
+            return False
+
+        def _get_all_ie_function_inputs():
+            # define the ie input relation
+            if bounding_relation is None:
+                # special case where the ie relation is the first rule body relation
+                # in this case, the ie input relation is defined exclusively by constant terms, i.e, by a single tuple
+                # add that tuple as a fact to the input relation
+                # create the input relation for the ie function, and also declare it inside SQL
+                all_ie_inputs = [tuple(ie_relation.input_term_list)]
+            else:
+                # get a list of inputs to the ie function - some of them may be constants
+                inputs_without_constants = self._get_all_relation_tuples(bounding_relation)
+                all_ie_inputs = []
+                for bounded_input in inputs_without_constants:
+                    result_input_list = []
+                    index_in_bounded_input = 0
+                    for term, datatype in zip(ie_relation.input_term_list, ie_relation.input_type_list):
+                        if datatype is DataTypes.free_var_name:
+                            # add value from `bounded_input`
+                            result_input_list.append(bounded_input[index_in_bounded_input])
+                            index_in_bounded_input += 1
+                        else:
+                            # add a constant from the ie_relation's input
+                            result_input_list.append(term)
+
+                    assert index_in_bounded_input == len(bounded_input), "parsing input relation failed"
+                    all_ie_inputs.append(tuple(result_input_list))
+            return all_ie_inputs
+
+        def _format_ie_output(raw_ie_output):
+            # the output should be a tuple, but if a single value is returned, we accept it as well
+            if isinstance(raw_ie_output, (str, int, Span)):
+                return [raw_ie_output]
+            else:
+                # the user is allowed to represent a span in an ie output as a tuple of length 2
+                # convert said tuples to spans
+                return [Span(int(term[0]), int(term[1])) if _looks_like_span(term) else term for term in list(raw_ie_output)]
+
+        def _run_ie_function_and_add_outputs_as_facts():
+            # run the ie function on each input and process the outputs
+            for ie_input in ie_inputs:
+                # run the ie function on the input, resulting in a list of tuples
+                ie_outputs = ie_func.ie_function(*ie_input)
+                # process each ie output and add it to the output relation
+                for ie_output in ie_outputs:
+                    spanned_ie_output = _format_ie_output(ie_output)
+
+                    # assert the ie output is properly typed
+                    self._assert_ie_output_properly_typed(ie_input, spanned_ie_output, ie_output_schema, ie_relation)
+
+                    # add the output as a fact to the output relation
+                    # notice - repetitions are ignored here (results are in a set)
+                    if len(spanned_ie_output) != 0:
+                        output_fact = AddFact(output_relation.relation_name, spanned_ie_output, list(ie_output_schema))
+                        self.add_fact(output_fact)
+
+        ie_relation_name = ie_relation.relation_name
+        # create the output relation for the ie function, and also declare it inside SQL
+        output_relation_arity = len(ie_relation.output_term_list)
+        output_relation_name = self._create_unique_relation(output_relation_arity,
+                                                            prefix=f'{ie_relation_name}{self.SQL_SEPARATOR}output')
+        output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
+
+        ie_inputs = _get_all_ie_function_inputs()
+        ie_output_schema = ie_func.get_output_types(output_relation_arity)
+        _run_ie_function_and_add_outputs_as_facts()
+
+        return output_relation
+
+    # ~~ util methods ~~
+    def _run_sql_from_jinja_template(self, sql_template: str, template_dict: Optional[dict] = None):
+        if not template_dict:
+            template_dict = {}
+        sql_command = Template(strip_lines(sql_template)).render(**template_dict)
+        self._run_sql(sql_command)
+
+    def _run_sql(self, command: str, command_args: Optional[List] = None, do_commit: bool = False) -> List:
+        logger.debug(f"sql {command=}")
+        if command_args:
+            logger.debug(f"...with args: {command_args}")
+
+        if command_args:
+            self.sql_cursor.execute(command, command_args)
+        else:
+            self.sql_cursor.execute(command)
+
+        if do_commit:
+            # save to file
+            self.sql_conn.commit()
+
+        return self.sql_cursor.fetchall()
+
+    def _create_unique_relation(self, arity, prefix=""):
+        """
+        Declares a new relation with the requested arity in SQL, the relation will have a unique name.
+
+        @param arity: the relation's arity.
+        @param prefix: will be used as a part of the relation's name.
+                for example: prefix='join' -> full name = __rgxlog__join{counter}.
+        @return: the new relation's name.
+        """
+        # create the name of the new relation
+        unique_relation_id = next(self.unique_relation_id_counter)
+        if RESERVED_RELATION_PREFIX in prefix:
+            # we don't want relations to be called __rgxlog__rgxlog__rgxlog...
+            unique_relation_name = f'{prefix}{unique_relation_id}'
+        else:
+            unique_relation_name = f'{RESERVED_RELATION_PREFIX}{prefix}{unique_relation_id}'
+
+        # in SQLite there's no typechecking so we just need to make sure that the schema has the correct arity
+        unique_relation_schema = [DataTypes.free_var_name] * arity
+
+        # create the declaration
+        unique_relation_decl = RelationDeclaration(unique_relation_name, unique_relation_schema)
+
+        # create the relation's SQL table, and return its name
+        self.declare_relation_table(unique_relation_decl)
+        return unique_relation_name
 
     def _datatype_to_sql_type(self, datatype: DataTypes):
         return self.DATATYPE_TO_SQL_TYPE[datatype]
-
-    def __del__(self):
-        self.sql_conn.close()
 
     def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
         if datatype is DataTypes.integer:
@@ -945,14 +870,96 @@ class SqliteEngine(RgxlogEngineBase):
     def _get_free_variable_indexes(type_list) -> List[int]:
         return [i for i, term_type in enumerate(type_list) if (term_type is DataTypes.free_var_name)]
 
-    def clear_table(self, table_name) -> None:
-        sql_command = f"DELETE FROM {table_name}"
-        self.run_sql(sql_command)
+    def _get_all_relation_tuples(self, relation: Relation) -> List[Tuple]:
+        """
+        @param relation: a relation to be queried.
+        @return: all the tuples of 'relation' as a list of tuples.
+        """
 
-    def get_table_len(self, table: str) -> int:
-        sql_command = f"SELECT COUNT(*) FROM {table}"
-        table_len, = self.run_sql(sql_command)[0]
-        return table_len
+        relation_name = relation.relation_name
+        relation_arity = len(relation.term_list)
+
+        # in order to get all of the tuples of the relation, we'll query the relation with a query that only has
+        # free variable terms, where each one of the free variables has a different name
+        # for example for the relation 'Parent(str, str)', we'll construct the query '?Parent(X0, X1)'
+        query_relation_name = relation_name
+        query_terms = [f'X{i}' for i in range(relation_arity)]
+        query_term_types = [DataTypes.free_var_name] * relation_arity
+        query = Query(query_relation_name, query_terms, query_term_types)
+
+        # query the relation using the query we've constructed, and return the result
+        all_relation_tuples = self.query(query)
+        return all_relation_tuples
+
+    @staticmethod
+    def _assert_ie_output_properly_typed(ie_input, ie_output, ie_output_schema, ie_relation):
+        """
+        Even though rgxlog performs typechecking during the semantic checks phase, information extraction functions
+        are written by the users and could yield results that are not properly typed.
+        this method asserts an information extraction function's output is properly typed.
+
+        @param ie_input: the input of the ie function (used in the exception when the type check fails).
+        @param ie_output: an output of the ie function.
+        @param ie_output_schema: the expected schema for ie_output.
+        @param ie_relation: the ie relation for which the output was computed (will be used to print an exception
+            in case the output is not properly typed).
+        @raise TypeError: if there is output term of an unsupported type or the output relation is not properly typed.
+        """
+
+        # get a list of the ie output's term types
+        ie_output_term_types = []
+        for output_term in ie_output:
+            if isinstance(output_term, int):
+                output_type = DataTypes.integer
+            elif isinstance(output_term, str):
+                output_type = DataTypes.string
+            elif isinstance(output_term, Span):
+                # allow the user to return a span as either a tuple of length 2 or a datatypes.Span instance
+                output_type = DataTypes.span
+            else:
+                # encountered an output term of an unsupported type
+                raise TypeError(f'executing ie relation {ie_relation}\n'
+                                f'with the input {ie_input}\n'
+                                f'failed because one of the outputs had an unsupported term type\n'
+                                f'the output: {ie_output}\n'
+                                f'the invalid term: {output_term}\n'
+                                f'the invalid term type: {type(output_term)}\n'
+                                f'note that only strings, spans and integers are supported\n'
+                                f'spans can be represented as a tuple of length 2 or as a datatypes.span instance')
+            ie_output_term_types.append(output_type)
+
+        # assert that the ie output is properly typed
+        ie_output_is_properly_typed = ie_output_term_types == list(ie_output_schema)
+        if not ie_output_is_properly_typed and len(ie_output_term_types) != 0:
+            raise TypeError(f'executing ie relation {ie_relation}\n'
+                            f'with the input {ie_input}\n'
+                            f'failed because one of the outputs had unexpected term types\n'
+                            f'the output: {ie_output}\n'
+                            f'the output term types: {ie_output_term_types}\n'
+                            f'the expected types: {ie_output_schema}')
+
+    @staticmethod
+    def _convert_strings_to_spans_in_query_result(query_result: List[Tuple]) -> List[Tuple]:
+        """
+        convert strings that look like spans into spans
+        @param query_result: the list of tuples which may contain strings that should be converted to spans
+        @return: the same list, but with span-looking strings converted to `Span` objects
+        """
+        spanned_query_result = []
+        for row in query_result:
+            converted_row: List[Union[str, int, Span]] = []
+            for value in row:
+                if isinstance(value, str):
+                    transformed_string = string_to_span(value)
+                    if transformed_string is None:
+                        converted_row.append(value)
+                    else:
+                        converted_row.append(transformed_string)
+                else:
+                    converted_row.append(value)
+
+            spanned_query_result.append(tuple(converted_row))
+        return spanned_query_result
 
 
 if __name__ == "__main__":
@@ -961,7 +968,7 @@ if __name__ == "__main__":
 
     # add relation
     my_relation = RelationDeclaration("yoyo", [DataTypes.integer, DataTypes.string])
-    my_engine.declare_relation(my_relation)
+    my_engine.declare_relation_table(my_relation)
 
     # add fact
     my_fact = AddFact("yoyo", [8, "hihi"], [DataTypes.integer, DataTypes.string])

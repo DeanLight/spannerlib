@@ -373,7 +373,7 @@ class Session:
 
         # declare relation if it does not exist
         if not symbol_table.contains_relation(relation_name):
-            engine.declare_relation(RelationDeclaration(relation_name, relation_types))
+            engine.declare_relation_table(RelationDeclaration(relation_name, relation_types))
             symbol_table.add_relation_schema(relation_name, relation_types, False)
 
         for fact in facts:
