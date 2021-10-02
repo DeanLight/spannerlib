@@ -243,6 +243,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
 
         return union_to_project_children
 
+
 class RemoveUselessRelationsFromRule(GenericPass):
     """
     This pass removes duplicated relations from a rule.
