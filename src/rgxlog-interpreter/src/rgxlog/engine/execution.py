@@ -2,15 +2,15 @@
 this module contains the implementation of the naive execution function
 """
 
-from typing import (Tuple, Dict, List, Callable, Optional)
+from typing import (Tuple, Dict, List, Callable, Optional, Union)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
                                                     IERelation)
 from rgxlog.engine.engine import RgxlogEngineBase
-from rgxlog.engine.state.graphs import EvalState, GraphBase, TermGraphBase
+from rgxlog.engine.state.graphs import EvalState, GraphBase, TermGraphBase, ROOT_TYPE, TermNodeType, TYPE, STATE, VALUE
 from rgxlog.engine.state.symbol_table import SymbolTableBase
+from rgxlog.engine.utils.passes_utils import ParseNodeType
 
-VALUE_ATTRIBUTE = 'value'
 OUT_REL_ATTRIBUTE = "output_rel"
 
 FREE_VAR_PREFIX = "COL"
@@ -102,12 +102,12 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             @param node_id: the current node.
             """
             term_attrs = term_graph[node_id]
-            if node_id in visited_nodes or term_attrs["state"] is EvalState.COMPUTED:
+            if node_id in visited_nodes or term_attrs[STATE] is EvalState.COMPUTED:
                 return
 
             # if type is not rule_rel it's fine to continue the dfs
-            if term_attrs["type"] == "rule_rel":
-                rule_rel = term_attrs[VALUE_ATTRIBUTE]
+            if term_attrs[TYPE] is TermNodeType.RULE_REL:
+                rule_rel = term_attrs[VALUE]
                 if rule_rel.relation_name not in mutually_recursive:
                     # computes the independent rule and stop
                     compute_rule(rule_rel.relation_name, do_reset=False)
@@ -147,7 +147,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
 
         state = EvalState.NOT_COMPUTED if do_reset else EvalState.COMPUTED
         for term_id in term_graph.post_order_dfs_from(relation_name):
-            term_graph.set_node_attribute(term_id, "state", state)
+            term_graph.set_node_attribute(term_id, STATE, state)
 
         return
 
@@ -170,7 +170,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             if not children:
                 return True
 
-            children_statuses_is_computed = [term_graph[child_id]["state"] is EvalState.COMPUTED
+            children_statuses_is_computed = [term_graph[child_id][STATE] is EvalState.COMPUTED
                                              for child_id in children]
             return all(children_statuses_is_computed)
 
@@ -186,51 +186,47 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             relations = [rel_node[OUT_REL_ATTRIBUTE] for rel_node in relations_nodes]
             return relations
 
-        term_type_to_engine_op: Dict[str, Callable] = {
-            "rule_rel": rgxlog_engine.operator_copy,
-            "union": rgxlog_engine.operator_union,
-            "join": rgxlog_engine.operator_join,
-            "project": rgxlog_engine.operator_project,
-            "select": rgxlog_engine.operator_select
+        term_type_to_engine_op: Dict[TermNodeType, Callable] = {
+            TermNodeType.RULE_REL: rgxlog_engine.operator_copy,
+            TermNodeType.UNION: rgxlog_engine.operator_union,
+            TermNodeType.JOIN: rgxlog_engine.operator_join,
+            TermNodeType.PROJECT: rgxlog_engine.operator_project,
+            TermNodeType.SELECT: rgxlog_engine.operator_select
         }
 
         term_attrs = term_graph[node_id]
-        if term_attrs["state"] is EvalState.COMPUTED:
+        if term_attrs[STATE] is EvalState.COMPUTED:
             return
 
-        term_type = term_attrs["type"]
+        term_type = term_attrs[TYPE]
 
-        if term_type == "get_rel":
-            output_relation = term_attrs[VALUE_ATTRIBUTE]
+        if term_type is TermNodeType.GET_REL:
+            output_relation = term_attrs[VALUE]
 
-        elif term_type == "calc":
+        elif term_type is TermNodeType.CALC:
             children_relations = get_children_relations(node_id)
             rel_in = children_relations[0] if children_relations else None  # tmp bounding relation of the ie rel (join over all the bounding relations)
-            ie_rel_in: IERelation = term_attrs[VALUE_ATTRIBUTE]  # the ie relation to compute
+            ie_rel_in: IERelation = term_attrs[VALUE]  # the ie relation to compute
             ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)  # the ie function that correspond to the ie relation
             output_relation = rgxlog_engine.compute_ie_relation(ie_rel_in, ie_func_data, rel_in)
 
         else:
             operator = term_type_to_engine_op[term_type]
             input_relations = get_children_relations(node_id)
-            output_relation = operator(input_relations, term_attrs.get(VALUE_ATTRIBUTE))
+            output_relation = operator(input_relations, term_attrs.get(VALUE))
 
         term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, output_relation)
 
         # statement was executed, mark it as "computed" or "visited"
         compute_status = EvalState.COMPUTED if is_node_computed(node_id) else EvalState.VISITED
-        term_graph.set_node_attribute(node_id, 'state', compute_status)
+        term_graph.set_node_attribute(node_id, STATE, compute_status)
 
-    def no_op(*args):
-        return
-
-    node_type_to_action: Dict[str, Callable] = {
-        "rule": lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
-        "relation_declaration": rgxlog_engine.declare_relation,
-        "add_fact": rgxlog_engine.add_fact,
-        "remove_fact": rgxlog_engine.remove_fact,
-        "root": no_op,
-        "relation": no_op  # relations are being added to the symbol table in one of the other passes therefore in this pass we have nothing to do with them
+    node_type_to_action: Dict[Union[str, ParseNodeType], Callable] = {
+        ParseNodeType.RULE: lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
+        ParseNodeType.RELATION_DECLARATION: rgxlog_engine.declare_relation,
+        ParseNodeType.ADD_FACT: rgxlog_engine.add_fact,
+        ParseNodeType.REMOVE_FACT: rgxlog_engine.remove_fact,
+        ROOT_TYPE: lambda *args: None  # noop
     }
 
     # get the parse_graph's node ids. note that the order of the ids does not actually matter as long as the statements
@@ -242,23 +238,23 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
     for parse_id in parse_node_ids:
         parse_node_attrs = parse_graph[parse_id]
 
-        if parse_node_attrs["state"] is EvalState.COMPUTED:
+        if parse_node_attrs[STATE] is EvalState.COMPUTED:
             continue
 
         # mark node as "computed"
-        parse_graph.set_node_attribute(parse_id, "state", EvalState.COMPUTED)
+        parse_graph.set_node_attribute(parse_id, STATE, EvalState.COMPUTED)
 
         # the parse node is not computed, get its type and compute it accordingly
-        parse_node_type = parse_node_attrs["type"]
+        parse_node_type = parse_node_attrs[TYPE]
 
-        if parse_node_type == "query":
+        if parse_node_type == ParseNodeType.QUERY:
             # we return the query as well as the result, because we print as part of the output
-            query: Query = parse_node_attrs[VALUE_ATTRIBUTE]
+            query: Query = parse_node_attrs[VALUE]
             compute_rule(query.relation_name)
             query_result = (query, rgxlog_engine.query(query))
 
         else:
             action = node_type_to_action[parse_node_type]
-            action(parse_node_attrs.get(VALUE_ATTRIBUTE))
+            action(parse_node_attrs.get(VALUE))
 
     return query_result

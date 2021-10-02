@@ -1,14 +1,28 @@
 """
 this module contains helper functions and function decorators that are used in lark passes.
 """
-from typing import List
+from enum import Enum
 
 from lark import Tree as LarkNode
+from typing import List
 
-from rgxlog.engine.datatypes.ast_node_types import Rule
-from rgxlog.engine.state.graphs import GraphBase, EvalState
-
+from rgxlog.engine.state.graphs import GraphBase, EvalState, STATE, TYPE
 from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
+
+
+class ParseNodeType(Enum):
+    """
+    will be used as parse graph node types.
+    """
+
+    ADD_FACT = "add_fact"
+    REMOVE_FACT = "remove_fact"
+    QUERY = "query"
+    RELATION_DECLARATION = "relation_declaration"
+    RULE = "rule"
+
+    def __str__(self):
+        return self.value
 
 
 def assert_expected_node_structure_aux(lark_node):
@@ -90,10 +104,10 @@ def get_new_rule_nodes(parse_graph: GraphBase) -> List:
         term_attrs = parse_graph.get_node_attributes(node_id)
 
         # the term is not computed, get its type and compute it accordingly
-        term_type = term_attrs["type"]
+        term_type = term_attrs[TYPE]
 
         # make sure that the rule wasn't expanded before
-        if term_type == "rule" and term_attrs["state"] == EvalState.NOT_COMPUTED:
+        if term_type == ParseNodeType.RULE and term_attrs[STATE] == EvalState.NOT_COMPUTED:
             rule_nodes.append(node_id)
 
     return rule_nodes

@@ -25,6 +25,10 @@ from rgxlog.engine.utils.general_utils import get_input_free_var_names, get_outp
 
 PRETTY_INDENT = " " * 4
 ROOT_NODE_ID = "__rgxlog_root"
+ROOT_TYPE = "root"
+TYPE = "type"
+STATE = "state"
+VALUE = "value"
 
 
 class EvalState(Enum):
@@ -35,6 +39,23 @@ class EvalState(Enum):
     NOT_COMPUTED = "not_computed"
     VISITED = "visited"
     COMPUTED = "computed"
+
+    def __str__(self):
+        return self.value
+
+
+class TermNodeType(Enum):
+    """
+    will be used to represent type of term graph nodes.
+    """
+
+    SELECT = "select"
+    JOIN = "join"
+    PROJECT = "project"
+    UNION = "union"
+    CALC = "calc"
+    RULE_REL = "rule_rel"
+    GET_REL = "get_rel"
 
     def __str__(self):
         return self.value
@@ -228,7 +249,7 @@ class NetxGraph(GraphBase):
         self._node_id_counter = count()
 
         # create the root of the graph. it will be used as a source for dfs/bfs
-        self._root_id = self.add_node(node_id=ROOT_NODE_ID, type="root")
+        self._root_id = self.add_node(node_id=ROOT_NODE_ID, type=ROOT_TYPE)
 
         # used for keep track of the printed nodes (in pretty function)
         self._visited_nodes = None
@@ -741,9 +762,9 @@ class TermGraph(TermGraphBase):
         if self.has_node(relation_name):
             return self.get_relation_union_node(relation_name)
 
-        self.add_node(node_id=relation_name, type="rule_rel", value=relation)
+        self.add_node(node_id=relation_name, type=TermNodeType.RULE_REL, value=relation)
         self.add_edge(self.get_root_id(), relation_name)
-        union_id: int = self.add_node(type="union")
+        union_id: int = self.add_node(type=TermNodeType.UNION)
         self.add_edge(relation_name, union_id)
 
         return union_id
@@ -812,7 +833,7 @@ class TermGraph(TermGraphBase):
                 return head_id
 
             # add join node
-            join_node_id_ = self.add_node(type="join", value=join_dict)
+            join_node_id_ = self.add_node(type=TermNodeType.JOIN, value=join_dict)
             add_node(join_node_id_)
 
             self.add_edge(head_id, join_node_id_)
@@ -829,7 +850,7 @@ class TermGraph(TermGraphBase):
             @param father_node_id: the node to which the relation will be connected.
             """
 
-            get_rel_id = self.add_node(type="get_rel", value=relation)
+            get_rel_id = self.add_node(type=TermNodeType.GET_REL, value=relation)
             add_node(get_rel_id)
 
             # cache the branch
@@ -862,7 +883,7 @@ class TermGraph(TermGraphBase):
             if len(free_vars) != len(term_list) or len(term_list) != len(set(term_list)):
                 # create select node and connect relation branch to it
                 select_info = relation.get_select_cols_values_and_types()
-                select_node_id = self.add_node(type="select", value=select_info)
+                select_node_id = self.add_node(type=TermNodeType.SELECT, value=select_info)
                 add_node(select_node_id)
                 self.add_edge(join_node_id_, select_node_id)
                 add_relation_to(relation, select_node_id)
@@ -880,7 +901,7 @@ class TermGraph(TermGraphBase):
             @param bounding_graph_: the bounding graph of the ie relations.
             @return: the calc_node's id.
             """
-            calc_node_id_ = self.add_node(type="calc", value=ie_relation_)
+            calc_node_id_ = self.add_node(type=TermNodeType.CALC, value=ie_relation_)
             add_node(calc_node_id_)
 
             # join all the ie relation's bounding relations. The bounding relations already exists in the graph!
@@ -897,7 +918,7 @@ class TermGraph(TermGraphBase):
 
         # make root
         union_id = self.add_relation(head_relation)
-        project_id = self.add_node(type="project", value=head_relation.term_list)
+        project_id = self.add_node(type=TermNodeType.PROJECT, value=head_relation.term_list)
         self.add_edge(union_id, project_id)
         add_node(project_id)
 

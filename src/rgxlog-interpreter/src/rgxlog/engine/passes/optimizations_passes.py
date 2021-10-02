@@ -7,7 +7,7 @@ from typing import Dict, Any, Set, Union, List, Tuple
 from rgxlog.engine.datatypes.ast_node_types import IERelation, Relation, Rule
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.passes.lark_passes import GenericPass
-from rgxlog.engine.state.graphs import TermGraphBase, GraphBase
+from rgxlog.engine.state.graphs import TermGraphBase, GraphBase, TermNodeType, TYPE, VALUE
 from rgxlog.engine.utils.general_utils import get_output_free_var_names, get_input_free_var_names, fixed_point
 from rgxlog.engine.utils.passes_utils import get_new_rule_nodes
 
@@ -65,38 +65,37 @@ class PruneUnnecessaryProjectNodes(GenericPass):
         @return: the arity of the relation that the node gets during the execution.
         """
 
-        node_ids = list(self.term_graph.get_children(node_id))
+        node_ids = self.term_graph.get_children(node_id)
         free_vars: Set[str] = set()
 
         def is_relation_has_one_free_var(relation_: Union[Relation, IERelation]) -> bool:
             """
             Check whether relation is only one free variable.
 
-            @param relation_: a relation or an ie_relaiton.
+            @param relation_: a relation or an ie_relation.
             """
 
             return len(relation_.get_term_list()) == 1
 
-        while len(node_ids) != 0:
-            node_id = node_ids.pop(0)
+        while node_id in node_ids:
             node_attrs = self.term_graph[node_id]
-            node_type = node_attrs["type"]
+            node_type = node_attrs[TYPE]
 
-            if node_type in ("get_rel", "rule_rel", "calc"):
-                relation = node_attrs["value"]
+            if node_type in (TermNodeType.GET_REL, TermNodeType.RULE_REL, TermNodeType.GET_REL.CALC):
+                relation = node_attrs[VALUE]
                 # if relation has more than one free var we can' prune to project
                 if not is_relation_has_one_free_var(relation):
                     return 0
 
                 free_vars |= set(relation.get_term_list())
 
-            elif node_type == "join":
+            elif node_type is TermNodeType.JOIN:
                 # the input of project node is the same as the input of the join node
                 return self.find_arity_of_node(node_id)
 
-            elif node_type == "select":
+            elif node_type is TermNodeType.SELECT:
                 relation_child_id = next(iter(self.term_graph.get_children(node_id)))
-                relation = self.term_graph[relation_child_id]["value"]
+                relation = self.term_graph[relation_child_id][VALUE]
                 if not is_relation_has_one_free_var(relation):
                     return 0
 
@@ -117,11 +116,11 @@ class PruneUnnecessaryProjectNodes(GenericPass):
 
         for node_id in nodes_ids:
             node_attrs = self.term_graph[node_id]
-            node_type = node_attrs["type"]
+            node_type = node_attrs[TYPE]
 
-            if node_type == "union":
+            if node_type is TermNodeType.UNION:
                 children = self.term_graph.get_children(node_id)
-                project_children = [node for node in children if self.term_graph[node]["type"] == "project"]
+                project_children = [node for node in children if self.term_graph[node][TYPE] == "project"]
                 union_to_project_children[node_id] = project_children
 
         return union_to_project_children
@@ -178,5 +177,5 @@ class RemoveUselessRelationsFromRule(GenericPass):
     def run_pass(self, **kwargs):
         rules = get_new_rule_nodes(self.parse_graph)
         for rule_node_id in rules:
-            rule: Rule = self.parse_graph[rule_node_id]["value"]
+            rule: Rule = self.parse_graph[rule_node_id][VALUE]
             RemoveUselessRelationsFromRule.remove_useless_relations(rule)

@@ -39,7 +39,7 @@ from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.graphs import NetxStateGraph
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
                                                fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
-from rgxlog.engine.utils.passes_utils import assert_expected_node_structure, unravel_lark_node
+from rgxlog.engine.utils.passes_utils import assert_expected_node_structure, unravel_lark_node, ParseNodeType
 
 
 def get_tree(**kwargs):
@@ -924,7 +924,7 @@ class AddStatementsToNetxParseGraph(InterpreterPass):
         super().__init__()
         self.parse_graph: NetxStateGraph = kw['parse_graph']
 
-    def _add_statement_to_parse_graph(self, statement_type: str, statement_value) -> None:
+    def _add_statement_to_parse_graph(self, statement_type: ParseNodeType, statement_value) -> None:
         """
         A utility function that adds a statement to the parse graph, meaning it adds a node that
         represents the statement to the parse graph, then attach the node to the parse graph's root.
@@ -939,20 +939,20 @@ class AddStatementsToNetxParseGraph(InterpreterPass):
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact):
-        self._add_statement_to_parse_graph("add_fact", fact)
+        self._add_statement_to_parse_graph(ParseNodeType.ADD_FACT, fact)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact):
-        self._add_statement_to_parse_graph("remove_fact", fact)
+        self._add_statement_to_parse_graph(ParseNodeType.REMOVE_FACT, fact)
 
     @unravel_lark_node
     def query(self, query: Query):
-        self._add_statement_to_parse_graph("query", query)
+        self._add_statement_to_parse_graph(ParseNodeType.QUERY, query)
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration):
-        self._add_statement_to_parse_graph("relation_declaration", relation_decl)
+        self._add_statement_to_parse_graph(ParseNodeType.RELATION_DECLARATION, relation_decl)
 
     @unravel_lark_node
     def rule(self, rule: Rule):
-        self._add_statement_to_parse_graph("rule", rule)
+        self._add_statement_to_parse_graph(ParseNodeType.RULE, rule)
