@@ -589,10 +589,13 @@ class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
             print(f"Printing all the rules with head {head}:")
 
         i = 0
-        for rule, _ in self._rule_to_nodes.values():
+        for rule, _ in self.get_all_rules():
             if head is None or rule.head_relation.relation_name == head:
                 print(f"\t{i + 1}. {rule}")
                 i += 1
+
+    def get_all_rules(self):
+        return self._rule_to_nodes.values()
 
     def get_mutually_recursive_relations(self, relation_name: str) -> Set[str]:
         """@see documentation of get_mutually_recursive_relations in DependencyGraph"""

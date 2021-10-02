@@ -103,7 +103,6 @@ def get_new_rule_nodes(parse_graph: GraphBase) -> List:
     for node_id in node_ids:
         term_attrs = parse_graph.get_node_attributes(node_id)
 
-        # the term is not computed, get its type and compute it accordingly
         term_type = term_attrs[TYPE]
 
         # make sure that the rule wasn't expanded before

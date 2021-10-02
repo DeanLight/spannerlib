@@ -2,14 +2,11 @@ import csv
 import logging
 import os
 import re
+import rgxlog
+import rgxlog.engine.engine
 from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
-from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check
-
-import rgxlog
-import rgxlog.engine.engine
 from rgxlog.engine.datatypes.ast_node_types import AddFact, RelationDeclaration
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
 from rgxlog.engine.engine import FALSE_VALUE, TRUE_VALUE
@@ -23,7 +20,6 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxParseGraph, GenericPass)
-from rgxlog.engine.passes.optimizations_passes import PruneUnnecessaryProjectNodes, RemoveUselessRelationsFromRule
 from rgxlog.engine.state.graphs import TermGraph, NetxStateGraph, GraphBase, TermGraphBase
 from rgxlog.engine.state.symbol_table import SymbolTable, SymbolTableBase
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
@@ -33,6 +29,8 @@ from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions
                                OpenIE, KBP, Quote, Sentiment, TrueCase)
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
 from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
+from tabulate import tabulate
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check
 
 CSV_DELIMITER = ";"
 
@@ -225,7 +223,7 @@ class Session:
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxParseGraph,
-            AddRulesToComputationTermGraph
+            AddRulesToComputationTermGraph,
         ]
 
         grammar_file_path = Path(rgxlog.grammar.__file__).parent
@@ -508,8 +506,9 @@ if __name__ == "__main__":
                B(4)
                C(0)
 
-               A(X) <- B(X), C(Y)
+               A(X) <- B(X)
                ?A(X)
             """
 
     my_session.run_commands(cmd)
+    print(my_session._term_graph)

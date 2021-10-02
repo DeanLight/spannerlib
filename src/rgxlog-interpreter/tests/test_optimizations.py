@@ -1,5 +1,6 @@
 from rgxlog.engine.passes.optimizations_passes import PruneUnnecessaryProjectNodes, RemoveUselessRelationsFromRule
 from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
+
 from tests.utils import run_test, get_session_with_optimizations
 
 
