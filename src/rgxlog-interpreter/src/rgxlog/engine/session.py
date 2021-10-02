@@ -225,9 +225,7 @@ class Session:
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxParseGraph,
-            RemoveUselessRelationsFromRule,
-            AddRulesToComputationTermGraph,
-            PruneUnnecessaryProjectNodes
+            AddRulesToComputationTermGraph
         ]
 
         grammar_file_path = Path(rgxlog.grammar.__file__).parent
@@ -299,12 +297,12 @@ class Session:
         """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    def get_pass_stack(self) -> List[str]:
+    def get_pass_stack(self) -> List[Type[GenericPass]]:
         """
         @return: the current pass stack.
         """
 
-        return [pass_.__name__ for pass_ in self._pass_stack]
+        return self._pass_stack.copy()
 
     def set_pass_stack(self, user_stack: List[Type[GenericPass]]):
         """
@@ -503,16 +501,15 @@ if __name__ == "__main__":
     my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
 
     cmd = """
-               new B(int, int)
-               new C(int, int)
-               B(1, 1)
-               B(1, 2)
-               B(2, 3)
-               C(2, 2)
-               C(1, 1)
+               new B(int)
+               new C(int)
+               B(1)
+               B(2)
+               B(4)
+               C(0)
 
-               A(X, Y) <- B(X, Y), C(0, 0)
-               ?A(X, Y)
+               A(X) <- B(X), C(Y)
+               ?A(X)
             """
 
     my_session.run_commands(cmd)

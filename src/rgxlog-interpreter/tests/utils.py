@@ -2,8 +2,9 @@ import numpy as np
 import tempfile
 from pandas import DataFrame
 from pathlib import Path
-from typing import List, Optional, Iterable, Dict, no_type_check
+from typing import List, Optional, Iterable, Dict, no_type_check, Type
 
+from rgxlog.engine.passes.lark_passes import GenericPass
 from rgxlog.engine.session import queries_to_string, Session
 
 TEMP_FILE_NAME = "temp"
@@ -91,32 +92,52 @@ def compare_strings(expected: str, output: str) -> bool:
 
 
 @no_type_check
-def run_test(commands: str, expected_output: Optional[str] = None, functions_to_import: Iterable[Dict] = tuple(),
-             test_session: Optional[Session] = None) -> Session:
+def run_test(commands: str, expected_output: Optional[str] = None, functions_to_import: Iterable[Dict] = (),
+             session: Optional[Session] = None) -> Session:
     """
     A function that executes a test.
 
     @param commands: the commands to run.
     @param expected_output: the expected output of the commands. if it has value of None, than we won't check the output.
     @param functions_to_import: an iterable of functions we want to import to the session.
-    @param test_session: the session in which we run the commands.
+    @param session: the session in which we run the commands.
     @return: the session it created or got as an argument.
     """
     # if session wasn't passed as an arg than we create it
-    if test_session is None:
-        test_session = Session()
+    if session is None:
+        session = Session()
 
     # import all ie functions
     for ie_function in functions_to_import:
-        test_session.register(**ie_function)
+        session.register(**ie_function)
 
-    commands_result = test_session.run_commands(commands, print_results=True)
+    commands_result = session.run_commands(commands, print_results=True)
 
     if expected_output is not None:
         commands_result_string = queries_to_string(commands_result)
         assert compare_strings(expected_output, commands_result_string), "expected string != result string"
 
-    return test_session
+    return session
+
+
+def get_session_with_optimizations(parse_graph_optimization_passes: Iterable[Type[GenericPass]] = (),
+                                   term_graph_optimization_passes: Iterable[Type[GenericPass]] = ()) -> Session:
+    """
+    Creates a session and adds optimization passes to the pass stack.
+    @param parse_graph_optimization_passes: optimization passes that will be added before AddRulesToComputationTermGraph pass.
+    @param term_graph_optimization_passes: optimization passes that will be added after AddRulesToComputationTermGraph pass
+    @return: the session.
+    """
+    session = Session()
+    pass_stack = session.get_pass_stack()
+    term_graph_pass = pass_stack.pop()
+
+    pass_stack.extend(parse_graph_optimization_passes)
+    pass_stack.append(term_graph_pass)
+    pass_stack.extend(term_graph_optimization_passes)
+
+    session.set_pass_stack(pass_stack)
+    return session
 
 
 def run_commands_into_csv_test(expected_longrel, im_ex_session, commands, query_for_csv):

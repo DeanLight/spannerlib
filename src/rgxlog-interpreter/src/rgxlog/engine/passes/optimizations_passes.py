@@ -52,7 +52,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
 
                 if arity == 1:
                     # in this case the input relations of the project node has arity of one so we prune to node
-                    # the node has exactly one child so we connect the child to project's node father (it's a union node)
+                    # the node has exactly one child so we connect the child to project's node parent (it's a union node)
 
                     project_child = next(iter(self.term_graph.get_children(project_id)))
                     self.term_graph.add_edge(union_id, project_child)
@@ -65,6 +65,9 @@ class PruneUnnecessaryProjectNodes(GenericPass):
         @return: the arity of the relation that the node gets during the execution.
         """
 
+        # this methods suppose to work for both project nodes and join nodes.
+        # project nodes always have one child while join nodes always have more than one child.
+        # for that reason, we traverse all the children of the node.
         node_ids = self.term_graph.get_children(node_id)
         free_vars: Set[str] = set()
 
@@ -83,7 +86,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
 
             if node_type in (TermNodeType.GET_REL, TermNodeType.RULE_REL, TermNodeType.GET_REL.CALC):
                 relation = node_attrs[VALUE]
-                # if relation has more than one free var we can' prune to project
+                # if relation has more than one free var we can't prune the project
                 if not is_relation_has_one_free_var(relation):
                     return 0
 
@@ -145,8 +148,10 @@ class RemoveUselessRelationsFromRule(GenericPass):
         @param rule: a rule.
         """
         relevant_free_vars = set(rule.head_relation.get_term_list())
+
+        # relation without free vars are always relevant
         initial_useless_relations_and_types = [(rel, rel_type) for rel, rel_type in zip(rule.body_relation_list, rule.body_relation_type_list)
-                                               if len(get_output_free_var_names(rel)) != 0]  # relation without free vars are always relevant
+                                               if len(get_output_free_var_names(rel)) != 0]
 
         def step_function(current_useless_relations_and_types: List[Tuple[Union[Relation, IERelation], str]]) -> List[Tuple[Union[Relation, IERelation], str]]:
             """
