@@ -636,13 +636,13 @@ if the following rule were registerd:
 1. ```D(X,Y) <- A(X),B(Y),C(X,Y,Z)```
 2. ```E(X,Y) <- A(X),C(X,Y,Z), F(Z)```
 
-in the second step of the algorith desived above we will find that both rule share the structure ```A(X),C(X,Y,Z)```.<br>
+in the second step of the algorithm we will find that both rules share the structure ```A(X),C(X,Y,Z)```.<br>
 in the third step we will create a new relation ```TEMP(X,Y,Z) <- A(X), C(X,Y,Z)```, and add it to the term grah.<br>
 in the fifth step we will modify to original rules in the following way:
 1. ```D(X,Y) <- B(Y),TEMP(X,Y,Z)```
 2. ```E(X,Y) <- TEMP(X,Y,Z), F(Z)```
 
-and then we will add them to the term graph.
+and then we will add them to the term graph.<br>
 the last step will delete the old rules from the term graph.
 
 ```python
