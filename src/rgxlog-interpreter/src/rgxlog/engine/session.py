@@ -31,21 +31,21 @@ from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
                                OpenIE, KBP, Quote, Sentiment, TrueCase)
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
-from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
+from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE
 
 CSV_DELIMITER = ";"
 
-PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, JsonPathFull, Tokenize, SSplit, POS, Lemma, NER,
-                       EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
+# ordered by rgx, json, nlp, etc.
+PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE,
+                       JsonPath, JsonPathFull,
+                       Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment,
+                       TrueCase]
 
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
 logger = logging.getLogger(__name__)
 
 
-# @niv: add rust_rgx_*_from_file (ask dean)
-# @dean: i dont understand this question. Please elaborate
-# TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
 def _infer_relation_type(row: Iterable):
     """
     Guess the relation type based on the data.
@@ -257,7 +257,6 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
 
-    # TODO@niv: refactor into run_commands (including tutorials/md) when dean approves
     @no_type_check
     def run_commands(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):

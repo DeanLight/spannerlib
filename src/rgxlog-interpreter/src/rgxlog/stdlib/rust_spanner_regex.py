@@ -213,6 +213,6 @@ RGX_STRING_FROM_FILE = dict(ie_function=rgx_string_from_file,
                             in_rel=RUST_RGX_IN_TYPES,
                             out_rel=rgx_string_out_type)
 
-# currently, the package is installed when this module is imported
+# the package is installed when this module is imported
 if not _is_installed_package():
     _download_and_install_rust_and_regex()
