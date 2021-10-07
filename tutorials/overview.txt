@@ -17,6 +17,6 @@ presentation overview:
 
 
 TODO:
-fix md files - use them in the presentation later
-create mypy branch --disallow-untyped-defs
-create jupyter presentation in this folder
+TODO@together fix md files - use them in the presentation later
+TODO@niv create mypy branch --disallow-untyped-defs
+TODO@tom create jupyter presentation in this folder
