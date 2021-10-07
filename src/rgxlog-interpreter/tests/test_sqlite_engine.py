@@ -13,7 +13,7 @@ def test_add_fact_twice():
 
     # add relation
     my_relation = RelationDeclaration("yoyo", [DataTypes.integer, DataTypes.string])
-    my_engine.declare_relation(my_relation)
+    my_engine.declare_relation_table(my_relation)
 
     # add fact
     my_fact = AddFact("yoyo", [8, "hihi"], [DataTypes.integer, DataTypes.string])

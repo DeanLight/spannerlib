@@ -225,8 +225,8 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         return
 
     node_type_to_action: Dict[str, Callable] = {
-        "rule": lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
-        "relation_declaration": rgxlog_engine.declare_relation,
+        "rule": lambda rule_: rgxlog_engine.declare_relation_table(rule_.head_relation.as_relation_declaration()),
+        "relation_declaration": rgxlog_engine.declare_relation_table,
         "add_fact": rgxlog_engine.add_fact,
         "remove_fact": rgxlog_engine.remove_fact,
         "root": no_op,

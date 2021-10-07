@@ -1,3 +1,6 @@
+import tempfile
+from pathlib import Path
+
 from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
@@ -25,6 +28,36 @@ def test_rust_regex():
         """
 
     run_test(commands, expected_result)
+
+
+def test_rust_regex_from_file():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        rgx_text_file = Path(temp_dir) / "temp"
+        with open(rgx_text_file, "w") as f:
+            f.write("aa")
+
+        commands = f"""
+            string_rel(X) <- rgx_string_from_file("{rgx_text_file}",".+") -> (X)
+            span_rel(X) <- rgx_span_from_file("{rgx_text_file}",".+") -> (X)
+            ?string_rel(X)
+            ?span_rel(X)
+            """
+
+        expected_result = f"""{QUERY_RESULT_PREFIX}'string_rel(X)':
+              X
+            -----
+              a
+             aa
+    
+            {QUERY_RESULT_PREFIX}'span_rel(X)':
+               X
+            --------
+             [0, 1)
+             [0, 2)
+             [1, 2)
+            """
+
+        run_test(commands, expected_result)
 
 
 def test_rust_regex_groups():

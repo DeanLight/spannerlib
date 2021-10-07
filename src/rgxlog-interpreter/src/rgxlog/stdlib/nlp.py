@@ -30,10 +30,6 @@ JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = Path.home()
 INSTALLATION_PATH = _USER_DIR / ".jre"
 
-# @dean: why is enum_spanner_regex and stanford-corenlp in the git tree, did you forget to add them to gitignore?
-# TODO@niv: @dean, no - i use enum_spanner_regex for the installation (convenient because we don't have to mess with
-#  temporary folders and stuff like that), and stanford-corenlp isn't in the tree
-
 STANFORD_ZIP_GOOGLE_DRIVE_ID = "1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 STANFORD_ZIP_NAME = "stanford-corenlp-4.1.0.zip"
 STANFORD_ZIP_PATH = CURR_DIR / STANFORD_ZIP_NAME

@@ -1,6 +1,8 @@
 import shlex
 
 import logging
+import time
+
 import psutil
 import requests
 from pathlib import Path
@@ -49,25 +51,21 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     process = Popen(command_list, stdout=stdout, stderr=stderr_channel, shell=shell)
 
     # set timer
-    my_timer = None
     if timeout > 0:
         # set timer to kill the process
-        my_timer = Timer(timeout, kill_process_and_children, [process])
-        my_timer.start()
+        process_timer = Timer(timeout, kill_process_and_children, [process])
+        process_timer.start()
 
     # get output
     process.stdout.flush()
-    for output in process.stdout:
-        output = output.decode("utf-8").strip()  # convert to `str` and remove the `\n` at the end of every line
-        # TODO@niv: change the logging back to debug once the error is found
-        logger.info(f"output from {command_list[0]}: {output}")
+    process_stdout, process_stderr = process.communicate()
+    for output in process_stdout.decode("utf-8").splitlines():
+        output = output.strip()
         if output:
             yield output
-            process.stdout.flush()
-        elif process.poll() is not None:  # process died
-            if my_timer is not None:
-                my_timer.cancel()
-            return
+
+    if stderr:
+        logger.info(f"stderr from process {command_list[0]}: {process_stderr}")
 
 
 def download_file_from_google_drive(file_id: str, destination: Path) -> None:

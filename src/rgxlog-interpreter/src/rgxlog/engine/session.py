@@ -31,21 +31,21 @@ from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
                                OpenIE, KBP, Quote, Sentiment, TrueCase)
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
-from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
+from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE
 
 CSV_DELIMITER = ";"
 
-PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, JsonPathFull, Tokenize, SSplit, POS, Lemma, NER,
-                       EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase]
+# ordered by rgx, json, nlp, etc.
+PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE,
+                       JsonPath, JsonPathFull,
+                       Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment,
+                       TrueCase]
 
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
 logger = logging.getLogger(__name__)
 
 
-# @niv: add rust_rgx_*_from_file (ask dean)
-# @dean: i dont understand this question. Please elaborate
-# TODO@niv: @dean, right now, rgx receives text as an argument. we can also support receiving filename as an argument
 def _infer_relation_type(row: Iterable):
     """
     Guess the relation type based on the data.
@@ -257,7 +257,6 @@ class Session:
     def __str__(self):
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
 
-    # TODO@niv: refactor into run_commands (including tutorials/md) when dean approves
     @no_type_check
     def run_commands(self, query: str, print_results: bool = True, format_results: bool = False) -> (
             Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
@@ -373,7 +372,7 @@ class Session:
 
         # declare relation if it does not exist
         if not symbol_table.contains_relation(relation_name):
-            engine.declare_relation(RelationDeclaration(relation_name, relation_types))
+            engine.declare_relation_table(RelationDeclaration(relation_name, relation_types))
             symbol_table.add_relation_schema(relation_name, relation_types, False)
 
         for fact in facts:
@@ -494,16 +493,26 @@ class Session:
 
 if __name__ == "__main__":
     # this is for debugging. don't shadow variables like `query`, that's annoying
-    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger()
+    logger.setLevel(level=logging.DEBUG)
+    # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
     my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
     commands = """
-            new B(int, int)
-            B(1, 1)
-            B(1, 2)
-            B(2, 3)
-            A(X, Y) <- B(X, Y)
-            ?A(X, Y)
+            new A(int, int)
+            new B(int, int, int)
+            B(1, 1, 1)
+            B(1, 2, 1)
+            B(2, 3, 1)
+            A(1, 2)
+            A(1, 1)
+            C(X, Y) <- A(X, Y), B(Y, X, Z)
+            ?C(X,Y)
         """
+
+    """
+    relations = [a(X,Y), b(Y)] ->
+    dict = {X:[(a(X,Y),0)], Y:[(a(X,Y),1),(b(Y),0)]
+    """
 
     my_session.run_commands(commands)
