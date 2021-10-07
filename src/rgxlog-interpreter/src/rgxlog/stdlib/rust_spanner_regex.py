@@ -120,25 +120,30 @@ def _format_spanner_span_output(output: Iterable[str]):
     return output_lists
 
 
-def rgx(text, regex_pattern, out_type: str):
+def rgx(regex_pattern, out_type: str, text=None, text_file=None):
     """
     An IE function which runs regex using rust's `enum-spanner-rs` and yields tuples of strings/spans (not both).
 
     @param text: the string on which regex is run.
     @param regex_pattern: the pattern to run.
     @param out_type: string/span - decides which one will be returned.
+    @param text_file: use text from this file instead of `text`. default: None
     @return: a tuple of strings/spans.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
-        rgx_temp_file_name = Path(temp_dir) / TEMP_FILE_NAME
-        with open(rgx_temp_file_name, "w+") as f:
-            f.write(text)
+        if text_file:
+            rgx_temp_file_name = text_file
+        else:
+            assert text is not None, "at least one of text/text_file must have a value"
+            rgx_temp_file_name = Path(temp_dir) / TEMP_FILE_NAME
+            with open(rgx_temp_file_name, "w+") as f:
+                f.write(text)
 
         if out_type == "string":
-            rust_regex_args = rf"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name}"
+            rust_regex_args = f"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name}"
             format_function = _format_spanner_string_output
         elif out_type == "span":
-            rust_regex_args = rf"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name} --bytes-offset"
+            rust_regex_args = f"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name} --bytes-offset"
             format_function = _format_spanner_span_output
         else:
             assert False, "illegal out_type"
@@ -155,7 +160,7 @@ def rgx_span(text, regex_pattern):
     @param regex_pattern: the pattern of the regex operation.
     @return: tuples of spans that represents the results.
     """
-    return rgx(text, regex_pattern, "span")
+    return rgx(regex_pattern, "span", text=text)
 
 
 RGX = dict(ie_function=rgx_span,
@@ -170,13 +175,43 @@ def rgx_string(text, regex_pattern):
     @param regex_pattern: the pattern of the regex operation.
     @return: tuples of strings that represents the results.
     """
-    return rgx(text, regex_pattern, "string")
+    return rgx(regex_pattern, "string", text=text)
 
 
 RGX_STRING = dict(ie_function=rgx_string,
                   ie_function_name='rgx_string',
                   in_rel=RUST_RGX_IN_TYPES,
                   out_rel=rgx_string_out_type)
+
+
+def rgx_span_from_file(text_file, regex_pattern):
+    """
+    @param text_file: The input file for the regex operation.
+    @param regex_pattern: the pattern of the regex operation.
+    @return: tuples of spans that represents the results.
+    """
+    return rgx(regex_pattern, "span", text_file=text_file)
+
+
+RGX_FROM_FILE = dict(ie_function=rgx_span_from_file,
+                     ie_function_name='rgx_span_from_file',
+                     in_rel=RUST_RGX_IN_TYPES,
+                     out_rel=rgx_span_out_type)
+
+
+def rgx_string_from_file(text_file, regex_pattern):
+    """
+    @param text_file: The input file for the regex operation.
+    @param regex_pattern: the pattern of the regex operation.
+    @return: tuples of strings that represents the results.
+    """
+    return rgx(regex_pattern, "string", text_file=text_file)
+
+
+RGX_STRING_FROM_FILE = dict(ie_function=rgx_string_from_file,
+                            ie_function_name='rgx_string_from_file',
+                            in_rel=RUST_RGX_IN_TYPES,
+                            out_rel=rgx_string_out_type)
 
 # currently, the package is installed when this module is imported
 if not _is_installed_package():
