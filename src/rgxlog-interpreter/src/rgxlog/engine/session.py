@@ -2,11 +2,14 @@ import csv
 import logging
 import os
 import re
-import rgxlog
-import rgxlog.engine.engine
 from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
+from tabulate import tabulate
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check
+
+import rgxlog
+import rgxlog.engine.engine
 from rgxlog.engine.datatypes.ast_node_types import AddFact, RelationDeclaration
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
 from rgxlog.engine.engine import FALSE_VALUE, TRUE_VALUE
@@ -29,8 +32,6 @@ from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions
                                OpenIE, KBP, Quote, Sentiment, TrueCase)
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
 from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING
-from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check
 
 CSV_DELIMITER = ";"
 
@@ -40,6 +41,8 @@ PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, JsonPath, JsonPathF
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
 logger = logging.getLogger(__name__)
+
+GRAMMAR_FILE_NAME = 'grammar.lark'
 
 
 # @niv: add rust_rgx_*_from_file (ask dean)
@@ -226,12 +229,19 @@ class Session:
             AddRulesToComputationTermGraph,
         ]
 
-        grammar_file_path = Path(rgxlog.grammar.__file__).parent
-        grammar_file_name = 'grammar.lark'
-        with open(grammar_file_path / grammar_file_name, 'r') as grammar_file:
-            self._grammar = grammar_file.read()
+        self._grammar = Session._get_grammar_from_file()
 
         self._parser = Lark(self._grammar, parser='lalr')
+
+    @staticmethod
+    def _get_grammar_from_file() -> str:
+        """
+        @return: Grammar from grammar file in string format.
+        """
+
+        grammar_file_path = Path(rgxlog.grammar.__file__).parent
+        with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
+            return grammar_file.read()
 
     def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
         """
