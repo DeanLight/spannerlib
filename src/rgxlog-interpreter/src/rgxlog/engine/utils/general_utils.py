@@ -84,7 +84,7 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
     also return the free vars' index in each relation (as pairs).
     for example:
         relations = [a(X,Y), b(Y)] ->
-        dict = {X:[(a(X,Y),0)], Y:[(a(X,Y),1),(b(Y),0)]
+        dict = {X:[(a(X,Y),0)], Y:[(a(X,Y),1),(b(Y),0)]}
 
     @param relations: a set of relations.
     @return: a mapping between each free var to the relations and corresponding columns in which it appears.

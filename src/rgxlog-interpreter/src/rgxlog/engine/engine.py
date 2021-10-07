@@ -308,13 +308,18 @@ class SqliteEngine(RgxlogEngineBase):
         col_names = [f"{self._get_col_name(i)}" for i in range(num_types)]
         col_values = [self._convert_relation_term_to_string(datatype, term) for datatype, term in
                       zip(fact.type_list, fact.term_list)]
-        condition_pairs = [f"{col_name}={col_value}" for col_name, col_value in zip(col_names, col_values)]
+        constraint_pairs = zip(col_names, col_values)
 
-        template_dict = {"fact": fact, "condition_pairs": condition_pairs}
+        template_dict = {"fact": fact, "constraint_pairs": constraint_pairs}
 
         sql_template = ("""
-        DELETE FROM {{fact.relation_name}} WHERE 
-        ({{condition_pairs | join(", ")}})
+        DELETE FROM {{fact.relation_name}} WHERE
+        {% for left, right in constraint_pairs %}
+            {{left}}={{right}}
+            {% if not loop.last %}
+                ,
+            {% endif %}
+        {% endfor %}  
         """)
 
         self._run_sql_from_jinja_template(sql_template, template_dict)
@@ -426,7 +431,7 @@ class SqliteEngine(RgxlogEngineBase):
     @extract_one_relation
     def operator_select(self, src_relation: Relation, constant_variables_info: Set[Tuple[int, Any, DataTypes]], *args) -> Relation:
         """
-        Performs sql WHERE, whose conditions are based on `select_info`
+        Performs sql WHERE, whose constraints are based on `select_info`
 
         @param src_relation: the relation from which we select tuples.
         @param constant_variables_info: a set of tuples. each tuple contains the index of the column, the value to select (a constant variable),
@@ -447,9 +452,9 @@ class SqliteEngine(RgxlogEngineBase):
 
         def _extract_constant_variable_pairs():
             """
-            generate conditions based on `constant_variables_info`
+            generate constraints based on `constant_variables_info`
 
-            @return: column + constant pairs, which are used as conditions for `select`
+            @return: column + constant pairs, which are used as constraints for `select`
             """
             for i, value, datatype in constant_variables_info:
                 col_name = self._get_col_name(i)
@@ -459,18 +464,19 @@ class SqliteEngine(RgxlogEngineBase):
 
         def _extract_equal_variable_pairs() -> List[Tuple[str, str]]:
             """
-            add conditions based on repeating free variables like a(X,X) - check if they are equal
+            add constraints based on repeating free variables like a(X,X,8,Y,X) - add constrains to make the 'X's equal.
+            notice we only have a single relation here, so we don't have to rename columns.
+            for the example above, the `src_relation_var_dict` looks like this:
+            {X:[(a,0), (a,1), (a,4)], Y:[(a,3)]}
+            in the loop below, we will get, for the variable `X`:
+            `first_pair`=`(a,0)`
+            `other_pairs`=`[(a,1), (a,4)]`
+            and then, our constraints (`equal_var_pairs`) will look like this:
+            `[("col0","col1"), ("col0", "col4")]`
 
             @return: pairs of equal columns
             """
-            # get variables in var_dict that repeat - used below to add conditions
-            # TODO@niv:
-            """
-            Finds for each free var in any of the relations, all the relations that contain it.
-    also return the free vars' index in each relation (as pairs).
-    for example:
-        relations = [a(X,Y), b(Y)] ->
-        dict = {X:[(a(X,Y),0)], Y:[(a(X,Y),1),(b(Y),0)]"""
+            # get variables in var_dict that repeat - used below to add constraints
             src_relation_var_dict = get_free_var_to_relations_dict({src_relation})
             repeating_vars_in_relation = [(free_var, pairs) for (free_var, pairs) in src_relation_var_dict.items() if (len(pairs) > 1)]
 
@@ -486,21 +492,23 @@ class SqliteEngine(RgxlogEngineBase):
 
         selected_relation = _create_new_relation_for_select_result()
 
-        constant_var_pairs = _extract_constant_variable_pairs()
-        constant_conditions = [f"{col}={value}" for col, value in constant_var_pairs]
-
-        equal_var_pairs = _extract_equal_variable_pairs()
-        equal_var_conditions = [f"{first_col}={second_col}" for first_col, second_col in equal_var_pairs]
-        # TODO@niv: rename to column_constraints
-        all_conditions = constant_conditions + equal_var_conditions
+        constant_constraints = _extract_constant_variable_pairs()
+        equal_var_constraints = _extract_equal_variable_pairs()
+        all_constraints = constant_constraints + equal_var_constraints
 
         template_dict = {"new_rel_name": selected_relation.relation_name, "SELECT": self.SQL_SELECT, "src_rel_name": src_relation.relation_name,
-                         "all_conditions": all_conditions}
+                         "all_constraints": all_constraints}
 
         sql_template = ("""
         INSERT INTO {{new_rel_name}} {{SELECT}} * FROM {{src_rel_name}}
-        {%- if all_conditions %}
-            WHERE {{ all_conditions | join(" AND ") }}
+        {%- if all_constraints %}
+        WHERE 
+            {% for left, right in all_constraints %}
+                {{left}}={{right}}
+                {% if not loop.last %}
+                    AND            
+                {% endif %} 
+            {% endfor %} 
         {%- endif -%}
         """)
 
@@ -515,9 +523,9 @@ class SqliteEngine(RgxlogEngineBase):
         @param relations: a list of normal relations.
         @return: a new relation as described above.
         """
-        on_conditions_list = []
-        inner_join_list = []
-        free_var_cols = []
+        on_constraints_list: List[Tuple[str, str]] = []
+        inner_join_list: List[Tuple[str, str]] = []
+        free_var_cols: List[Tuple[str, str]] = []
 
         def _create_new_relation_for_join_result():
             # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
@@ -535,7 +543,7 @@ class SqliteEngine(RgxlogEngineBase):
             # create a structured node of the joined relation
             return Relation(joined_relation_name, joined_relation_terms, relation_types)
 
-        def _extract_col_names_and_conditions():
+        def _extract_col_names_and_constraints():
             # iterate over the free_vars and do 2 things:
             for i, free_var in enumerate(joined_relation.term_list):
                 free_var_pairs: List[Tuple[Union[Relation, IERelation], int]] = var_dict[free_var]
@@ -547,14 +555,17 @@ class SqliteEngine(RgxlogEngineBase):
                 first_col_name = self._get_col_name(first_index)
 
                 # 1. name the new columns. the columns should be named col0, col1, etc.
-                free_var_cols.append(f"{name_of_relation_with_free_var}.{first_col_name} AS {new_col_name}")
+                old_col_name = f"{name_of_relation_with_free_var}.{first_col_name}"
+                new_temp_col_name = f"{new_col_name}"
+                free_var_cols.append((old_col_name, new_temp_col_name))
 
                 # 2. create the comparison between all of them, using `ON`
                 for (second_relation, second_index) in other_pairs:
                     second_col_name = self._get_col_name(second_index)
                     name_of_second_relation = relation_temp_names[second_relation]
-                    on_conditions_list.append(f"{name_of_relation_with_free_var}.{first_col_name}="
-                                              f"{name_of_second_relation}.{second_col_name}")
+                    first_full_col_name = f"{name_of_relation_with_free_var}.{first_col_name}"
+                    second_full_col_name = f"{name_of_second_relation}.{second_col_name}"
+                    on_constraints_list.append((first_full_col_name, second_full_col_name))
 
         assert len(relations) > 0, "can't join an empty list"
         if len(relations) == 1:
@@ -565,26 +576,43 @@ class SqliteEngine(RgxlogEngineBase):
         var_dict = get_free_var_to_relations_dict(set(relations))
 
         joined_relation = _create_new_relation_for_join_result()
-        _extract_col_names_and_conditions()
+        _extract_col_names_and_constraints()
 
         # first relation - used after `FROM`
         first_relation, other_relations = relations[0], relations[1:]
 
         # every next relation is used after `INNER JOIN`
         for relation in other_relations:
-            inner_join_list.append(f"INNER JOIN {relation.relation_name} AS {relation_temp_names[relation]}")
+            old_relation_name = relation.relation_name
+            new_temp_relation_name = relation_temp_names[relation]
+            inner_join_list.append((old_relation_name, new_temp_relation_name))
 
-        template_dict = {"new_rel_name": joined_relation.relation_name, "SELECT": self.SQL_SELECT, "new_cols": free_var_cols,
+        template_dict = {"new_rel_name": joined_relation.relation_name, "SELECT": self.SQL_SELECT, "new_columns_names": free_var_cols,
                          "first_rel_name": first_relation.relation_name, "first_rel_temp_name": relation_temp_names[first_relation],
-                         "rels_temp_names": inner_join_list, "join_conditions": on_conditions_list}
+                         "relations_temp_names": inner_join_list, "join_constraints": on_constraints_list}
 
         sql_template = ("""
-        INSERT INTO {{ new_rel_name }}
-        {{ SELECT }} {{ new_cols | join(", ") }}
-        FROM {{ first_rel_name }} AS {{ first_rel_temp_name }}
-        {{ rels_temp_names | join(" ") }}
-        {%- if join_conditions %}
-            ON {{ join_conditions | join(" AND ") }}
+        INSERT INTO {{new_rel_name}} {{SELECT}} 
+        {% for left, right in new_columns_names %}
+            {{left}} AS {{right}}
+            {% if not loop.last %}
+            ,
+            {% endif %}
+        {% endfor %}
+        
+        FROM {{first_rel_name}} AS {{first_rel_temp_name}}
+        {% for left, right in relations_temp_names %}
+            INNER JOIN {{left}} AS {{right}}
+        {% endfor %} 
+        
+        {%- if join_constraints %}
+            ON
+            {% for left, right in join_constraints %}
+                {{left}}={{right}}
+                {% if not loop.last %}
+                    AND
+                {% endif %} 
+            {% endfor %}
         {%- endif -%}
         """)
 
