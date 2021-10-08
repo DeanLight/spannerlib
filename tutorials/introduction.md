@@ -459,9 +459,6 @@ magic_session.register(ie_function=get_happy,
                        out_rel=get_happy_out_types)
 ```
 
-### #TODO@niv: @dean, maybe rename information extractors to tell them apart from IE functions?
-
-
 # Custom information extractors<a class="anchor" id="custom_ie"></a>
 RGXLog allows you to define and use your own information extractors. You can use them only in rule bodies in the current version. The following is the syntax for custom information extractors:
 
@@ -823,6 +820,8 @@ RGX_STRING = dict(ie_function=rgx_string,
                   ie_function_name='rgx_string',
                   in_rel=RUST_RGX_IN_TYPES,
                   out_rel=rgx_string_out_type)
+
+# another version of these functions exists (rgx_from_file), it can be seen in the source code
 ```
 <!-- #endregion -->
 
