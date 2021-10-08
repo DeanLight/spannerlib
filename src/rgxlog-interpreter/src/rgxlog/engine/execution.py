@@ -222,8 +222,8 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         term_graph.set_node_attribute(node_id, STATE, compute_status)
 
     node_type_to_action: Dict[Union[str, ParseNodeType], Callable] = {
-        ParseNodeType.RULE: lambda rule_: rgxlog_engine.declare_relation(rule_.head_relation.as_relation_declaration()),
-        ParseNodeType.RELATION_DECLARATION: rgxlog_engine.declare_relation,
+        ParseNodeType.RULE: lambda rule_: rgxlog_engine.declare_relation_table(rule_.head_relation.as_relation_declaration()),
+        ParseNodeType.RELATION_DECLARATION: rgxlog_engine.declare_relation_table,
         ParseNodeType.ADD_FACT: rgxlog_engine.add_fact,
         ParseNodeType.REMOVE_FACT: rgxlog_engine.remove_fact,
         ROOT_TYPE: lambda *args: None  # noop
