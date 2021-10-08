@@ -1,8 +1,6 @@
 import shlex
 
 import logging
-import time
-
 import psutil
 import requests
 from pathlib import Path

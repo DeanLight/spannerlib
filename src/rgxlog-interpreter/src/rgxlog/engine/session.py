@@ -363,10 +363,6 @@ class Session:
             self._term_graph.remove_rules_with_head(rule_head)
             self._remove_rule_relation_from_symbols_and_engine(rule_head)
 
-    @staticmethod
-    def _unknown_task_type():
-        return 'unknown task type'
-
     def _add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
         symbol_table = self._symbol_table
         engine = self._engine
@@ -408,7 +404,6 @@ class Session:
             self._add_imported_relation_to_engine(reader, relation_name, relation_types)
 
     def import_relation_from_df(self, relation_df: DataFrame, relation_name):
-
         data = relation_df.values.tolist()
 
         if not isinstance(data, list):
@@ -507,7 +502,7 @@ if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
     my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-    commands = """
+    cmd = """
             new A(int, int)
             new B(int, int, int)
             B(1, 1, 1)
@@ -524,4 +519,4 @@ if __name__ == "__main__":
     dict = {X:[(a(X,Y),0)], Y:[(a(X,Y),1),(b(Y),0)]
     """
 
-    my_session.run_commands(commands)
+    my_session.run_commands(cmd)

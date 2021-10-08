@@ -5,7 +5,7 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
-from typing import List, Any, Tuple, Set
+from typing import List, Tuple, Set
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
@@ -30,14 +30,14 @@ def get_term_list_string(term_list, type_list):
 class RelationDeclaration:
     """a representation of a relation_declaration statement"""
 
-    def __init__(self, relation_name, type_list):
+    def __init__(self, relation_name: str, type_list: List[DataTypes]):
         """
-        @param relation_name: the name of the relation
-        @param type_list: a list of the types of the terms in the relation's tuples
+        @param relation_name: the name of the relation.
+        @param type_list: a list of the types of the terms in the relation's tuples.
         @raise Exception: if there is invalid term type in term list.
         """
-        self.relation_name: str = relation_name
-        self.type_list: List[DataTypes] = type_list
+        self.relation_name = relation_name
+        self.type_list = type_list
 
     def __str__(self):
         type_strings = []
@@ -62,7 +62,7 @@ class RelationDeclaration:
 class Relation:
     """a representation of a normal relation"""
 
-    def __init__(self, relation_name: str, term_list: List[Any], type_list: List[DataTypes]):
+    def __init__(self, relation_name: str, term_list: List, type_list: List[DataTypes]):
         """
         @param relation_name: the name of the relation
         @param term_list: a list of the relation terms.
@@ -100,13 +100,6 @@ class Relation:
 
     def as_relation_declaration(self) -> RelationDeclaration:
         return RelationDeclaration(self.relation_name, self.type_list)
-
-    def has_same_terms_and_types(self, other: "Relation") -> bool:
-        """
-        Checks only term list and type list equivalence.
-        """
-
-        return self.type_list == other.type_list and self.term_list == other.term_list
 
 
 class IERelation:
@@ -159,13 +152,6 @@ class IERelation:
 
     def get_type_list(self):
         return self.output_type_list
-
-    def has_same_terms_and_types(self, other: Relation) -> bool:
-        """
-        Checks that everything besides names is equivalent.
-        """
-
-        return self.output_type_list == other.type_list and self.output_term_list == other.term_list
 
 
 class AddFact(Relation):

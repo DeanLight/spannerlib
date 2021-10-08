@@ -265,20 +265,11 @@ class SqliteEngine(RgxlogEngineBase):
         """
         super().__init__()
         self.unique_relation_id_counter = count()
-        self.rules_history = dict()
 
-        if database_name:
-            if not Path(database_name).is_file():
-                raise IOError(f"database file: {database_name} was not found")
-            self.db_filename = database_name
-        else:
-            temp_db_file = tempfile.NamedTemporaryFile(delete=False, suffix=self.DATABASE_SUFFIX)
-            temp_db_file.close()
-            self.db_filename = temp_db_file.name
+        self.df_filename = SqliteEngine._get_db_filename(database_name)
+        logger.info(f"using database file: {self.df_filename}")
 
-        logger.info(f"using database file: {self.db_filename}")
-
-        self.sql_conn = sqlite.connect(self.db_filename)
+        self.sql_conn = sqlite.connect(self.df_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
     def __del__(self):
@@ -987,6 +978,17 @@ class SqliteEngine(RgxlogEngineBase):
 
             spanned_query_result.append(tuple(converted_row))
         return spanned_query_result
+
+    @staticmethod
+    def _get_db_filename(database_name: Optional[Any]):
+        if database_name:
+            if not Path(database_name).is_file():
+                raise IOError(f"database file: {database_name} was not found")
+            return database_name
+
+        temp_db_file = tempfile.NamedTemporaryFile(delete=False, suffix=SqliteEngine.DATABASE_SUFFIX)
+        temp_db_file.close()
+        return temp_db_file.name
 
 
 if __name__ == "__main__":
