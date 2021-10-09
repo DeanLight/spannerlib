@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from itertools import count
 from jinja2 import Template
 from pathlib import Path
-from typing import Iterable, Optional, Set, Tuple, Any, List, Union, Dict, no_type_check
+from typing import Iterable, Optional, Set, Tuple, Any, List, Union, Dict, no_type_check, Sequence
 
 from rgxlog.engine.datatypes.ast_node_types import RelationDeclaration, AddFact, RemoveFact, Query, IERelation, Relation
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
@@ -318,7 +318,7 @@ class SqliteEngine(RgxlogEngineBase):
             {% if not loop.last %}
                 ,
             {% endif %}
-        {% endfor %}  
+        {% endfor %}
         """)
 
         self._run_sql_from_jinja_template(sql_template, template_dict)
@@ -501,13 +501,13 @@ class SqliteEngine(RgxlogEngineBase):
         sql_template = ("""
         INSERT INTO {{new_rel_name}} {{SELECT}} * FROM {{src_rel_name}}
         {%- if all_constraints %}
-        WHERE 
+        WHERE
             {% for left, right in all_constraints %}
                 {{left}}={{right}}
                 {% if not loop.last %}
-                    AND            
-                {% endif %} 
-            {% endfor %} 
+                    AND
+                {% endif %}
+            {% endfor %}
         {%- endif -%}
         """)
 
@@ -528,8 +528,8 @@ class SqliteEngine(RgxlogEngineBase):
 
         def _create_new_relation_for_join_result() -> Relation:
             # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
-            free_var_sets = [get_output_free_var_names(relation) for relation in relations]
-            free_vars = set().union(*free_var_sets)
+            free_var_sets: Sequence[Set] = [get_output_free_var_names(relation) for relation in relations]
+            free_vars: Set = set().union(*free_var_sets)
             joined_relation_terms = list(free_vars)
 
             # get the type list of the joined relation (all of the terms are free variables)
@@ -542,6 +542,7 @@ class SqliteEngine(RgxlogEngineBase):
             # create a structured node of the joined relation
             return Relation(joined_relation_name, joined_relation_terms, relation_types)
 
+        @no_type_check
         def _extract_col_names_and_constraints() -> None:
             # iterate over the free_vars and do 2 things:
             for i, free_var in enumerate(joined_relation.term_list):
@@ -591,26 +592,26 @@ class SqliteEngine(RgxlogEngineBase):
                          "relations_temp_names": inner_join_list, "join_constraints": on_constraints_list}
 
         sql_template = ("""
-        INSERT INTO {{new_rel_name}} {{SELECT}} 
+        INSERT INTO {{new_rel_name}} {{SELECT}}
         {% for left, right in new_columns_names %}
             {{left}} AS {{right}}
             {% if not loop.last %}
             ,
             {% endif %}
         {% endfor %}
-        
+
         FROM {{first_rel_name}} AS {{first_rel_temp_name}}
         {% for left, right in relations_temp_names %}
             INNER JOIN {{left}} AS {{right}}
-        {% endfor %} 
-        
+        {% endfor %}
+
         {%- if join_constraints %}
             ON
             {% for left, right in join_constraints %}
                 {{left}}={{right}}
                 {% if not loop.last %}
                     AND
-                {% endif %} 
+                {% endif %}
             {% endfor %}
         {%- endif -%}
         """)

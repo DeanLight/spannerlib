@@ -115,7 +115,7 @@ def test_ner() -> None:
 @pytest.mark.long
 def test_entity_mentions() -> None:
     commands = """sentence = "New York Times newspaper is distributed in California."
-            em(X, Y, Z, W, A, B, C, D, E) <- EntityMentions(sentence) -> (X, Y, Z, W, A, B, C, D, E) 
+            em(X, Y, Z, W, A, B, C, D, E) <- EntityMentions(sentence) -> (X, Y, Z, W, A, B, C, D, E)
             ?em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text, \
             CharacterOffsetBegin, CharacterOffsetEnd, Ner, NerConfidences) """
 

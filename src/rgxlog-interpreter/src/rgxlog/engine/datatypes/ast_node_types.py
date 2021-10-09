@@ -5,12 +5,12 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
-from typing import List, Tuple, Set, Union
+from typing import List, Tuple, Set, Union, Iterable, Sequence
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, DataTypeMapping
 
 
-def get_term_list_string(term_list: List[DataTypeMapping.term], type_list: List[DataTypes]) -> str:
+def get_term_list_string(term_list: Sequence[DataTypeMapping.term], type_list: Sequence[DataTypes]) -> str:
     """
     returns a string representation of the term list.
     quotes are added to string terms so they will not be confused with variables.
@@ -62,7 +62,7 @@ class RelationDeclaration:
 class Relation:
     """a representation of a normal relation"""
 
-    def __init__(self, relation_name: str, term_list: List[DataTypeMapping.term], type_list: List[DataTypes]) -> None:
+    def __init__(self, relation_name: str, term_list: Sequence[DataTypeMapping.term], type_list: List[DataTypes]) -> None:
         """
         @param relation_name: the name of the relation
         @param term_list: a list of the relation terms.
@@ -84,10 +84,10 @@ class Relation:
     def __repr__(self) -> str:
         return str(self)
 
-    def get_term_list(self) -> List[DataTypeMapping.term]:
+    def get_term_list(self) -> Sequence[DataTypeMapping.term]:
         return self.term_list
 
-    def get_type_list(self) -> List[DataTypes]:
+    def get_type_list(self) -> Sequence[DataTypes]:
         return self.type_list
 
     def get_select_cols_values_and_types(self) -> set:
@@ -201,7 +201,7 @@ class Query(Relation):
     inherits from relation as a query can be defined by a relation
     """
 
-    def __init__(self, relation_name: str, term_list: List[DataTypeMapping.term], type_list: List[DataTypes]) -> None:
+    def __init__(self, relation_name: str, term_list: Sequence[DataTypeMapping.term], type_list: List[DataTypes]) -> None:
         """
         @see documentation of Relation's __init__.
         """

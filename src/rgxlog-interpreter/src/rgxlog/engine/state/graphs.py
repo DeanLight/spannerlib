@@ -46,7 +46,7 @@ class GraphBase(ABC):
     """
 
     def __init__(self) -> None:
-        self._visited_nodes = set()
+        self._visited_nodes: Set = set()
 
     @abstractmethod
     def add_node(self, node_id=None, **attr):
@@ -60,7 +60,7 @@ class GraphBase(ABC):
         pass
 
     @abstractmethod
-    def get_root_id(self) -> None:
+    def get_root_id(self) -> Union[int, str]:
         """
         @return: the node id of the root of the graph.
         """
@@ -167,7 +167,7 @@ class GraphBase(ABC):
         """
         pass
 
-    def _pretty_aux(self, node_id, level: int) -> List[str]:
+    def _pretty_aux(self, node_id: Union[int, str], level: int) -> List[str]:
         """
         A helper function for pretty().
 
@@ -231,9 +231,9 @@ class NetxGraph(GraphBase):
         self._root_id = self.add_node(node_id=ROOT_NODE_ID, type="root")
 
         # used for keep track of the printed nodes (in pretty function)
-        self._visited_nodes = None
+        self._visited_nodes = set()
 
-    def add_node(self, node_id: Optional[Union[int, str]] = None, **attr) -> int:
+    def add_node(self, node_id: Optional[Union[int, str]] = None, **attr) -> Union[int, str]:
         # get the id for the new node (if id wasn't passed)
         node_id = next(self._node_id_counter) if node_id is None else node_id
 
@@ -488,7 +488,7 @@ class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
     def __init__(self) -> None:
         super().__init__()
         # for each rule stores it's relevant nodes
-        self._rule_to_nodes = dict()
+        self._rule_to_nodes: Dict = dict()
         self._dependency_graph = DependencyGraph()
 
     @abstractmethod

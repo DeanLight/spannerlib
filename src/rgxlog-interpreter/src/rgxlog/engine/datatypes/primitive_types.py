@@ -78,4 +78,4 @@ class DataTypeMapping:
     integer = int
     free_var_name = str
     var_name = str
-    term = Union[str, Span, int, str, str]
+    term = Union[str, Span, int]

@@ -30,11 +30,11 @@ from lark import Transformer, Token
 from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
 from pathlib import Path
-from typing import List, no_type_check, Set
+from typing import List, no_type_check, Set, Sequence
 
 from rgxlog.engine.datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule,
                                                     IERelation, RelationDeclaration, Relation)
-from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
+from rgxlog.engine.datatypes.primitive_types import Span, DataTypes, DataTypeMapping
 from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.graphs import NetxStateGraph
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
@@ -385,7 +385,7 @@ class CheckDefinedReferencedVariables(InterpreterPass):
         if not self.symbol_table.contains_variable(var_name):
             raise Exception(f'variable "{var_name}" is not defined')
 
-    def _assert_var_terms_defined(self, term_list: List[str], type_list: List[DataTypes]) -> None:
+    def _assert_var_terms_defined(self, term_list: Sequence[DataTypeMapping.term], type_list: Sequence[DataTypes]) -> None:
         """
         A utility function that checks if the non free variables in a term list are defined
         if one of them is not defined, raises an exception.
@@ -396,18 +396,21 @@ class CheckDefinedReferencedVariables(InterpreterPass):
         for term, term_type in zip(term_list, type_list):
             if term_type is DataTypes.var_name:
                 # found a variable, check if it is defined
+                assert isinstance(term, str), "a var_name must be of type str"
                 self._assert_var_defined(term)
 
     @unravel_lark_node
     def assignment(self, assignment: Assignment):
         if assignment.value_type is DataTypes.var_name:
             # the assigned expression is a variable, check if it is defined
+            assert isinstance(assignment.value, str), "a var_name must be of type str"
             self._assert_var_defined(assignment.value)
 
     @unravel_lark_node
     def read_assignment(self, assignment: ReadAssignment):
         if assignment.read_arg_type is DataTypes.var_name:
             # a variable is used as the argument for read(), check if it is defined
+            assert isinstance(assignment.read_arg, str), "a var_name must be of type str"
             self._assert_var_defined(assignment.read_arg)
 
     @unravel_lark_node
@@ -427,9 +430,9 @@ class CheckDefinedReferencedVariables(InterpreterPass):
 
         # for each relation in the rule body, check if its variable terms are defined
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            if relation_type == "relation":
+            if isinstance(relation, Relation):
                 self._assert_var_terms_defined(relation.term_list, relation.type_list)
-            elif relation_type == "ie_relation":
+            elif isinstance(relation, IERelation):
                 # ie relations have input terms and output terms, check them both
                 self._assert_var_terms_defined(relation.input_term_list, relation.input_type_list)
                 self._assert_var_terms_defined(relation.output_term_list, relation.output_type_list)
@@ -499,7 +502,7 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
 
         # check that each normal relation in the rule body exists and that the correct arity was used
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            if relation_type == "relation":
+            if isinstance(relation, Relation):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
@@ -773,6 +776,7 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
     def relation_declaration(self, relation_decl: RelationDeclaration):
         self.symbol_table.add_relation_schema(relation_decl.relation_name, relation_decl.type_list, False)
 
+    @no_type_check
     @unravel_lark_node
     def rule(self, rule: Rule):
         # a rule head relation only contains free variable terms, meaning its schema is defined exclusively by the
@@ -783,7 +787,8 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
 
         # get the schema of the rule head relation and add it to the symbol table
         head_relation = rule.head_relation
-        rule_head_schema = [free_var_to_type[term] for term in head_relation.term_list]
+        term_list = head_relation.term_list
+        rule_head_schema = [free_var_to_type[term] for term in term_list]
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
 
@@ -857,9 +862,9 @@ class ResolveVariablesReferences(InterpreterPass):
     def rule(self, rule: Rule):
         # resolve the variables of each relation in the rule body relation list
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            if relation_type == "relation":
+            if isinstance(relation, Relation):
                 self._resolve_var_terms(relation.term_list, relation.type_list)
-            elif relation_type == "ie_relation":
+            elif isinstance(relation, IERelation):
                 # ie relations have two term lists (input and output), resolve them both
                 self._resolve_var_terms(relation.input_term_list, relation.input_type_list)
                 self._resolve_var_terms(relation.output_term_list, relation.output_type_list)

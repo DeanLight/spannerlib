@@ -48,7 +48,7 @@ def test_rust_regex_from_file() -> None:
             -----
               a
              aa
-    
+
             {QUERY_RESULT_PREFIX}'span_rel(X)':
                X
             --------
@@ -90,7 +90,7 @@ def test_python_regex() -> None:
               X
             -----
              aa
-            
+
             {QUERY_RESULT_PREFIX}'py_span_rel(X)':
                X
             --------

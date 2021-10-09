@@ -153,7 +153,7 @@ def test_project() -> None:
     expected_result = f"""{QUERY_RESULT_PREFIX}'A(X)':
        X
     -----
-       1 
+       1
     """
 
     run_test(commands, expected_result)

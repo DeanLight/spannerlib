@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
-from typing import Tuple, List, Union, Iterable
+from typing import Tuple, List, Union, Iterable, Sequence, no_type_check, Callable
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.stdlib.utils import run_cli_command
@@ -32,7 +32,7 @@ REGEX_EXE_PATH_WIN = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_WIN_FILENAME
 
 # commands
 RUSTUP_TOOLCHAIN = "1.34"
-CARGO_CMD_ARGS = ["cargo", "+" + RUSTUP_TOOLCHAIN, "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
+CARGO_CMD_ARGS: Sequence[Union[Path, str]] = ["cargo", "+" + RUSTUP_TOOLCHAIN, "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
 RUSTUP_CMD_ARGS = ["rustup", "toolchain", "install", RUSTUP_TOOLCHAIN]
 SHORT_TIMEOUT = 3
 CARGO_TIMEOUT = 300
@@ -85,10 +85,12 @@ def _is_installed_package() -> bool:
     return Path(REGEX_EXE_PATH).is_file()
 
 
+@no_type_check
 def rgx_span_out_type(output_arity: int) -> Tuple[DataTypes]:
     return tuple([DataTypes.span] * output_arity)
 
 
+@no_type_check
 def rgx_string_out_type(output_arity: int) -> Tuple[DataTypes]:
     return tuple([DataTypes.string] * output_arity)
 
@@ -141,7 +143,7 @@ def rgx(regex_pattern: str, out_type: str, text=None, text_file=None) -> Iterabl
 
         if out_type == "string":
             rust_regex_args = f"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name}"
-            format_function = _format_spanner_string_output
+            format_function: Callable = _format_spanner_string_output
         elif out_type == "span":
             rust_regex_args = f"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name} --bytes-offset"
             format_function = _format_spanner_span_output
@@ -154,7 +156,7 @@ def rgx(regex_pattern: str, out_type: str, text=None, text_file=None) -> Iterabl
             yield out
 
 
-def rgx_span(text: str, regex_pattern: str) -> Iterable[Iterable[Span]]:
+def rgx_span(text: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text: The input text for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -169,7 +171,7 @@ RGX = dict(ie_function=rgx_span,
            out_rel=rgx_span_out_type)
 
 
-def rgx_string(text, regex_pattern) -> Iterable[Iterable[str]]:
+def rgx_string(text, regex_pattern) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text: The input text for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -184,7 +186,7 @@ RGX_STRING = dict(ie_function=rgx_string,
                   out_rel=rgx_string_out_type)
 
 
-def rgx_span_from_file(text_file, regex_pattern) -> Iterable[Iterable[Span]]:
+def rgx_span_from_file(text_file, regex_pattern) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text_file: The input file for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -199,7 +201,7 @@ RGX_FROM_FILE = dict(ie_function=rgx_span_from_file,
                      out_rel=rgx_span_out_type)
 
 
-def rgx_string_from_file(text_file, regex_pattern) -> Iterable[Iterable[str]]:
+def rgx_string_from_file(text_file, regex_pattern) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text_file: The input file for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
