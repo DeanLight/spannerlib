@@ -522,7 +522,7 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
 
         # for each ie relation in the rule body, check its existence and arity
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            if relation_type == "ie_relation":
+            if isinstance(relation, IERelation):
 
                 # get the name of the ie function, it is the same as the name of the ie relation
                 ie_func_name = relation.relation_name

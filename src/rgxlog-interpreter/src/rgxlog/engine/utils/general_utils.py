@@ -145,14 +145,14 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation], relatio
     @return: true if the relation is properly typed, else false.
     """
 
-    if relation_type == 'relation':
+    if isinstance(relation, Relation):
         # get the schema of the relation
         relation_schema = symbol_table.get_relation_schema(relation.relation_name)
         # check if the relation's term list is properly typed
         relation_is_properly_typed = check_properly_typed_term_list(
             relation.term_list, relation.type_list, relation_schema, symbol_table)
 
-    elif relation_type == "ie_relation":
+    elif isinstance(relation, IERelation):
 
         # get the input and output schemas of the ie function
         ie_func_name = relation.relation_name
@@ -194,14 +194,14 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase) -> Tupl
 
     for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
 
-        if relation_type == 'relation':
+        if isinstance(relation, Relation):
             # get the schema for the relation
             relation_schema = symbol_table.get_relation_schema(relation.relation_name)
             # perform the free variable type checking
             type_check_rule_free_vars_aux(relation.term_list, relation.type_list, relation_schema,
                                           free_var_to_type, conflicted_free_vars)
 
-        elif relation_type == "ie_relation":
+        elif isinstance(relation, IERelation):
 
             # get the input and output schema of the ie function
             ie_func_name = relation.relation_name

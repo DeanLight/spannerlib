@@ -11,14 +11,14 @@ from setuptools.command.install import install
 class PostDevelopCommand(develop):
     """Post-installation for development mode."""
 
-    def run(self):
+    def run(self) -> None:
         develop.run(self)
 
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
 
-    def run(self):
+    def run(self) -> None:
         install.run(self)
 
 

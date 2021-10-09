@@ -6,6 +6,7 @@ this module also contains class representations of complex datatypes (e.g. Span 
 """
 
 from enum import Enum
+from typing import Union
 
 
 class DataTypes(Enum):
@@ -69,3 +70,12 @@ class Span:
     # used for sorting `Span`s in dataframes
     def __hash__(self) -> int:
         return hash((self.span_start, self.span_end))
+
+
+class DataTypeMapping:
+    string = str
+    span = Span
+    integer = int
+    free_var_name = str
+    var_name = str
+    term = Union[str, Span, int, str, str]

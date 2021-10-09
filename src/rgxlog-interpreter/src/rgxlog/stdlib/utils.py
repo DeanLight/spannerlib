@@ -58,8 +58,8 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
 
     # get output
     process.stdout.flush()
-    process_stdout, process_stderr = process.communicate()
-    for output in process_stdout.decode("utf-8").splitlines():
+    process_stdout, process_stderr = [s.decode("utf-8") for s in process.communicate()]
+    for output in process_stdout.splitlines():
         output = output.strip()
         if output:
             yield output

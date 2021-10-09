@@ -11,13 +11,13 @@ TermGraph's docstring.
 The dependency graph stores dependencies between relations in the program, it is used by the term graph to recognize
 mutually recursive relations. for more information read DependencyGraph's docstring.
 """
+from abc import ABC, abstractmethod, ABCMeta
 from collections import OrderedDict
 from enum import Enum
-
-import networkx as nx
-from abc import ABC, abstractmethod, ABCMeta
 from itertools import count
 from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType, no_type_check
+
+import networkx as nx
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, Rule, IERelation
 from rgxlog.engine.utils.general_utils import get_input_free_var_names, get_output_free_var_names, \
@@ -45,7 +45,7 @@ class GraphBase(ABC):
     This is an interface for a simple graph.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._visited_nodes = set()
 
     @abstractmethod
@@ -60,7 +60,7 @@ class GraphBase(ABC):
         pass
 
     @abstractmethod
-    def get_root_id(self):
+    def get_root_id(self) -> None:
         """
         @return: the node id of the root of the graph.
         """
@@ -225,7 +225,7 @@ class NetxGraph(GraphBase):
 
         # when a new node is added to the graph, it needs to have an id that was not used before
         # this field will serve as a counter that will provide a new term id
-        self._node_id_counter = count()
+        self._node_id_counter: count[int] = count()
 
         # create the root of the graph. it will be used as a source for dfs/bfs
         self._root_id = self.add_node(node_id=ROOT_NODE_ID, type="root")
@@ -233,7 +233,7 @@ class NetxGraph(GraphBase):
         # used for keep track of the printed nodes (in pretty function)
         self._visited_nodes = None
 
-    def add_node(self, node_id=None, **attr):
+    def add_node(self, node_id: Optional[Union[int, str]] = None, **attr) -> int:
         # get the id for the new node (if id wasn't passed)
         node_id = next(self._node_id_counter) if node_id is None else node_id
 
@@ -241,7 +241,7 @@ class NetxGraph(GraphBase):
         self._graph.add_node(node_for_adding=node_id, **attr)
         return node_id
 
-    def get_root_id(self):
+    def get_root_id(self) -> Union[int, str]:
         return self._root_id
 
     def remove_node(self, node_id) -> None:
@@ -485,7 +485,7 @@ class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
     of the structure of the term graph.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # for each rule stores it's relevant nodes
         self._rule_to_nodes = dict()
