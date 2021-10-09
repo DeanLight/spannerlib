@@ -383,7 +383,8 @@ class SqliteEngine(RgxlogEngineBase):
             projected_relation_name = selected_relation_name
 
         query_result = self._run_sql(
-            f"{self.SQL_SELECT} * FROM {projected_relation_name}", do_commit=True
+            f"{SqliteEngine.SQL_SELECT} * FROM {projected_relation_name}",
+            do_commit=True,
         )
 
         self.remove_table(selected_relation_name)
@@ -431,7 +432,7 @@ class SqliteEngine(RgxlogEngineBase):
         if self.is_table_exists(relation_decl.relation_name):
             return
 
-        # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
+        # note: sqlite can guess datatypes. if this causes bugs, use `{SqliteEngine._datatype_to_sql_type(relation_type)}`.
         col_names = [
             f"{self._get_col_name(i)}" for i in range(len(relation_decl.type_list))
         ]
@@ -451,7 +452,7 @@ class SqliteEngine(RgxlogEngineBase):
         @return: True if it exists, else False.
         """
         sql_check_if_exists = (
-            f"{self.SQL_SELECT} name FROM {self.SQL_TABLE_OF_TABLES} WHERE "
+            f"{SqliteEngine.SQL_SELECT} name FROM {SqliteEngine.SQL_TABLE_OF_TABLES} WHERE "
             f"type='table' AND name='{table_name}'"
         )
         return bool(self._run_sql(sql_check_if_exists))
@@ -548,7 +549,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         template_dict = {
             "new_rel_name": selected_relation.relation_name,
-            "SELECT": self.SQL_SELECT,
+            "SELECT": SqliteEngine.SQL_SELECT,
             "src_rel_name": src_relation.relation_name,
             "all_constraints": all_constraints,
         }
@@ -659,7 +660,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         template_dict = {
             "new_rel_name": joined_relation.relation_name,
-            "SELECT": self.SQL_SELECT,
+            "SELECT": SqliteEngine.SQL_SELECT,
             "new_columns_names": free_var_cols,
             "first_rel_name": first_relation.relation_name,
             "first_rel_temp_name": relation_temp_names[first_relation],
@@ -725,7 +726,7 @@ class SqliteEngine(RgxlogEngineBase):
             new_arity = len(project_vars)
             new_relation_name = self._create_unique_relation(
                 new_arity,
-                prefix=f"{src_relation.relation_name}{self.SQL_SEPARATOR}{self.PROJECT_PREFIX}",
+                prefix=f"{src_relation.relation_name}{SqliteEngine.SQL_SEPARATOR}{SqliteEngine.PROJECT_PREFIX}",
             )
             return Relation(new_relation_name, project_vars, new_type_list)
 
@@ -743,7 +744,7 @@ class SqliteEngine(RgxlogEngineBase):
         _extract_project_col_names()
 
         sql_command = (
-            f"INSERT INTO {new_relation.relation_name} {self.SQL_SELECT} {', '.join(dest_col_list)}"
+            f"INSERT INTO {new_relation.relation_name} {SqliteEngine.SQL_SELECT} {', '.join(dest_col_list)}"
             f" FROM {src_relation.relation_name}"
         )
 
@@ -759,7 +760,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         def _create_new_relation_for_union() -> Relation:
             new_relation_name = self._create_unique_relation(
-                len(relations[0].term_list), prefix=self.UNION_PREFIX
+                len(relations[0].term_list), prefix=SqliteEngine.UNION_PREFIX
             )
             new_term_list = relations[0].term_list
             new_type_list = relations[0].type_list
@@ -783,7 +784,7 @@ class SqliteEngine(RgxlogEngineBase):
                     '{{SELECT}} {{ selected_cols | join(", ") }} FROM {{rel_name}}'
                 )
                 template_dict = {
-                    "SELECT": self.SQL_SELECT,
+                    "SELECT": SqliteEngine.SQL_SELECT,
                     "selected_cols": selection_list,
                     "rel_name": relation.relation_name,
                 }
@@ -825,15 +826,13 @@ class SqliteEngine(RgxlogEngineBase):
         else:
             dest_rel_name = self._create_unique_relation(
                 arity=len(src_rel.type_list),
-                prefix=f"{src_rel_name}{self.SQL_SEPARATOR}{self.COPY_PREFIX}",
+                prefix=f"{src_rel_name}{SqliteEngine.SQL_SEPARATOR}{SqliteEngine.COPY_PREFIX}",
             )
 
         dest_rel = Relation(dest_rel_name, src_rel.term_list, src_rel.type_list)
 
         # sql part
-        sql_command = (
-            f"INSERT INTO {dest_rel_name} {self.SQL_SELECT} * FROM {src_rel_name}"
-        )
+        sql_command = f"INSERT INTO {dest_rel_name} {SqliteEngine.SQL_SELECT} * FROM {src_rel_name}"
         self._run_sql(sql_command)
 
         return dest_rel
@@ -949,7 +948,7 @@ class SqliteEngine(RgxlogEngineBase):
         output_relation_arity = len(ie_relation.output_term_list)
         output_relation_name = self._create_unique_relation(
             output_relation_arity,
-            prefix=f"{ie_relation_name}{self.SQL_SEPARATOR}output",
+            prefix=f"{ie_relation_name}{SqliteEngine.SQL_SEPARATOR}output",
         )
         output_relation = Relation(
             output_relation_name,
@@ -1021,8 +1020,9 @@ class SqliteEngine(RgxlogEngineBase):
         self.declare_relation_table(unique_relation_decl)
         return unique_relation_name
 
-    def _datatype_to_sql_type(self, datatype: DataTypes):
-        return self.DATATYPE_TO_SQL_TYPE[datatype]
+    @staticmethod
+    def _datatype_to_sql_type(datatype: DataTypes):
+        return SqliteEngine.DATATYPE_TO_SQL_TYPE[datatype]
 
     def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
         if datatype is DataTypes.integer:
@@ -1032,7 +1032,7 @@ class SqliteEngine(RgxlogEngineBase):
             return f'"{unquoted_term}"'
 
     def _get_col_name(self, col_id: int) -> str:
-        return f"{self.RELATION_COLUMN_PREFIX}{col_id}"
+        return f"{SqliteEngine.RELATION_COLUMN_PREFIX}{col_id}"
 
     @staticmethod
     def _get_free_variable_indexes(type_list) -> List[int]:
