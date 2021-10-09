@@ -21,7 +21,7 @@ GOOGLE_DRIVE_URL = "https://docs.google.com/uc?export=download"
 GOOGLE_DRIVE_CHUNK_SIZE = 32768
 
 
-def kill_process_and_children(process: Popen):
+def kill_process_and_children(process: Popen) -> None:
     logger.info("~~~~ process timed out ~~~~")
     if process.poll() is not None:
         ps_process = psutil.Process(process.pid)
@@ -30,7 +30,7 @@ def kill_process_and_children(process: Popen):
         process.kill()  # lastly, kill the process
 
 
-@no_type_check
+# @no_type_check
 def run_cli_command(command: str, stderr: bool = False, shell: bool = False, timeout: float = -1) -> Iterable[str]:
     """
     This utility can be used to run any cli command, and iterate over the output.
@@ -57,9 +57,10 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
         process_timer.start()
 
     # get output
-    process.stdout.flush()
-    process_stdout, process_stderr = process.communicate()
-    for output in process_stdout.decode("utf-8").splitlines():
+    if process.stdout:
+        process.stdout.flush()
+    process_stdout, process_stderr = [s.decode("utf-8") for s in process.communicate()]
+    for output in process_stdout.splitlines():
         output = output.strip()
         if output:
             yield output

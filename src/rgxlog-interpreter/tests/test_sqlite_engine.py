@@ -6,7 +6,7 @@ from rgxlog.engine.engine import SqliteEngine
 
 
 @pytest.mark.engine
-def test_add_fact_twice():
+def test_add_fact_twice() -> None:
     expected_output = [(8, "hihi")]
 
     my_engine = SqliteEngine()

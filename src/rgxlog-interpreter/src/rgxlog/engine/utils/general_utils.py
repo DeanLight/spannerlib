@@ -4,10 +4,10 @@ general utilities that are not specific to any kind of pass, execution engine, e
 import functools
 
 import re
-from typing import (Union, Tuple, Set, Dict, List, Optional, Callable, Any, no_type_check)
+from typing import (Union, Tuple, Set, Dict, List, Optional, Callable, Any, no_type_check, Sequence)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, IERelation, Rule)
-from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
+from rgxlog.engine.datatypes.primitive_types import DataTypes, Span, DataTypeMapping
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 
 SPAN_GROUP1 = "start"
@@ -35,7 +35,7 @@ def fixed_point(start, step: Callable, distance: Callable, thresh: int = 0):
     return x
 
 
-def get_free_var_names(term_list: List, type_list: List) -> Set[str]:
+def get_free_var_names(term_list: Sequence, type_list: Sequence) -> Set[str]:
     """
     @param term_list: a list of terms.
     @param type_list: a list of the term types.
@@ -46,6 +46,7 @@ def get_free_var_names(term_list: List, type_list: List) -> Set[str]:
     return free_var_names
 
 
+@no_type_check
 def position_freevar_pairs(relation: Union[Relation, IERelation]) -> List[Tuple[int, str]]:
     """
     @param relation: a relation.
@@ -145,14 +146,14 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation], relatio
     @return: true if the relation is properly typed, else false.
     """
 
-    if relation_type == 'relation':
+    if isinstance(relation, Relation):
         # get the schema of the relation
         relation_schema = symbol_table.get_relation_schema(relation.relation_name)
         # check if the relation's term list is properly typed
         relation_is_properly_typed = check_properly_typed_term_list(
             relation.term_list, relation.type_list, relation_schema, symbol_table)
 
-    elif relation_type == "ie_relation":
+    elif isinstance(relation, IERelation):
 
         # get the input and output schemas of the ie function
         ie_func_name = relation.relation_name
@@ -194,14 +195,14 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase) -> Tupl
 
     for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
 
-        if relation_type == 'relation':
+        if isinstance(relation, Relation):
             # get the schema for the relation
             relation_schema = symbol_table.get_relation_schema(relation.relation_name)
             # perform the free variable type checking
             type_check_rule_free_vars_aux(relation.term_list, relation.type_list, relation_schema,
                                           free_var_to_type, conflicted_free_vars)
 
-        elif relation_type == "ie_relation":
+        elif isinstance(relation, IERelation):
 
             # get the input and output schema of the ie function
             ie_func_name = relation.relation_name
@@ -222,7 +223,7 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase) -> Tupl
     return free_var_to_type, conflicted_free_vars
 
 
-def type_check_rule_free_vars_aux(term_list: List, type_list: List, correct_type_list: List,
+def type_check_rule_free_vars_aux(term_list: Sequence, type_list: Sequence, correct_type_list: Sequence,
                                   free_var_to_type: Dict, conflicted_free_vars: Set) -> None:
     """
     A helper function for the method "type_check_rule_free_vars"
@@ -245,6 +246,7 @@ def type_check_rule_free_vars_aux(term_list: List, type_list: List, correct_type
         if term_type is DataTypes.free_var_name:
             # found a free variable, check for conflicting types
             free_var = term
+            assert isinstance(free_var, str), "a free_var must be of type str"
             if free_var in free_var_to_type:
                 # free var already has a type, make sure there's no conflict with the expected type.
                 free_var_type = free_var_to_type[free_var]

@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from itertools import count
 from jinja2 import Template
 from pathlib import Path
-from typing import Iterable, Optional, Set, Tuple, Any, List, Union, Dict, no_type_check
+from typing import Iterable, Optional, Set, Tuple, Any, List, Union, Dict, no_type_check, Sequence
 
 from rgxlog.engine.datatypes.ast_node_types import RelationDeclaration, AddFact, RemoveFact, Query, IERelation, Relation
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
@@ -115,8 +115,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def compute_ie_relation(self, ie_relation: IERelation, ie_func_data,
-                            bounding_relation: Optional[Relation]) -> Relation:
+    def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction, bounding_relation: Optional[Relation]) -> Relation:
         """
         Computes an information extraction relation, returning the result as a normal relation.
 
@@ -157,7 +156,7 @@ class RgxlogEngineBase(ABC):
         free variables, so we can throw away all of the columns defined by constant terms.
 
         @param ie_relation: an ie relation that determines the input and output terms of the ie function.
-        @param ie_func_data: the data for the ie function that will be used to compute the ie relation.
+        @param ie_func: the data for the ie function that will be used to compute the ie relation.
         @param bounding_relation: a relation that contains the inputs for ie_funcs. the actual input needs to be
                                   queried from it2
         @return: a normal relation that contains all of the resulting tuples in the rgxlog engine.
@@ -165,7 +164,7 @@ class RgxlogEngineBase(ABC):
         pass
 
     @abstractmethod
-    def _convert_relation_term_to_string(self, datatype: DataTypes, term) -> str:
+    def _convert_relation_term_to_string(self, datatype: DataTypes, term: Any) -> str:
         """
         Return the string representation of a relation term, e.g. "[1,4)"
 
@@ -281,7 +280,7 @@ class SqliteEngine(RgxlogEngineBase):
         self.sql_conn = sqlite.connect(self.db_filename)
         self.sql_cursor = self.sql_conn.cursor()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.sql_conn.close()
 
     # ~~ simple logic methods ~~
@@ -319,7 +318,7 @@ class SqliteEngine(RgxlogEngineBase):
             {% if not loop.last %}
                 ,
             {% endif %}
-        {% endfor %}  
+        {% endfor %}
         """)
 
         self._run_sql_from_jinja_template(sql_template, template_dict)
@@ -502,13 +501,13 @@ class SqliteEngine(RgxlogEngineBase):
         sql_template = ("""
         INSERT INTO {{new_rel_name}} {{SELECT}} * FROM {{src_rel_name}}
         {%- if all_constraints %}
-        WHERE 
+        WHERE
             {% for left, right in all_constraints %}
                 {{left}}={{right}}
                 {% if not loop.last %}
-                    AND            
-                {% endif %} 
-            {% endfor %} 
+                    AND
+                {% endif %}
+            {% endfor %}
         {%- endif -%}
         """)
 
@@ -527,10 +526,10 @@ class SqliteEngine(RgxlogEngineBase):
         inner_join_list: List[Tuple[str, str]] = []
         free_var_cols: List[Tuple[str, str]] = []
 
-        def _create_new_relation_for_join_result():
+        def _create_new_relation_for_join_result() -> Relation:
             # get all of the free variables in all of the relations, they'll serve as the terms of the joined relation
-            free_var_sets = [get_output_free_var_names(relation) for relation in relations]
-            free_vars = set().union(*free_var_sets)
+            free_var_sets: Sequence[Set] = [get_output_free_var_names(relation) for relation in relations]
+            free_vars: Set = set().union(*free_var_sets)
             joined_relation_terms = list(free_vars)
 
             # get the type list of the joined relation (all of the terms are free variables)
@@ -543,7 +542,8 @@ class SqliteEngine(RgxlogEngineBase):
             # create a structured node of the joined relation
             return Relation(joined_relation_name, joined_relation_terms, relation_types)
 
-        def _extract_col_names_and_constraints():
+        @no_type_check
+        def _extract_col_names_and_constraints() -> None:
             # iterate over the free_vars and do 2 things:
             for i, free_var in enumerate(joined_relation.term_list):
                 free_var_pairs: List[Tuple[Union[Relation, IERelation], int]] = var_dict[free_var]
@@ -592,26 +592,26 @@ class SqliteEngine(RgxlogEngineBase):
                          "relations_temp_names": inner_join_list, "join_constraints": on_constraints_list}
 
         sql_template = ("""
-        INSERT INTO {{new_rel_name}} {{SELECT}} 
+        INSERT INTO {{new_rel_name}} {{SELECT}}
         {% for left, right in new_columns_names %}
             {{left}} AS {{right}}
             {% if not loop.last %}
             ,
             {% endif %}
         {% endfor %}
-        
+
         FROM {{first_rel_name}} AS {{first_rel_temp_name}}
         {% for left, right in relations_temp_names %}
             INNER JOIN {{left}} AS {{right}}
-        {% endfor %} 
-        
+        {% endfor %}
+
         {%- if join_constraints %}
             ON
             {% for left, right in join_constraints %}
                 {{left}}={{right}}
                 {% if not loop.last %}
                     AND
-                {% endif %} 
+                {% endif %}
             {% endfor %}
         {%- endif -%}
         """)
@@ -733,8 +733,7 @@ class SqliteEngine(RgxlogEngineBase):
         return dest_rel
 
     @no_type_check
-    def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction,
-                            bounding_relation: Optional[Relation]) -> Relation:
+    def compute_ie_relation(self, ie_relation: IERelation, ie_func: IEFunction, bounding_relation: Optional[Relation]) -> Relation:
         """
         Computes an information extraction relation, returning the result as a normal relation.
         for more details see RgxlogEngineBase.compute_ie_relation.

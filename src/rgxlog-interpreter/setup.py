@@ -1,7 +1,7 @@
 from glob import glob
 from os.path import basename
 from os.path import splitext
-from typing import Dict
+from typing import Dict, no_type_check
 
 import setuptools
 from setuptools.command.develop import develop
@@ -11,14 +11,15 @@ from setuptools.command.install import install
 class PostDevelopCommand(develop):
     """Post-installation for development mode."""
 
-    def run(self):
+    @no_type_check
+    def run(self) -> None:
         develop.run(self)
 
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
 
-    def run(self):
+    def run(self) -> None:
         install.run(self)
 
 

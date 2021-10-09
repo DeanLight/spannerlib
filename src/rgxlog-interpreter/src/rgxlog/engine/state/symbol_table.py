@@ -281,23 +281,23 @@ class SymbolTable(SymbolTableBase):
     def register_ie_function_object(self, ie_function_object: IEFunction, ie_function_name: str):
         self._registered_ie_functions[ie_function_name] = ie_function_object
 
-    def contains_ie_function(self, ie_func_name: str):
+    def contains_ie_function(self, ie_func_name: str) -> bool:
         return ie_func_name in self._registered_ie_functions
 
-    def get_ie_func_data(self, ie_func_name: str):
+    def get_ie_func_data(self, ie_func_name: str) -> IEFunction:
         if self.contains_ie_function(ie_func_name):
             return self._registered_ie_functions[ie_func_name]
         else:
-            raise AttributeError(f"'{ie_func_name}' is not a registered function.")
+            raise ValueError(f"'{ie_func_name}' is not a registered function.")
 
-    def get_all_registered_ie_funcs(self):
+    def get_all_registered_ie_funcs(self) -> Dict[str, IEFunction]:
         return self._registered_ie_functions.copy()
 
-    def remove_ie_function(self, name: str):
+    def remove_ie_function(self, name: str) -> None:
         if not self._registered_ie_functions.pop(name, None):
-            raise Exception(f"IE function named {name} doesn't exist")
+            raise ValueError(f"IE function named {name} doesn't exist")
 
-    def remove_all_ie_functions(self):
+    def remove_all_ie_functions(self) -> None:
         self._registered_ie_functions = dict()
 
     def print_registered_ie_functions(self):
