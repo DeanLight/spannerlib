@@ -2,7 +2,14 @@
 # See https://pre-commit.com/hooks.html for more hooks
 
 repos:
-  - repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: '7d14f78'
+-   repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v1.5.7
     hooks:
       - id: autopep8
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.910
+    hooks:
+    -   id: mypy
+        files: ^src/rgxlog-interpreter/
+        args: [--ignore-missing-imports, --install-types, --non-interactive]
