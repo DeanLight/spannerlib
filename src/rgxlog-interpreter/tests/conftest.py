@@ -8,7 +8,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def run_on_every_test():
+def run_on_every_test() -> None:
     # this code runs before each test is executed
     pass
 

@@ -18,7 +18,7 @@ def im_ex_session():
     return Session()
 
 
-def test_import_csv1(im_ex_session: Session):
+def test_import_csv1(im_ex_session: Session) -> None:
     example_relation = (
         '"aoi";[0,3);8\n'
         '"aoi";[1,2);16\n'
@@ -42,7 +42,7 @@ def test_import_csv1(im_ex_session: Session):
         run_test(query, expected_result_string, test_session=im_ex_session)
 
 
-def test_import_csv2(im_ex_session: Session):
+def test_import_csv2(im_ex_session: Session) -> None:
     example_relation_two = (
         "a\n"
         "b\n"
@@ -67,7 +67,7 @@ def test_import_csv2(im_ex_session: Session):
         run_test(query, expected_result_string, test_session=im_ex_session)
 
 
-def test_import_df(im_ex_session: Session):
+def test_import_df(im_ex_session: Session) -> None:
     df = DataFrame([["a", "[1,2)"], ["b", Span(6, 8)], ["c", "[2,10)"]], columns=["str", "span"])
 
     query = "?df_rel(X,Y)"
@@ -83,7 +83,7 @@ def test_import_df(im_ex_session: Session):
     run_test(query, expected_result_string, test_session=im_ex_session)
 
 
-def test_commands_into_csv_basic(im_ex_session: Session):
+def test_commands_into_csv_basic(im_ex_session: Session) -> None:
     commands = """new basic_rel(str)
             basic_rel("stardew")
             basic_rel("valley")"""
@@ -98,7 +98,7 @@ def test_commands_into_csv_basic(im_ex_session: Session):
     run_commands_into_csv_test(expected_rel, im_ex_session, commands, query_for_csv)
 
 
-def test_commands_into_csv_long(im_ex_session: Session):
+def test_commands_into_csv_long(im_ex_session: Session) -> None:
     commands = """new longrel(str,span,int)
             longrel("ano sora",[42, 69),24)
             longrel("aoi",[1, 2),16)
@@ -115,7 +115,7 @@ def test_commands_into_csv_long(im_ex_session: Session):
     run_commands_into_csv_test(expected_longrel, im_ex_session, commands, query_for_csv)
 
 
-def test_export_relation_into_csv(im_ex_session: Session):
+def test_export_relation_into_csv(im_ex_session: Session) -> None:
     relation_name = "hotdoge"
     commands = f"""
             new {relation_name}(str, int)
@@ -140,7 +140,7 @@ def test_export_relation_into_csv(im_ex_session: Session):
             assert is_equal_stripped_sorted_tables(f_temp.read(), expected_export_rel), "file was not written properly"
 
 
-def test_commands_into_df(im_ex_session: Session):
+def test_commands_into_df(im_ex_session: Session) -> None:
     test_df = DataFrame(["king", "jump"], columns=["X"])
     # create new relation
     commands = """
@@ -157,7 +157,7 @@ def test_commands_into_df(im_ex_session: Session):
     assert is_equal_dataframes_ignore_order(temp_df, test_df), "the dataframes are not equal"
 
 
-def test_export_relation_into_df(im_ex_session: Session):
+def test_export_relation_into_df(im_ex_session: Session) -> None:
     column_names = [f"{FREE_VAR_PREFIX}0", f"{FREE_VAR_PREFIX}1"]
 
     relation_name = "export_df_rel"

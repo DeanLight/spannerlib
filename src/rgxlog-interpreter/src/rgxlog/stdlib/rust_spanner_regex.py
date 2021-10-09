@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
-from typing import Iterable
+from typing import Tuple, List, Union, Iterable
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.stdlib.utils import run_cli_command
@@ -54,13 +54,13 @@ TEMP_FILE_NAME = "temp"
 logger = logging.getLogger(__name__)
 
 
-def _download_and_install_rust_and_regex():
+def _download_and_install_rust_regex() -> None:
     # don't use "cargo -V" because it starts downloading stuff sometimes
     with Popen([WHICH_WORD, "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
         errcode = cargo.wait(SHORT_TIMEOUT)
 
     with Popen([WHICH_WORD, "rustup"], stdout=PIPE, stderr=PIPE) as rustup:
-        errcode = errcode or rustup.wait(SHORT_TIMEOUT)
+        errcode |= rustup.wait(SHORT_TIMEOUT)
 
     if errcode:
         raise IOError(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
@@ -68,7 +68,7 @@ def _download_and_install_rust_and_regex():
     logger.warning(f"{PACKAGE_NAME} was not found on your system")
     logger.warning(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
 
-    # i didn't pipe here because i want the user to see the output
+    # there's no pipe here to let the user to see the output
     with Popen(RUSTUP_CMD_ARGS) as rustup:
         rustup.wait(RUSTUP_TIMEOUT)
 
@@ -81,19 +81,19 @@ def _download_and_install_rust_and_regex():
     logger.warning("installation completed")
 
 
-def _is_installed_package():
+def _is_installed_package() -> bool:
     return Path(REGEX_EXE_PATH).is_file()
 
 
-def rgx_span_out_type(output_arity):
+def rgx_span_out_type(output_arity: int) -> Tuple[DataTypes]:
     return tuple([DataTypes.span] * output_arity)
 
 
-def rgx_string_out_type(output_arity):
+def rgx_string_out_type(output_arity: int) -> Tuple[DataTypes]:
     return tuple([DataTypes.string] * output_arity)
 
 
-def _format_spanner_string_output(output: Iterable[str]):
+def _format_spanner_string_output(output: Iterable[str]) -> List[List[str]]:
     output_lists = []
     for out in output:
         out_list = []
@@ -107,7 +107,7 @@ def _format_spanner_string_output(output: Iterable[str]):
     return output_lists
 
 
-def _format_spanner_span_output(output: Iterable[str]):
+def _format_spanner_span_output(output: Iterable[str]) -> List[List[Span]]:
     output_lists = []
     for out in output:
         out_list = []
@@ -120,7 +120,7 @@ def _format_spanner_span_output(output: Iterable[str]):
     return output_lists
 
 
-def rgx(regex_pattern, out_type: str, text=None, text_file=None):
+def rgx(regex_pattern: str, out_type: str, text=None, text_file=None) -> Iterable[List[Union[str, Span]]]:
     """
     An IE function which runs regex using rust's `enum-spanner-rs` and yields tuples of strings/spans (not both).
 
@@ -154,7 +154,7 @@ def rgx(regex_pattern, out_type: str, text=None, text_file=None):
             yield out
 
 
-def rgx_span(text, regex_pattern):
+def rgx_span(text, regex_pattern) -> Iterable[List[Span]]:
     """
     @param text: The input text for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -169,7 +169,7 @@ RGX = dict(ie_function=rgx_span,
            out_rel=rgx_span_out_type)
 
 
-def rgx_string(text, regex_pattern):
+def rgx_string(text, regex_pattern) -> Iterable[List[str]]:
     """
     @param text: The input text for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -184,7 +184,7 @@ RGX_STRING = dict(ie_function=rgx_string,
                   out_rel=rgx_string_out_type)
 
 
-def rgx_span_from_file(text_file, regex_pattern):
+def rgx_span_from_file(text_file, regex_pattern) -> Iterable[List[Span]]:
     """
     @param text_file: The input file for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -199,7 +199,7 @@ RGX_FROM_FILE = dict(ie_function=rgx_span_from_file,
                      out_rel=rgx_span_out_type)
 
 
-def rgx_string_from_file(text_file, regex_pattern):
+def rgx_string_from_file(text_file, regex_pattern) -> Iterable[List[str]]:
     """
     @param text_file: The input file for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -215,4 +215,4 @@ RGX_STRING_FROM_FILE = dict(ie_function=rgx_string_from_file,
 
 # the package is installed when this module is imported
 if not _is_installed_package():
-    _download_and_install_rust_and_regex()
+    _download_and_install_rust_regex()

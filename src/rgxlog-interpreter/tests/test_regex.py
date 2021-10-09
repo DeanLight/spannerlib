@@ -5,7 +5,7 @@ from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
-def test_rust_regex():
+def test_rust_regex() -> None:
     commands = """
         string_rel(X) <- rgx_string("aa",".+") -> (X)
         span_rel(X) <- rgx_span("aa",".+") -> (X)
@@ -30,7 +30,7 @@ def test_rust_regex():
     run_test(commands, expected_result)
 
 
-def test_rust_regex_from_file():
+def test_rust_regex_from_file() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         rgx_text_file = Path(temp_dir) / "temp"
         with open(rgx_text_file, "w") as f:
@@ -60,7 +60,7 @@ def test_rust_regex_from_file():
         run_test(commands, expected_result)
 
 
-def test_rust_regex_groups():
+def test_rust_regex_groups() -> None:
     text = "aab"
     pattern = "(?P<group_all>(?P<group_a>a+)(?P<group_b>b+))"
 
@@ -78,7 +78,7 @@ def test_rust_regex_groups():
     run_test(commands, expected_result)
 
 
-def test_python_regex():
+def test_python_regex() -> None:
     commands = """
            py_string_rel(X) <- py_rgx_string("aa",".+") -> (X)
            py_span_rel(X) <- py_rgx_span("aa",".+") -> (X)

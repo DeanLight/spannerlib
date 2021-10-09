@@ -217,7 +217,7 @@ class NetxGraph(GraphBase):
     A basic tutorial for networkx https://networkx.org/documentation/stable//reference/introduction.html.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # define the graph with 'DiGraph' to make sure the order of a reported node's children is the same
         # as the order they were added to the graph.

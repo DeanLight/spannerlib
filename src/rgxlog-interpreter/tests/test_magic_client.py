@@ -2,7 +2,7 @@ from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
-def test_magic_session_basic():
+def test_magic_session_basic() -> None:
     commands = """
         new uncle(str, str)
         uncle("bob", "greg")
