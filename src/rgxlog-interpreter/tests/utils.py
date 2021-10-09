@@ -9,7 +9,7 @@ from rgxlog.engine.session import queries_to_string, Session
 TEMP_FILE_NAME = "temp"
 
 
-def is_equal_stripped_sorted_tables(result_text, expected_text):
+def is_equal_stripped_sorted_tables(result_text: str, expected_text: str) -> bool:
     """
     Compares all lines in between two strings, ignoring the order of the lines.
 
@@ -17,12 +17,12 @@ def is_equal_stripped_sorted_tables(result_text, expected_text):
     @param expected_text: second string to compare, usually the expected output of a test.
     @return: True if equal, else False.
     """
-    result_text = sorted([line.strip() for line in result_text.splitlines() if line.strip()])
-    expected_text = sorted([line.strip() for line in expected_text.splitlines() if line.strip()])
-    return result_text == expected_text
+    sorted_result_text = sorted([line.strip() for line in result_text.splitlines() if line.strip()])
+    sorted_expected_text = sorted([line.strip() for line in expected_text.splitlines() if line.strip()])
+    return sorted_result_text == sorted_expected_text
 
 
-def is_equal_dataframes_ignore_order(result_df, expected_df):
+def is_equal_dataframes_ignore_order(result_df: DataFrame, expected_df: DataFrame) -> bool:
     """
     Similarly to `is_equal_stripped_sorted_tables`, compares two dataframes while ignoring the order of the rows.
 
@@ -119,7 +119,7 @@ def run_test(commands: str, expected_output: Optional[str] = None, functions_to_
     return test_session
 
 
-def run_commands_into_csv_test(expected_longrel, im_ex_session, commands, query_for_csv):
+def run_commands_into_csv_test(expected_longrel: str, im_ex_session: Session, commands: str, query_for_csv: str) -> None:
     im_ex_session.run_commands(commands, print_results=False)
     # query into csv and compare with old file
     with tempfile.TemporaryDirectory() as temp_dir:

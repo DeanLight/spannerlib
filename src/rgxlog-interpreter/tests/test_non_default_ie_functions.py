@@ -1,10 +1,12 @@
+from typing import Tuple, Iterator, Iterable
+
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
-def test_range_int_no_tuple():
-    def yield_range_int_no_tuple(num):
+def test_range_int_no_tuple() -> None:
+    def yield_range_int_no_tuple(num: int) -> Iterable[int]:
         for i in range(num):
             yield i
 
@@ -32,8 +34,8 @@ def test_range_int_no_tuple():
     run_test(commands, expected_result, functions_to_import=[yield_range_dict])
 
 
-def test_range_span_no_tuple():
-    def yield_range_span_no_tuple(num):
+def test_range_span_no_tuple() -> None:
+    def yield_range_span_no_tuple(num: int) -> Iterable[Span]:
         for i in range(num):
             yield Span(i, i)
 
@@ -61,8 +63,8 @@ def test_range_span_no_tuple():
     run_test(commands, expected_result, functions_to_import=[yield_range_span_dict])
 
 
-def test_range_str_no_tuple():
-    def yield_range_str_no_tuple(num):
+def test_range_str_no_tuple() -> None:
+    def yield_range_str_no_tuple(num: int) -> Iterable[str]:
         for i in range(num):
             yield "string" + str(i)
 
@@ -90,15 +92,15 @@ def test_range_str_no_tuple():
     run_test(commands, expected_result, functions_to_import=[yield_range_str_dict])
 
 
-def test_range_int_with_tuple():
+def test_range_int_with_tuple() -> None:
     """
     in this test, a tuple of an integer is treated as an integer
     @return:
     """
 
-    def yield_range_int_with_tuple(num):
+    def yield_range_int_with_tuple(num: int) -> Iterator[Tuple]:
         for i in range(num):
-            yield (i,)
+            yield i,
 
     yield_range_int_with_tuple_in_types = [DataTypes.integer]
     yield_range_int_with_tuple_out_types = [DataTypes.integer]

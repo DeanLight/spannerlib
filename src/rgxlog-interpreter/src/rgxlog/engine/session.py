@@ -6,7 +6,7 @@ from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Any
 
 import rgxlog
 import rgxlog.engine.engine
@@ -46,7 +46,7 @@ STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 logger = logging.getLogger(__name__)
 
 
-def _infer_relation_type(row: Iterable):
+def _infer_relation_type(row: Iterable) -> Iterable[DataTypes]:
     """
     Guess the relation type based on the data.
     We support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`).
@@ -70,14 +70,14 @@ def _infer_relation_type(row: Iterable):
     return relation_types
 
 
-def _verify_relation_types(row, expected_types):
+def _verify_relation_types(row: Iterable, expected_types: Iterable[DataTypes]):
     if _infer_relation_type(row) != expected_types:
         raise Exception(f"row:\n{str(row)}\ndoes not match the relation's types:\n{str(expected_types)}")
 
 
-def _text_to_typed_data(line, relation_types):
+def _text_to_typed_data(term_list, relation_types):
     transformed_line = []
-    for str_or_object, rel_type in zip(line, relation_types):
+    for str_or_object, rel_type in zip(term_list, relation_types):
         if rel_type == DataTypes.span:
             if isinstance(str_or_object, Span):
                 transformed_line.append(str_or_object)
@@ -358,7 +358,7 @@ class Session:
     def _unknown_task_type():
         return 'unknown task type'
 
-    def _add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
+    def _add_imported_relation_to_engine(self, relation_table: Any, relation_name:str, relation_types):
         symbol_table = self._symbol_table
         engine = self._engine
         # first make sure the types are legal, then we add them to the engine (to make sure
@@ -378,7 +378,7 @@ class Session:
         for fact in facts:
             engine.add_fact(fact)
 
-    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=CSV_DELIMITER):
+    def import_relation_from_csv(self, csv_file_name: str, relation_name: str=None, delimiter: str=CSV_DELIMITER) -> None:
         if not Path(csv_file_name).is_file():
             raise IOError("csv file does not exist")
 
@@ -398,7 +398,7 @@ class Session:
 
             self._add_imported_relation_to_engine(reader, relation_name, relation_types)
 
-    def import_relation_from_df(self, relation_df: DataFrame, relation_name):
+    def import_relation_from_df(self, relation_df: DataFrame, relation_name: str) -> None:
 
         data = relation_df.values.tolist()
 
@@ -446,28 +446,28 @@ class Session:
 
         return format_query_results(*commands_results[0])
 
-    def _relation_name_to_query(self, relation_name: str):
+    def _relation_name_to_query(self, relation_name: str) -> str:
         symbol_table = self._symbol_table
         relation_schema = symbol_table.get_relation_schema(relation_name)
         relation_arity = len(relation_schema)
         query = (f"?{relation_name}(" + ", ".join(f"{FREE_VAR_PREFIX}{i}" for i in range(relation_arity)) + ")")
         return query
 
-    def export_relation_into_df(self, relation_name: str):
+    def export_relation_into_df(self, relation_name: str) -> Union[DataFrame, List]:
         query = self._relation_name_to_query(relation_name)
         return self.send_commands_result_into_df(query)
 
-    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=CSV_DELIMITER):
+    def export_relation_into_csv(self, csv_file_name: str, relation_name: str, delimiter: str=CSV_DELIMITER) -> None:
         query = self._relation_name_to_query(relation_name)
-        return self.send_commands_result_into_csv(query, csv_file_name, delimiter)
+        self.send_commands_result_into_csv(query, csv_file_name, delimiter)
 
-    def print_registered_ie_functions(self):
+    def print_registered_ie_functions(self) -> None:
         """
         Prints information about the registered ie functions.
         """
         self._symbol_table.print_registered_ie_functions()
 
-    def remove_ie_function(self, name: str):
+    def remove_ie_function(self, name: str) -> None:
         """
         Removes a function from the symbol table.
 
@@ -475,13 +475,13 @@ class Session:
         """
         self._symbol_table.remove_ie_function(name)
 
-    def remove_all_ie_functions(self):
+    def remove_all_ie_functions(self) -> None:
         """
         Removes all the ie functions from the symbol table.
         """
         self._symbol_table.remove_all_ie_functions()
 
-    def print_all_rules(self, head: Optional[str] = None):
+    def print_all_rules(self, head: Optional[str] = None) -> None:
         """
         Prints all the rules that are registered.
 
@@ -498,7 +498,7 @@ if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
     my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-    commands = """
+    my_commands = """
             new A(int, int)
             new B(int, int, int)
             B(1, 1, 1)
@@ -515,4 +515,4 @@ if __name__ == "__main__":
     dict = {X:[(a(X,Y),0)], Y:[(a(X,Y),1),(b(Y),0)]
     """
 
-    my_session.run_commands(commands)
+    my_session.run_commands(my_commands)

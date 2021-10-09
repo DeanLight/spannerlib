@@ -4,7 +4,7 @@ from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
-def test_tokenize():
+def test_tokenize() -> None:
     commands = """
                     sentence = "Hello world. Hello world again."
                     tokens(X, Y) <- Tokenize(sentence) -> (X, Y)
@@ -26,7 +26,7 @@ def test_tokenize():
     run_test(commands, expected_result)
 
 
-def test_ssplit():
+def test_ssplit() -> None:
     commands = """
                 sentence = "Hello world. Hello world again."
                 sentences(X) <- SSplit(sentence) -> (X)
@@ -43,7 +43,7 @@ def test_ssplit():
     run_test(commands, expected_result)
 
 
-def test_pos():
+def test_pos() -> None:
     commands = """
                 sentence = "Marie was born in Paris."
                 pos(X, Y, Z) <- POS(sentence) -> (X, Y, Z)
@@ -64,7 +64,7 @@ def test_pos():
     run_test(commands, expected_result)
 
 
-def test_lemma():
+def test_lemma() -> None:
     commands = """
                 sentence = "I've been living a lie, there's nothing inside."
                 lemma(X, Y, Z) <- Lemma(sentence) -> (X, Y, Z)
@@ -92,7 +92,7 @@ def test_lemma():
 
 
 @pytest.mark.long
-def test_ner():
+def test_ner() -> None:
     commands = ("""sentence = "While in France, Christine Lagarde discussed short-term stimulus """
                 """efforts in a recent interview with the Wall Street Journal."
                ner(X, Y, Z) <- NER(sentence) -> (X, Y, Z)
@@ -113,7 +113,7 @@ def test_ner():
 
 
 @pytest.mark.long
-def test_entity_mentions():
+def test_entity_mentions() -> None:
     commands = """sentence = "New York Times newspaper is distributed in California."
             em(X, Y, Z, W, A, B, C, D, E) <- EntityMentions(sentence) -> (X, Y, Z, W, A, B, C, D, E) 
             ?em(DocTokenBegin, DocTokenEnd, TokenBegin, TokenEnd, Text, \
@@ -134,7 +134,7 @@ def test_entity_mentions():
     run_test(commands, expected_result)
 
 
-def test_parse():
+def test_parse() -> None:
     commands = """sentence = "the quick brown fox jumps over the lazy dog"
            parse(X) <- Parse(sentence) -> (X)
            ?parse(X)"""
@@ -150,7 +150,7 @@ def test_parse():
 
 
 @pytest.mark.long
-def test_depparse():
+def test_depparse() -> None:
     commands = """sentence = "the quick brown fox jumps over the lazy dog"
                 depparse(X, Y, Z, W, U) <- DepParse(sentence) -> (X, Y, Z, W, U)
                 ?depparse(Dep, Governor, GovernorGloss, Dependent, DependentGloss)"""
@@ -173,7 +173,7 @@ def test_depparse():
 
 
 @pytest.mark.long
-def test_coref():
+def test_coref() -> None:
     commands = """sentence = "The atom is a basic unit of matter, \
                     it consists of a dense central nucleus surrounded by a cloud of negatively charged electrons."
             coref(X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12) <- \
@@ -196,7 +196,7 @@ def test_coref():
 
 
 @pytest.mark.long
-def test_openie():
+def test_openie() -> None:
     commands = """sentence = "the quick brown fox jumps over the lazy dog"
                openie(X1, X2, X3, X4, X5, X6) <- OpenIE(sentence) -> (X1, X2, X3, X4, X5, X6)
                ?openie(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
@@ -220,7 +220,7 @@ def test_openie():
 
 # note: this test uses 3+ GB of RAM
 @pytest.mark.long
-def test_kbp():
+def test_kbp() -> None:
     commands = """sentence = "Joe Smith was born in Oregon."
               kbp(X1, X2, X3, X4, X5, X6) <- KBP(sentence) -> (X1, X2, X3, X4, X5, X6)
               ?kbp(Subject, SubjectSpan, Relation, RelationSpan, Object, ObjectSpan)"""
@@ -237,7 +237,7 @@ def test_kbp():
     run_test(commands, expected_result)
 
 
-def test_sentiment():
+def test_sentiment() -> None:
     commands = """sentence = "But I do not want to go among mad people, Alice remarked.\
                 Oh, you can not help that, said the Cat: we are all mad here. I am mad. You are mad.\
                 How do you know I am mad? said Alice.\
@@ -271,7 +271,7 @@ def test_sentiment():
 
 
 @pytest.mark.long
-def test_truecase():
+def test_truecase() -> None:
     commands = """sentence = "lonzo ball talked about kobe bryant after the lakers game."
               truecase(X, Y, Z, W) <- TrueCase(sentence) -> (X, Y, Z, W)
               ?truecase(Token, Span, Truecase, TruecaseText)"""
@@ -295,7 +295,7 @@ def test_truecase():
     run_test(commands, expected_result)
 
 
-def test_clean_xml():
+def test_clean_xml() -> None:
     commands = """sentence = "<xml><to>Tove</to>\
        <from>Jani</Ffrom>\
        <heading>Reminder</heading>\
@@ -323,7 +323,7 @@ def test_clean_xml():
 
 
 @pytest.mark.long
-def test_quote():
+def test_quote() -> None:
     quoted_phrase = r'''\"I'm going to Hawaii.\"'''
     commands = f"""sentence = "In the summer Joe Smith decided to go on vacation.  He said, {quoted_phrase}. That July, vacationer Joe went to Hawaii."
                cool_quote(A,S,D,F,G,H,J,K,L,P) <- Quote(sentence) -> (A,S,D,F,G,H,J,K,L,P)

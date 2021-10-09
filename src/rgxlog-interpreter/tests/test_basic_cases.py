@@ -3,7 +3,7 @@ from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
-def test_assignment():
+def test_assignment() -> None:
     commands = """
             new Relation(int, int)
             x = 1
@@ -22,7 +22,7 @@ def test_assignment():
     run_test(commands, expected_result)
 
 
-def test_copy_table_rule():
+def test_copy_table_rule() -> None:
     commands = """
             new B(int, int)
             B(1, 1)
@@ -43,7 +43,7 @@ def test_copy_table_rule():
     run_test(commands, expected_result)
 
 
-def test_join_two_tables():
+def test_join_two_tables() -> None:
     commands = """
         new B(int, int)
         new C(int, int)
@@ -66,7 +66,7 @@ def test_join_two_tables():
     run_test(commands, expected_result)
 
 
-def test_relation_with_same_free_var():
+def test_relation_with_same_free_var() -> None:
     commands = """
         new B(int, int)
         B(1, 1)
@@ -86,7 +86,7 @@ def test_relation_with_same_free_var():
     run_test(commands, expected_result)
 
 
-def test_union_rule_with_same_vars():
+def test_union_rule_with_same_vars() -> None:
     commands = """
         new B(int, int)
         new C(int, int)
@@ -113,7 +113,7 @@ def test_union_rule_with_same_vars():
     run_test(commands, expected_result)
 
 
-def test_union_rule_with_different_vars():
+def test_union_rule_with_different_vars() -> None:
     commands = """
         new B(int, int)
         new C(int, int)
@@ -140,7 +140,7 @@ def test_union_rule_with_different_vars():
     run_test(commands, expected_result)
 
 
-def test_project():
+def test_project() -> None:
     commands = """
             new B(int, int)
             B(1, 1)
@@ -159,7 +159,7 @@ def test_project():
     run_test(commands, expected_result)
 
 
-def test_add_fact_after_rule():
+def test_add_fact_after_rule() -> None:
     commands = """
             new B(int, int)
             B(1, 1)
@@ -178,7 +178,7 @@ def test_add_fact_after_rule():
     run_test(commands, expected_result)
 
 
-def test_datatypes():
+def test_datatypes() -> None:
     commands = """
             new B(int, str, span)
             B(1, "2", [1, 2))
@@ -194,7 +194,7 @@ def test_datatypes():
     run_test(commands, expected_result)
 
 
-def test_join_same_relation():
+def test_join_same_relation() -> None:
     commands = """
             new Parent(str, str)
             Parent("God", "Abraham")
@@ -215,7 +215,7 @@ def test_join_same_relation():
     run_test(commands, expected_result)
 
 
-def test_rule_with_constant():
+def test_rule_with_constant() -> None:
     commands = """
               new B(int, int)
               new C(int, int)
@@ -239,7 +239,7 @@ def test_rule_with_constant():
     run_test(commands, expected_result)
 
 
-def test_rule_with_true_value():
+def test_rule_with_true_value() -> None:
     commands = """
                new B(int, int)
                new C(int, int)
@@ -264,7 +264,7 @@ def test_rule_with_true_value():
     run_test(commands, expected_result)
 
 
-def test_rule_with_false_value():
+def test_rule_with_false_value() -> None:
     commands = """
                new B(int, int)
                new C(int, int)
@@ -285,7 +285,7 @@ def test_rule_with_false_value():
     run_test(commands, expected_result)
 
 
-def test_query_with_same_var():
+def test_query_with_same_var() -> None:
     commands = """
               new B(int, int)
               B(1, 1)
@@ -305,7 +305,7 @@ def test_query_with_same_var():
     run_test(commands, expected_result)
 
 
-def test_query_with_constant_value():
+def test_query_with_constant_value() -> None:
     commands = """
                new B(int, int)
                B(1, 1)
@@ -326,7 +326,7 @@ def test_query_with_constant_value():
     run_test(commands, expected_result)
 
 
-def test_remove_rule():
+def test_remove_rule() -> None:
     commands = """
                new B(int, int)
                new C(int, int)
@@ -356,7 +356,7 @@ def test_remove_rule():
     run_test("?A(X, Y)", expected_result, test_session=session)
 
 
-def test_select_and_join():
+def test_select_and_join() -> None:
     commands = """
             new B(int)
             new C(int, int)
@@ -376,7 +376,7 @@ def test_select_and_join():
     run_test(commands, expected_result)
 
 
-def test_query_true_value():
+def test_query_true_value() -> None:
     commands = """
             new A(int)
             A(1)
@@ -390,7 +390,7 @@ def test_query_true_value():
     run_test(commands, expected_result)
 
 
-def test_query_false_value():
+def test_query_false_value() -> None:
     commands = """
             new A(int)
             A(1)
@@ -404,7 +404,7 @@ def test_query_false_value():
     run_test(commands, expected_result)
 
 
-def test_nothing():
+def test_nothing() -> None:
     # we can't use run_test when there is no output
     commands = ""
 
@@ -414,7 +414,7 @@ def test_nothing():
     assert expected_result == commands_result, "expected string != result string"
 
 
-def test_add_remove_fact():
+def test_add_remove_fact() -> None:
     commands = """
                 new rel(int)
                 rel(8) <- True
