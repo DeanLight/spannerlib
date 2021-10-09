@@ -34,7 +34,7 @@ jobs:
           pycodestyle --show-source --show-pep8 ./src/rgxlog-interpreter --config=./.pycodestyle
       - name: test mypy
         run: |
-          mypy --ignore-missing-imports --install-types --non-interactive --disallow-untyped-defs ./src/rgxlog-interpreter
+          mypy --ignore-missing-imports --install-types --non-interactive ./src/rgxlog-interpreter
       - name: pytest
         run: |
           pytest ./src/rgxlog-interpreter/tests -s
