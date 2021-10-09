@@ -20,7 +20,7 @@ structure (e.g. term_list).
 ##############
 #a proposed strategy for making changes to the rgxlog grammar:
 ##############
-1. in your code, wherever you expect to receive an ast rgxlog node that still retains its original structure, 
+1. in your code, wherever you expect to receive an ast rgxlog node that still retains its original structure,
 assert that it has the correct structure using this dict.
 
 2. make a change to the grammar

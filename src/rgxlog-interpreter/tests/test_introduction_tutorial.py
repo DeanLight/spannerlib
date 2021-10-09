@@ -50,22 +50,22 @@ def test_basic_queries() -> None:
 
     expected_result = f"""{QUERY_RESULT_PREFIX}'enrolled_in_chemistry("jordan")':
         [()]
-        
+
         {QUERY_RESULT_PREFIX}'enrolled_in_chemistry("gale")':
         []
-        
+
         {QUERY_RESULT_PREFIX}'enrolled_in_chemistry(X)':
             X
         ---------
          howard
          jordan
          abigail
-        
+
         {QUERY_RESULT_PREFIX}'enrolled_in_physics_and_chemistry(X)':
            X
         --------
          howard
-        
+
         {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
            X
         --------
@@ -113,13 +113,13 @@ def test_json_path() -> None:
         -----
            2
            1
-        
+
         {QUERY_RESULT_PREFIX}'simple_2(X)':
              X
         ------------
          number two
          number one
-        
+
         {QUERY_RESULT_PREFIX}'advanced(X)':"""
         """
                              X

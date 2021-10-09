@@ -1,4 +1,4 @@
-from typing import Tuple, Iterator, Iterable
+from typing import Tuple, Iterable
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
@@ -98,7 +98,7 @@ def test_range_int_with_tuple() -> None:
     @return:
     """
 
-    def yield_range_int_with_tuple(num: int) -> Iterator[Tuple]:
+    def yield_range_int_with_tuple(num: int) -> Iterable[Tuple]:
         for i in range(num):
             yield i,
 
