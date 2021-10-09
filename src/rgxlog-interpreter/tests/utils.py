@@ -124,7 +124,7 @@ def run_commands_into_csv_test(expected_longrel: str, im_ex_session: Session, co
     # query into csv and compare with old file
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_csv = Path(temp_dir) / TEMP_FILE_NAME
-        im_ex_session.send_commands_result_into_csv(query_for_csv, str(temp_csv))
+        im_ex_session.send_commands_result_into_csv(query_for_csv, temp_csv)
         assert Path(temp_csv).is_file(), "file was not created"
 
         with open(temp_csv) as f_temp:

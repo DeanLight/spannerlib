@@ -3,7 +3,7 @@ this module contains the implementations of symbol tables
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Dict, Set, Callable
+from typing import Iterable, Dict, Set, Callable, List, Union
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.ie_functions.ie_function_base import IEFunction
@@ -99,7 +99,8 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def register_ie_function(self, ie_function: Callable, ie_function_name: str, in_rel: Iterable[DataTypes], out_rel):
+    def register_ie_function(self, ie_function: Callable, ie_function_name: str, in_rel: Iterable[DataTypes],
+                             out_rel: Union[List[DataTypes], Callable[[int], Iterable[DataTypes]]]):
         """
         Adds a new ie function to the symbol table.
         @see params in IEFunction's __init__.
@@ -275,7 +276,8 @@ class SymbolTable(SymbolTableBase):
     def contains_relation(self, relation_name: str):
         return relation_name in self._relation_to_schema
 
-    def register_ie_function(self, ie_function: Callable, ie_function_name: str, in_rel: Iterable[DataTypes], out_rel):
+    def register_ie_function(self, ie_function: Callable, ie_function_name: str, in_rel: Iterable[DataTypes],
+                             out_rel: Union[List[DataTypes], Callable[[int], Iterable[DataTypes]]]):
         self._registered_ie_functions[ie_function_name] = IEFunction(ie_function, in_rel, out_rel)
 
     def register_ie_function_object(self, ie_function_object: IEFunction, ie_function_name: str):

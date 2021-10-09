@@ -6,12 +6,12 @@ from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Any
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Any, Sequence
 
 import rgxlog
 import rgxlog.engine.engine
 from rgxlog.engine.datatypes.ast_node_types import AddFact, RelationDeclaration
-from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
+from rgxlog.engine.datatypes.primitive_types import Span, DataTypes, DataTypeMapping
 from rgxlog.engine.engine import FALSE_VALUE, TRUE_VALUE
 from rgxlog.engine.execution import (Query, FREE_VAR_PREFIX, naive_execution)
 from rgxlog.engine.passes.adding_inference_rules_to_computation_graph import AddRulesToComputationTermGraph
@@ -46,7 +46,7 @@ STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 logger = logging.getLogger(__name__)
 
 
-def _infer_relation_type(row: Iterable) -> Iterable[DataTypes]:
+def _infer_relation_type(row: Iterable) -> Sequence[DataTypes]:
     """
     Guess the relation type based on the data.
     We support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`).
@@ -70,27 +70,33 @@ def _infer_relation_type(row: Iterable) -> Iterable[DataTypes]:
     return relation_types
 
 
-def _verify_relation_types(row: Iterable, expected_types: Iterable[DataTypes]):
+def _verify_relation_types(row: Iterable, expected_types: Iterable[DataTypes]) -> None:
     if _infer_relation_type(row) != expected_types:
         raise Exception(f"row:\n{str(row)}\ndoes not match the relation's types:\n{str(expected_types)}")
 
 
-def _text_to_typed_data(term_list, relation_types):
-    transformed_line = []
+def _text_to_typed_data(term_list: Sequence[DataTypeMapping.term], relation_types: Sequence[DataTypes]) -> List[DataTypeMapping.term]:
+    transformed_term_list: List[DataTypeMapping.term] = []
     for str_or_object, rel_type in zip(term_list, relation_types):
         if rel_type == DataTypes.span:
             if isinstance(str_or_object, Span):
-                transformed_line.append(str_or_object)
+                transformed_term_list.append(str_or_object)
             else:
+                assert isinstance(str_or_object, str), "a span can only be a Span object or a string"
                 transformed_span = string_to_span(str_or_object)
-                transformed_line.append(transformed_span)
+                if transformed_span is None:
+                    raise TypeError(f"expected a Span, found this instead: {str_or_object}")
+                transformed_term_list.append(transformed_span)
+
         elif rel_type == DataTypes.integer:
-            transformed_line.append(int(str_or_object))
+            if isinstance(str_or_object, Span):
+                raise TypeError(f"expected an int, found Span instead: {str_or_object}")
+            transformed_term_list.append(int(str_or_object))
         else:
             assert rel_type == DataTypes.string, f"illegal type given: {rel_type}"
-            transformed_line.append(str_or_object)
+            transformed_term_list.append(str_or_object)
 
-    return transformed_line
+    return transformed_term_list
 
 
 def format_query_results(query: Query, query_results: List) -> Union[DataFrame, List]:
@@ -128,7 +134,7 @@ def format_query_results(query: Query, query_results: List) -> Union[DataFrame, 
         return DataFrame(data=results_matrix, columns=query_free_vars)
 
 
-def tabulate_result(result: Union[DataFrame, List]):
+def tabulate_result(result: Union[DataFrame, List]) -> str:
     """
     Organizes a query result in a table
     for example:
@@ -251,10 +257,10 @@ class Session:
                 lark_tree = new_tree
                 logger.debug(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "\n".join([repr(self._symbol_table), repr(self._parse_graph)])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
 
     @no_type_check
@@ -287,7 +293,8 @@ class Session:
         else:
             return query_results
 
-    def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes], out_rel) -> None:
+    def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes],
+                 out_rel: Union[List[DataTypes], Callable[[int], Iterable[DataTypes]]]) -> None:
         """
         Registers an ie function.
 
@@ -302,7 +309,7 @@ class Session:
 
         return [pass_.__name__ for pass_ in self._pass_stack]
 
-    def set_pass_stack(self, user_stack: List[Type[GenericPass]]):
+    def set_pass_stack(self, user_stack: List[Type[GenericPass]]) -> List[str]:
         """
         Sets a new pass stack instead of the current one.
 
@@ -328,7 +335,7 @@ class Session:
         self._symbol_table.remove_rule_relation(relation_name)
         self._engine.remove_table(relation_name)
 
-    def remove_rule(self, rule: str):
+    def remove_rule(self, rule: str) -> None:
         """
         Remove a rule from the rgxlog's engine.
 
@@ -339,7 +346,7 @@ class Session:
             relation_name = rule_to_relation_name(rule)
             self._remove_rule_relation_from_symbols_and_engine(relation_name)
 
-    def remove_all_rules(self, rule_head: Optional[str] = None):
+    def remove_all_rules(self, rule_head: Optional[str] = None) -> None:
         """
         Removes all rules from the engine.
 
@@ -355,10 +362,10 @@ class Session:
             self._remove_rule_relation_from_symbols_and_engine(rule_head)
 
     @staticmethod
-    def _unknown_task_type():
+    def _unknown_task_type() -> str:
         return 'unknown task type'
 
-    def _add_imported_relation_to_engine(self, relation_table: Any, relation_name:str, relation_types):
+    def _add_imported_relation_to_engine(self, relation_table: Iterable, relation_name: str, relation_types: Sequence[DataTypes]) -> None:
         symbol_table = self._symbol_table
         engine = self._engine
         # first make sure the types are legal, then we add them to the engine (to make sure
@@ -378,7 +385,7 @@ class Session:
         for fact in facts:
             engine.add_fact(fact)
 
-    def import_relation_from_csv(self, csv_file_name: str, relation_name: str=None, delimiter: str=CSV_DELIMITER) -> None:
+    def import_relation_from_csv(self, csv_file_name: Path, relation_name: str = None, delimiter: str = CSV_DELIMITER) -> None:
         if not Path(csv_file_name).is_file():
             raise IOError("csv file does not exist")
 
@@ -412,7 +419,7 @@ class Session:
 
         self._add_imported_relation_to_engine(data, relation_name, relation_types)
 
-    def send_commands_result_into_csv(self, commands: str, csv_file_name: str, delimiter: str = CSV_DELIMITER) -> None:
+    def send_commands_result_into_csv(self, commands: str, csv_file_name: Path, delimiter: str = CSV_DELIMITER) -> None:
         """
         run commands as usual and output their formatted results into a csv file (the commands should contain a query)
         @param commands: the commands to run
@@ -457,7 +464,7 @@ class Session:
         query = self._relation_name_to_query(relation_name)
         return self.send_commands_result_into_df(query)
 
-    def export_relation_into_csv(self, csv_file_name: str, relation_name: str, delimiter: str=CSV_DELIMITER) -> None:
+    def export_relation_into_csv(self, csv_file_name: Path, relation_name: str, delimiter: str = CSV_DELIMITER) -> None:
         query = self._relation_name_to_query(relation_name)
         self.send_commands_result_into_csv(query, csv_file_name, delimiter)
 
