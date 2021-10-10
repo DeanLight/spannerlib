@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Iterable
+from typing import Iterable, Any, Tuple
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
@@ -209,7 +209,7 @@ def test_string_len() -> None:
 
 
 def test_neq() -> None:
-    def neq(x, y):
+    def neq(x: Any, y: Any) -> Iterable:
         if x == y:
             # return false
             yield tuple()

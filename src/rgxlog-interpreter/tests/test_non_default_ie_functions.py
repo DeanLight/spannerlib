@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple
+from typing import Tuple, Iterable
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
@@ -6,7 +6,7 @@ from tests.utils import run_test
 
 
 def test_range_int_no_tuple() -> None:
-    def yield_range_int_no_tuple(num) -> Iterable[int]:
+    def yield_range_int_no_tuple(num: int) -> Iterable[int]:
         for i in range(num):
             yield i
 
@@ -35,7 +35,7 @@ def test_range_int_no_tuple() -> None:
 
 
 def test_range_span_no_tuple() -> None:
-    def yield_range_span_no_tuple(num) -> Iterable[Span]:
+    def yield_range_span_no_tuple(num: int) -> Iterable[Span]:
         for i in range(num):
             yield Span(i, i)
 
@@ -64,7 +64,7 @@ def test_range_span_no_tuple() -> None:
 
 
 def test_range_str_no_tuple() -> None:
-    def yield_range_str_no_tuple(num) -> Iterable[str]:
+    def yield_range_str_no_tuple(num: int) -> Iterable[str]:
         for i in range(num):
             yield "string" + str(i)
 
@@ -98,7 +98,7 @@ def test_range_int_with_tuple() -> None:
     @return:
     """
 
-    def yield_range_int_with_tuple(num) -> Iterable[Tuple[int]]:
+    def yield_range_int_with_tuple(num: int) -> Iterable[Tuple]:
         for i in range(num):
             yield i,
 

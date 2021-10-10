@@ -9,7 +9,7 @@ from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
 from threading import Timer
-from typing import Iterable, no_type_check
+from typing import Iterable, no_type_check, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -80,14 +80,14 @@ def download_file_from_google_drive(file_id: str, destination: Path) -> None:
     requests_session = requests.Session()
     response = requests_session.get(GOOGLE_DRIVE_URL, params={'id': file_id}, stream=True)
 
-    def get_confirm_token():
+    def get_confirm_token() -> Optional[Any]:
         for key, value in response.cookies.items():
             if key.startswith('download_warning'):
                 return value
 
         return None
 
-    def save_response_content():
+    def save_response_content() -> None:
         with open(destination, "wb") as f:
             for chunk in response.iter_content(GOOGLE_DRIVE_CHUNK_SIZE):
                 if chunk:  # filter out keep-alive new chunks

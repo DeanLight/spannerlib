@@ -12,7 +12,7 @@ from tests.utils import (run_test, is_equal_stripped_sorted_tables, is_equal_dat
 
 
 @pytest.fixture(scope="module")
-def im_ex_session():
+def im_ex_session() -> Session:
     # pay attention - we use a single session per module because it's more efficient
     # be careful not to redefine symbols between tests
     return Session()

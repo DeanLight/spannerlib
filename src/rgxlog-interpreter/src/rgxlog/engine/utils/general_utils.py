@@ -22,7 +22,7 @@ def strip_lines(text: str) -> str:
     return "\n".join([line.strip() for line in text.splitlines() if line.strip()])
 
 
-def fixed_point(start, step: Callable, distance: Callable, thresh: int = 0):
+def fixed_point(start: Any, step: Callable, distance: Callable, thresh: int = 0) -> Any:
     """
     Implementation of a generic fixed point algorithm - an algorithm that takes a step function and runs it until
     some distance is zero or below a threshold.
@@ -104,8 +104,8 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]]) 
     return var_dict
 
 
-def check_properly_typed_term_list(term_list: list, type_list: list,
-                                   correct_type_list: list, symbol_table: SymbolTableBase) -> bool:
+def check_properly_typed_term_list(term_list: Sequence, type_list: Sequence,
+                                   correct_type_list: Sequence, symbol_table: SymbolTableBase) -> bool:
     """
     Checks if the term list is properly typed.
     the term list could include free variables, this method will assume their actual type is correct.
@@ -135,13 +135,11 @@ def check_properly_typed_term_list(term_list: list, type_list: list,
 
 
 @no_type_check
-def check_properly_typed_relation(relation: Union[Relation, IERelation], relation_type: str,
-                                  symbol_table: SymbolTableBase) -> bool:
+def check_properly_typed_relation(relation: Union[Relation, IERelation], symbol_table: SymbolTableBase) -> bool:
     """
     Checks if a relation is properly typed, this check ignores free variables.
 
     @param relation: the relation to be checked.
-    @param relation_type: the type of the relation.
     @param symbol_table: a symbol table (to check the types of regular variables).
     @return: true if the relation is properly typed, else false.
     """
@@ -171,7 +169,7 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation], relatio
         relation_is_properly_typed = input_type_check_passed and output_type_check_passed
 
     else:
-        raise Exception(f'unexpected relation type: {relation_type}')
+        raise Exception(f'unexpected relation type: {type(relation)}')
 
     return relation_is_properly_typed
 
@@ -277,13 +275,13 @@ def string_to_span(string_of_span: str) -> Optional[Span]:
     return Span(span_start=start, span_end=end)
 
 
-def extract_one_relation(func):
+def extract_one_relation(func: Callable) -> Callable:
     """
     This decorator is used by engine operators that expect to get exactly one input relation but actually get a list of relations.
     """
 
     @functools.wraps(func)
-    def wrapper(ref, input_relations, *args, **kwargs):
+    def wrapper(ref: Any, input_relations: Any, *args: Any, **kwargs: Any) -> Any:
         """
         Flattens the relations list.
         """

@@ -5,7 +5,7 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
-from typing import List, Tuple, Set, Union, Iterable, Sequence
+from typing import List, Tuple, Set, Union, Sequence
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, DataTypeMapping
 
@@ -30,7 +30,7 @@ def get_term_list_string(term_list: Sequence[DataTypeMapping.term], type_list: S
 class RelationDeclaration:
     """a representation of a relation_declaration statement"""
 
-    def __init__(self, relation_name: str, type_list: List[DataTypes]) -> None:
+    def __init__(self, relation_name: str, type_list: Sequence[DataTypes]) -> None:
         """
         @param relation_name: the name of the relation
         @param type_list: a list of the types of the terms in the relation's tuples
@@ -62,7 +62,7 @@ class RelationDeclaration:
 class Relation:
     """a representation of a normal relation"""
 
-    def __init__(self, relation_name: str, term_list: Sequence[DataTypeMapping.term], type_list: List[DataTypes]) -> None:
+    def __init__(self, relation_name: str, term_list: Sequence[DataTypeMapping.term], type_list: Sequence[DataTypes]) -> None:
         """
         @param relation_name: the name of the relation
         @param term_list: a list of the relation terms.
@@ -175,7 +175,7 @@ class AddFact(Relation):
     inherits from relation as a fact can be defined by a relation.
     """
 
-    def __init__(self, relation_name: str, term_list: List[DataTypeMapping.term], type_list: List[DataTypes]) -> None:
+    def __init__(self, relation_name: str, term_list: List[DataTypeMapping.term], type_list: Sequence[DataTypes]) -> None:
         """
         @see documentation of Relation's __init__.
         """
@@ -213,7 +213,7 @@ class Rule:
     a representation of a rule statement.
     """
 
-    def __init__(self, head_relation: Relation, body_relation_list: List[Union[Relation, IERelation]], body_relation_type_list: List[type]):
+    def __init__(self, head_relation: Relation, body_relation_list: List[Union[Relation, IERelation]], body_relation_type_list: List[str]):
         """
         @param head_relation: the rule head, which is represented by a single relation.
         @param body_relation_list: a list of the rule body relations.
