@@ -14,7 +14,7 @@ from rgxlog.engine.datatypes.ast_node_types import AddFact, RelationDeclaration
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
 from rgxlog.engine.engine import FALSE_VALUE, TRUE_VALUE
 from rgxlog.engine.execution import (Query, FREE_VAR_PREFIX, naive_execution)
-from rgxlog.engine.passes.adding_inference_rules_to_computation_graph import AddRulesToComputationTermGraph
+from rgxlog.engine.passes.adding_inference_rules_to_term_graph import AddRulesToTermGraph
 from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               ConvertSpanNodesToSpanInstances, ConvertStatementsToStructuredNodes,
                                               CheckDefinedReferencedVariables,
@@ -224,7 +224,7 @@ class Session:
             ResolveVariablesReferences,
             ExecuteAssignments,
             AddStatementsToNetxParseGraph,
-            AddRulesToComputationTermGraph
+            AddRulesToTermGraph
         ]
 
         grammar_file_path = Path(rgxlog.grammar.__file__).parent

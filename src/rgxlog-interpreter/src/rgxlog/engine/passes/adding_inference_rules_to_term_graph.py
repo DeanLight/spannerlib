@@ -8,7 +8,7 @@ from rgxlog.engine.state.graphs import EvalState, TermGraphBase, GraphBase
 logger = logging.getLogger(__name__)
 
 
-class AddRulesToComputationTermGraph(GenericPass):
+class AddRulesToTermGraph(GenericPass):
     """
     This class traverses the parse graph and finds all the new rules.
     It adds these rules to the term graph (using term_graph's add rule method).
