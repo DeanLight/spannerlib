@@ -2,7 +2,7 @@
 this module contains the implementation of the naive execution function
 """
 
-from typing import (Tuple, Dict, List, Callable, Optional)
+from typing import (Tuple, Dict, List, Callable, Optional, Any, Union)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
                                                     IERelation)
@@ -95,7 +95,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         mutually_recursive = term_graph.get_mutually_recursive_relations(relation_name)
         current_computed_relation = None
 
-        def compute_postorder(node_id) -> None:
+        def compute_postorder(node_id: Union[int, str]) -> None:
             """
             Runs postorder dfs over the term graph and evaluates the tree.
 
@@ -151,22 +151,21 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
 
         return
 
-    def compute_node(node_id: int) -> None:
+    def compute_node(node_id: Union[int, str]) -> None:
         """
         Computes the current node based on its type.
 
         @param node_id: the current node.
         """
 
-        def is_node_computed(node_id_) -> bool:
+        def is_node_computed() -> bool:
             """
             Finds out whether the node is computed.
 
-            @param node_id_: the node for which we check the status.
             @return: True if all the children of the node are computed or it has no children, False otherwise.
             """
 
-            children = term_graph.get_children(node_id_)
+            children = term_graph.get_children(node_id)
             if not children:
                 return True
 
@@ -174,14 +173,13 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
                                              for child_id in children]
             return all(children_statuses_is_computed)
 
-        def get_children_relations(node_id_) -> List[Relation]:
+        def get_children_relations() -> List[Relation]:
             """
             Gets the node's children output relations.
 
-            @param node_id_: a node.
             @return: a list containing the children output relations.
             """
-            relations_ids = term_graph.get_children(node_id_)
+            relations_ids = term_graph.get_children(node_id)
             relations_nodes = [term_graph[rel_id] for rel_id in relations_ids]
             relations = [rel_node[OUT_REL_ATTRIBUTE] for rel_node in relations_nodes]
             return relations
@@ -204,7 +202,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             output_relation = term_attrs[VALUE_ATTRIBUTE]
 
         elif term_type == "calc":
-            children_relations = get_children_relations(node_id)
+            children_relations = get_children_relations()
             rel_in = children_relations[0] if children_relations else None  # tmp bounding relation of the ie rel (join over all the bounding relations)
             ie_rel_in: IERelation = term_attrs[VALUE_ATTRIBUTE]  # the ie relation to compute
             ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)  # the ie function that correspond to the ie relation
@@ -212,16 +210,16 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
 
         else:
             operator = term_type_to_engine_op[term_type]
-            input_relations = get_children_relations(node_id)
+            input_relations = get_children_relations()
             output_relation = operator(input_relations, term_attrs.get(VALUE_ATTRIBUTE))
 
         term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, output_relation)
 
         # statement was executed, mark it as "computed" or "visited"
-        compute_status = EvalState.COMPUTED if is_node_computed(node_id) else EvalState.VISITED
+        compute_status = EvalState.COMPUTED if is_node_computed() else EvalState.VISITED
         term_graph.set_node_attribute(node_id, 'state', compute_status)
 
-    def no_op(*args):
+    def no_op(*args: Any) -> None:
         return
 
     node_type_to_action: Dict[str, Callable] = {

@@ -5,6 +5,7 @@ that he expects to work with.
 These asserts are useful as a general safety check, and also for finding places in the code that need to change
 should the rgxlog grammar be changed.
 """
+from typing import Sequence, Dict
 
 """
 for every node in the ast, the following structure contains a list of its expected children nodes names.
@@ -37,7 +38,7 @@ until the program no longer crashes.
 
 for an example on how to use this structure, see lark_passes_utils.assert_expected_node_structure.
 """
-rgxlog_expected_children_names_lists = {
+rgxlog_expected_children_names_lists: Dict[str, Sequence] = {
 
     'assignment': [
         ['var_name', 'string'],

@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod, ABCMeta
 from collections import OrderedDict
 from enum import Enum
 from itertools import count
-from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType, no_type_check
+from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType, no_type_check, Any, Sequence
 
 import networkx as nx
 
@@ -36,7 +36,7 @@ class EvalState(Enum):
     VISITED = "visited"
     COMPUTED = "computed"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 
@@ -49,7 +49,7 @@ class GraphBase(ABC):
         self._visited_nodes: Set = set()
 
     @abstractmethod
-    def add_node(self, node_id=None, **attr):
+    def add_node(self, node_id: Optional[Union[int, str]] = None, **attr: Dict) -> Union[int, str]:
         """
         Adds a node to the graph.
 
@@ -67,7 +67,7 @@ class GraphBase(ABC):
         pass
 
     @abstractmethod
-    def remove_node(self, node_id) -> None:
+    def remove_node(self, node_id: Union[int, str]) -> None:
         """
         Removes a ndoe from the graph.
 
@@ -76,7 +76,7 @@ class GraphBase(ABC):
         pass
 
     @abstractmethod
-    def add_edge(self, father_id, son_id, **attr) -> None:
+    def add_edge(self, father_id: Union[int, str], son_id: Union[int, str], **attr: Dict) -> None:
         """
         Adds the edge (father_id, son_id) to the graph.
         the edge signifies that the father node is dependent on the son node.
@@ -88,7 +88,7 @@ class GraphBase(ABC):
         pass
 
     @abstractmethod
-    def pre_order_dfs_from(self, node_id) -> Iterable:
+    def pre_order_dfs_from(self, node_id: Union[int, str]) -> Iterable:
         """
         @return: an iterable of the node ids generated from a depth-first-search pre-ordering starting at the root
         of the graph.
@@ -103,7 +103,7 @@ class GraphBase(ABC):
         return self.pre_order_dfs_from(self.get_root_id())
 
     @abstractmethod
-    def post_order_dfs_from(self, node_id) -> Iterable:
+    def post_order_dfs_from(self, node_id: Union[int, str]) -> Iterable:
         """
         @return: an iterable of the node ids generated from a depth-first-search post-ordering starting at the root
         of the graph.
@@ -118,7 +118,7 @@ class GraphBase(ABC):
         return self.post_order_dfs_from(self.get_root_id())
 
     @abstractmethod
-    def get_children(self, node) -> Iterable:
+    def get_children(self, node: Union[int, str]) -> Iterable:
         """
         In a term graph the children of a node are its dependencies
         this function returns the children of a node.
@@ -129,7 +129,7 @@ class GraphBase(ABC):
         pass
 
     @abstractmethod
-    def has_node(self, node_id: str) -> bool:
+    def has_node(self, node_id: Union[int, str]) -> bool:
         """
         Checks if node is in the graph.
 
@@ -139,7 +139,7 @@ class GraphBase(ABC):
         pass
 
     @abstractmethod
-    def set_node_attribute(self, node_id, attr_name: str, attr_value) -> None:
+    def set_node_attribute(self, node_id: Union[int, str], attr_name: str, attr_value: Any) -> None:
         """
         Sets an attribute of a node.
 
@@ -150,7 +150,7 @@ class GraphBase(ABC):
         pass
 
     @abstractmethod
-    def get_node_attributes(self, node_id) -> Dict:
+    def get_node_attributes(self, node_id: Union[int, str]) -> Dict:
         """
         @param node_id: a node id.
         @return: a dict containing the attributes of the node.
@@ -158,7 +158,7 @@ class GraphBase(ABC):
         pass
 
     @abstractmethod
-    def _get_node_string(self, node_id) -> str:
+    def _get_node_string(self, node_id: Union[int, str]) -> str:
         """
         A utility function for __str__.
 
@@ -190,7 +190,7 @@ class GraphBase(ABC):
 
         return ret
 
-    def pretty(self):
+    def pretty(self) -> str:
         """
         Prints a representation of the networkx tree.
         Works similarly to lark's pretty() function.
@@ -203,10 +203,10 @@ class GraphBase(ABC):
         self._visited_nodes = set()
         return ''.join(self._pretty_aux(self.get_root_id(), 0))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.pretty()
 
-    def __getitem__(self, node_id):
+    def __getitem__(self, node_id: Union[str, int]) -> Dict:
         return self.get_node_attributes(node_id)
 
 
@@ -233,7 +233,7 @@ class NetxGraph(GraphBase):
         # used for keep track of the printed nodes (in pretty function)
         self._visited_nodes = set()
 
-    def add_node(self, node_id: Optional[Union[int, str]] = None, **attr) -> Union[int, str]:
+    def add_node(self, node_id: Optional[Union[int, str]] = None, **attr: Any) -> Union[int, str]:
         # get the id for the new node (if id wasn't passed)
         node_id = next(self._node_id_counter) if node_id is None else node_id
 
@@ -244,10 +244,10 @@ class NetxGraph(GraphBase):
     def get_root_id(self) -> Union[int, str]:
         return self._root_id
 
-    def remove_node(self, node_id) -> None:
+    def remove_node(self, node_id: Union[int, str]) -> None:
         self._graph.remove_node(node_id)
 
-    def add_edge(self, father_id, son_id, **attr) -> None:
+    def add_edge(self, father_id: Union[int, str], son_id: Union[int, str], **attr: Any) -> None:
 
         # assert that both nodes are in the term graph
         if father_id not in self._graph.nodes:
@@ -258,22 +258,22 @@ class NetxGraph(GraphBase):
         # add an edge that represents the dependency of the father node on the son node
         self._graph.add_edge(father_id, son_id, **attr)
 
-    def pre_order_dfs_from(self, node_id) -> Iterable:
+    def pre_order_dfs_from(self, node_id: Union[int, str]) -> Iterable:
         return nx.dfs_preorder_nodes(self._graph, node_id)
 
-    def post_order_dfs_from(self, node_id) -> Iterable:
+    def post_order_dfs_from(self, node_id: Union[int, str]) -> Iterable:
         return nx.dfs_postorder_nodes(self._graph, node_id)
 
-    def get_children(self, node_id):
+    def get_children(self, node_id: Union[int, str]) -> Sequence[Union[int, str]]:
         return list(self._graph.successors(node_id))
 
-    def set_node_attribute(self, node_id, attr_name: str, attr_value) -> None:
+    def set_node_attribute(self, node_id: Union[int, str], attr_name: str, attr_value: Any) -> None:
         self._graph.nodes[node_id][attr_name] = attr_value
 
-    def get_node_attributes(self, node_id) -> Dict:
+    def get_node_attributes(self, node_id: Union[int, str]) -> Dict:
         return self._graph.nodes[node_id].copy()
 
-    def _get_node_string(self, node_id) -> str:
+    def _get_node_string(self, node_id: Union[int, str]) -> str:
         node_attrs = self.get_node_attributes(node_id)
 
         # get a string of the node's value (if it exists)
@@ -286,7 +286,7 @@ class NetxGraph(GraphBase):
         term_string = f"({node_id}) {term_value_string}"
         return term_string
 
-    def has_node(self, node_id) -> bool:
+    def has_node(self, node_id: Union[int, str]) -> bool:
         return self._graph.has_node(node_id)
 
 
@@ -297,10 +297,10 @@ class NetxStateGraph(NetxGraph):
     will be the base of dependency graph).
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-    def add_node(self, node_id=None, **attr):
+    def add_node(self, node_id: Optional[Union[int, str]] = None, **attr: Any) -> Union[int, str]:
         # assert the node has a type
         if 'type' not in attr:
             raise Exception("cannot add a term without a type")
@@ -311,7 +311,7 @@ class NetxStateGraph(NetxGraph):
 
         return super(NetxStateGraph, self).add_node(node_id, **attr)
 
-    def add_edge(self, father_id, son_id, **attr) -> None:
+    def add_edge(self, father_id: Union[int, str], son_id: Union[int, str], **attr: Any) -> None:
         super(NetxStateGraph, self).add_edge(father_id, son_id, **attr)
 
         # if the son node is not computed, mark all of its ancestor as not computed as well
@@ -324,7 +324,7 @@ class NetxStateGraph(NetxGraph):
             for ancestor_id in ancestors_ids:
                 self._graph.nodes[ancestor_id]['state'] = EvalState.NOT_COMPUTED
 
-    def _get_node_string(self, node_id) -> str:
+    def _get_node_string(self, node_id: Union[int, str]) -> str:
         node_attrs = self.get_node_attributes(node_id)
 
         # get a string of the node's value (if it exists)
@@ -362,7 +362,7 @@ class DependencyGraph(NetxGraph):
            of the graph (all the relations in a certain component are mutually recursive).
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def _add_relation(self, relation: Relation) -> None:
@@ -460,9 +460,9 @@ class DependencyGraph(NetxGraph):
         names_component, = filter(lambda component: relation_name in component, scc)
         return set(names_component)
 
-    def _get_node_string(self, node_id: str) -> str:
+    def _get_node_string(self, node_id: Union[int, str]) -> str:
         # for nicer printing format
-        return node_id
+        return str(node_id)
 
     def is_relation_in_use(self, relation_name: str) -> bool:
         """
@@ -475,7 +475,7 @@ class DependencyGraph(NetxGraph):
         predecessors_number = len(list(self._graph.predecessors(relation_name)))
         return predecessors_number > 1
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__class__.__name__ + " is:\n" + super().__str__()
 
 
@@ -577,7 +577,7 @@ class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         """@see documentation of get_mutually_recursive_relations in DependencyGraph"""
         return self._dependency_graph.get_mutually_recursive_relations(relation_name)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return super().__str__() + "\n" + str(self._dependency_graph)
 
 
@@ -659,7 +659,7 @@ class TermGraph(TermGraphBase):
                                            get_rel node (get A)
        """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     @staticmethod
@@ -727,7 +727,7 @@ class TermGraph(TermGraphBase):
 
         return bounding_graph
 
-    def add_relation(self, relation: Relation) -> int:
+    def add_relation(self, relation: Relation) -> Union[int, str]:
         """
         Adds the relation to the graph. if it's already inside nothing is done.
 
@@ -743,12 +743,12 @@ class TermGraph(TermGraphBase):
 
         self.add_node(node_id=relation_name, type="rule_rel", value=relation)
         self.add_edge(self.get_root_id(), relation_name)
-        union_id: int = self.add_node(type="union")
+        union_id: Union[int, str] = self.add_node(type="union")
         self.add_edge(relation_name, union_id)
 
         return union_id
 
-    def get_relation_union_node(self, relation_name: str) -> int:
+    def get_relation_union_node(self, relation_name: str) -> Union[int, str]:
         """
         @param relation_name: name of a relation.
         @return: the union node of the given relation.

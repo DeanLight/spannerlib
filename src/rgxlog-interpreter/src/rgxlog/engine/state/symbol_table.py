@@ -181,7 +181,7 @@ class SymbolTableBase(ABC):
         """
         pass
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         @return: a string representation of the symbol table for debugging purposes
         """
@@ -215,7 +215,7 @@ class SymbolTableBase(ABC):
 
 
 class SymbolTable(SymbolTableBase):
-    def __init__(self):
+    def __init__(self) -> None:
         self._var_to_value = {}
         self._var_to_type = {}
         self._relation_to_schema = {}
