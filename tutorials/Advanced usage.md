@@ -81,6 +81,7 @@ What if we want to have multiple rules each looking for GPAs of students in diff
 We wouldnt want to manually write a rule for every single subject.
 
 
+# TODO@niv
 We write our data manually. In the future we would be able to import it from csvs/dataframes
 
 ```python
