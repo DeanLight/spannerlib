@@ -294,7 +294,7 @@ class Session:
             return query_results
 
     def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes],
-                 out_rel: Union[List[DataTypes], Callable[[int], Iterable[DataTypes]]]) -> None:
+                 out_rel: Union[List[DataTypes], Callable[[int], Sequence[DataTypes]]]) -> None:
         """
         Registers an ie function.
 

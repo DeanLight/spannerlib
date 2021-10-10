@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
-from typing import Tuple, List, Union, Iterable, Sequence, no_type_check, Callable
+from typing import Tuple, List, Union, Iterable, Sequence, no_type_check, Callable, Optional
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.stdlib.utils import run_cli_command
@@ -122,7 +122,7 @@ def _format_spanner_span_output(output: Iterable[str]) -> List[List[Span]]:
     return output_lists
 
 
-def rgx(regex_pattern: str, out_type: str, text=None, text_file=None) -> Iterable[Iterable[Union[str, Span]]]:
+def rgx(regex_pattern: str, out_type: str, text: Optional[str] = None, text_file: Optional[str] = None) -> Iterable[Iterable[Union[str, Span]]]:
     """
     An IE function which runs regex using rust's `enum-spanner-rs` and yields tuples of strings/spans (not both).
 
@@ -134,7 +134,7 @@ def rgx(regex_pattern: str, out_type: str, text=None, text_file=None) -> Iterabl
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         if text_file:
-            rgx_temp_file_name = text_file
+            rgx_temp_file_name = Path(text_file)
         else:
             assert text is not None, "at least one of text/text_file must have a value"
             rgx_temp_file_name = Path(temp_dir) / TEMP_FILE_NAME
@@ -171,7 +171,7 @@ RGX = dict(ie_function=rgx_span,
            out_rel=rgx_span_out_type)
 
 
-def rgx_string(text, regex_pattern) -> Iterable[Iterable[Union[str, Span]]]:
+def rgx_string(text: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text: The input text for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -186,7 +186,7 @@ RGX_STRING = dict(ie_function=rgx_string,
                   out_rel=rgx_string_out_type)
 
 
-def rgx_span_from_file(text_file, regex_pattern) -> Iterable[Iterable[Union[str, Span]]]:
+def rgx_span_from_file(text_file: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text_file: The input file for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -201,7 +201,7 @@ RGX_FROM_FILE = dict(ie_function=rgx_span_from_file,
                      out_rel=rgx_span_out_type)
 
 
-def rgx_string_from_file(text_file, regex_pattern) -> Iterable[Iterable[Union[str, Span]]]:
+def rgx_string_from_file(text_file: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text_file: The input file for the regex operation.
     @param regex_pattern: the pattern of the regex operation.

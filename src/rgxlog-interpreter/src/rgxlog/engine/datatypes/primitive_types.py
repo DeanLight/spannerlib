@@ -6,7 +6,7 @@ this module also contains class representations of complex datatypes (e.g. Span 
 """
 
 from enum import Enum
-from typing import Union
+from typing import Union, Any
 
 
 class DataTypes(Enum):
@@ -28,7 +28,7 @@ class DataTypes(Enum):
         return self.name
 
     @staticmethod
-    def from_string(datatype_string) -> "DataTypes":
+    def from_string(datatype_string: str) -> "DataTypes":
         """
         @return: a datatype enum representation of a string type.
         The string has to be the same string used as a node type of a datatype in the grammar and passes
@@ -62,7 +62,7 @@ class Span:
 
         return self.span_start < other.span_start
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Span):
             return False
         return self.span_start == other.span_start and self.span_end == other.span_end

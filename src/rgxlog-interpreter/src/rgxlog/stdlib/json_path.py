@@ -1,9 +1,11 @@
+from typing import Iterable, Tuple, Any
+
 from jsonpath_ng import parse
 import json
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 
-def parse_match(match) -> str:
+def parse_match(match: Any) -> str:
     """
     @param match: a match result of json path query.
     @return: a string that represents the match in string format.
@@ -15,7 +17,7 @@ def parse_match(match) -> str:
     return json_result
 
 
-def json_path(json_document: str, path_expression: str):
+def json_path(json_document: str, path_expression: str) -> Iterable[Tuple]:
     """
     @param json_document: The document on which we will run the path expression.
     @param path_expression: The query to execute.
@@ -37,7 +39,7 @@ JsonPath = dict(ie_function=json_path,
                 )
 
 
-def json_path_full(json_document: str, path_expression: str):
+def json_path_full(json_document: str, path_expression: str) -> Iterable[Tuple]:
     """
     @param json_document: The document on which we will run the path expression.
     @param path_expression: The query to execute.
