@@ -15,4 +15,3 @@ pytest
 Jinja2
 pycodestyle
 mypy
-pre-commit
