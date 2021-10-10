@@ -243,23 +243,6 @@ class Session:
         with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
             return grammar_file.read()
 
-    def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
-        """
-        Runs the passes in pass_list on tree, one after another.
-        """
-        logger.debug(f"initial lark tree:\n{lark_tree.pretty()}")
-        logger.debug(f"initial term graph:\n{self._term_graph}")
-
-        for curr_pass in pass_list:
-            curr_pass_object = curr_pass(parse_graph=self._parse_graph,
-                                         symbol_table=self._symbol_table,
-                                         term_graph=self._term_graph)
-            new_tree = curr_pass_object.run_pass(tree=lark_tree)
-
-            if new_tree is not None:
-                lark_tree = new_tree
-                logger.debug(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
-
     def __repr__(self):
         return "\n".join([repr(self._symbol_table), repr(self._parse_graph)])
 
@@ -296,6 +279,23 @@ class Session:
         else:
             return query_results
 
+    def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
+        """
+        Runs the passes in pass_list on tree, one after another.
+        """
+        logger.debug(f"initial lark tree:\n{lark_tree.pretty()}")
+        logger.debug(f"initial term graph:\n{self._term_graph}")
+
+        for curr_pass in pass_list:
+            curr_pass_object = curr_pass(parse_graph=self._parse_graph,
+                                         symbol_table=self._symbol_table,
+                                         term_graph=self._term_graph)
+            new_tree = curr_pass_object.run_pass(tree=lark_tree)
+
+            if new_tree is not None:
+                lark_tree = new_tree
+                logger.debug(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
+
     def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes], out_rel) -> None:
         """
         Registers an ie function.
@@ -327,41 +327,6 @@ class Session:
 
         self._pass_stack = user_stack.copy()
         return self.get_pass_stack()
-
-    def _remove_rule_relation_from_symbols_and_engine(self, relation_name: str) -> None:
-        """
-        Removes the relation from the symbol table and the execution tables.
-
-        @param relation_name: the name of the relation ot remove.
-        """
-        self._symbol_table.remove_rule_relation(relation_name)
-        self._engine.remove_table(relation_name)
-
-    def remove_rule(self, rule: str):
-        """
-        Remove a rule from the rgxlog's engine.
-
-        @param rule: the rule to be removed.
-        """
-        is_last = self._term_graph.remove_rule(rule)
-        if is_last:
-            relation_name = rule_to_relation_name(rule)
-            self._remove_rule_relation_from_symbols_and_engine(relation_name)
-
-    def remove_all_rules(self, rule_head: Optional[str] = None):
-        """
-        Removes all rules from the engine.
-
-        @param rule_head: if rule head is not none we remove all rules with rule_head.
-        """
-
-        if rule_head is None:
-            self._term_graph = TermGraph()
-            relations_names = self._symbol_table.remove_all_rule_relations()
-            self._engine.remove_tables(relations_names)
-        else:
-            self._term_graph.remove_rules_with_head(rule_head)
-            self._remove_rule_relation_from_symbols_and_engine(rule_head)
 
     def _add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
         symbol_table = self._symbol_table
@@ -464,6 +429,41 @@ class Session:
     def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=CSV_DELIMITER):
         query = self._relation_name_to_query(relation_name)
         return self.send_commands_result_into_csv(query, csv_file_name, delimiter)
+
+    def _remove_rule_relation_from_symbols_and_engine(self, relation_name: str) -> None:
+        """
+        Removes the relation from the symbol table and the execution tables.
+
+        @param relation_name: the name of the relation ot remove.
+        """
+        self._symbol_table.remove_rule_relation(relation_name)
+        self._engine.remove_table(relation_name)
+
+    def remove_rule(self, rule: str):
+        """
+        Remove a rule from the rgxlog's engine.
+
+        @param rule: the rule to be removed.
+        """
+        is_last = self._term_graph.remove_rule(rule)
+        if is_last:
+            relation_name = rule_to_relation_name(rule)
+            self._remove_rule_relation_from_symbols_and_engine(relation_name)
+
+    def remove_all_rules(self, rule_head: Optional[str] = None):
+        """
+        Removes all rules from the engine.
+
+        @param rule_head: if rule head is not none we remove all rules with rule_head.
+        """
+
+        if rule_head is None:
+            self._term_graph = TermGraph()
+            relations_names = self._symbol_table.remove_all_rule_relations()
+            self._engine.remove_tables(relations_names)
+        else:
+            self._term_graph.remove_rules_with_head(rule_head)
+            self._remove_rule_relation_from_symbols_and_engine(rule_head)
 
     def print_registered_ie_functions(self):
         """
