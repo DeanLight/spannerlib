@@ -2,7 +2,7 @@
 this module contains the implementation of the naive execution function
 """
 
-from typing import (Tuple, Dict, List, Callable, Optional, Any, Union)
+from typing import (Tuple, Dict, List, Callable, Optional, Union)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
                                                     IERelation)
@@ -202,7 +202,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
             output_relation = term_attrs[VALUE]
 
         elif term_type is TermNodeType.CALC:
-            children_relations = get_children_relations(node_id)
+            children_relations = get_children_relations()
             rel_in = children_relations[0] if children_relations else None  # tmp bounding relation of the ie rel (join over all the bounding relations)
             ie_rel_in: IERelation = term_attrs[VALUE]  # the ie relation to compute
             ie_func_data = symbol_table.get_ie_func_data(ie_rel_in.relation_name)  # the ie function that correspond to the ie relation
@@ -210,13 +210,13 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
 
         else:
             operator = term_type_to_engine_op[term_type]
-            input_relations = get_children_relations(node_id)
+            input_relations = get_children_relations()
             output_relation = operator(input_relations, term_attrs.get(VALUE))
 
         term_graph.set_node_attribute(node_id, OUT_REL_ATTRIBUTE, output_relation)
 
         # statement was executed, mark it as "computed" or "visited"
-        compute_status = EvalState.COMPUTED if is_node_computed(node_id) else EvalState.VISITED
+        compute_status = EvalState.COMPUTED if is_node_computed() else EvalState.VISITED
         term_graph.set_node_attribute(node_id, STATE, compute_status)
 
     node_type_to_action: Dict[Union[str, ParseNodeType], Callable] = {
