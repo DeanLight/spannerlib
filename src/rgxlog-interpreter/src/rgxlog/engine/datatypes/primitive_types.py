@@ -6,6 +6,7 @@ this module also contains class representations of complex datatypes (e.g. Span 
 """
 
 from enum import Enum
+from typing import Union, Any
 
 
 class DataTypes(Enum):
@@ -18,7 +19,7 @@ class DataTypes(Enum):
     free_var_name = 3
     var_name = 4
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         @return: a string representation of a datatype.
         The string is also the same string used as a node type of said datatype in the grammar and passes
@@ -27,7 +28,7 @@ class DataTypes(Enum):
         return self.name
 
     @staticmethod
-    def from_string(datatype_string):
+    def from_string(datatype_string: str) -> "DataTypes":
         """
         @return: a datatype enum representation of a string type.
         The string has to be the same string used as a node type of a datatype in the grammar and passes
@@ -52,20 +53,29 @@ class Span:
         self.span_start = span_start
         self.span_end = span_end
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"[{self.span_start}, {self.span_end})"
 
-    def __lt__(self, other: "Span"):
+    def __lt__(self, other: "Span") -> bool:
         if self.span_start == other.span_start:
             return self.span_end < other.span_end
 
         return self.span_start < other.span_start
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Span):
             return False
         return self.span_start == other.span_start and self.span_end == other.span_end
 
     # used for sorting `Span`s in dataframes
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.span_start, self.span_end))
+
+
+class DataTypeMapping:
+    string = str
+    span = Span
+    integer = int
+    free_var_name = str
+    var_name = str
+    term = Union[str, Span, int]

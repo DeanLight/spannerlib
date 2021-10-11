@@ -2,7 +2,7 @@
 this module contains the implementation of the naive execution function
 """
 
-from typing import (Tuple, Dict, List, Callable, Optional, Union)
+from typing import (Tuple, Dict, List, Callable, Optional, Any, Union)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
                                                     IERelation)
@@ -95,7 +95,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         mutually_recursive = term_graph.get_mutually_recursive_relations(relation_name)
         current_computed_relation = None
 
-        def compute_postorder(node_id) -> None:
+        def compute_postorder(node_id: Union[int, str]) -> None:
             """
             Runs postorder dfs over the term graph and evaluates the tree.
 
@@ -151,22 +151,21 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
 
         return
 
-    def compute_node(node_id: int) -> None:
+    def compute_node(node_id: Union[int, str]) -> None:
         """
         Computes the current node based on its type.
 
         @param node_id: the current node.
         """
 
-        def is_node_computed(node_id_) -> bool:
+        def is_node_computed() -> bool:
             """
             Finds out whether the node is computed.
 
-            @param node_id_: the node for which we check the status.
             @return: True if all the children of the node are computed or it has no children, False otherwise.
             """
 
-            children = term_graph.get_children(node_id_)
+            children = term_graph.get_children(node_id)
             if not children:
                 return True
 
@@ -174,14 +173,13 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
                                              for child_id in children]
             return all(children_statuses_is_computed)
 
-        def get_children_relations(node_id_) -> List[Relation]:
+        def get_children_relations() -> List[Relation]:
             """
             Gets the node's children output relations.
 
-            @param node_id_: a node.
             @return: a list containing the children output relations.
             """
-            relations_ids = term_graph.get_children(node_id_)
+            relations_ids = term_graph.get_children(node_id)
             relations_nodes = [term_graph[rel_id] for rel_id in relations_ids]
             relations = [rel_node[OUT_REL_ATTRIBUTE] for rel_node in relations_nodes]
             return relations

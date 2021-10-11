@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
-from typing import Iterable
+from typing import Tuple, List, Union, Iterable, Sequence, no_type_check, Callable, Optional
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.stdlib.utils import run_cli_command
@@ -32,7 +32,7 @@ REGEX_EXE_PATH_WIN = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_WIN_FILENAME
 
 # commands
 RUSTUP_TOOLCHAIN = "1.34"
-CARGO_CMD_ARGS = ["cargo", "+" + RUSTUP_TOOLCHAIN, "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
+CARGO_CMD_ARGS: Sequence[Union[Path, str]] = ["cargo", "+" + RUSTUP_TOOLCHAIN, "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
 RUSTUP_CMD_ARGS = ["rustup", "toolchain", "install", RUSTUP_TOOLCHAIN]
 SHORT_TIMEOUT = 3
 CARGO_TIMEOUT = 300
@@ -54,13 +54,13 @@ TEMP_FILE_NAME = "temp"
 logger = logging.getLogger(__name__)
 
 
-def _download_and_install_rust_and_regex():
+def _download_and_install_rust_regex() -> None:
     # don't use "cargo -V" because it starts downloading stuff sometimes
     with Popen([WHICH_WORD, "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
         errcode = cargo.wait(SHORT_TIMEOUT)
 
     with Popen([WHICH_WORD, "rustup"], stdout=PIPE, stderr=PIPE) as rustup:
-        errcode = errcode or rustup.wait(SHORT_TIMEOUT)
+        errcode |= rustup.wait(SHORT_TIMEOUT)
 
     if errcode:
         raise IOError(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
@@ -68,7 +68,7 @@ def _download_and_install_rust_and_regex():
     logger.warning(f"{PACKAGE_NAME} was not found on your system")
     logger.warning(f"installing package. this might take up to {TIMEOUT_MINUTES} minutes...")
 
-    # i didn't pipe here because i want the user to see the output
+    # there's no pipe here to let the user to see the output
     with Popen(RUSTUP_CMD_ARGS) as rustup:
         rustup.wait(RUSTUP_TIMEOUT)
 
@@ -81,19 +81,21 @@ def _download_and_install_rust_and_regex():
     logger.warning("installation completed")
 
 
-def _is_installed_package():
+def _is_installed_package() -> bool:
     return Path(REGEX_EXE_PATH).is_file()
 
 
-def rgx_span_out_type(output_arity):
+@no_type_check
+def rgx_span_out_type(output_arity: int) -> Tuple[DataTypes]:
     return tuple([DataTypes.span] * output_arity)
 
 
-def rgx_string_out_type(output_arity):
+@no_type_check
+def rgx_string_out_type(output_arity: int) -> Tuple[DataTypes]:
     return tuple([DataTypes.string] * output_arity)
 
 
-def _format_spanner_string_output(output: Iterable[str]):
+def _format_spanner_string_output(output: Iterable[str]) -> List[List[str]]:
     output_lists = []
     for out in output:
         out_list = []
@@ -107,7 +109,7 @@ def _format_spanner_string_output(output: Iterable[str]):
     return output_lists
 
 
-def _format_spanner_span_output(output: Iterable[str]):
+def _format_spanner_span_output(output: Iterable[str]) -> List[List[Span]]:
     output_lists = []
     for out in output:
         out_list = []
@@ -120,7 +122,7 @@ def _format_spanner_span_output(output: Iterable[str]):
     return output_lists
 
 
-def rgx(regex_pattern, out_type: str, text=None, text_file=None):
+def rgx(regex_pattern: str, out_type: str, text: Optional[str] = None, text_file: Optional[str] = None) -> Iterable[Iterable[Union[str, Span]]]:
     """
     An IE function which runs regex using rust's `enum-spanner-rs` and yields tuples of strings/spans (not both).
 
@@ -132,7 +134,7 @@ def rgx(regex_pattern, out_type: str, text=None, text_file=None):
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         if text_file:
-            rgx_temp_file_name = text_file
+            rgx_temp_file_name = Path(text_file)
         else:
             assert text is not None, "at least one of text/text_file must have a value"
             rgx_temp_file_name = Path(temp_dir) / TEMP_FILE_NAME
@@ -141,7 +143,7 @@ def rgx(regex_pattern, out_type: str, text=None, text_file=None):
 
         if out_type == "string":
             rust_regex_args = f"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name}"
-            format_function = _format_spanner_string_output
+            format_function: Callable = _format_spanner_string_output
         elif out_type == "span":
             rust_regex_args = f"{REGEX_EXE_PATH} {regex_pattern} {rgx_temp_file_name} --bytes-offset"
             format_function = _format_spanner_span_output
@@ -154,7 +156,7 @@ def rgx(regex_pattern, out_type: str, text=None, text_file=None):
             yield out
 
 
-def rgx_span(text, regex_pattern):
+def rgx_span(text: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text: The input text for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -169,7 +171,7 @@ RGX = dict(ie_function=rgx_span,
            out_rel=rgx_span_out_type)
 
 
-def rgx_string(text, regex_pattern):
+def rgx_string(text: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text: The input text for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -184,7 +186,7 @@ RGX_STRING = dict(ie_function=rgx_string,
                   out_rel=rgx_string_out_type)
 
 
-def rgx_span_from_file(text_file, regex_pattern):
+def rgx_span_from_file(text_file: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text_file: The input file for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -199,7 +201,7 @@ RGX_FROM_FILE = dict(ie_function=rgx_span_from_file,
                      out_rel=rgx_span_out_type)
 
 
-def rgx_string_from_file(text_file, regex_pattern):
+def rgx_string_from_file(text_file: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
     """
     @param text_file: The input file for the regex operation.
     @param regex_pattern: the pattern of the regex operation.
@@ -215,4 +217,4 @@ RGX_STRING_FROM_FILE = dict(ie_function=rgx_string_from_file,
 
 # the package is installed when this module is imported
 if not _is_installed_package():
-    _download_and_install_rust_and_regex()
+    _download_and_install_rust_regex()

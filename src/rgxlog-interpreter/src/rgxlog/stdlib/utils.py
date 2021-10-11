@@ -7,7 +7,7 @@ from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
 from threading import Timer
-from typing import Iterable, no_type_check
+from typing import Iterable, no_type_check, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ GOOGLE_DRIVE_URL = "https://docs.google.com/uc?export=download"
 GOOGLE_DRIVE_CHUNK_SIZE = 32768
 
 
-def kill_process_and_children(process: Popen):
+def kill_process_and_children(process: Popen) -> None:
     logger.info("~~~~ process timed out ~~~~")
     if process.poll() is not None:
         ps_process = psutil.Process(process.pid)
@@ -28,7 +28,7 @@ def kill_process_and_children(process: Popen):
         process.kill()  # lastly, kill the process
 
 
-@no_type_check
+# @no_type_check
 def run_cli_command(command: str, stderr: bool = False, shell: bool = False, timeout: float = -1) -> Iterable[str]:
     """
     This utility can be used to run any cli command, and iterate over the output.
@@ -55,9 +55,10 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
         process_timer.start()
 
     # get output
-    process.stdout.flush()
-    process_stdout, process_stderr = process.communicate()
-    for output in process_stdout.decode("utf-8").splitlines():
+    if process.stdout:
+        process.stdout.flush()
+    process_stdout, process_stderr = [s.decode("utf-8") for s in process.communicate()]
+    for output in process_stdout.splitlines():
         output = output.strip()
         if output:
             yield output
@@ -77,14 +78,14 @@ def download_file_from_google_drive(file_id: str, destination: Path) -> None:
     requests_session = requests.Session()
     response = requests_session.get(GOOGLE_DRIVE_URL, params={'id': file_id}, stream=True)
 
-    def get_confirm_token():
+    def get_confirm_token() -> Optional[Any]:
         for key, value in response.cookies.items():
             if key.startswith('download_warning'):
                 return value
 
         return None
 
-    def save_response_content():
+    def save_response_content() -> None:
         with open(destination, "wb") as f:
             for chunk in response.iter_content(GOOGLE_DRIVE_CHUNK_SIZE):
                 if chunk:  # filter out keep-alive new chunks

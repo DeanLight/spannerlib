@@ -11,6 +11,7 @@ import logging
 from io import BytesIO
 from os import popen
 from pathlib import Path
+from typing import Iterator
 from zipfile import ZipFile
 
 import jdk
@@ -37,11 +38,11 @@ STANFORD_ZIP_PATH = CURR_DIR / STANFORD_ZIP_NAME
 logger = logging.getLogger(__name__)
 
 
-def _is_installed_nlp():
+def _is_installed_nlp() -> bool:
     return Path(NLP_DIR_PATH).is_dir()
 
 
-def _install_nlp():
+def _install_nlp() -> None:
     logger.info(f"Installing {NLP_DIR_NAME} into {CURR_DIR}.")
 
     if not STANFORD_ZIP_PATH.is_file():
@@ -56,7 +57,7 @@ def _install_nlp():
     logging.info("installation completed.")
 
 
-def _is_installed_java():
+def _is_installed_java() -> bool:
     version = popen(
         "java -version 2>&1 | grep 'version' 2>&1 | awk -F\\\" '{ split($2,a,\".\"); print a[1]\".\"a[2]}'").read()
 
@@ -66,7 +67,7 @@ def _is_installed_java():
     return Path(INSTALLATION_PATH).is_dir()
 
 
-def _run_installation():
+def _run_installation() -> None:
     if not _is_installed_nlp():
         _install_nlp()
         assert _is_installed_nlp()
@@ -85,7 +86,7 @@ CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
 
 # ********************************************************************************************************************
 
-def tokenize_wrapper(sentence: str):
+def tokenize_wrapper(sentence: str) -> Iterator:
     for token in CoreNLPEngine.tokenize(sentence):
         yield token["token"], token["span"]
 
@@ -99,7 +100,7 @@ Tokenize = dict(ie_function=tokenize_wrapper,
 # ********************************************************************************************************************
 
 
-def ssplit_wrapper(sentence):
+def ssplit_wrapper(sentence: str) -> Iterator:
     for s in CoreNLPEngine.ssplit(sentence):
         yield s,
 
@@ -113,7 +114,7 @@ SSplit = dict(ie_function=ssplit_wrapper,
 # ********************************************************************************************************************
 
 
-def pos_wrapper(sentence):
+def pos_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.pos(sentence):
         yield res["token"], res["pos"], res["span"]
 
@@ -127,7 +128,7 @@ POS = dict(ie_function=pos_wrapper,
 # ********************************************************************************************************************
 
 
-def lemma_wrapper(sentence):
+def lemma_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.lemma(sentence):
         yield res["token"], res["lemma"], res["span"]
 
@@ -141,7 +142,7 @@ Lemma = dict(ie_function=lemma_wrapper,
 # ********************************************************************************************************************
 
 
-def ner_wrapper(sentence):
+def ner_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.ner(sentence):
         if res["ner"] != 'O':
             yield res["token"], res["ner"], res["span"]
@@ -156,7 +157,7 @@ NER = dict(ie_function=ner_wrapper,
 # ********************************************************************************************************************
 
 
-def entitymentions_wrapper(sentence):
+def entitymentions_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.entitymentions(sentence):
         confidence = json.dumps(res["nerConfidences"]).replace("\"", "'")
         yield (res["docTokenBegin"], res["docTokenEnd"], res["tokenBegin"], res["tokenEnd"], res["text"],
@@ -175,7 +176,7 @@ EntityMentions = dict(ie_function=entitymentions_wrapper,
 
 
 # TODO: add implementation according to: https://stanfordnlp.github.io/CoreNLP/regexner.html
-def regexner_wrapper(sentence, pattern):
+def regexner_wrapper(sentence: str, pattern: str) -> Iterator:
     # for res in CoreNLPEngine.regexner(sentence, pattern):
     raise NotImplementedError()
 
@@ -190,7 +191,7 @@ RGXNer = dict(ie_function=regexner_wrapper,
 
 
 # TODO: add implementation according to: https://stanfordnlp.github.io/CoreNLP/tokensregex.html
-def tokensregex_wrapper(sentence, pattern):
+def tokensregex_wrapper(sentence: str, pattern: str) -> Iterator:
     # for res in CoreNLPEngine.tokensregex(sentence, pattern):
     raise NotImplementedError()
 
@@ -204,7 +205,7 @@ TokensRegex = dict(ie_function=tokensregex_wrapper,
 # ********************************************************************************************************************
 
 
-def cleanxml_wrapper(sentence):
+def cleanxml_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.cleanxml(sentence)["tokens"]:
         yield res['index'], res['word'], res['originalText'], res['characterOffsetBegin'], res['characterOffsetEnd']
 
@@ -218,7 +219,7 @@ CleanXML = dict(ie_function=cleanxml_wrapper,
 # ********************************************************************************************************************
 
 
-def parse_wrapper(sentence):
+def parse_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.parse(sentence):
         # note #1: this yields a tuple
         # note #2: we replace the newlines with `<nl> because it is difficult to tell the results apart otherwise
@@ -234,7 +235,7 @@ Parse = dict(ie_function=parse_wrapper,
 # ********************************************************************************************************************
 
 
-def dependency_parse_wrapper(sentence):
+def dependency_parse_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.dependency_parse(sentence):
         yield res['dep'], res['governor'], res['governorGloss'], res['dependent'], res['dependentGloss']
 
@@ -248,7 +249,7 @@ DepParse = dict(ie_function=dependency_parse_wrapper,
 # ********************************************************************************************************************
 
 
-def coref_wrapper(sentence):
+def coref_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.coref(sentence):
         yield (res['id'], res['text'], res['type'], res['number'], res['gender'], res['animacy'], res['startIndex'],
                res['endIndex'], res['headIndex'], res['sentNum'],
@@ -266,7 +267,7 @@ Coref = dict(ie_function=coref_wrapper,
 # ********************************************************************************************************************
 
 
-def openie_wrapper(sentence):
+def openie_wrapper(sentence: str) -> Iterator:
     for lst in CoreNLPEngine.openie(sentence):
         for res in lst:
             yield (res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']),
@@ -283,7 +284,7 @@ OpenIE = dict(ie_function=openie_wrapper,
 # ********************************************************************************************************************
 
 
-def kbp_wrapper(sentence):
+def kbp_wrapper(sentence: str) -> Iterator:
     for lst in CoreNLPEngine.kbp(sentence):
         for res in lst:
             yield (res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']),
@@ -300,7 +301,7 @@ KBP = dict(ie_function=kbp_wrapper,
 # ********************************************************************************************************************
 
 
-def quote_wrapper(sentence):
+def quote_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.quote(sentence):
         yield (res['id'], res['text'], res['beginIndex'], res['endIndex'], res['beginToken'], res['endToken'],
                res['beginSentence'], res['endSentence'], res['speaker'], res['canonicalSpeaker'])
@@ -317,7 +318,7 @@ Quote = dict(ie_function=quote_wrapper,
 
 
 # currently ignoring sentimentTree
-def sentiment_wrapper(sentence):
+def sentiment_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.sentiment(sentence):
         yield int(res['sentimentValue']), res['sentiment'], json.dumps(res['sentimentDistribution'])
 
@@ -331,7 +332,7 @@ Sentiment = dict(ie_function=sentiment_wrapper,
 # ********************************************************************************************************************
 
 
-def truecase_wrapper(sentence):
+def truecase_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.truecase(sentence):
         yield res['token'], res['span'], res['truecase'], res['truecaseText']
 
@@ -345,7 +346,7 @@ TrueCase = dict(ie_function=truecase_wrapper,
 # ********************************************************************************************************************
 
 # TODO: add implementation according to: https://stanfordnlp.github.io/CoreNLP/udfeats.html
-def udfeats_wrapper(sentence: str):
+def udfeats_wrapper(sentence: str) -> Iterator:
     # for token in CoreNLPEngine.udfeats(sentence):
     raise NotImplementedError()
 

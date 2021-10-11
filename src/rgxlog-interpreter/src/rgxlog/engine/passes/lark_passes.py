@@ -30,11 +30,11 @@ from lark import Transformer, Token
 from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
 from pathlib import Path
-from typing import List, no_type_check, Set
+from typing import List, no_type_check, Set, Sequence, Any
 
 from rgxlog.engine.datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule,
                                                     IERelation, RelationDeclaration, Relation)
-from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
+from rgxlog.engine.datatypes.primitive_types import Span, DataTypes, DataTypeMapping
 from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.graphs import NetxStateGraph
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
@@ -42,7 +42,7 @@ from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_fr
 from rgxlog.engine.utils.passes_utils import assert_expected_node_structure, unravel_lark_node, ParseNodeType
 
 
-def get_tree(**kwargs):
+def get_tree(**kwargs: Any) -> Any:
     tree = kwargs.get("tree", None)
     if tree is None:
         raise Exception("Expected tree parameter")
@@ -51,27 +51,27 @@ def get_tree(**kwargs):
 
 class GenericPass(ABC):
     @abstractmethod
-    def run_pass(self, **kwargs):
+    def run_pass(self, **kwargs: Any) -> None:
         pass
 
 
 class VisitorPass(Visitor, GenericPass):
-    def run_pass(self, **kwargs):
+    def run_pass(self, **kwargs: Any) -> None:
         self.visit(get_tree(**kwargs))
 
 
 class VisitorRecursivePass(Visitor_Recursive, GenericPass):
-    def run_pass(self, **kwargs):
+    def run_pass(self, **kwargs: Any) -> None:
         self.visit(get_tree(**kwargs))
 
 
 class InterpreterPass(Interpreter, GenericPass):
-    def run_pass(self, **kwargs):
+    def run_pass(self, **kwargs: Any) -> None:
         self.visit(get_tree(**kwargs))
 
 
 class TransformerPass(Transformer, GenericPass):
-    def run_pass(self, **kwargs):
+    def run_pass(self, **kwargs: Any) -> Any:
         return self.transform(get_tree(**kwargs))
 
 
@@ -82,30 +82,30 @@ class RemoveTokens(TransformerPass):
     note that we inherit from 'Transformer' in order to be able to visit token nodes.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__(visit_tokens=True)
 
     @staticmethod
-    def string_handler(args):
+    def string_handler(args: Token) -> str:
         name_string: Token = args
         return name_string.value
 
     @staticmethod
-    def INT(args):
+    def INT(args: str) -> int:
         string_of_integer = args
         integer = int(string_of_integer)
         return integer
 
     @staticmethod
-    def LOWER_CASE_NAME(args):
+    def LOWER_CASE_NAME(args: Token) -> str:
         return RemoveTokens.string_handler(args)
 
     @staticmethod
-    def UPPER_CASE_NAME(args):
+    def UPPER_CASE_NAME(args: Token) -> str:
         return RemoveTokens.string_handler(args)
 
     @staticmethod
-    def STRING(args):
+    def STRING(args: str) -> str:
         quoted_string = args
         unquoted_string = quoted_string[1:-1]
         return unquoted_string
@@ -118,7 +118,7 @@ class CheckReservedRelationNames(InterpreterPass):
     if such relations exist, throw an exception as this is a reserved name for rgxlog.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any):
         super().__init__()
 
     @no_type_check
@@ -136,7 +136,7 @@ class FixStrings(VisitorRecursivePass):
      Removes the line overflow escapes from strings.
      """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any):
         super().__init__()
 
     @no_type_check
@@ -159,7 +159,7 @@ class ConvertSpanNodesToSpanInstances(VisitorRecursivePass):
     a single value).
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any):
         super().__init__()
 
     @no_type_check
@@ -181,7 +181,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
     should work on said nodes need to be used before this pass in the passes pipeline (e.g. FixString).
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any):
         super().__init__()
 
     @no_type_check
@@ -371,7 +371,7 @@ class CheckDefinedReferencedVariables(InterpreterPass):
     checks whether each variable reference refers to a defined variable.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
@@ -385,7 +385,7 @@ class CheckDefinedReferencedVariables(InterpreterPass):
         if not self.symbol_table.contains_variable(var_name):
             raise Exception(f'variable "{var_name}" is not defined')
 
-    def _assert_var_terms_defined(self, term_list: List[str], type_list: List[DataTypes]) -> None:
+    def _assert_var_terms_defined(self, term_list: Sequence[DataTypeMapping.term], type_list: Sequence[DataTypes]) -> None:
         """
         A utility function that checks if the non free variables in a term list are defined
         if one of them is not defined, raises an exception.
@@ -396,40 +396,43 @@ class CheckDefinedReferencedVariables(InterpreterPass):
         for term, term_type in zip(term_list, type_list):
             if term_type is DataTypes.var_name:
                 # found a variable, check if it is defined
+                assert isinstance(term, str), "a var_name must be of type str"
                 self._assert_var_defined(term)
 
     @unravel_lark_node
-    def assignment(self, assignment: Assignment):
+    def assignment(self, assignment: Assignment) -> None:
         if assignment.value_type is DataTypes.var_name:
             # the assigned expression is a variable, check if it is defined
+            assert isinstance(assignment.value, str), "a var_name must be of type str"
             self._assert_var_defined(assignment.value)
 
     @unravel_lark_node
-    def read_assignment(self, assignment: ReadAssignment):
+    def read_assignment(self, assignment: ReadAssignment) -> None:
         if assignment.read_arg_type is DataTypes.var_name:
             # a variable is used as the argument for read(), check if it is defined
+            assert isinstance(assignment.read_arg, str), "a var_name must be of type str"
             self._assert_var_defined(assignment.read_arg)
 
     @unravel_lark_node
-    def add_fact(self, fact: AddFact):
+    def add_fact(self, fact: AddFact) -> None:
         self._assert_var_terms_defined(fact.term_list, fact.type_list)
 
     @unravel_lark_node
-    def remove_fact(self, fact: RemoveFact):
+    def remove_fact(self, fact: RemoveFact) -> None:
         self._assert_var_terms_defined(fact.term_list, fact.type_list)
 
     @unravel_lark_node
-    def query(self, query: Query):
+    def query(self, query: Query) -> None:
         self._assert_var_terms_defined(query.term_list, query.type_list)
 
     @unravel_lark_node
-    def rule(self, rule: Rule):
+    def rule(self, rule: Rule) -> None:
 
         # for each relation in the rule body, check if its variable terms are defined
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            if relation_type == "relation":
+            if isinstance(relation, Relation):
                 self._assert_var_terms_defined(relation.term_list, relation.type_list)
-            elif relation_type == "ie_relation":
+            elif isinstance(relation, IERelation):
                 # ie relations have input terms and output terms, check them both
                 self._assert_var_terms_defined(relation.input_term_list, relation.input_type_list)
                 self._assert_var_terms_defined(relation.output_term_list, relation.output_type_list)
@@ -444,7 +447,7 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     Also checks if the relation reference uses the correct arity.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
@@ -475,22 +478,22 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
                             f'correct arity is: {correct_arity}')
 
     @unravel_lark_node
-    def query(self, query: Query):
+    def query(self, query: Query) -> None:
         # a query is defined by a relation reference, so we can simply use the utility function
         self._assert_relation_exists_and_correct_arity(query)
 
     @unravel_lark_node
-    def add_fact(self, fact: AddFact):
+    def add_fact(self, fact: AddFact) -> None:
         # a fact is defined by a relation reference, so we can simply use the utility function
         self._assert_relation_exists_and_correct_arity(fact)
 
     @unravel_lark_node
-    def remove_fact(self, fact: RemoveFact):
+    def remove_fact(self, fact: RemoveFact) -> None:
         # a fact is defined by a relation reference, so we can simply use the utility function
         self._assert_relation_exists_and_correct_arity(fact)
 
     @unravel_lark_node
-    def rule(self, rule: Rule):
+    def rule(self, rule: Rule) -> None:
         """
         A rule is a definition of the relation in the rule head. Therefore the rule head reference does not
         need to be checked.
@@ -499,7 +502,7 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
 
         # check that each normal relation in the rule body exists and that the correct arity was used
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            if relation_type == "relation":
+            if isinstance(relation, Relation):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
@@ -513,16 +516,16 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     check will be performed.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
     @unravel_lark_node
-    def rule(self, rule: Rule):
+    def rule(self, rule: Rule) -> None:
 
         # for each ie relation in the rule body, check its existence and arity
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            if relation_type == "ie_relation":
+            if isinstance(relation, IERelation):
 
                 # get the name of the ie function, it is the same as the name of the ie relation
                 ie_func_name = relation.relation_name
@@ -581,11 +584,11 @@ class CheckRuleSafety(VisitorRecursivePass):
     safe relation.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__()
 
     @unravel_lark_node
-    def rule(self, rule: Rule):
+    def rule(self, rule: Rule) -> None:
         head_relation = rule.head_relation
         body_relation_list = rule.body_relation_list
         body_relation_type_list = rule.body_relation_type_list
@@ -673,12 +676,12 @@ class TypeCheckAssignments(InterpreterPass):
     in the current version of lark, this type checking is only required for read assignments.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
     @unravel_lark_node
-    def read_assignment(self, assignment: ReadAssignment):
+    def read_assignment(self, assignment: ReadAssignment) -> None:
 
         # get the type of the argument for the read() function
         if assignment.read_arg_type is DataTypes.var_name:
@@ -712,37 +715,37 @@ class TypeCheckRelations(InterpreterPass):
     C(X) <- A(X), B(X) # error since X is expected to be both an int and a string.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any):
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
     @unravel_lark_node
-    def add_fact(self, fact: AddFact):
+    def add_fact(self, fact: AddFact) -> None:
         # a fact is defined by a relation, check if that relation is properly typed
-        type_check_passed = check_properly_typed_relation(fact, "relation", self.symbol_table)
+        type_check_passed = check_properly_typed_relation(fact, self.symbol_table)
         if not type_check_passed:
             raise Exception(f'type check failed for fact: "{fact}"')
 
     @unravel_lark_node
-    def remove_fact(self, fact: RemoveFact):
+    def remove_fact(self, fact: RemoveFact) -> None:
         # a fact is defined by a relation, check if that relation is properly typed
-        type_check_passed = check_properly_typed_relation(fact, "relation", self.symbol_table)
+        type_check_passed = check_properly_typed_relation(fact, self.symbol_table)
         if not type_check_passed:
             raise Exception(f'type check failed for fact: "{fact}"')
 
     @unravel_lark_node
-    def query(self, query: Query):
+    def query(self, query: Query) -> None:
         # a query is defined by a relation, check if that relation is properly typed
-        type_check_passed = check_properly_typed_relation(query, "relation", self.symbol_table)
+        type_check_passed = check_properly_typed_relation(query, self.symbol_table)
         if not type_check_passed:
             raise Exception(f'type check failed for query: "{query}"')
 
     @unravel_lark_node
-    def rule(self, rule: Rule):
+    def rule(self, rule: Rule) -> None:
 
         # for each relation in the rule body, check if it is properly typed, raise an exception if it isn't
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            relation_is_properly_typed = check_properly_typed_relation(relation, relation_type, self.symbol_table)
+            relation_is_properly_typed = check_properly_typed_relation(relation, self.symbol_table)
             if not relation_is_properly_typed:
                 raise Exception(f'type check failed for rule "{rule}"\n'
                                 f'because the relation "{relation}"\n'
@@ -765,16 +768,17 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
     this pass assumes that type checking was already performed on its input.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
     @unravel_lark_node
-    def relation_declaration(self, relation_decl: RelationDeclaration):
+    def relation_declaration(self, relation_decl: RelationDeclaration) -> None:
         self.symbol_table.add_relation_schema(relation_decl.relation_name, relation_decl.type_list, False)
 
+    @no_type_check
     @unravel_lark_node
-    def rule(self, rule: Rule):
+    def rule(self, rule: Rule) -> None:
         # a rule head relation only contains free variable terms, meaning its schema is defined exclusively by the
         # types of said free variables. a free variable type in a rule can be found using the schemas of relations
         # in the rule body
@@ -783,7 +787,8 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
 
         # get the schema of the rule head relation and add it to the symbol table
         head_relation = rule.head_relation
-        rule_head_schema = [free_var_to_type[term] for term in head_relation.term_list]
+        term_list = head_relation.term_list
+        rule_head_schema = [free_var_to_type[term] for term in term_list]
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
 
@@ -794,12 +799,12 @@ class ResolveVariablesReferences(InterpreterPass):
     also replaces DataTypes.var_name types with the real type of the variable.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
     @unravel_lark_node
-    def assignment(self, assignment: Assignment):
+    def assignment(self, assignment: Assignment) -> None:
         # if the assigned value is a variable, replace it with its literal value
         if assignment.value_type is DataTypes.var_name:
             assigned_var_name = assignment.value
@@ -807,14 +812,15 @@ class ResolveVariablesReferences(InterpreterPass):
             assignment.value_type = self.symbol_table.get_variable_type(assigned_var_name)
 
     @unravel_lark_node
-    def read_assignment(self, assignment: ReadAssignment):
+    def read_assignment(self, assignment: ReadAssignment) -> None:
         # if the read() argument is a variable, replace it with its literal value
         if assignment.read_arg_type is DataTypes.var_name:
             read_arg_var_name = assignment.read_arg
             assignment.read_arg = self.symbol_table.get_variable_value(read_arg_var_name)
             assignment.read_arg_type = self.symbol_table.get_variable_type(read_arg_var_name)
 
-    def _resolve_var_terms(self, term_list, type_list) -> None:
+    @no_type_check
+    def _resolve_var_terms(self, term_list: Sequence[DataTypeMapping.term], type_list: Sequence[DataTypes]) -> None:
         """
         A utility function for resolving variables in term lists
         for each variable term in term_list, replace its value in term_list with its literal value, and
@@ -842,24 +848,24 @@ class ResolveVariablesReferences(InterpreterPass):
         type_list[:] = resolved_var_types_type_list
 
     @unravel_lark_node
-    def query(self, query: Query):
+    def query(self, query: Query) -> None:
         self._resolve_var_terms(query.term_list, query.type_list)
 
     @unravel_lark_node
-    def add_fact(self, fact: AddFact):
+    def add_fact(self, fact: AddFact) -> None:
         self._resolve_var_terms(fact.term_list, fact.type_list)
 
     @unravel_lark_node
-    def remove_fact(self, fact: RemoveFact):
+    def remove_fact(self, fact: RemoveFact) -> None:
         self._resolve_var_terms(fact.term_list, fact.type_list)
 
     @unravel_lark_node
-    def rule(self, rule: Rule):
+    def rule(self, rule: Rule) -> None:
         # resolve the variables of each relation in the rule body relation list
         for relation, relation_type in zip(rule.body_relation_list, rule.body_relation_type_list):
-            if relation_type == "relation":
+            if isinstance(relation, Relation):
                 self._resolve_var_terms(relation.term_list, relation.type_list)
-            elif relation_type == "ie_relation":
+            elif isinstance(relation, IERelation):
                 # ie relations have two term lists (input and output), resolve them both
                 self._resolve_var_terms(relation.input_term_list, relation.input_type_list)
                 self._resolve_var_terms(relation.output_term_list, relation.output_type_list)
@@ -875,17 +881,17 @@ class ExecuteAssignments(InterpreterPass):
     are guaranteed to be literals.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__()
         self.symbol_table = kw['symbol_table']
 
     @unravel_lark_node
-    def assignment(self, assignment: Assignment):
+    def assignment(self, assignment: Assignment) -> None:
         # perform the assignment by saving the variable attributes in the symbol table
         self.symbol_table.set_var_value_and_type(assignment.var_name, assignment.value, assignment.value_type)
 
     @unravel_lark_node
-    def read_assignment(self, assignment: ReadAssignment):
+    def read_assignment(self, assignment: ReadAssignment) -> None:
         # try to read the file and get its content as a single string. this string is the assigned value.
         try:
             assigned_value = Path(assignment.read_arg).read_text()
@@ -920,11 +926,11 @@ class AddStatementsToNetxParseGraph(InterpreterPass):
      for flexibility for optimization in the future.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         super().__init__()
         self.parse_graph: NetxStateGraph = kw['parse_graph']
 
-    def _add_statement_to_parse_graph(self, statement_type: ParseNodeType, statement_value) -> None:
+    def _add_statement_to_parse_graph(self, statement_type: ParseNodeType, statement_value: Any) -> None:
         """
         A utility function that adds a statement to the parse graph, meaning it adds a node that
         represents the statement to the parse graph, then attach the node to the parse graph's root.
@@ -938,21 +944,21 @@ class AddStatementsToNetxParseGraph(InterpreterPass):
         self.parse_graph.add_edge(self.parse_graph.get_root_id(), new_statement_node)
 
     @unravel_lark_node
-    def add_fact(self, fact: AddFact):
+    def add_fact(self, fact: AddFact) -> None:
         self._add_statement_to_parse_graph(ParseNodeType.ADD_FACT, fact)
 
     @unravel_lark_node
-    def remove_fact(self, fact: RemoveFact):
+    def remove_fact(self, fact: RemoveFact) -> None:
         self._add_statement_to_parse_graph(ParseNodeType.REMOVE_FACT, fact)
 
     @unravel_lark_node
-    def query(self, query: Query):
+    def query(self, query: Query) -> None:
         self._add_statement_to_parse_graph(ParseNodeType.QUERY, query)
 
     @unravel_lark_node
-    def relation_declaration(self, relation_decl: RelationDeclaration):
+    def relation_declaration(self, relation_decl: RelationDeclaration) -> None:
         self._add_statement_to_parse_graph(ParseNodeType.RELATION_DECLARATION, relation_decl)
 
     @unravel_lark_node
-    def rule(self, rule: Rule):
+    def rule(self, rule: Rule) -> None:
         self._add_statement_to_parse_graph(ParseNodeType.RULE, rule)

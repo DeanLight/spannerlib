@@ -1,9 +1,11 @@
+from typing import Iterable, Any, Tuple
+
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
-def test_strings_query():
+def test_strings_query() -> None:
     commands = """
     new uncle(str, str)
     uncle("bob", "greg")
@@ -19,7 +21,7 @@ def test_strings_query():
     run_test(commands, expected_result_intro)
 
 
-def test_basic_queries():
+def test_basic_queries() -> None:
     commands = '''
             new lecturer(str, str)
             lecturer("walter", "chemistry")
@@ -48,22 +50,22 @@ def test_basic_queries():
 
     expected_result = f"""{QUERY_RESULT_PREFIX}'enrolled_in_chemistry("jordan")':
         [()]
-        
+
         {QUERY_RESULT_PREFIX}'enrolled_in_chemistry("gale")':
         []
-        
+
         {QUERY_RESULT_PREFIX}'enrolled_in_chemistry(X)':
             X
         ---------
          howard
          jordan
          abigail
-        
+
         {QUERY_RESULT_PREFIX}'enrolled_in_physics_and_chemistry(X)':
            X
         --------
          howard
-        
+
         {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
            X
         --------
@@ -87,7 +89,7 @@ def test_basic_queries():
     run_test(commands2, expected_result2, session=session)
 
 
-def test_json_path():
+def test_json_path() -> None:
     commands = """
                 jsonpath_simple_1 = "foo[*].baz"
                 json_ds_simple_1  = "{'foo': [{'baz': 1}, {'baz': 2}]}"
@@ -111,13 +113,13 @@ def test_json_path():
         -----
            2
            1
-        
+
         {QUERY_RESULT_PREFIX}'simple_2(X)':
              X
         ------------
          number two
          number one
-        
+
         {QUERY_RESULT_PREFIX}'advanced(X)':"""
         """
                              X
@@ -129,7 +131,7 @@ def test_json_path():
     run_test(commands, expected_result)
 
 
-def test_remove_rule():
+def test_remove_rule() -> None:
     commands = """
            new parent(str, str)
            new grandparent(str, str)
@@ -174,8 +176,8 @@ def test_remove_rule():
     run_test(commands, expected_result, session=session)
 
 
-def test_string_len():
-    def length(string):
+def test_string_len() -> None:
+    def length(string: str) -> Iterable[Tuple[int, str]]:
         # here we append the input to the output inside the ie function!
         yield len(string), string
 
@@ -206,8 +208,8 @@ def test_string_len():
     run_test(commands, expected_result, [length_dict])
 
 
-def test_neq():
-    def neq(x, y):
+def test_neq() -> None:
+    def neq(x: Any, y: Any) -> Iterable:
         if x == y:
             # return false
             yield tuple()
@@ -242,7 +244,7 @@ def test_neq():
     run_test(commands, expected_result, [neq_dict])
 
 
-def test_span_constant():
+def test_span_constant() -> None:
     commands = '''
             new verb(str, span)
             verb("Ron eats quickly.", [4,8))
