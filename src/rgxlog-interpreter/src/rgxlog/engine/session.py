@@ -6,7 +6,7 @@ from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Any, Sequence
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Sequence
 
 import rgxlog
 import rgxlog.engine.engine
@@ -318,7 +318,7 @@ class Session:
 
         return self._pass_stack.copy()
 
-    def set_pass_stack(self, user_stack: List[Type[GenericPass]]) -> List[str]:
+    def set_pass_stack(self, user_stack: List[Type[GenericPass]]) -> List[Type[GenericPass]]:
         """
         Sets a new pass stack instead of the current one.
 

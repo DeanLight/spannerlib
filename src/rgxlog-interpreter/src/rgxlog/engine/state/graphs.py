@@ -11,13 +11,13 @@ TermGraph's docstring.
 The dependency graph stores dependencies between relations in the program, it is used by the term graph to recognize
 mutually recursive relations. for more information read DependencyGraph's docstring.
 """
-from abc import ABC, abstractmethod, ABCMeta
 from collections import OrderedDict
 from enum import Enum
-from itertools import count
-from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType, no_type_check, Any, Sequence
 
 import networkx as nx
+from abc import ABC, abstractmethod, ABCMeta
+from itertools import count
+from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType, no_type_check, Any, Sequence
 
 from rgxlog.engine.datatypes.ast_node_types import Relation, Rule, IERelation
 from rgxlog.engine.utils.general_utils import get_input_free_var_names, get_output_free_var_names, \
@@ -40,7 +40,7 @@ class EvalState(Enum):
     VISITED = "visited"
     COMPUTED = "computed"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 

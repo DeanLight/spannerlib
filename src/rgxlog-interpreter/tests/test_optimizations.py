@@ -4,7 +4,7 @@ from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test, get_session_with_optimizations
 
 
-def test_prune_project_nodes():
+def test_prune_project_nodes() -> None:
     commands = """
                new B(int)
                new C(int)
@@ -29,7 +29,7 @@ def test_prune_project_nodes():
     run_test(commands, expected_result, session=session)
 
 
-def test_remove_useless_relation():
+def test_remove_useless_relation() -> None:
     commands = """
                new B(int)
                new C(int)

@@ -26,14 +26,11 @@ class PruneUnnecessaryProjectNodes(GenericPass):
                 get_rel node (get B)
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         self.term_graph: TermGraphBase = kwargs["term_graph"]
 
-    def run_pass(self, **kwargs):
-        class_name = self.__class__.__name__
-        print(f"Term graph before {class_name}:\n{self.term_graph}")
+    def run_pass(self, **kwargs: Any) -> None:
         self.prune_project_nodes()
-        print(f"Term graph after {class_name}:\n{self.term_graph}")
 
     def prune_project_nodes(self) -> None:
         """
@@ -53,7 +50,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
                     self.term_graph.add_edge(union_id, project_child)
                     self.term_graph.remove_node(project_id)
 
-    def find_arity_of_node(self, node_id) -> int:
+    def find_arity_of_node(self, node_id: Union[int, str]) -> int:
         """
         @param node_id: id of the node.
         @note: we expect id of project/join node.
@@ -131,7 +128,7 @@ class RemoveUselessRelationsFromRule(GenericPass):
     @note: in the rule A(X) <- B(X, Y), C(Y); C(Y) is not redundant!
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         self.parse_graph: GraphBase = kwargs["parse_graph"]
 
     @staticmethod
@@ -172,7 +169,7 @@ class RemoveUselessRelationsFromRule(GenericPass):
         rule.body_relation_list = list(new_body_relation_list)
         rule.body_relation_type_list = list(new_body_relation_type_list)
 
-    def run_pass(self, **kwargs):
+    def run_pass(self, **kwargs: Any) -> None:
         rules = get_new_rule_nodes(self.parse_graph)
         for rule_node_id in rules:
             rule: Rule = self.parse_graph[rule_node_id][VALUE]

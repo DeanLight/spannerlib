@@ -3,9 +3,8 @@ this module contains helper functions and function decorators that are used in l
 """
 from enum import Enum
 
-from typing import Any, Callable
-
 from lark import Tree as LarkNode
+from typing import Any, Callable
 from typing import List
 
 from rgxlog.engine.state.graphs import GraphBase, EvalState, STATE, TYPE
@@ -23,7 +22,7 @@ class ParseNodeType(Enum):
     RELATION_DECLARATION = "relation_declaration"
     RULE = "rule"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 
