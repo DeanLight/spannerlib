@@ -249,8 +249,8 @@ class SqliteEngine(RgxlogEngineBase):
     RELATION_COLUMN_PREFIX = "col"
 
     # sql constants
-    SQL_SELECT = 'SELECT DISTINCT'
-    SQL_TABLE_OF_TABLES = 'sqlite_master'
+    SQL_SELECT = "SELECT DISTINCT"
+    SQL_TABLE_OF_TABLES = "sqlite_master"
     SQL_SEPARATOR = "_"
     DATATYPE_TO_SQL_TYPE = {DataTypes.string: "TEXT", DataTypes.integer: "INTEGER", DataTypes.span: "TEXT"}
     DATABASE_SUFFIX = "_sqlite"
@@ -345,7 +345,7 @@ class SqliteEngine(RgxlogEngineBase):
         else:
             projected_relation_name = selected_relation_name
 
-        query_result = self._run_sql(f"{self.SQL_SELECT} * FROM {projected_relation_name}", do_commit=True)
+        query_result = self._run_sql(f"{SqliteEngine.SQL_SELECT} * FROM {projected_relation_name}", do_commit=True)
 
         self.remove_table(selected_relation_name)
         self.remove_table(projected_relation_name)
@@ -390,7 +390,7 @@ class SqliteEngine(RgxlogEngineBase):
         if self.is_table_exists(relation_decl.relation_name):
             return
 
-        # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
+        # note: sqlite can guess datatypes. if this causes bugs, use `{SqliteEngine._datatype_to_sql_type(relation_type)}`.
         col_names = [f"{self._get_col_name(i)}" for i in range(len(relation_decl.type_list))]
         template_dict = {"rel_name": relation_decl.relation_name, "col_names": col_names}
         sql_template = 'CREATE TABLE {{rel_name}} ({{col_names | join(", ")}})'
@@ -404,8 +404,7 @@ class SqliteEngine(RgxlogEngineBase):
         @param table_name: the table which is checked for existence.
         @return: True if it exists, else False.
         """
-        sql_check_if_exists = (f"{self.SQL_SELECT} name FROM {self.SQL_TABLE_OF_TABLES} WHERE "
-                               f"type='table' AND name='{table_name}'")
+        sql_check_if_exists = f"{SqliteEngine.SQL_SELECT} name FROM {SqliteEngine.SQL_TABLE_OF_TABLES} WHERE " f"type='table' AND name='{table_name}'"
         return bool(self._run_sql(sql_check_if_exists))
 
     def clear_relation(self, table_name: str) -> None:
@@ -870,8 +869,9 @@ class SqliteEngine(RgxlogEngineBase):
         self.declare_relation_table(unique_relation_decl)
         return unique_relation_name
 
-    def _datatype_to_sql_type(self, datatype: DataTypes) -> str:
-        return self.DATATYPE_TO_SQL_TYPE[datatype]
+    @staticmethod
+    def _datatype_to_sql_type(datatype: DataTypes):
+        return SqliteEngine.DATATYPE_TO_SQL_TYPE[datatype]
 
     def _convert_relation_term_to_string_or_int(self, datatype: DataTypes, term: DataTypeMapping.term) -> Union[str, int]:
         if datatype is DataTypes.integer:
