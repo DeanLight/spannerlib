@@ -20,7 +20,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
             union node
                 project node (on X)
                    get_rel node (get B)
-        since we project a relation with one column, after this pass the term graph will be:
+    since we project a relation with one column, after this pass the term graph will be:
         rule_rel node (of A)
             union node
                 get_rel node (get B)
