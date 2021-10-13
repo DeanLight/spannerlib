@@ -2,7 +2,7 @@
 This file contains implementation of passes that optimize the term graph structure.
 Note that this passes depend on the structure of the term graph!
 """
-from typing import Dict, Any, Set, Union, List, Tuple
+from typing import Any, Set, Union, List, Tuple
 
 from rgxlog.engine.datatypes.ast_node_types import IERelation, Relation, Rule
 from rgxlog.engine.datatypes.primitive_types import DataTypes
@@ -26,8 +26,8 @@ class PruneUnnecessaryProjectNodes(GenericPass):
                 get_rel node (get B)
     """
 
-    def __init__(self, **kwargs: Any) -> None:
-        self.term_graph: TermGraphBase = kwargs["term_graph"]
+    def __init__(self, term_graph: TermGraphBase, **kwargs: Any) -> None:
+        self.term_graph = term_graph
 
     def run_pass(self, **kwargs: Any) -> None:
         self.prune_project_nodes()
@@ -37,20 +37,16 @@ class PruneUnnecessaryProjectNodes(GenericPass):
         Prunes the redundant project nodes.
         """
 
-        union_to_project_children = self.get_all_union_and_project_nodes()
-        for union_id, project_ids in union_to_project_children.items():
-            for project_id in project_ids:
-                arity = self.find_arity_of_node(project_id)
+        project_nodes = self.term_graph.get_all_nodes_with_attributes(type=TermNodeType.PROJECT)
+        for project_id in project_nodes:
+            if self.is_input_relation_of_node_has_arity_of_one(project_id):
+                # in this case the input relations of the project node has arity of one so we prune to node
+                # the node has exactly one child so we connect the child to project's node parent (it's a union node)
 
-                if arity == 1:
-                    # in this case the input relations of the project node has arity of one so we prune to node
-                    # the node has exactly one child so we connect the child to project's node parent (it's a union node)
+                self.term_graph.add_edge(self.term_graph.get_parent(project_id), self.term_graph.get_child(project_id))
+                self.term_graph.remove_node(project_id)
 
-                    project_child = next(iter(self.term_graph.get_children(project_id)))
-                    self.term_graph.add_edge(union_id, project_child)
-                    self.term_graph.remove_node(project_id)
-
-    def find_arity_of_node(self, node_id: Union[int, str]) -> int:
+    def is_input_relation_of_node_has_arity_of_one(self, node_id: GraphBase.NodeIdType) -> bool:
         """
         @param node_id: id of the node.
         @note: we expect id of project/join node.
@@ -75,48 +71,28 @@ class PruneUnnecessaryProjectNodes(GenericPass):
             node_attrs = self.term_graph[node_id]
             node_type = node_attrs[TYPE]
 
-            if node_type in (TermNodeType.GET_REL, TermNodeType.RULE_REL, TermNodeType.GET_REL.CALC):
+            if node_type in (TermNodeType.GET_REL, TermNodeType.RULE_REL, TermNodeType.CALC):
                 relation = node_attrs[VALUE]
                 # if relation has more than one free var we can't prune the project
                 if not is_relation_has_one_free_var(relation):
-                    return 0
+                    return False
 
                 free_vars |= set(relation.get_term_list())
 
-            elif node_type is TermNodeType.JOIN:
-                # the input of project node is the same as the input of the join node
-                return self.find_arity_of_node(node_id)
-
             elif node_type is TermNodeType.SELECT:
-                relation_child_id = next(iter(self.term_graph.get_children(node_id)))
+                relation_child_id = self.term_graph.get_child(node_id)
                 relation = self.term_graph[relation_child_id][VALUE]
                 if not is_relation_has_one_free_var(relation):
-                    return 0
+                    return False
 
                 relation_free_vars = [var for var, var_type in zip(relation.get_term_list(), relation.get_type_list()) if var_type is DataTypes.free_var_name]
                 free_vars |= set(relation_free_vars)
 
-        return len(free_vars)
+            elif node_type is TermNodeType.JOIN:
+                # the input of project node is the same as the input of the join node
+                return self.is_input_relation_of_node_has_arity_of_one(node_id)
 
-    def get_all_union_and_project_nodes(self) -> Dict[Any, List]:
-        """
-        Finds all the union node and their project children nodes in the term graph.
-        @return: a mapping between union nodes ids to their project children nodes id.
-        """
-
-        union_to_project_children = {}
-        nodes_ids = self.term_graph.post_order_dfs()
-
-        for node_id in nodes_ids:
-            node_attrs = self.term_graph[node_id]
-            node_type = node_attrs[TYPE]
-
-            if node_type is TermNodeType.UNION:
-                children = self.term_graph.get_children(node_id)
-                project_children = [node for node in children if self.term_graph[node][TYPE] is TermNodeType.PROJECT]
-                union_to_project_children[node_id] = project_children
-
-        return union_to_project_children
+        return len(free_vars) == 1
 
 
 class RemoveUselessRelationsFromRule(GenericPass):
@@ -128,8 +104,8 @@ class RemoveUselessRelationsFromRule(GenericPass):
     @note: in the rule A(X) <- B(X, Y), C(Y); C(Y) is not redundant!
     """
 
-    def __init__(self, **kwargs: Any):
-        self.parse_graph: GraphBase = kwargs["parse_graph"]
+    def __init__(self, parse_graph: GraphBase, **kwargs: Any) -> None:
+        self.parse_graph = parse_graph
 
     @staticmethod
     def remove_useless_relations(rule: Rule) -> None:

@@ -87,7 +87,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         """
 
         # check if the relation is base relation
-        if not term_graph.has_node(relation_name):
+        if not term_graph.is_contains_node(relation_name):
             return
 
         # stores all the nodes that were visited during the dfs
@@ -95,7 +95,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
         mutually_recursive = term_graph.get_mutually_recursive_relations(relation_name)
         current_computed_relation = None
 
-        def compute_postorder(node_id: Union[int, str]) -> None:
+        def compute_postorder(node_id: GraphBase.NodeIdType) -> None:
             """
             Runs postorder dfs over the term graph and evaluates the tree.
 
@@ -151,7 +151,7 @@ def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
 
         return
 
-    def compute_node(node_id: Union[int, str]) -> None:
+    def compute_node(node_id: GraphBase.NodeIdType) -> None:
         """
         Computes the current node based on its type.
 

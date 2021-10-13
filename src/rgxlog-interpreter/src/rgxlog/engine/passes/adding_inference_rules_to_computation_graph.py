@@ -1,5 +1,5 @@
 import logging
-from typing import List, Any
+from typing import Any
 
 from rgxlog.engine.datatypes.ast_node_types import Rule
 from rgxlog.engine.passes.lark_passes import GenericPass
@@ -15,9 +15,9 @@ class AddRulesToComputationTermGraph(GenericPass):
     It adds these rules to the term graph (using term_graph's add rule method).
     """
 
-    def __init__(self, **kwargs: Any) -> None:
-        self.parse_graph: GraphBase = kwargs["parse_graph"]
-        self.term_graph: TermGraphBase = kwargs["term_graph"]
+    def __init__(self, parse_graph: GraphBase, term_graph: TermGraphBase, **kwargs: Any) -> None:
+        self.parse_graph = parse_graph
+        self.term_graph = term_graph
 
     def _add_rules_to_computation_graph(self) -> None:
         """

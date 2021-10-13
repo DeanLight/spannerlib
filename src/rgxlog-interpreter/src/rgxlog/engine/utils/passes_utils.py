@@ -4,10 +4,9 @@ this module contains helper functions and function decorators that are used in l
 from enum import Enum
 
 from lark import Tree as LarkNode
-from typing import Any, Callable
-from typing import List
+from typing import Any, Callable, Iterable
 
-from rgxlog.engine.state.graphs import GraphBase, EvalState, STATE, TYPE
+from rgxlog.engine.state.graphs import GraphBase, EvalState
 from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
 
 
@@ -92,21 +91,9 @@ def unravel_lark_node(func: Callable) -> Callable:
     return wrapped_method
 
 
-def get_new_rule_nodes(parse_graph: GraphBase) -> List:
+def get_new_rule_nodes(parse_graph: GraphBase) -> Iterable[GraphBase.NodeIdType]:
     """
     Finds all rules that weren't added to the term graph yet.
     """
 
-    node_ids = parse_graph.post_order_dfs()
-    rule_nodes: List = list()
-
-    for node_id in node_ids:
-        term_attrs = parse_graph.get_node_attributes(node_id)
-
-        term_type = term_attrs[TYPE]
-
-        # make sure that the rule wasn't expanded before
-        if term_type == ParseNodeType.RULE and term_attrs[STATE] == EvalState.NOT_COMPUTED:
-            rule_nodes.append(node_id)
-
-    return rule_nodes
+    return parse_graph.get_all_nodes_with_attributes(type=ParseNodeType.RULE, state=EvalState.NOT_COMPUTED)

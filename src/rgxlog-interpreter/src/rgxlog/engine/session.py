@@ -216,7 +216,7 @@ class Session:
         self._engine = rgxlog.engine.engine.SqliteEngine()
         self._execution = naive_execution
 
-        self._pass_stack = [
+        self._pass_stack: List[Type[GenericPass]] = [
             RemoveTokens,
             FixStrings,
             CheckReservedRelationNames,
@@ -510,21 +510,13 @@ if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
     my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-    my_commands = """
-            new A(int, int)
-            new B(int, int, int)
-            B(1, 1, 1)
-            B(1, 2, 1)
-            B(2, 3, 1)
-            A(1, 2)
-            A(1, 1)
-            C(X, Y) <- A(X, Y), B(Y, X, Z)
-            ?C(X,Y)
+    my_commands = commands = """
+            new B(int, int)
+            B(1, 1)
+            B(1, 2)
+            B(2, 3)
+            A(X, Y) <- B(X, Y)
+            ?A(X, Y)
         """
-
-    """
-    relations = [a(X,Y), b(Y)] ->
-    dict = {X:[(a(X,Y),0)], Y:[(a(X,Y),1),(b(Y),0)]
-    """
 
     my_session.run_commands(my_commands)
