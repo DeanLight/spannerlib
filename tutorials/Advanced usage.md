@@ -668,7 +668,7 @@ this would naively generate something that abstractly looks like this:
    E_and -> {A,C,F} 
  }
 -->
-![](./doc/naive_term_graph.svg)
+<img src="../doc/naive_term_graph.svg">
 
 The weakness with this approach is that `A AND C` is computed twice.
 
@@ -686,7 +686,7 @@ A version of the term graph that takes care to merge terms with overlapping stru
    and -> {A,C}
  }
  -->
-![](./doc/shared_term_graph.svg)
+<img src="../doc/shared_term_graph.svg">
 
 Here, we realized that A,C is a joint component and that we need only compute it once.
 This would be the automatic equivalent of a smart programmer, refactoring the query above to look like
