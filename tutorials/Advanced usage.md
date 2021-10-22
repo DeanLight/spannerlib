@@ -81,31 +81,32 @@ What if we want to have multiple rules each looking for GPAs of students in diff
 We wouldnt want to manually write a rule for every single subject.
 
 
-# TODO@niv
-We write our data manually. In the future we would be able to import it from csvs/dataframes
+we can either write our data manually, or import it from a csv/dataframe:
 
 ```python
 %%rgxlog
 new lecturer(str, str)
-lecturer("walter", "chemistry")
-lecturer("linus", "operation_systems")
 lecturer("rick", "physics")
+```
 
-new enrolled(str, str)
-enrolled("abigail", "chemistry")
-enrolled("abigail", "operation_systems")
-enrolled("jordan", "chemistry")
-enrolled("gale", "operation_systems")
-enrolled("howard", "chemistry")
-enrolled("howard", "physics")
+```python
+from pandas import DataFrame
+lecturer_df = DataFrame(([["walter","chemistry"], ["linus", "operating_systems"]]))
+session.import_relation_from_df(lecturer_df, relation_name="lecturer")
+```
 
+```bash
+cat enrolled.csv
+```
 
-
-gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
+```python
+session.import_relation_from_csv("enrolled.csv", relation_name="enrolled", delimiter=",")
 ```
 
 ```python
 %%rgxlog
+enrolled("abigail", "chemistry")
+gpa_str = "abigail 100 jordan 80 gale 79 howard 60"
 
 gpa(Student,Grade) <- py_rgx_string(gpa_str, "(\w+).*?(\d+)")->(Student, Grade),enrolled(Student,X)
 
