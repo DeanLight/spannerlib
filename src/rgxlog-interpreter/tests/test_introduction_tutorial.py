@@ -86,7 +86,7 @@ def test_basic_queries() -> None:
          abigail
         """
 
-    run_test(commands2, expected_result2, test_session=session)
+    run_test(commands2, expected_result2, session=session)
 
 
 def test_json_path() -> None:
@@ -173,7 +173,7 @@ def test_remove_rule() -> None:
                Tom    |   Avi
             """
 
-    run_test(commands, expected_result, test_session=session)
+    run_test(commands, expected_result, session=session)
 
 
 def test_string_len() -> None:

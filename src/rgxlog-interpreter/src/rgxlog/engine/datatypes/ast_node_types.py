@@ -30,13 +30,13 @@ def get_term_list_string(term_list: Sequence[DataTypeMapping.term], type_list: S
 class RelationDeclaration:
     """a representation of a relation_declaration statement"""
 
-    def __init__(self, relation_name: str, type_list: Sequence[DataTypes]) -> None:
+    def __init__(self, relation_name: str, type_list: Sequence[DataTypes]):
         """
-        @param relation_name: the name of the relation
-        @param type_list: a list of the types of the terms in the relation's tuples
+        @param relation_name: the name of the relation.
+        @param type_list: a list of the types of the terms in the relation's tuples.
         @raise Exception: if there is invalid term type in term list.
         """
-        self.relation_name: str = relation_name
+        self.relation_name = relation_name
         self.type_list = type_list
 
     def __str__(self) -> str:

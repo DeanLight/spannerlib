@@ -2,12 +2,11 @@
 general utilities that are not specific to any kind of pass, execution engine, etc...
 """
 import functools
-
 import re
 from typing import (Union, Tuple, Set, Dict, List, Optional, Callable, Any, no_type_check, Sequence)
 
 from rgxlog.engine.datatypes.ast_node_types import (Relation, IERelation, Rule)
-from rgxlog.engine.datatypes.primitive_types import DataTypes, Span, DataTypeMapping
+from rgxlog.engine.datatypes.primitive_types import DataTypes, Span
 from rgxlog.engine.state.symbol_table import SymbolTableBase
 
 SPAN_GROUP1 = "start"
@@ -26,6 +25,11 @@ def fixed_point(start: Any, step: Callable, distance: Callable, thresh: int = 0)
     """
     Implementation of a generic fixed point algorithm - an algorithm that takes a step function and runs it until
     some distance is zero or below a threshold.
+
+    @param start: a starting value.
+    @param step: a step function.
+    @param distance: a function that measures distance between the input and the output of the step function.
+    @param thresh: a distance threshold.
     """
     x = start
     y = step(x)
@@ -61,7 +65,9 @@ def position_freevar_pairs(relation: Union[Relation, IERelation]) -> List[Tuple[
 def get_input_free_var_names(relation: Union[Relation, IERelation]) -> Set[Any]:
     """
     @param relation: a relation (either a normal relation or an ie relation).
-    @return: a set of the free variable names used as input terms in the relation.
+    @return: a set of the free variables used as input terms in the relation.
+             if the input is relation it returns it's free variables,
+             if the input is ie-relation it returns it's input free variables.
     """
 
     if isinstance(relation, IERelation):
@@ -73,7 +79,9 @@ def get_input_free_var_names(relation: Union[Relation, IERelation]) -> Set[Any]:
 def get_output_free_var_names(relation: Union[Relation, IERelation]) -> Set[str]:
     """
     @param relation: a relation (either a normal relation or an ie relation).
-    @return: a set of the free variable names used as output terms in the relation.
+    @return: a set of the free variables used as output terms in the relation.
+            if the input is relation it returns it's free variables,
+            if the input is ie-relation it returns it's output free variables.
     """
     return get_free_var_names(relation.get_term_list(), relation.get_type_list())
 

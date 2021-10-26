@@ -1,11 +1,28 @@
 """
-this module contains helper functions and function decorators that are used in lark passes
+this module contains helper functions and function decorators that are used in lark passes.
 """
-from typing import Any, Callable
+from enum import Enum
 
 from lark import Tree as LarkNode
+from typing import Any, Callable, Iterable
 
+from rgxlog.engine.state.graphs import GraphBase, EvalState
 from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
+
+
+class ParseNodeType(Enum):
+    """
+    will be used as parse graph node types.
+    """
+
+    ADD_FACT = "add_fact"
+    REMOVE_FACT = "remove_fact"
+    QUERY = "query"
+    RELATION_DECLARATION = "relation_declaration"
+    RULE = "rule"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 def assert_expected_node_structure_aux(lark_node: Any) -> None:
@@ -72,3 +89,11 @@ def unravel_lark_node(func: Callable) -> Callable:
         return func(visitor, structured_node)
 
     return wrapped_method
+
+
+def get_new_rule_nodes(parse_graph: GraphBase) -> Iterable[GraphBase.NodeIdType]:
+    """
+    Finds all rules that weren't added to the term graph yet.
+    """
+
+    return parse_graph.get_all_nodes_with_attributes(type=ParseNodeType.RULE, state=EvalState.NOT_COMPUTED)

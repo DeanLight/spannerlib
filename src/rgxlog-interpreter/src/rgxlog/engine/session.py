@@ -6,7 +6,7 @@ from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Any, Sequence
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Sequence
 
 import rgxlog
 import rgxlog.engine.engine
@@ -26,7 +26,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
 from rgxlog.engine.state.graphs import TermGraph, NetxStateGraph, GraphBase, TermGraphBase
 from rgxlog.engine.state.symbol_table import SymbolTable, SymbolTableBase
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
-from rgxlog.engine.utils.lark_passes_utils import LarkNode
+from rgxlog.engine.utils.passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
                                OpenIE, KBP, Quote, Sentiment, TrueCase)
@@ -44,6 +44,8 @@ PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, RGX_FROM_FILE, RGX_
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
 logger = logging.getLogger(__name__)
+
+GRAMMAR_FILE_NAME = 'grammar.lark'
 
 
 def _infer_relation_type(row: Iterable) -> Sequence[DataTypes]:
@@ -214,7 +216,7 @@ class Session:
         self._engine = rgxlog.engine.engine.SqliteEngine()
         self._execution = naive_execution
 
-        self._pass_stack = [
+        self._pass_stack: List[Type[GenericPass]] = [
             RemoveTokens,
             FixStrings,
             CheckReservedRelationNames,
@@ -233,12 +235,19 @@ class Session:
             AddRulesToComputationTermGraph
         ]
 
-        grammar_file_path = Path(rgxlog.grammar.__file__).parent
-        grammar_file_name = 'grammar.lark'
-        with open(grammar_file_path / grammar_file_name, 'r') as grammar_file:
-            self._grammar = grammar_file.read()
+        self._grammar = Session._get_grammar_from_file()
 
         self._parser = Lark(self._grammar, parser='lalr')
+
+    @staticmethod
+    def _get_grammar_from_file() -> str:
+        """
+        @return: Grammar from grammar file in string format.
+        """
+
+        grammar_file_path = Path(rgxlog.grammar.__file__).parent
+        with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
+            return grammar_file.read()
 
     def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
         """
@@ -302,14 +311,14 @@ class Session:
         """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    def get_pass_stack(self) -> List[str]:
+    def get_pass_stack(self) -> List[Type[GenericPass]]:
         """
         @return: the current pass stack.
         """
 
-        return [pass_.__name__ for pass_ in self._pass_stack]
+        return self._pass_stack.copy()
 
-    def set_pass_stack(self, user_stack: List[Type[GenericPass]]) -> List[str]:
+    def set_pass_stack(self, user_stack: List[Type[GenericPass]]) -> List[Type[GenericPass]]:
         """
         Sets a new pass stack instead of the current one.
 
@@ -360,10 +369,6 @@ class Session:
         else:
             self._term_graph.remove_rules_with_head(rule_head)
             self._remove_rule_relation_from_symbols_and_engine(rule_head)
-
-    @staticmethod
-    def _unknown_task_type() -> str:
-        return 'unknown task type'
 
     def _add_imported_relation_to_engine(self, relation_table: Iterable, relation_name: str, relation_types: Sequence[DataTypes]) -> None:
         symbol_table = self._symbol_table
@@ -505,21 +510,13 @@ if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
     my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-    my_commands = """
-            new A(int, int)
-            new B(int, int, int)
-            B(1, 1, 1)
-            B(1, 2, 1)
-            B(2, 3, 1)
-            A(1, 2)
-            A(1, 1)
-            C(X, Y) <- A(X, Y), B(Y, X, Z)
-            ?C(X,Y)
+    my_commands = commands = """
+            new B(int, int)
+            B(1, 1)
+            B(1, 2)
+            B(2, 3)
+            A(X, Y) <- B(X, Y)
+            ?A(X, Y)
         """
-
-    """
-    relations = [a(X,Y), b(Y)] ->
-    dict = {X:[(a(X,Y),0)], Y:[(a(X,Y),1),(b(Y),0)]
-    """
 
     my_session.run_commands(my_commands)

@@ -30,16 +30,17 @@ from lark import Transformer, Token
 from lark import Tree as LarkNode
 from lark.visitors import Interpreter, Visitor_Recursive, Visitor
 from pathlib import Path
-from typing import List, no_type_check, Set, Sequence, Any
+from typing import no_type_check, Set, Sequence, Any
 
 from rgxlog.engine.datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule,
                                                     IERelation, RelationDeclaration, Relation)
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes, DataTypeMapping
 from rgxlog.engine.engine import RESERVED_RELATION_PREFIX
 from rgxlog.engine.state.graphs import NetxStateGraph
+from rgxlog.engine.state.symbol_table import SymbolTableBase
 from rgxlog.engine.utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
                                                fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
-from rgxlog.engine.utils.lark_passes_utils import assert_expected_node_structure, unravel_lark_node
+from rgxlog.engine.utils.passes_utils import assert_expected_node_structure, unravel_lark_node, ParseNodeType
 
 
 def get_tree(**kwargs: Any) -> Any:
@@ -371,9 +372,9 @@ class CheckDefinedReferencedVariables(InterpreterPass):
     checks whether each variable reference refers to a defined variable.
     """
 
-    def __init__(self, **kw: Any) -> None:
+    def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
         super().__init__()
-        self.symbol_table = kw['symbol_table']
+        self.symbol_table = symbol_table
 
     def _assert_var_defined(self, var_name: str) -> None:
         """
@@ -447,9 +448,9 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     Also checks if the relation reference uses the correct arity.
     """
 
-    def __init__(self, **kw: Any) -> None:
+    def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
         super().__init__()
-        self.symbol_table = kw['symbol_table']
+        self.symbol_table = symbol_table
 
     def _assert_relation_exists_and_correct_arity(self, relation: Relation) -> None:
         """
@@ -516,9 +517,9 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     check will be performed.
     """
 
-    def __init__(self, **kw: Any) -> None:
+    def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
         super().__init__()
-        self.symbol_table = kw['symbol_table']
+        self.symbol_table = symbol_table
 
     @unravel_lark_node
     def rule(self, rule: Rule) -> None:
@@ -676,9 +677,9 @@ class TypeCheckAssignments(InterpreterPass):
     in the current version of lark, this type checking is only required for read assignments.
     """
 
-    def __init__(self, **kw: Any) -> None:
+    def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
         super().__init__()
-        self.symbol_table = kw['symbol_table']
+        self.symbol_table = symbol_table
 
     @unravel_lark_node
     def read_assignment(self, assignment: ReadAssignment) -> None:
@@ -715,9 +716,9 @@ class TypeCheckRelations(InterpreterPass):
     C(X) <- A(X), B(X) # error since X is expected to be both an int and a string.
     """
 
-    def __init__(self, **kw: Any):
+    def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
         super().__init__()
-        self.symbol_table = kw['symbol_table']
+        self.symbol_table = symbol_table
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact) -> None:
@@ -768,9 +769,9 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
     this pass assumes that type checking was already performed on its input.
     """
 
-    def __init__(self, **kw: Any) -> None:
+    def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
         super().__init__()
-        self.symbol_table = kw['symbol_table']
+        self.symbol_table = symbol_table
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration) -> None:
@@ -799,15 +800,15 @@ class ResolveVariablesReferences(InterpreterPass):
     also replaces DataTypes.var_name types with the real type of the variable.
     """
 
-    def __init__(self, **kw: Any) -> None:
+    def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
         super().__init__()
-        self.symbol_table = kw['symbol_table']
+        self.symbol_table = symbol_table
 
     @unravel_lark_node
     def assignment(self, assignment: Assignment) -> None:
         # if the assigned value is a variable, replace it with its literal value
         if assignment.value_type is DataTypes.var_name:
-            assigned_var_name = assignment.value
+            assigned_var_name = assignment.var_name
             assignment.value = self.symbol_table.get_variable_value(assigned_var_name)
             assignment.value_type = self.symbol_table.get_variable_type(assigned_var_name)
 
@@ -881,9 +882,9 @@ class ExecuteAssignments(InterpreterPass):
     are guaranteed to be literals.
     """
 
-    def __init__(self, **kw: Any) -> None:
+    def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
         super().__init__()
-        self.symbol_table = kw['symbol_table']
+        self.symbol_table = symbol_table
 
     @unravel_lark_node
     def assignment(self, assignment: Assignment) -> None:
@@ -926,11 +927,11 @@ class AddStatementsToNetxParseGraph(InterpreterPass):
      for flexibility for optimization in the future.
     """
 
-    def __init__(self, **kw: Any) -> None:
+    def __init__(self, parse_graph: NetxStateGraph, **kw: Any) -> None:
         super().__init__()
-        self.parse_graph: NetxStateGraph = kw['parse_graph']
+        self.parse_graph = parse_graph
 
-    def _add_statement_to_parse_graph(self, statement_type: str, statement_value: Any) -> None:
+    def _add_statement_to_parse_graph(self, statement_type: ParseNodeType, statement_value: Any) -> None:
         """
         A utility function that adds a statement to the parse graph, meaning it adds a node that
         represents the statement to the parse graph, then attach the node to the parse graph's root.
@@ -945,20 +946,20 @@ class AddStatementsToNetxParseGraph(InterpreterPass):
 
     @unravel_lark_node
     def add_fact(self, fact: AddFact) -> None:
-        self._add_statement_to_parse_graph("add_fact", fact)
+        self._add_statement_to_parse_graph(ParseNodeType.ADD_FACT, fact)
 
     @unravel_lark_node
     def remove_fact(self, fact: RemoveFact) -> None:
-        self._add_statement_to_parse_graph("remove_fact", fact)
+        self._add_statement_to_parse_graph(ParseNodeType.REMOVE_FACT, fact)
 
     @unravel_lark_node
     def query(self, query: Query) -> None:
-        self._add_statement_to_parse_graph("query", query)
+        self._add_statement_to_parse_graph(ParseNodeType.QUERY, query)
 
     @unravel_lark_node
     def relation_declaration(self, relation_decl: RelationDeclaration) -> None:
-        self._add_statement_to_parse_graph("relation_declaration", relation_decl)
+        self._add_statement_to_parse_graph(ParseNodeType.RELATION_DECLARATION, relation_decl)
 
     @unravel_lark_node
     def rule(self, rule: Rule) -> None:
-        self._add_statement_to_parse_graph("rule", rule)
+        self._add_statement_to_parse_graph(ParseNodeType.RULE, rule)

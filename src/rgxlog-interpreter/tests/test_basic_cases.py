@@ -353,7 +353,7 @@ def test_remove_rule() -> None:
 
     session.remove_rule("A(X, Y) <- C(X, Y)")
 
-    run_test("?A(X, Y)", expected_result, test_session=session)
+    run_test("?A(X, Y)", expected_result, session=session)
 
 
 def test_select_and_join() -> None:

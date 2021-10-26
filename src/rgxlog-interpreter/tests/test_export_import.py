@@ -39,7 +39,7 @@ def test_import_csv1(im_ex_session: Session) -> None:
 
         im_ex_session.import_relation_from_csv(example_relation_csv, relation_name="csv_rel")
         query = "?csv_rel(X,Y,Z)"
-        run_test(query, expected_result_string, test_session=im_ex_session)
+        run_test(query, expected_result_string, session=im_ex_session)
 
 
 def test_import_csv2(im_ex_session: Session) -> None:
@@ -64,7 +64,7 @@ def test_import_csv2(im_ex_session: Session) -> None:
                                     """
 
         query = "?csv_rel2(X)"
-        run_test(query, expected_result_string, test_session=im_ex_session)
+        run_test(query, expected_result_string, session=im_ex_session)
 
 
 def test_import_df(im_ex_session: Session) -> None:
@@ -80,7 +80,7 @@ def test_import_df(im_ex_session: Session) -> None:
           a  | [1, 2)"""
 
     im_ex_session.import_relation_from_df(df, "df_rel")
-    run_test(query, expected_result_string, test_session=im_ex_session)
+    run_test(query, expected_result_string, session=im_ex_session)
 
 
 def test_commands_into_csv_basic(im_ex_session: Session) -> None:
