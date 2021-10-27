@@ -16,7 +16,7 @@ jupyter:
 # Advanced Spanner Workbench Introduction
 
 
-In this tutorial you will some advanced features of spanner workbench:
+In this tutorial you will learn some advanced features of spanner workbench:
 * [rgxlog with native python](#native_python)
 * [changing the default magic_session](#changing_session)
 * [dymamic rules and queries](#dynmaic_calls)
@@ -263,7 +263,7 @@ There are five kinds of passes:
 ## Optimization Passes
 
 
-There are three kinds of optimization passes:
+There are two kinds of optimization passes:
 1. The first one, manipulates rules before they are added to the `term graph`.
 2. The second one, manipulates the structure of the `term graph`.
 
