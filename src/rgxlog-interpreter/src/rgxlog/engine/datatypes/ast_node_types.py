@@ -5,12 +5,12 @@ that statement in the abstract syntax tree. classes representations for relation
 these classes are useful as they represent a statement with a single instance, instead of a lark tree,
 thus simplifying the code required for semantic checks and manipulations of the statement.
 """
-from typing import List, Any, Tuple, Set
+from typing import List, Tuple, Set, Union, Sequence
 
-from rgxlog.engine.datatypes.primitive_types import DataTypes
+from rgxlog.engine.datatypes.primitive_types import DataTypes, DataTypeMapping
 
 
-def get_term_list_string(term_list, type_list):
+def get_term_list_string(term_list: Sequence[DataTypeMapping.term], type_list: Sequence[DataTypes]) -> str:
     """
     returns a string representation of the term list.
     quotes are added to string terms so they will not be confused with variables.
@@ -30,16 +30,16 @@ def get_term_list_string(term_list, type_list):
 class RelationDeclaration:
     """a representation of a relation_declaration statement"""
 
-    def __init__(self, relation_name, type_list):
+    def __init__(self, relation_name: str, type_list: Sequence[DataTypes]):
         """
-        @param relation_name: the name of the relation
-        @param type_list: a list of the types of the terms in the relation's tuples
+        @param relation_name: the name of the relation.
+        @param type_list: a list of the types of the terms in the relation's tuples.
         @raise Exception: if there is invalid term type in term list.
         """
-        self.relation_name: str = relation_name
-        self.type_list: List[DataTypes] = type_list
+        self.relation_name = relation_name
+        self.type_list = type_list
 
-    def __str__(self):
+    def __str__(self) -> str:
         type_strings = []
         for term_type in self.type_list:
             if term_type is DataTypes.string:
@@ -55,14 +55,14 @@ class RelationDeclaration:
         relation_declaration_string = f"{self.relation_name}({type_list_string})"
         return relation_declaration_string
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
 
 class Relation:
     """a representation of a normal relation"""
 
-    def __init__(self, relation_name: str, term_list: List[Any], type_list: List[DataTypes]):
+    def __init__(self, relation_name: str, term_list: Sequence[DataTypeMapping.term], type_list: Sequence[DataTypes]) -> None:
         """
         @param relation_name: the name of the relation
         @param term_list: a list of the relation terms.
@@ -76,21 +76,21 @@ class Relation:
         self.term_list = term_list
         self.type_list = type_list
 
-    def __str__(self):
+    def __str__(self) -> str:
         term_list_string = get_term_list_string(self.term_list, self.type_list)
         relation_string = f"{self.relation_name}({term_list_string})"
         return relation_string
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def get_term_list(self):
+    def get_term_list(self) -> Sequence[DataTypeMapping.term]:
         return self.term_list
 
-    def get_type_list(self):
+    def get_type_list(self) -> Sequence[DataTypes]:
         return self.type_list
 
-    def get_select_cols_values_and_types(self):
+    def get_select_cols_values_and_types(self) -> set:
         col_value_type = set()
         for i, (var_type, value) in enumerate(zip(self.type_list, self.term_list)):
             if var_type != DataTypes.free_var_name:
@@ -122,7 +122,8 @@ class IERelation:
     calls, and matches the values inside the tuples to free variables.
     """
 
-    def __init__(self, relation_name, input_term_list: List, input_type_list: List[DataTypes], output_term_list: List, output_type_list: List[DataTypes]):
+    def __init__(self, relation_name: str, input_term_list: List[DataTypeMapping.term], input_type_list: List[DataTypes],
+                 output_term_list: List, output_type_list: List[DataTypes]):
         """
         @param relation_name: the name of the information extraction relation.
         @param input_term_list: a list of the input terms for the ie function.
@@ -145,19 +146,19 @@ class IERelation:
         self.input_type_list = input_type_list
         self.output_type_list = output_type_list
 
-    def __str__(self):
+    def __str__(self) -> str:
         input_term_list_string = get_term_list_string(self.input_term_list, self.input_type_list)
         output_term_list_string = get_term_list_string(self.output_term_list, self.output_type_list)
         ie_relation_string = f"{self.relation_name}({input_term_list_string}) -> ({output_term_list_string})"
         return ie_relation_string
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def get_term_list(self):
+    def get_term_list(self) -> List[DataTypeMapping.term]:
         return self.output_term_list
 
-    def get_type_list(self):
+    def get_type_list(self) -> List[DataTypes]:
         return self.output_type_list
 
     def has_same_terms_and_types(self, other: Relation) -> bool:
@@ -174,7 +175,7 @@ class AddFact(Relation):
     inherits from relation as a fact can be defined by a relation.
     """
 
-    def __init__(self, relation_name, term_list, type_list):
+    def __init__(self, relation_name: str, term_list: List[DataTypeMapping.term], type_list: Sequence[DataTypes]) -> None:
         """
         @see documentation of Relation's __init__.
         """
@@ -187,7 +188,7 @@ class RemoveFact(Relation):
     inherits from relation as a fact can be defined by a relation.
     """
 
-    def __init__(self, relation_name, term_list, type_list):
+    def __init__(self, relation_name: str, term_list: List[DataTypeMapping.term], type_list: List[DataTypes]) -> None:
         """
         @see documentation of Relation's __init__.
         """
@@ -200,7 +201,7 @@ class Query(Relation):
     inherits from relation as a query can be defined by a relation
     """
 
-    def __init__(self, relation_name, term_list, type_list):
+    def __init__(self, relation_name: str, term_list: Sequence[DataTypeMapping.term], type_list: List[DataTypes]) -> None:
         """
         @see documentation of Relation's __init__.
         """
@@ -212,7 +213,7 @@ class Rule:
     a representation of a rule statement.
     """
 
-    def __init__(self, head_relation: Relation, body_relation_list, body_relation_type_list):
+    def __init__(self, head_relation: Relation, body_relation_list: List[Union[Relation, IERelation]], body_relation_type_list: List[str]):
         """
         @param head_relation: the rule head, which is represented by a single relation.
         @param body_relation_list: a list of the rule body relations.
@@ -222,13 +223,13 @@ class Rule:
         self.body_relation_list = body_relation_list
         self.body_relation_type_list = body_relation_type_list
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.head_relation} <- {', '.join(map(str, self.body_relation_list))}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def get_relations_by_type(self) -> Tuple[Set[Relation], Set[IERelation]]:
+    def get_relations_by_type(self) -> Tuple[Set, Set]:
         relations, ie_relations = set(), set()
         for rel, rel_type in zip(self.body_relation_list, self.body_relation_type_list):
             if rel_type == "relation":
@@ -244,7 +245,7 @@ class Assignment:
     a representation of an assignment statement.
     """
 
-    def __init__(self, var_name, value, value_type):
+    def __init__(self, var_name: str, value: DataTypeMapping.term, value_type: DataTypes) -> None:
         """
         @param var_name: the variable name to be assigned a value.
         @param value: the assigned value.
@@ -254,7 +255,7 @@ class Assignment:
         self.value = value
         self.value_type = value_type
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.value_type is DataTypes.string:
             # add quotes to a literal string value
             value_string = f'"{self.value}"'
@@ -262,7 +263,7 @@ class Assignment:
             value_string = str(self.value)
         return f'{self.var_name} = {value_string}'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
 
@@ -271,21 +272,21 @@ class ReadAssignment:
     a representation of a read_assignment statement.
     """
 
-    def __init__(self, var_name, read_arg, read_arg_type):
+    def __init__(self, var_name: str, read_arg: str, read_arg_type: type) -> None:
         """
         @param var_name: the variable name to be assigned a value.
-        @param read_arg: the argument that is passed to the read() function (e.g. "some_file" in 's = read("some_file")').
+        @param read_arg: the argument that is passed to the read() function (e.g. "some_file" in `s = read("some_file")`).
         @param read_arg_type: the type of the argument that is passed to the read function.
         """
         if read_arg_type not in [DataTypes.string, DataTypes.var_name]:
-            raise Exception(
+            raise TypeError(
                 f'the argument that was passed to the read() function has an unexpected type: {read_arg_type}')
 
         self.var_name = var_name
         self.read_arg = read_arg
         self.read_arg_type = read_arg_type
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.read_arg_type is DataTypes.string:
             # add quotes to a literal string argument
             read_arg_string = f'"{self.read_arg}"'
@@ -293,5 +294,5 @@ class ReadAssignment:
             read_arg_string = str(self.read_arg)
         return f'{self.var_name} = read({read_arg_string})'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

@@ -1,4 +1,4 @@
-from typing import Iterable, Callable, Union, Tuple, List
+from typing import Iterable, Callable, Union, Tuple, List, Sequence, Any
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
@@ -9,8 +9,8 @@ class IEFunction:
     needed for using a single information extraction function
     """
 
-    def __init__(self, ie_function_def: Callable, in_types: Iterable[DataTypes],
-                 out_types: Union[List[DataTypes], Callable[[int], Iterable[DataTypes]]]):
+    def __init__(self, ie_function_def: Callable, in_types: Sequence[DataTypes],
+                 out_types: Union[List[DataTypes], Callable[[int], Sequence[DataTypes]]]):
         """
         @param ie_function_def : the user defined ie function implementation.
         @param in_types        : iterable of the input types to the function.
@@ -20,7 +20,7 @@ class IEFunction:
         self.in_types = in_types
         self.out_types = out_types
 
-    def ie_function(self, *args) -> Iterable[Iterable[Union[str, int, Tuple[int, int]]]]:   # Tuple[int, int] represents a Span
+    def ie_function(self, *args: Any) -> Iterable[Iterable[Union[str, int, Tuple[int, int]]]]:  # Tuple[int, int] represents a Span
         """
         The actual information extraction function that will be used
         the function must return a list of lists/tuples that represents the results, another option is to yield the
@@ -34,14 +34,14 @@ class IEFunction:
         output = self.ie_function_def(*args)
         return output
 
-    def get_input_types(self) -> Iterable[DataTypes]:
+    def get_input_types(self) -> Sequence[DataTypes]:
         """
         @return: an iterable of the input types to the function
         This function must be defined as it is used for type checking in semantic passes and execution.
         """
         return self.in_types
 
-    def get_output_types(self, output_arity: int) -> Iterable[DataTypes]:
+    def get_output_types(self, output_arity: int) -> Sequence[DataTypes]:
         """
         @return: given an expected output arity returns an iterable of the output types to the function.
         if the ie function cannot return an output of length output_arity, should return None.
