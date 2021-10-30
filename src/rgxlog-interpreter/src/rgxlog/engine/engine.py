@@ -229,7 +229,7 @@ class RgxlogEngineBase(ABC):
         @param src_rel: the relation to copy from.
         @param output_relation: if this is None, create a unique name for the output relation.
             otherwise, this will be the name of the output relation.
-        @return: tje copied relation.
+        @return: the copied relation.
         """
         pass
 
@@ -289,7 +289,9 @@ class SqliteEngine(RgxlogEngineBase):
     # ~~ simple logic methods ~~
     def add_fact(self, fact: AddFact) -> None:
         """
-        Add a row into an existing table.
+        @param fact: the fact to be added
+
+        Add a row into an existing sql table, based on `fact`'s terms and types
         """
         num_types = len(fact.type_list)
         col_names = [f"{self._get_col_name(i)}" for i in range(num_types)]
@@ -408,10 +410,11 @@ class SqliteEngine(RgxlogEngineBase):
             return
 
         # note: sqlite can guess datatypes. if this causes bugs, use `{self._datatype_to_sql_type(relation_type)}`.
-        col_names = [f"{self._get_col_name(i)}" for i in range(
-            len(relation_decl.type_list))]
+        col_names = [f"{self._get_col_name(i)}" for i in range(len(relation_decl.type_list))]
+
         template_dict = {
             "rel_name": relation_decl.relation_name, "col_names": col_names}
+
         sql_template = 'CREATE TABLE {{rel_name}} ({{col_names | join(", ")}})'
 
         self._run_sql_from_jinja_template(sql_template, template_dict)
@@ -488,7 +491,7 @@ class SqliteEngine(RgxlogEngineBase):
             """
             # get variables in var_dict that repeat - used below to add constraints
             src_relation_var_dict = get_free_var_to_relations_dict({
-                                                                   src_relation})
+                src_relation})
             repeating_vars_in_relation = [(free_var, pairs) for (
                 free_var, pairs) in src_relation_var_dict.items() if (len(pairs) > 1)]
 
@@ -651,8 +654,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         def _create_new_relation_for_project_result() -> Relation:
             # get the indexes to project from (in `src_relation`) based on `var_dict`
-            var_dict: Dict[str, List[Tuple[Union[Relation, IERelation], int]]
-                           ] = get_free_var_to_relations_dict({src_relation})
+            var_dict: Dict[str, List[Tuple[Union[Relation, IERelation], int]]] = get_free_var_to_relations_dict({src_relation})
 
             for var in project_vars:
                 var_index_in_src = (var_dict[var][0][1])
@@ -706,8 +708,7 @@ class SqliteEngine(RgxlogEngineBase):
 
             for relation in relations:
                 # we assume the same order in the source and the destination, so no need to use 'AS'
-                selection_list = [self._get_col_name(
-                    col_index) for col_index in range(len(united_relation.term_list))]
+                selection_list = [self._get_col_name(col_index) for col_index in range(len(united_relation.term_list))]
 
                 # render a jinja template into an SQL select
                 relation_string_template = '{{SELECT}} {{ selected_cols | join(", ") }} FROM {{rel_name}}'
@@ -772,7 +773,7 @@ class SqliteEngine(RgxlogEngineBase):
         @return: a normal relation that contains all of the resulting tuples in the rgxlog engine.
         """
 
-        def _looks_like_span(checked_value):
+        def _looks_like_span(checked_value: Any) -> bool:
             """
             checks whether `term` is a tuple of 2 numbers
             @param checked_value: the value to check
@@ -787,7 +788,7 @@ class SqliteEngine(RgxlogEngineBase):
                     return False
             return False
 
-        def _get_all_ie_function_inputs():
+        def _get_all_ie_function_inputs() -> List[tuple]:
             # define the ie input relation
             if bounding_relation is None:
                 # special case where the ie relation is the first rule body relation
@@ -862,11 +863,11 @@ class SqliteEngine(RgxlogEngineBase):
         return output_relation
 
     # ~~ util methods ~~
-    def _run_sql_from_jinja_template(self, sql_template: str, template_dict: Optional[dict] = None):
+    def _run_sql_from_jinja_template(self, sql_template: str, template_dict: Optional[dict] = None) -> None:
         if not template_dict:
             template_dict = {}
-        sql_command = Template(strip_lines(sql_template)
-                               ).render(**template_dict)
+
+        sql_command = Template(strip_lines(sql_template)).render(**template_dict)
         self._run_sql(sql_command)
 
     def _run_sql(self, command: str, command_args: Optional[List] = None, do_commit: bool = False) -> List:
@@ -885,7 +886,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         return self.sql_cursor.fetchall()
 
-    def _create_unique_relation(self, arity, prefix=""):
+    def _create_unique_relation(self, arity: int, prefix: str = ""):
         """
         Declares a new relation with the requested arity in SQL, the relation will have a unique name.
 
@@ -1035,11 +1036,11 @@ if __name__ == "__main__":
 
     # add fact
     my_fact = AddFact("yoyo", [8, "hihi"], [
-                      DataTypes.integer, DataTypes.string])
+        DataTypes.integer, DataTypes.string])
     my_engine.add_fact(my_fact)
 
     my_query = Query("yoyo", ["X", "Y"], [
-                     DataTypes.free_var_name, DataTypes.free_var_name])
+        DataTypes.free_var_name, DataTypes.free_var_name])
     print(my_engine.query(my_query))
 
     print(my_engine.get_table_len("yoyo"))
