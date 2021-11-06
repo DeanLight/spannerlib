@@ -2,7 +2,7 @@ from rgxlog.engine.utils.general_utils import QUERY_RESULT_PREFIX
 from tests.utils import run_test
 
 
-def test_recursive():
+def test_recursive() -> None:
     commands = '''
             new parent(str, str)
             parent("Liam", "Noah")
@@ -40,7 +40,7 @@ def test_recursive():
     run_test(commands, expected_result)
 
 
-def test_mutually_recursive_basic():
+def test_mutually_recursive_basic() -> None:
     commands = """
             new C(int)
             C(1)

@@ -1,12 +1,31 @@
 """
-this module contains helper functions and function decorators that are used in lark passes
+this module contains helper functions and function decorators that are used in lark passes.
 """
-from lark import Tree as LarkNode
+from enum import Enum
 
+from lark import Tree as LarkNode
+from typing import Any, Callable, Iterable
+
+from rgxlog.engine.state.graphs import GraphBase, EvalState
 from rgxlog.engine.utils.expected_grammar import rgxlog_expected_children_names_lists
 
 
-def assert_expected_node_structure_aux(lark_node):
+class ParseNodeType(Enum):
+    """
+    will be used as parse graph node types.
+    """
+
+    ADD_FACT = "add_fact"
+    REMOVE_FACT = "remove_fact"
+    QUERY = "query"
+    RELATION_DECLARATION = "relation_declaration"
+    RULE = "rule"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+def assert_expected_node_structure_aux(lark_node: Any) -> None:
     """
     Checks whether a lark node has a structure that the lark passes expect.
 
@@ -37,7 +56,7 @@ def assert_expected_node_structure_aux(lark_node):
             assert_expected_node_structure_aux(child)
 
 
-def assert_expected_node_structure(func):
+def assert_expected_node_structure(func: Callable) -> Callable:
     """
     Use this decorator to check whether a method's input lark node has a structure that is expected by the lark passes
     the lark node and its children are checked recursively
@@ -49,15 +68,14 @@ def assert_expected_node_structure(func):
     node has one of those structures.
     """
 
-    def wrapped_method(visitor, lark_node):
+    def wrapped_method(visitor: Any, lark_node: Any) -> Any:
         assert_expected_node_structure_aux(lark_node)
-        ret = func(visitor, lark_node)
-        return ret
+        return func(visitor, lark_node)
 
     return wrapped_method
 
 
-def unravel_lark_node(func):
+def unravel_lark_node(func: Callable) -> Callable:
     """
     Even after converting a lark tree to use structured nodes, the methods in lark passes will still receive a lark
     node as an input, and the child of said lark node will be the actual structured node that the method will work
@@ -66,8 +84,16 @@ def unravel_lark_node(func):
     use this decorator to replace a method's lark node input with its child structured node.
     """
 
-    def wrapped_method(visitor, lark_node):
+    def wrapped_method(visitor: Any, lark_node: LarkNode) -> Any:
         structured_node = lark_node.children[0]
         return func(visitor, structured_node)
 
     return wrapped_method
+
+
+def get_new_rule_nodes(parse_graph: GraphBase) -> Iterable[GraphBase.NodeIdType]:
+    """
+    Finds all rules that weren't added to the term graph yet.
+    """
+
+    return parse_graph.get_all_nodes_with_attributes(type=ParseNodeType.RULE, state=EvalState.NOT_COMPUTED)

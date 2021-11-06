@@ -6,12 +6,12 @@ from lark.lark import Lark
 from pandas import DataFrame
 from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Sequence
 
 import rgxlog
 import rgxlog.engine.engine
 from rgxlog.engine.datatypes.ast_node_types import AddFact, RelationDeclaration
-from rgxlog.engine.datatypes.primitive_types import Span, DataTypes
+from rgxlog.engine.datatypes.primitive_types import Span, DataTypes, DataTypeMapping
 from rgxlog.engine.engine import FALSE_VALUE, TRUE_VALUE
 from rgxlog.engine.execution import (Query, FREE_VAR_PREFIX, naive_execution)
 from rgxlog.engine.passes.adding_inference_rules_to_computation_graph import AddRulesToComputationTermGraph
@@ -26,7 +26,7 @@ from rgxlog.engine.passes.lark_passes import (RemoveTokens, FixStrings, CheckRes
 from rgxlog.engine.state.graphs import TermGraph, NetxStateGraph, GraphBase, TermGraphBase
 from rgxlog.engine.state.symbol_table import SymbolTable, SymbolTableBase
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
-from rgxlog.engine.utils.lark_passes_utils import LarkNode
+from rgxlog.engine.utils.passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
 from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
                                OpenIE, KBP, Quote, Sentiment, TrueCase)
@@ -45,8 +45,10 @@ STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
 logger = logging.getLogger(__name__)
 
+GRAMMAR_FILE_NAME = 'grammar.lark'
 
-def _infer_relation_type(row: Iterable):
+
+def _infer_relation_type(row: Iterable) -> Sequence[DataTypes]:
     """
     Guess the relation type based on the data.
     We support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`).
@@ -70,27 +72,33 @@ def _infer_relation_type(row: Iterable):
     return relation_types
 
 
-def _verify_relation_types(row, expected_types):
+def _verify_relation_types(row: Iterable, expected_types: Iterable[DataTypes]) -> None:
     if _infer_relation_type(row) != expected_types:
         raise Exception(f"row:\n{str(row)}\ndoes not match the relation's types:\n{str(expected_types)}")
 
 
-def _text_to_typed_data(line, relation_types):
-    transformed_line = []
-    for str_or_object, rel_type in zip(line, relation_types):
+def _text_to_typed_data(term_list: Sequence[DataTypeMapping.term], relation_types: Sequence[DataTypes]) -> List[DataTypeMapping.term]:
+    transformed_term_list: List[DataTypeMapping.term] = []
+    for str_or_object, rel_type in zip(term_list, relation_types):
         if rel_type == DataTypes.span:
             if isinstance(str_or_object, Span):
-                transformed_line.append(str_or_object)
+                transformed_term_list.append(str_or_object)
             else:
+                assert isinstance(str_or_object, str), "a span can only be a Span object or a string"
                 transformed_span = string_to_span(str_or_object)
-                transformed_line.append(transformed_span)
+                if transformed_span is None:
+                    raise TypeError(f"expected a Span, found this instead: {str_or_object}")
+                transformed_term_list.append(transformed_span)
+
         elif rel_type == DataTypes.integer:
-            transformed_line.append(int(str_or_object))
+            if isinstance(str_or_object, Span):
+                raise TypeError(f"expected an int, found Span instead: {str_or_object}")
+            transformed_term_list.append(int(str_or_object))
         else:
             assert rel_type == DataTypes.string, f"illegal type given: {rel_type}"
-            transformed_line.append(str_or_object)
+            transformed_term_list.append(str_or_object)
 
-    return transformed_line
+    return transformed_term_list
 
 
 def format_query_results(query: Query, query_results: List) -> Union[DataFrame, List]:
@@ -128,7 +136,7 @@ def format_query_results(query: Query, query_results: List) -> Union[DataFrame, 
         return DataFrame(data=results_matrix, columns=query_free_vars)
 
 
-def tabulate_result(result: Union[DataFrame, List]):
+def tabulate_result(result: Union[DataFrame, List]) -> str:
     """
     Organizes a query result in a table
     for example:
@@ -208,7 +216,7 @@ class Session:
         self._engine = rgxlog.engine.engine.SqliteEngine()
         self._execution = naive_execution
 
-        self._pass_stack = [
+        self._pass_stack: List[Type[GenericPass]] = [
             RemoveTokens,
             FixStrings,
             CheckReservedRelationNames,
@@ -227,12 +235,19 @@ class Session:
             AddRulesToComputationTermGraph
         ]
 
-        grammar_file_path = Path(rgxlog.grammar.__file__).parent
-        grammar_file_name = 'grammar.lark'
-        with open(grammar_file_path / grammar_file_name, 'r') as grammar_file:
-            self._grammar = grammar_file.read()
+        self._grammar = Session._get_grammar_from_file()
 
         self._parser = Lark(self._grammar, parser='lalr')
+
+    @staticmethod
+    def _get_grammar_from_file() -> str:
+        """
+        @return: Grammar from grammar file in string format.
+        """
+
+        grammar_file_path = Path(rgxlog.grammar.__file__).parent
+        with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
+            return grammar_file.read()
 
     def _run_passes(self, lark_tree: LarkNode, pass_list: list) -> None:
         """
@@ -251,10 +266,10 @@ class Session:
                 lark_tree = new_tree
                 logger.debug(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "\n".join([repr(self._symbol_table), repr(self._parse_graph)])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
 
     @no_type_check
@@ -287,7 +302,8 @@ class Session:
         else:
             return query_results
 
-    def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes], out_rel) -> None:
+    def register(self, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes],
+                 out_rel: Union[List[DataTypes], Callable[[int], Sequence[DataTypes]]]) -> None:
         """
         Registers an ie function.
 
@@ -295,14 +311,14 @@ class Session:
         """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-    def get_pass_stack(self) -> List[str]:
+    def get_pass_stack(self) -> List[Type[GenericPass]]:
         """
         @return: the current pass stack.
         """
 
-        return [pass_.__name__ for pass_ in self._pass_stack]
+        return self._pass_stack.copy()
 
-    def set_pass_stack(self, user_stack: List[Type[GenericPass]]):
+    def set_pass_stack(self, user_stack: List[Type[GenericPass]]) -> List[Type[GenericPass]]:
         """
         Sets a new pass stack instead of the current one.
 
@@ -328,7 +344,7 @@ class Session:
         self._symbol_table.remove_rule_relation(relation_name)
         self._engine.remove_table(relation_name)
 
-    def remove_rule(self, rule: str):
+    def remove_rule(self, rule: str) -> None:
         """
         Remove a rule from the rgxlog's engine.
 
@@ -339,7 +355,7 @@ class Session:
             relation_name = rule_to_relation_name(rule)
             self._remove_rule_relation_from_symbols_and_engine(relation_name)
 
-    def remove_all_rules(self, rule_head: Optional[str] = None):
+    def remove_all_rules(self, rule_head: Optional[str] = None) -> None:
         """
         Removes all rules from the engine.
 
@@ -354,11 +370,7 @@ class Session:
             self._term_graph.remove_rules_with_head(rule_head)
             self._remove_rule_relation_from_symbols_and_engine(rule_head)
 
-    @staticmethod
-    def _unknown_task_type():
-        return 'unknown task type'
-
-    def _add_imported_relation_to_engine(self, relation_table, relation_name, relation_types):
+    def _add_imported_relation_to_engine(self, relation_table: Iterable, relation_name: str, relation_types: Sequence[DataTypes]) -> None:
         symbol_table = self._symbol_table
         engine = self._engine
         # first make sure the types are legal, then we add them to the engine (to make sure
@@ -378,7 +390,7 @@ class Session:
         for fact in facts:
             engine.add_fact(fact)
 
-    def import_relation_from_csv(self, csv_file_name, relation_name=None, delimiter=CSV_DELIMITER):
+    def import_relation_from_csv(self, csv_file_name: Path, relation_name: str = None, delimiter: str = CSV_DELIMITER) -> None:
         if not Path(csv_file_name).is_file():
             raise IOError("csv file does not exist")
 
@@ -398,7 +410,7 @@ class Session:
 
             self._add_imported_relation_to_engine(reader, relation_name, relation_types)
 
-    def import_relation_from_df(self, relation_df: DataFrame, relation_name):
+    def import_relation_from_df(self, relation_df: DataFrame, relation_name: str) -> None:
 
         data = relation_df.values.tolist()
 
@@ -412,7 +424,7 @@ class Session:
 
         self._add_imported_relation_to_engine(data, relation_name, relation_types)
 
-    def send_commands_result_into_csv(self, commands: str, csv_file_name: str, delimiter: str = CSV_DELIMITER) -> None:
+    def send_commands_result_into_csv(self, commands: str, csv_file_name: Path, delimiter: str = CSV_DELIMITER) -> None:
         """
         run commands as usual and output their formatted results into a csv file (the commands should contain a query)
         @param commands: the commands to run
@@ -446,28 +458,28 @@ class Session:
 
         return format_query_results(*commands_results[0])
 
-    def _relation_name_to_query(self, relation_name: str):
+    def _relation_name_to_query(self, relation_name: str) -> str:
         symbol_table = self._symbol_table
         relation_schema = symbol_table.get_relation_schema(relation_name)
         relation_arity = len(relation_schema)
         query = (f"?{relation_name}(" + ", ".join(f"{FREE_VAR_PREFIX}{i}" for i in range(relation_arity)) + ")")
         return query
 
-    def export_relation_into_df(self, relation_name: str):
+    def export_relation_into_df(self, relation_name: str) -> Union[DataFrame, List]:
         query = self._relation_name_to_query(relation_name)
         return self.send_commands_result_into_df(query)
 
-    def export_relation_into_csv(self, csv_file_name, relation_name, delimiter=CSV_DELIMITER):
+    def export_relation_into_csv(self, csv_file_name: Path, relation_name: str, delimiter: str = CSV_DELIMITER) -> None:
         query = self._relation_name_to_query(relation_name)
-        return self.send_commands_result_into_csv(query, csv_file_name, delimiter)
+        self.send_commands_result_into_csv(query, csv_file_name, delimiter)
 
-    def print_registered_ie_functions(self):
+    def print_registered_ie_functions(self) -> None:
         """
         Prints information about the registered ie functions.
         """
         self._symbol_table.print_registered_ie_functions()
 
-    def remove_ie_function(self, name: str):
+    def remove_ie_function(self, name: str) -> None:
         """
         Removes a function from the symbol table.
 
@@ -475,13 +487,13 @@ class Session:
         """
         self._symbol_table.remove_ie_function(name)
 
-    def remove_all_ie_functions(self):
+    def remove_all_ie_functions(self) -> None:
         """
         Removes all the ie functions from the symbol table.
         """
         self._symbol_table.remove_all_ie_functions()
 
-    def print_all_rules(self, head: Optional[str] = None):
+    def print_all_rules(self, head: Optional[str] = None) -> None:
         """
         Prints all the rules that are registered.
 

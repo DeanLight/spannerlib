@@ -1,8 +1,10 @@
 import re
+from typing import Iterable, Sequence
+
 from rgxlog.engine.datatypes.primitive_types import DataTypes
 
 
-def py_rgx_string(text, regex_pattern):
+def py_rgx_string(text: str, regex_pattern: str) -> Iterable[Sequence]:
     """
     An IE function which runs regex using python's `re` and yields tuples of strings.
 
@@ -20,7 +22,7 @@ def py_rgx_string(text, regex_pattern):
         yield matched_strings
 
 
-def py_rgx_string_out_types(output_arity):
+def py_rgx_string_out_types(output_arity: int) -> Sequence:
     return tuple([DataTypes.string] * output_arity)
 
 
@@ -30,7 +32,7 @@ PYRGX_STRING = dict(ie_function=py_rgx_string,
                     out_rel=py_rgx_string_out_types)
 
 
-def py_rgx(text, regex_pattern):
+def py_rgx(text: str, regex_pattern: str) -> Iterable[Sequence]:
     """
     An IE function which runs regex using python's `re` and yields tuples of spans.
 
@@ -48,7 +50,7 @@ def py_rgx(text, regex_pattern):
         yield matched_spans
 
 
-def py_rgx_out_type(output_arity):
+def py_rgx_out_type(output_arity: int) -> Sequence:
     return tuple([DataTypes.span] * output_arity)
 
 
