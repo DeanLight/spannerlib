@@ -2,11 +2,12 @@ import csv
 import logging
 import os
 import re
+from pathlib import Path
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Sequence
+
 from lark.lark import Lark
 from pandas import DataFrame
-from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Sequence
 
 import rgxlog
 import rgxlog.engine.engine
