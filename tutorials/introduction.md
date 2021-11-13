@@ -23,8 +23,8 @@ In this tutorial you will learn the basics of spanner workbench:
 * [adding facts](#facts)
 * [adding rules](#rules)
 * [queries](#queries)
-* [using RGXLog's primitive information extractor: functional regex formulas](#RGX_ie)
-* [using custom information extractors](#custom_ie)
+* [using RGXLog's default IE functions: functional regex formulas](#RGX_ie)
+* [using custom IE functions](#custom_ie)
 * [additional small features](#small_features)
 
 At the end of this tutorial there is also an [example for a small RGXLog program.](#example_program)
@@ -386,11 +386,39 @@ A good example for using free variables to construct a relation is the query:
 which finds all of george's grandchildren (`X`) and constructs a tuple for each one.
 <!-- #endregion -->
 
-# Creating and Registering a New IE Function<a class="anchor" id="custom_ie"></a>
+# Using IE Functions
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+## Functional regex formulas<a class="anchor" id="RGX_ie"></a>
+RGXLog contains IE functions which are registered by default.
+Let's go over a couple regex IE functions:
+
+
+```
+rgx_span(regex_input ,regex_formula)->(x_1, x_2, ...,x_n)
+```
+
+and
+
+```
+rgx_string(regex_input ,regex_formula)->(x_1, x_2, ...,x_n)
+```
+
+where:
+* `regex_input` is the string that the regex operation will be performed on
+* `regex_formula` is either a string literal or a string variable that represents your regular expression.
+* `x_1`, `x_2`, ... `x_n` can be either constant terms or free variable terms. They're used to construct the tuples of the resulting relation. the number of terms has to be the same as the number of capture groups used in `regex_formula`. If not capture groups are used, then each returned tuple includes a single, whole regex match, so only one term should be used.
+
+The only difference between the `rgx_span` and `rgx_string` ie functions, is that rgx_string returns strings, while rgx_span returns the spans of those strings. This also means that if you want to use constant terms as return values, they have to be spans if you use `rgx_span`, and strings if you use `rgx_string`
+
+For example:
+<!-- #endregion -->
+
+## Creating and Registering a New IE Function<a class="anchor" id="custom_ie"></a>
 
 
 Using regex is nice, but what if you want to define your own IE function? <br>
-RGXLog allows you to define and use your own information extractors. You can use them only in rule bodies in the current version. The following is the syntax for custom information extractors:
+RGXLog allows you to define and use your own information extraction functions. You can use them only in rule bodies in the current version. The following is the syntax for custom IE functions:
 
 ```
 func(term_1,term_2,...term_n)->(x_1, x_2, ..., x_n)
@@ -451,39 +479,6 @@ test_happy(X) <- get_happy(sentence) -> (X)
 happy_grandmother(X) <- grandmother(X,Z),get_happy(sentence)->(X)
 ?happy_grandmother(X) # assuming get_happy returned "rin", also returns "rin"
 ```
-```python
-%%rgxlog
-report = "In 2019 we earned 2000 EUR"
-annual_earning(Year, Amount) <- py_rgx_string(report,"(\d\d\d\d).*?(?P<a>\d+)")->(Amount, Year)
-?annual_earning(X, Y)
-
-```
-
-<!-- #region pycharm={"name": "#%% md\n"} -->
-# Functional regex formulas<a class="anchor" id="RGX_ie"></a>
-RGXLog supports information extraction using regular expressions and named capture groups (for now in rule bodies only).
-You will first need to define a string variable either by using a literal or a load from a file, and then you can use the following syntax in a rule body:
-
-```
-rgx_span(regex_input ,regex_formula)->(x_1, x_2, ...,x_n)
-```
-
-or
-
-```
-rgx_string(regex_input ,regex_formula)->(x_1, x_2, ...,x_n)
-```
-
-where:
-* `regex_input` is the string that the regex operation will be performed on
-* `regex_formula` is either a string literal or a string variable that represents your regular expression.
-* `x_1`, `x_2`, ... `x_n` can be either constant terms or free variable terms. They're used to construct the tuples of the resulting relation. the number of terms has to be the same as the number of capture groups used in `regex_formula`. If not capture groups are used, then each returned tuple includes a single, whole regex match, so only one term should be used.
-
-The only difference between the 'rgx_span' and 'rgx_string' ie functions, is that RGX returns spans while RGXString returns strings. This also means that if you want to use constant terms as return values, they have to be spans if you use 'RGX', or strings if you use 'RGXString'
-
-For example:
-<!-- #endregion -->
-
 ## More information about IE functions
 * You can remove an IE function via the session:
 
@@ -558,10 +553,10 @@ py_rgx_string(grade_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemist
 ```
 
 # Useful tricks<a class="anchor" id="Usefull tricks"></a>
-## Table Alignment:
+## Matching Outputs:
 Let's write a rgxlog program that gets a table in which each row is a single string - string(str).
 <br>
-The program will create a new table in which each row is a string and it's length.
+The program will create a new table in which each row is a string and its length.
 ### First try:
 
 ```python
