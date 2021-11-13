@@ -510,15 +510,6 @@ if __name__ == "__main__":
     logger.setLevel(level=logging.DEBUG)
     # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
-    my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-    cmd = """
-    new A(int, int)
-    new B(int, int)
-    C(X, Y) <- A(X, 5), B(X, Y)
-    ?C(1, 1)
-    """
-
-    my_session.run_commands(cmd)
-
-    print(my_session._parse_graph)
-    print(my_session._term_graph)
+    my_session.run_commands("""
+    b = "hi"
+    b2 = b""")
