@@ -750,7 +750,7 @@ We want to create a rglox relation containg tuples of (student, subject, grade).
 ```python
 %%rgxlog
 
-# we use string as RgxLog doesn't support dicts.
+# we use strings, as RgxLog doesn't support dicts.
 json_string = "{ \
                 'abigail': {'chemistry': 80, 'operation systems': 99}, \
                 'jordan':  {'chemistry': 65, 'physics': 70}, \
@@ -759,7 +759,7 @@ json_string = "{ \
                 }"
 
 # path expression is the path to the key of each grade (in our simple case it's *.*)
-# than JsonPathFull appends the full path to the value
+# then JsonPathFull appends the full path to the value
 json_table(Student, Subject, Grade) <- JsonPathFull(json_string, "*.*") -> (Student, Subject, Grade)
 ?json_table(Student, Subject, Grade)
 ```
