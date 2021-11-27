@@ -460,8 +460,8 @@ Let's look at the following example:
 ```
 >>> D(X,Y) <- A(X),B(Y),C(X,Y,Z)
 >>> E(X,Y) <- A(X),C(X,Y,Z), F(Z)
->>> x = E(X,Y) OR D(X,Y)
->>> x
+>>> x(X,Y) <- E(X,Y)
+>>> x(X,Y) <- D(X,Y)
 ```
 Without merging terms with overlapping structures,
 this would naively generate something that abstractly looks like this:
@@ -504,8 +504,8 @@ This would be the automatic equivalent of a smart programmer, refactoring the qu
 >>> TEMP(X,Y,Z) <- A(X), C(X,Y,Z)
 >>> D(X,Y) <- B(Y),TEMP(X,Y,Z)
 >>> E(X,Y) <- TEMP(X,Y,Z), F(Z)
->>> x= E(X,Y) OR D(X,Y)
->>> x
+>>> x(X,Y) <- E(X,Y)
+>>> x(X,Y) <- D(X,Y)
 ```
 
 ### Datalog evaluation pass
