@@ -656,15 +656,15 @@ unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
 
 let's try to compare coding in python and coding in rgxlog.
 we are given two long strings of enrolled pairs, grades pairs.
-our goal is to find all student that are enrolled in biology and chemistry, and have a GPA > 80.
+our goal is to find all student that are enrolled in biology and chemistry, and have a GPA = 80.
 
 
 ## python 
 
 ```python
 import re
-enrolled = "subaru chemistry subaru biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
-grades = "subaru 80 rem 66 ram 66 roswaal 100 emilia 88"
+enrolled = "dave chemistry dave biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
+grades = "dave 80 rem 66 ram 66 roswaal 100 emilia 88"
 
 enrolled_pairs = re.findall(r"(\w+).*?(\w+)", enrolled)
 grade_pairs = re.findall(r"(\w+).*?(\d+)", grades)
@@ -680,8 +680,8 @@ for student1, course1 in enrolled_pairs:
 
 ```python
 %%rgxlog
-enrolled = "subaru chemistry subaru biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
-grades = "subaru 80 rem 66 ram 66 roswaal 100 emilia 88"
+enrolled = "dave chemistry dave biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
+grades = "dave 80 rem 66 ram 66 roswaal 100 emilia 88"
 
 enrolled_in(Student, Course) <- py_rgx_string(enrolled, "(\w+).*?(\w+)")->(Student, Course)
 student_grade(Student, Grade) <- py_rgx_string(grades, "(\w+).*?(\d+)") -> (Student, Grade)
