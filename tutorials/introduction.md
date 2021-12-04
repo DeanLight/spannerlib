@@ -27,7 +27,7 @@ In this tutorial you will learn the basics of spanner workbench:
 * [using custom IE functions](#custom_ie)
 * [additional small features](#small_features)
 
-At the end of this tutorial there is also an [example for a small RGXLog program.](#example_program)
+[example for a small RGXLog program.](#example_program)
 
 
 # Using RGXLog<a class="anchor" id="use_rgxlog"></a>
@@ -540,7 +540,7 @@ enrolled_in_chemistry(X) <- enrolled(X, "chemistry")
 ?enrolled_in_chemistry("gale") # returns nothing
 ?enrolled_in_chemistry(X) # returns "abigail", "jordan" and "howard"
 
-enrolled_in_physics_and_chemistry(X) <- enrolled(X, "chemistry"), enrolled(X, "physics")
+enrolled_in_physics_and_chemistry(X) <- enrolled_in_chemistry(X), enrolled(X, "physics")
 ?enrolled_in_physics_and_chemistry(X) # returns "howard"
 
 lecturer_of(X,Z) <- lecturer(X,Y), enrolled(Z,Y)
@@ -601,7 +601,7 @@ magic_session.register(length2, "Length2", [DataTypes.string], [DataTypes.intege
 
 ```python
 %%rgxlog
-string_length_2(Str, Len) <- string(Tmp), Length2(Tmp) -> (Len, Str)
+string_length_2(Str, Len) <- string(Str), Length2(Str) -> (Len, Str)
 ?string_length_2(Str, Len)
 ```
 
@@ -647,7 +647,7 @@ pair("Apple", "Apple")
 pair("Cow", "Cow")
 pair("123", "321")
 
-unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
+unique_pair(X, Y) <- pair(X, Y), NEQ(X, Y) -> (X, Y)
 ?unique_pair(X, Y)
 ```
 
