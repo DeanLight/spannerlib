@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Dict, Set, Callable, List, Union, Sequence, Tuple
 
 from rgxlog.engine.datatypes.primitive_types import DataTypes, DataTypeMapping
-from rgxlog.engine.ie_functions.ie_function_base import IEFunction
+from rgxlog.engine.ie_function import IEFunction
 
 
 class SymbolTableBase(ABC):

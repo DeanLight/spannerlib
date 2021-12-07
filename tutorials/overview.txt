@@ -1,0 +1,22 @@
+presentation overview:
+
+* refactor the client/server into session
+* added new features - import/export from csv/df
+* created stdlib (organized folder) - which includes new jsonpath+rgx, and the old functions as well
+* refactor ie_functions - create register function
+* feature - different rules can use the same head relation, which allows union, and later recursive rules
+* pytest framework - 63 unique tests, workflows (github ci), pep8 check, mypy check
+* docstrings and typing - added type hints and docstrings to all functions
+* tutorials updated according to our changes - and more changes (optimizations, python vs rgxlog)
+* engine refactor - move from pydatalog to sqlite:
+    * refactored parse_graph, and added term_graph
+    * implemented all operators in sqlite (select, join...) with jinja
+    * enabled recursive rules using fixed-point nodes (naive bottom-up)
+    * TODO@tom rule to term graph
+
+
+
+TODO:
+TODO@together fix md files - use them in the presentation later
+TODO@niv create mypy branch --disallow-untyped-defs
+TODO@tom create jupyter presentation in this folder

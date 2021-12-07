@@ -9,7 +9,7 @@ from typing import Iterable, Optional, Set, Tuple, Any, List, Union, Dict, no_ty
 
 from rgxlog.engine.datatypes.ast_node_types import RelationDeclaration, AddFact, RemoveFact, Query, IERelation, Relation
 from rgxlog.engine.datatypes.primitive_types import Span, DataTypes, DataTypeMapping
-from rgxlog.engine.ie_functions.ie_function_base import IEFunction
+from rgxlog.engine.ie_function import IEFunction
 from rgxlog.engine.utils.general_utils import strip_lines, string_to_span, get_free_var_to_relations_dict, get_output_free_var_names, extract_one_relation
 
 # rgx constants

@@ -18,7 +18,6 @@
         - [passes](#passes)
             - [AST transformation passes:](#ast-transformation-passes)
             - [semantic checks passes:](#semantic-checks-passes)
-            - [optimization passes:](#optimization-passes)
             - [execution passes:](#execution-passes)
         - [term graph](#term-graph)
         - [execution](#execution)
@@ -43,7 +42,7 @@
 The spanner workbench is an interpreter and a REPL system for spanner-like languages.
 Our goal in developing the spanner workbench is twofold:
 
-* First and foremost, to allow students learning about spanner languages an easy to use system to play around with the languages.
+* First and foremost, to allow students learning about spanner languages an easy-to-use system to play around with the languages.
 * A later goal is to provide an easily modifiable framework that allows researchers to easily test and deploy new algorithms and optimizations to spanner languages.
 
 ## external resources
@@ -85,7 +84,7 @@ Here is a [python implementation of a Datalog library](https://github.com/pcarbo
 
 ## The REPL of the interpreter
 
-Programming wise, the question of how to implement an interpreter is orthogonal to how to
+Programming-wise, the question of how to implement an interpreter is orthogonal to how to
 implement a Read Evaluate Print Loop (REPL) interface for the interpreter.
 You can think of it like the frontend and the backend of the app.
 
@@ -154,14 +153,16 @@ Currently, the session will check and execute the statements one by one until th
 An error will not cause a reversion of the program state, meaning that even state updates from the passes that processed the faulty statement will be saved.
 
 In future versions this will need to be fixed, meaning, should a statement in a jupyter notebook cell fail:
-1. the symbol table and term graph (the session's state) will be restored to their state before the execution of the cell. A naive solution for this would be to copy them before the cell execution, and perform the state updates on their copies. Only if the execution of the whole cell is successful, the copied symbol table and term graph would replace the original ones
-2. Reverse the state of the Datalog engine. There's no easy solution for this in version 0.1 as we use pyDatalog which does not provide a simple way to reverse the state. Therefore, in order to implement this feature, pyDatalog should first be replaced.
+1. the symbol table and parse graph (the session's state) will be restored to their state before the execution of the cell.
+  A naive solution for this would be to copy them before the cell execution, and perform the state updates on their copies.
+  Only if the execution of the whole cell is successful, the copied symbol table and parse graph would replace the original ones
+2. Reverse the state of the engine.
 
 ### passes
 
-All of the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at [lark_passes.py](/src/rgxlog-interpreter/src/rgxlog/engine/passes/lark_passes.py)
+All the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at [lark_passes.py](/src/rgxlog-interpreter/src/rgxlog/engine/passes/lark_passes.py)
 
-The only exception is the term graph execution pass (GenericExecution), you can learn more about it in the [execution](#execution) section.
+The only exception is `AddRulesToComputationTermGraph` pass, you can learn more about it in the [execution](#execution) section.
 
 Below are some relevant links that will allow you to learn about lark's transformers/visitors:
 
@@ -205,10 +206,6 @@ A few words on each pass:
 
 * SaveDeclaredRelationsSchemas - saves the schemas of declared relations to the symbol table.
 
-##### optimization passes:
-
-* ReorderRuleBody - Reorders each rule body relations list so that each relation in the list has its input free variables bound by previous relations in the list, or it has no input free variables terms. The term graph execution relies on this optimization.
-
 ##### execution passes:
 
 
@@ -218,18 +215,25 @@ A few words on each pass:
 
 * ExecuteAssignments - saves variable assignments to the symbol table.
 
-* AddStatementsToNetxTermGraph - adds a statement to the term graph.
+* AddStatementsToNetxParseGraph - adds a statement to the parse graph.
 
-* GenericExecution - executes the term graph.
+#### term graph passes:
 
-###  term graph
+* AddRulesToComputationTermGraph - adds rules to the term graph.
 
-The term graph implementation can be found at [term_graph.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/graphs.py).
-it is implemented using networkx.
+### execution function
 
-The term graph does not handle variable assignment statements. Those are handled in the 'ResolveVariablesReferences' and 'ExecuteAssignments' passes
+* naive_execution - executes the parse graph bottom-up
 
-The term graph is initialized with a root node, and every statement that is added to the term graph is a child subtree of that node.
+###  term graph and parse graph
+
+The term graph and parse graphs implementations can be found at [graphs.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/graphs.py).
+They are implemented using networkx.
+
+The parse graph does not handle variable assignment statements.
+Those are handled in the 'ResolveVariablesReferences' and 'ExecuteAssignments' passes
+
+The parse graph is initialized with a root node, and every statement that is added to the parse graph is a child subtree of that node.
 
 Each non-rule statement is represented as a single node that contains a relation.
 
@@ -237,13 +241,14 @@ A rule statement is represented by a subtree, whose root is an empty node that h
 1. a rule head relation node (contains the head relation of the rule).
 2. a rule body relations node, whose children are nodes that each contain a single rule body relation.
 
-Nodes in the term graph must have the following attributes:
+Nodes in the parse graph must have the following attributes:
 1. type: the node's type.
-2.  state: whether the node is computed or not computed
+2. state: an enum which tells us whether the node is computed, visited, or neither.
 
 Most nodes have a value attribute, which contains a relation.
 
-You can think of the term graph as a 'graph of relations', where each node can contain at most one relation, and the node's type provides the action that needs to be performed using that relation.
+You can think of the parse graph as a 'graph of relations', where each node can contain at most one relation,
+and the node's type provides the action that needs to be performed using that relation.
 
 example:
 
@@ -258,82 +263,65 @@ we'll get a parse graph that will look like this:
 
 ![parse graph example](doc/parse_graph.png)
 
+a detailed explanation regarding the term graph can be found in the `TermGraph` class's docstring,
+in [graphs.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/graphs.py)
+
 ### execution
 
-the parse graph execution is done by the 'GenericExecution' pass, which can be found at [execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py).
+the parse graph execution is done by the `naive_execution` function, which can be found at [execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py).
 
-the 'GenericExecution' pass executes the term graph statement by statement. It skips statements that were already computed.
+this function executes the parse graph statement by statement. It skips statements that were already computed.
 
-the pass uses a pyDatalog engine which can also be found at [execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py). It is the PydatalogEngine who wraps pyDatalog.
-
-The official pyDatalog documentation can be found here:
-https://sites.google.com/site/pydatalog/home
-
-That said, most of the documentation is irrelevant as we only use a small part of pyDatalog. Should you need to alter the pyDatalog implementation, it is recommended to read this link: https://sites.google.com/site/pydatalog/advanced-topics, specifically the 'Dynamic datalog statements' section. Afterwards, read the comments and implementation of the pyDatalog wrapper class, as it will give you more details on the tricks we used to make pyDatalog work with our implementation of RGXlog.
-
-Note that operations done in pyDatalog cannot currently be reversed, which is why this engine will most likely be replaced in the future.
-
-GenericExecution's execution of non-rule statements is fairly simple. It simply calls the relevant function in the pyDatalog wrapper engine.
-
-Executing rule statements is more complex, as rules are constructed from multiple relations. The following algorithm is used:
-
-1. for each rule body relation (from left to right):
-
-   a. compute the relation.
-
-   b. if it is the leftmost relation in the rule body, save the relation from step 1 as an intermediate relation, else join the relation from step 1 with the intermediate relation, and save the result as the new intermediate relation.
-
-2. define the rule head relation by filtering the resulting intermediate relation from step 1 into it.
-
-The join operation done in each step ensures that irrelevant tuples are filtered from the final resulting relation.
-
-For more details and an example, see GenericExecution._execute_rule_aux() at [execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py)
+the pass uses the `SqliteEngine` which can also be found at [engine.py](/src/rgxlog-interpreter/src/rgxlog/engine/engine.py)
 
 ### files structure
 
 ```
 └───engine
     │
-    │   execution.py - implementations of Datalog's execution engines and term graph execution engines
+    │   execution.py - the implementation of `naive_execution`
     │	
-    │   message_definitions.py - enums that the session uses to handle messages
+    │   engine.py - the implementation of `SqliteEngine`
     │	
-    │   session.py - the implementation of the session
+    │   session.py - the implementation of the `Session`
+    │
+    │   ie_function.py - contains a class that defines all the functions that provide data needed for using a single information extraction function
+    │
     │
     ├───datatypes
     │	
     │       ast_node_types.py - contains classes that represent statements and relations.
     │	
-    │       primitive_types.py - contains classes that represent rgxlog's primitive types
-    │       (those that are not already defined in python). 
+    │       primitive_types.py - contains classes that represent rgxlog's primitive types. 
     │       Also contains an enum for primitive types that is used throughout the passes.
-    │
-    ├───ie_functions
     │	
-    │       ie_function_base.py - contains the abstract class for information extraction functions
-    │	
-    │       python_regexes.py - implementations of regex information extraction functions that were
-    │       implemented using python's 're' module
     │
     ├───passes
     │	
     │       lark_passes.py - implementations of lark passes
     │
+    │       adding_inference_rules_to_term_graph.py - implementations of term graph passes
+    │
     ├───state
     │	
     │       symbol_table.py - implementations of the symbol table
     │	
-    │       term_graph.py - implementations of the term graph
+    │       graphs.py - implementations of the term and parse graphs
     │
-    └───utils
-	
-            expected_grammar.py - contains a structure that helps asserting that a pass received an 
-	    expected ast node structure
-			
-            general_utils.py - General utilities that are not specific to any kind of pass, 
-	    execution engine, etc...
-			
-            lark_passes_utils.py - helper functions and function decorators that are used in lark 
+    ├───utils
+	│
+    │      expected_grammar.py - contains a structure that helps asserting that a pass received an 
+	│      expected ast node structure
+	│		
+    │      general_utils.py - General utilities that are not specific to any kind of pass, 
+	│      execution engine, etc...
+	│		
+    │      passes_utils.py - helper functions and function decorators that are used in passes
+    
+ └───stdlib
+    │
+    │      contains implementations of standard library IE functions, which are registered by default
+    │
 ```
 
 ## Initial thoughts about building the workbench (predates version 0.0.5)
@@ -354,14 +342,21 @@ Both different passes of the same command, and passes from different commands wi
 
 #### Lexer and Parser
 
-The lexer and parser are used to convert the string containing the source code in the AST that defines the logical structure of the code. Lexers and parsers are often written together and come in two general flavors:
+The lexer and parser are used to convert the string containing the source code in the AST that defines the logical structure of the code.
+Lexers and parsers are often written together and come in two general flavors:
 
 * Parser/Lexer as code
 * Parser/Lexer as definition files
 
-The former refers to writing code that parses/lexes our code directly. The problem with such parsers is that the grammar and syntax of those parsers is implicitly written within the code, with an external document explaining the syntax in general strokes. This makes changing/debugging the parser complicated, and also risks loss of knowledge as the parser and the external documentation drift further away as time goes on.
+The former refers to writing code that parses/lexes our code directly.
+The problem with such parsers is that the grammar and syntax of those parsers is implicitly written within the code,
+with an external document explaining the syntax in general strokes.
+This makes changing/debugging the parser complicated,
+and also risks loss of knowledge as the parser and the external documentation drift further away as time goes on.
 
-The latter approach is to have the documentation generate the code programmatically. In this case we will have a file that defines the grammar precisely in a declarative manner, and this file will be fed to a grammar-to-parser algorithm that will generate the parser automatically.
+The latter approach is to have the documentation generate the code programmatically.
+In this case we will have a file that defines the grammar precisely in a declarative manner,
+and this file will be fed to a grammar-to-parser algorithm that will generate the parser automatically.
 
 We chose the latter approach and will be using the [lark](https://lark-parser.readthedocs.io/en/latest/) python package to generate our parsers.
 
@@ -387,7 +382,9 @@ for 0.0.5 we waiver constraint 2 for the execution
 
 #### implementation
 
-Passes and their implementors differ in how involved they need or want to be in the overall structure of the tree and in how they want to address the tradeoff between independence and reliance on tools we provide for them.
+Passes and their implementors differ in how involved they need or want to be in the overall structure of the tree, 
+and in how they want to address the tradeoff between independence and reliance on tools we provide for them.
+
 One pass implementor might just want to add some data to certain nodes that can be derived from the nodes locally.
 Another pass implementor has specific low level C code that he wants to run on his own tree-like data structure.
 
@@ -421,11 +418,12 @@ Semantic passes
 Execution passes
 
 * RGX extractions to relations
-* Datalog evaluation
+* Evaluation functions
 * Garbage collection
 
 
-I consider the semantic passes defined here as self explanatory. Below I define a naive implementation for the engine upon which I can discuss how to build the naive execution passes.
+I consider the semantic passes defined here as self-explanatory.
+Below I define a naive implementation for the engine upon which I can discuss how to build the naive execution passes.
 
 ##### version considerations
 
@@ -508,13 +506,6 @@ This would be the automatic equivalent of a smart programmer, refactoring the qu
 >>> x(X,Y) <- D(X,Y)
 ```
 
-### Datalog evaluation pass
-
-To implement this, we can defer to [pyDatalog](https://github.com/pcarbonn/pyDatalog).
-
-* We can just keep an instance of pyDatalog session and call it to compute results.
-* We need to find a relational representation that pyDatalog can parse, maybe some SQLAlchemy data structure. We will find one that can export itself to a lot of standard formats and create the IE extractions using that data-structure. Once we have stabilized, we can decide which interface our relational representation needs to take and use the abstract interface to enable polymorphism.
-
 ##### version considerations
 * For 0.0.5 Throw any subtree you can into pydatalog.
     * For results of extractions, you can insert fake new relations to the pydatalog engine
@@ -525,7 +516,7 @@ To implement this, we can defer to [pyDatalog](https://github.com/pcarbonn/pyDat
 * We can just use [python.re](https://docs.python.org/3/library/re.html) for now (v 0.0.5)
 * We can wrap it with a conversion between its native syntax and our changes (for example the `(?<name>expression)` syntax from the language specification doc)
 * We can extract the results into the relational representation we discussed in the datalog evaluation pass.
-* python re does not resolve the overlap resolution problem (TODO find a link explaining it)
+* python's `re` does not resolve the overlap resolution problem (TODO find a link explaining it)
 
 ### garbage collection
 For 0.0.5 let's just leave the garbage in.
@@ -533,23 +524,4 @@ For 0.0.5 let's just leave the garbage in.
 For 0.1 Let's start with something really simple
 * At the end of each interpretation iteration, see which items in the memory heap are not reachable from the set of nodes pointed to by the variables in the term tree.
 * If a node has not been reachable for over `k` commands, delete it from the memory heap
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
