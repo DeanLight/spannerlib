@@ -2,11 +2,12 @@ import csv
 import logging
 import os
 import re
+from pathlib import Path
+from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Sequence
+
 from lark.lark import Lark
 from pandas import DataFrame
-from pathlib import Path
 from tabulate import tabulate
-from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Sequence
 
 import rgxlog
 import rgxlog.engine.engine
@@ -509,14 +510,6 @@ if __name__ == "__main__":
     logger.setLevel(level=logging.DEBUG)
     # logging.basicConfig(level=logging.DEBUG)
     my_session = Session()
-    my_session.register(lambda x: [(x,)], "ID", [DataTypes.integer], [DataTypes.integer])
-    my_commands = commands = """
-            new B(int, int)
-            B(1, 1)
-            B(1, 2)
-            B(2, 3)
-            A(X, Y) <- B(X, Y)
-            ?A(X, Y)
-        """
-
-    my_session.run_commands(my_commands)
+    my_session.run_commands("""
+    b = "hi"
+    b2 = b""")

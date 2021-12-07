@@ -23,11 +23,11 @@ In this tutorial you will learn the basics of spanner workbench:
 * [adding facts](#facts)
 * [adding rules](#rules)
 * [queries](#queries)
-* [using RGXLog's primitive information extractor: functional regex formulas](#RGX_ie)
-* [using custom information extractors](#custom_ie)
+* [using RGXLog's default IE functions: functional regex formulas](#RGX_ie)
+* [using custom IE functions](#custom_ie)
 * [additional small features](#small_features)
 
-At the end of this tutorial there is also an [example for a small RGXLog program.](#example_program)
+[example for a small RGXLog program.](#example_program)
 
 
 # Using RGXLog<a class="anchor" id="use_rgxlog"></a>
@@ -139,7 +139,7 @@ The assignment of a string is intuitive:
 ```python
 %%rgxlog
 b = "bob"
-b2 = b # b2's value is "bob"
+b2 = b #r b2's value is "bob"
 # you can write multiline strings using a line overflow escape like in python
 b3 = "this is a multiline  \
 string"
@@ -386,16 +386,19 @@ A good example for using free variables to construct a relation is the query:
 which finds all of george's grandchildren (`X`) and constructs a tuple for each one.
 <!-- #endregion -->
 
+# Using IE Functions
+
 <!-- #region pycharm={"name": "#%% md\n"} -->
-# Functional regex formulas<a class="anchor" id="RGX_ie"></a>
-RGXLog supports information extraction using a regular expressions and named capture groups (for now in rule bodies only).
-You will first need to define a string variable either by using a literal or a load from a file, and then you can use the following syntax in a rule body:
+## Functional regex formulas<a class="anchor" id="RGX_ie"></a>
+RGXLog contains IE functions which are registered by default.
+Let's go over a couple regex IE functions:
+
 
 ```
 rgx_span(regex_input ,regex_formula)->(x_1, x_2, ...,x_n)
 ```
 
-or
+and
 
 ```
 rgx_string(regex_input ,regex_formula)->(x_1, x_2, ...,x_n)
@@ -406,24 +409,28 @@ where:
 * `regex_formula` is either a string literal or a string variable that represents your regular expression.
 * `x_1`, `x_2`, ... `x_n` can be either constant terms or free variable terms. They're used to construct the tuples of the resulting relation. the number of terms has to be the same as the number of capture groups used in `regex_formula`. If not capture groups are used, then each returned tuple includes a single, whole regex match, so only one term should be used.
 
-The only difference between the 'rgx_span' and 'rgx_string' ie functions, is that RGX returns spans while RGXString returns strings. This also means that if you want to use constant terms as return values, they have to be spans if you use 'RGX', or strings if you use 'RGXString'
+The only difference between the `rgx_span` and `rgx_string` ie functions, is that rgx_string returns strings, while rgx_span returns the spans of those strings. This also means that if you want to use constant terms as return values, they have to be spans if you use `rgx_span`, and strings if you use `rgx_string`
 
 For example:
 <!-- #endregion -->
 
-```python
-%%rgxlog
-report = "In 2019 we earned 2000 EUR"
-annual_earning(Year, Amount) <- py_rgx_string(report,"(\d\d\d\d).*?(?P<a>\d+)")->(Amount, Year)
-?annual_earning(X, Y) # TODO@niv: dean, if we use regex with repetitions here, this becomes is ugly - is this intentional?
+## Creating and Registering a New IE Function<a class="anchor" id="custom_ie"></a>
+
+
+Using regex is nice, but what if you want to define your own IE function? <br>
+RGXLog allows you to define and use your own information extraction functions. You can use them only in rule bodies in the current version. The following is the syntax for custom IE functions:
 
 ```
+func(term_1,term_2,...term_n)->(x_1, x_2, ..., x_n)
+```
 
-# Creating and Registering a New IE Function
+where:
+* `func` is a IE function that was previously defined and registered (see the 'advanced_usage' tutorial)
+* `term_1`,`term_2`,...,`term_n` are the parameters for func
+* `x_1`, ... `x_n` could be any type of terms, and are used to construct tuples of the resulting relation
 
+For example:
 
-Using regex is nice, but what if we want to define our own IE function? <br>
-RGXLog allows us to do that:
 
 ### IE function `get_happy`
 
@@ -458,21 +465,6 @@ magic_session.register(ie_function=get_happy,
                        in_rel=get_happy_in_types,
                        out_rel=get_happy_out_types)
 ```
-
-# Custom information extractors<a class="anchor" id="custom_ie"></a>
-RGXLog allows you to define and use your own information extractors. You can use them only in rule bodies in the current version. The following is the syntax for custom information extractors:
-
-```
-func(term_1,term_2,...term_n)->(x_1, x_2, ..., x_n)
-```
-
-where:
-* `func` is a IE function that was previously defined and registered (see the 'advanced_usage' tutorial)
-* `term_1`,`term_2`,...,`term_n` are the parameters for func
-* `x_1`, ... `x_n` could be any type of terms, and are used to construct tuples of the resulting relation
-
-For example:
-
 
 ### custom IE using `get_happy`
 
@@ -548,7 +540,7 @@ enrolled_in_chemistry(X) <- enrolled(X, "chemistry")
 ?enrolled_in_chemistry("gale") # returns nothing
 ?enrolled_in_chemistry(X) # returns "abigail", "jordan" and "howard"
 
-enrolled_in_physics_and_chemistry(X) <- enrolled(X, "chemistry"), enrolled(X, "physics")
+enrolled_in_physics_and_chemistry(X) <- enrolled_in_chemistry(X), enrolled(X, "physics")
 ?enrolled_in_physics_and_chemistry(X) # returns "howard"
 
 lecturer_of(X,Z) <- lecturer(X,Y), enrolled(Z,Y)
@@ -561,10 +553,10 @@ py_rgx_string(grade_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemist
 ```
 
 # Useful tricks<a class="anchor" id="Usefull tricks"></a>
-## Table Alignment:
-Lets write a rgxlog program that gets a table in which each row is a strings - string(str).
+## Matching Outputs:
+Let's write a rgxlog program that gets a table in which each row is a single string - string(str).
 <br>
-The program will create a new table in which each row is a string and it's length.
+The program will create a new table in which each row is a string and its length.
 ### First try:
 
 ```python
@@ -609,7 +601,7 @@ magic_session.register(length2, "Length2", [DataTypes.string], [DataTypes.intege
 
 ```python
 %%rgxlog
-string_length_2(Str, Len) <- string(Tmp), Length2(Tmp) -> (Len, Str)
+string_length_2(Str, Len) <- string(Str), Length2(Str) -> (Len, Str)
 ?string_length_2(Str, Len)
 ```
 
@@ -655,7 +647,7 @@ pair("Apple", "Apple")
 pair("Cow", "Cow")
 pair("123", "321")
 
-unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
+unique_pair(X, Y) <- pair(X, Y), NEQ(X, Y) -> (X, Y)
 ?unique_pair(X, Y)
 ```
 
@@ -664,15 +656,15 @@ unique_pair(X, Y) <- pair(First, Second), NEQ(First, Second) -> (X, Y)
 
 let's try to compare coding in python and coding in rgxlog.
 we are given two long strings of enrolled pairs, grades pairs.
-our goal is to find all student that are enrolled in biology and chemistry, and have a GPA > 80.
+our goal is to find all student that are enrolled in biology and chemistry, and have a GPA = 80.
 
 
 ## python 
 
 ```python
 import re
-enrolled = "subaru chemistry subaru biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
-grades = "subaru 80 rem 66 ram 66 roswaal 100 emilia 88"
+enrolled = "dave chemistry dave biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
+grades = "dave 80 rem 66 ram 66 roswaal 100 emilia 88"
 
 enrolled_pairs = re.findall(r"(\w+).*?(\w+)", enrolled)
 grade_pairs = re.findall(r"(\w+).*?(\d+)", grades)
@@ -688,8 +680,8 @@ for student1, course1 in enrolled_pairs:
 
 ```python
 %%rgxlog
-enrolled = "subaru chemistry subaru biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
-grades = "subaru 80 rem 66 ram 66 roswaal 100 emilia 88"
+enrolled = "dave chemistry dave biology rem biology ram biology emilia physics roswaal chemistry roswaal biology roswaal physics"
+grades = "dave 80 rem 66 ram 66 roswaal 100 emilia 88"
 
 enrolled_in(Student, Course) <- py_rgx_string(enrolled, "(\w+).*?(\w+)")->(Student, Course)
 student_grade(Student, Grade) <- py_rgx_string(grades, "(\w+).*?(\d+)") -> (Student, Grade)
@@ -758,7 +750,7 @@ We want to create a rglox relation containg tuples of (student, subject, grade).
 ```python
 %%rgxlog
 
-# we use string as RgxLog doesn't support dicts.
+# we use strings, as RgxLog doesn't support dicts.
 json_string = "{ \
                 'abigail': {'chemistry': 80, 'operation systems': 99}, \
                 'jordan':  {'chemistry': 65, 'physics': 70}, \
@@ -767,7 +759,7 @@ json_string = "{ \
                 }"
 
 # path expression is the path to the key of each grade (in our simple case it's *.*)
-# than JsonPathFull appends the full path to the value
+# then JsonPathFull appends the full path to the value
 json_table(Student, Subject, Grade) <- JsonPathFull(json_string, "*.*") -> (Student, Subject, Grade)
 ?json_table(Student, Subject, Grade)
 ```

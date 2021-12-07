@@ -8,6 +8,7 @@ def test_assignment() -> None:
             new Relation(int, int)
             x = 1
             y = 2
+            z = y
             Relation(x, y)
             Relation(y, x)
             ?Relation(X, x)

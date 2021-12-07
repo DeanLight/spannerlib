@@ -30,7 +30,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def get_variable_type(self, var_name: str) -> DataTypes:
+    def get_variable_type(self, var_name: DataTypeMapping.term) -> DataTypes:
         """
         @param var_name: a variable name.
         @return: the variable's type.
@@ -38,7 +38,7 @@ class SymbolTableBase(ABC):
         pass
 
     @abstractmethod
-    def get_variable_value(self, var_name: str) -> DataTypeMapping.term:
+    def get_variable_value(self, var_name: DataTypeMapping.term) -> DataTypeMapping.term:
         """
         @param var_name: a variable name.
         @return: the variable's value.
@@ -226,11 +226,11 @@ class SymbolTable(SymbolTableBase):
         self._var_to_value[var_name] = var_value
         self._var_to_type[var_name] = var_type
 
-    def get_variable_type(self, var_name: str) -> DataTypes:
-        return self._var_to_type[var_name]
+    def get_variable_type(self, var_name: DataTypeMapping.term) -> DataTypes:
+        return self._var_to_type[str(var_name)]
 
-    def get_variable_value(self, var_name: str) -> DataTypeMapping.term:
-        return self._var_to_value[var_name]
+    def get_variable_value(self, var_name: DataTypeMapping.term) -> DataTypeMapping.term:
+        return self._var_to_value[str(var_name)]
 
     def get_all_variables(self) -> List[Tuple[str, DataTypes, DataTypeMapping.term]]:
         all_vars = []
