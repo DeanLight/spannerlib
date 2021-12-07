@@ -228,7 +228,7 @@ class RgxlogEngineBase(ABC):
         @param src_rel: the relation to copy from.
         @param output_relation: if this is None, create a unique name for the output relation.
             otherwise, this will be the name of the output relation.
-        @return: tje copied relation.
+        @return: the copied relation.
         """
         pass
 
@@ -277,7 +277,9 @@ class SqliteEngine(RgxlogEngineBase):
     # ~~ simple logic methods ~~
     def add_fact(self, fact: AddFact) -> None:
         """
-        Add a row into an existing table.
+        @param fact: the fact to be added
+
+        Add a row into an existing sql table, based on `fact`'s terms and types
         """
         num_types = len(fact.type_list)
         col_names = [f"{self._get_col_name(i)}" for i in range(num_types)]
@@ -737,7 +739,7 @@ class SqliteEngine(RgxlogEngineBase):
         @return: a normal relation that contains all of the resulting tuples in the rgxlog engine.
         """
 
-        def _looks_like_span(checked_value):
+        def _looks_like_span(checked_value: Any) -> bool:
             """
             checks whether `term` is a tuple of 2 numbers
             @param checked_value: the value to check
@@ -752,7 +754,7 @@ class SqliteEngine(RgxlogEngineBase):
                     return False
             return False
 
-        def _get_all_ie_function_inputs():
+        def _get_all_ie_function_inputs() -> List[tuple]:
             # define the ie input relation
             if bounding_relation is None:
                 # special case where the ie relation is the first rule body relation
@@ -824,6 +826,7 @@ class SqliteEngine(RgxlogEngineBase):
     def _run_sql_from_jinja_template(self, sql_template: str, template_dict: Optional[dict] = None) -> None:
         if not template_dict:
             template_dict = {}
+
         sql_command = Template(strip_lines(sql_template)).render(**template_dict)
         self._run_sql(sql_command)
 

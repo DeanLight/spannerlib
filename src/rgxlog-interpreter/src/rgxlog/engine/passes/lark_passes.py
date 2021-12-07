@@ -808,9 +808,9 @@ class ResolveVariablesReferences(InterpreterPass):
     def assignment(self, assignment: Assignment) -> None:
         # if the assigned value is a variable, replace it with its literal value
         if assignment.value_type is DataTypes.var_name:
-            assigned_var_name = assignment.var_name
-            assignment.value = self.symbol_table.get_variable_value(assigned_var_name)
-            assignment.value_type = self.symbol_table.get_variable_type(assigned_var_name)
+            assigned_value = assignment.value
+            assignment.value = self.symbol_table.get_variable_value(assigned_value)
+            assignment.value_type = self.symbol_table.get_variable_type(assigned_value)
 
     @unravel_lark_node
     def read_assignment(self, assignment: ReadAssignment) -> None:
