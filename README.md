@@ -16,7 +16,14 @@ cd spanner_workbench
 
 pip install -r requirements.txt
 pip install -e src/rgxlog-interpreter 
+```
 
+download corenlp to
+`spanner_workbench/src/rgxlog-interpreter/src/rgxlog/stdlib`
+
+from [this link](https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl)
+
+```bash
 # verify everything worked
 # first time might take a couple of minutes since run time assets are being configured
 pytest ./src/rgxlog-interpreter/tests -s
@@ -28,7 +35,14 @@ pytest ./src/rgxlog-interpreter/tests -s
 ```bash
 git clone https://github.com/DeanLight/spanner_workbench
 cd spanner_workbench
+```
 
+download corenlp to
+`spanner_workbench/src/rgxlog-interpreter/src/rgxlog/stdlib`
+
+from [this link](https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl)
+
+```bash
 docker build . -t spanner_workbench_image
 
 # change `pwd to current working directory`

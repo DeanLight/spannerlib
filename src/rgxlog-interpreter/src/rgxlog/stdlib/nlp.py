@@ -47,6 +47,7 @@ def _install_nlp() -> None:
 
     if not STANFORD_ZIP_PATH.is_file():
         logger.info(f"downloading {STANFORD_ZIP_NAME}...")
+        #TODO debug this
         download_file_from_google_drive(STANFORD_ZIP_GOOGLE_DRIVE_ID, STANFORD_ZIP_PATH)
 
     with open(STANFORD_ZIP_PATH, "rb") as zipresp:
@@ -68,6 +69,9 @@ def _is_installed_java() -> bool:
 
 
 def _run_installation() -> None:
+    if not _is_installed_nlp():
+        _install_nlp()
+        assert _is_installed_nlp()
     if not _is_installed_java():
         logging.info(f"Installing JRE into {INSTALLATION_PATH}.")
         jdk.install('8', jre=True)
@@ -75,9 +79,6 @@ def _run_installation() -> None:
             logging.info("installation completed.")
         else:
             raise IOError("installation failed")
-    if not _is_installed_nlp():
-        _install_nlp()
-        assert _is_installed_nlp()
 
 
 _run_installation()
