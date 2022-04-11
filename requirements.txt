@@ -1,3 +1,4 @@
+notebook
 pyDatalog
 tabulate
 pandas

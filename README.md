@@ -45,17 +45,17 @@ from [this link](https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHK
 ```bash
 docker build . -t spanner_workbench_image
 
-# change `pwd to current working directory`
+# on windows, change `pwd to current working directory`
 # to get a bash terminal to the container
 docker run --name swc --rm -it \
-  -v `pwd`:/spanner_workbench \
+  -v `pwd`:/spanner_workbench:Z \
   spanner_workbench_image bash
 
 # to run an interactive notebook on host port 8891
 docker run --name swc --rm -it \
-  -v `pwd`:/spanner_workbench \
+  -v `pwd`:/spanner_workbench:Z \
   -p8891:8888 \
-  spanner_workbench_image
+  spanner_workbench_image jupyter notebook --no-browser --allow-root
 
 #Verify tests inside the container
 pytest /spanner_workbench/src/rgxlog-interpreter/tests -s
