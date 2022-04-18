@@ -41,12 +41,13 @@ download corenlp to
 `spanner_workbench/src/rgxlog-interpreter/src/rgxlog/stdlib`
 
 from [this link](https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl)
+and for windows comment "**/stanford-corenlp*" line in dockerignore 
 
 ```bash
 docker build . -t spanner_workbench_image
 
 # on windows, change `pwd to current working directory`
-# to get a bash terminal to the container
+# to get a bash terminal to the container and add "winpty" before docker run
 docker run --name swc --rm -it \
   -v `pwd`:/spanner_workbench:Z \
   spanner_workbench_image bash
