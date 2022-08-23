@@ -70,8 +70,8 @@ class Relation:
         @raise Exception: if length of term list doesn't match the length of type list.
         """
         if len(term_list) != len(type_list):
-            raise Exception(f"received different lengths of term_list ({len(term_list)}) "
-                            f"and type_list ({len(type_list)})")
+            raise Exception(f"received different lengths of term_list ({term_list}) "
+                            f"and type_list ({type_list})")
         self.relation_name = relation_name
         self.term_list = term_list
         self.type_list = type_list
@@ -156,10 +156,10 @@ class IERelation:
         return str(self)
 
     def get_term_list(self) -> List[DataTypeMapping.term]:
-        return self.output_term_list
+        return self.input_term_list + self.output_term_list
 
     def get_type_list(self) -> List[DataTypes]:
-        return self.output_type_list
+        return self.input_type_list + self.output_type_list
 
     def has_same_terms_and_types(self, other: Relation) -> bool:
         """

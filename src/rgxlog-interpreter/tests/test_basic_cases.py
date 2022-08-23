@@ -435,3 +435,4 @@ def test_add_remove_fact() -> None:
                         """
 
     run_test(commands, expected_result)
+
