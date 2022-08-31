@@ -261,5 +261,3 @@ def test_span_constant() -> None:
                          You write neatly."""
 
     run_test(commands, expected_result)
-
-

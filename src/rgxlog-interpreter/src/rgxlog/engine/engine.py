@@ -798,7 +798,6 @@ class SqliteEngine(RgxlogEngineBase):
                 ie_outputs = ie_func.ie_function(*ie_input)
                 # process each ie output and add it to the output relation
                 for ie_output in ie_outputs:
-                    ### here we append the input to the output
                     spanned_ie_output = _format_ie_output(ie_input + tuple(ie_output))
 
                     # assert the ie output is properly typed

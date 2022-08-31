@@ -70,8 +70,8 @@ class Relation:
         @raise Exception: if length of term list doesn't match the length of type list.
         """
         if len(term_list) != len(type_list):
-            raise Exception(f"received different lengths of term_list ({term_list}) "
-                            f"and type_list ({type_list})")
+            raise Exception(f"received different lengths of term_list ({len(term_list)}) "
+                            f"and type_list ({len(type_list)})")
         self.relation_name = relation_name
         self.term_list = term_list
         self.type_list = type_list
