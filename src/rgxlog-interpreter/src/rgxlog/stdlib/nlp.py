@@ -47,7 +47,6 @@ def _install_nlp() -> None:
 
     if not STANFORD_ZIP_PATH.is_file():
         logger.info(f"downloading {STANFORD_ZIP_NAME}...")
-        #TODO debug this
         download_file_from_google_drive(STANFORD_ZIP_GOOGLE_DRIVE_ID, STANFORD_ZIP_PATH)
 
     with open(STANFORD_ZIP_PATH, "rb") as zipresp:
@@ -82,7 +81,7 @@ def _run_installation() -> None:
 
 
 _run_installation()
-CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
+#CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
 
 
 # ********************************************************************************************************************
