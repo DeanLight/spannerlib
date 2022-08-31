@@ -1,7 +1,6 @@
 """
 this module supports nlp methods. for documentation:
 https://stanfordnlp.github.io/CoreNLP/index.html
-
 we are aware that starting the engine inside each method affects efficiency.
 still, don't set `core_nlp_engine` as a global variable,
 because that way, the java processes will not be killed.
@@ -81,7 +80,7 @@ def _run_installation() -> None:
 
 
 _run_installation()
-#CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
+CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
 
 
 # ********************************************************************************************************************
