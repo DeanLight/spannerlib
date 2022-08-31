@@ -54,7 +54,7 @@ class IEFunction:
         # output is constant
         if not output_arity == len(list(self.in_types)) + len(list(self.out_types)):
             raise Exception("Output arity doesn't match the declared arity.")
-        return Sequence[self.in_types, self.out_types]
+        return self.in_types + self.out_types
 
     def get_meta_data(self) -> str:
         """
