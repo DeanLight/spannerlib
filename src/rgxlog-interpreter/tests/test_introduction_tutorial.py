@@ -177,14 +177,14 @@ def test_remove_rule() -> None:
 
 
 def test_issue_80_len() -> None:
-    def length(string: str) -> int:
+    def length(string: str) -> Iterable[int]:
         # here we append the input to the output inside the ie function!
         yield len(string)
 
     length_dict = dict(ie_function=length,
                        ie_function_name='Length',
                        in_rel=[DataTypes.string],
-                       out_rel=[DataTypes.integer, DataTypes.string])
+                       out_rel=[DataTypes.integer])
 
     commands = """new string(str)
             string("a")
