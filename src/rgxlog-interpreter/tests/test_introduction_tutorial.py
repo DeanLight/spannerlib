@@ -177,7 +177,7 @@ def test_remove_rule() -> None:
 
 
 def test_issue_80_len() -> None:
-    def length(string: str):
+    def length(string: str) -> int:
         # here we append the input to the output inside the ie function!
         yield len(string)
 
