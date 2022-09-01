@@ -38,7 +38,9 @@ CSV_DELIMITER = ";"
 
 # ordered by rgx, json, nlp, etc.
 PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE,
-                       JsonPath, JsonPathFull]
+                       JsonPath, JsonPathFull]  # ,
+# Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment,
+# TrueCase]
 
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
