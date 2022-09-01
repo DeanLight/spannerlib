@@ -29,8 +29,8 @@ from rgxlog.engine.state.symbol_table import SymbolTable, SymbolTableBase
 from rgxlog.engine.utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
 from rgxlog.engine.utils.passes_utils import LarkNode
 from rgxlog.stdlib.json_path import JsonPath, JsonPathFull
-from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
-                               OpenIE, KBP, Quote, Sentiment, TrueCase)
+# from rgxlog.stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
+#                               OpenIE, KBP, Quote, Sentiment, TrueCase)
 from rgxlog.stdlib.python_regex import PYRGX, PYRGX_STRING
 from rgxlog.stdlib.rust_spanner_regex import RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE
 
@@ -38,9 +38,7 @@ CSV_DELIMITER = ";"
 
 # ordered by rgx, json, nlp, etc.
 PREDEFINED_IE_FUNCS = [PYRGX, PYRGX_STRING, RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE,
-                       JsonPath, JsonPathFull,
-                       Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment,
-                       TrueCase]
+                       JsonPath, JsonPathFull]
 
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 

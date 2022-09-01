@@ -80,7 +80,7 @@ def _run_installation() -> None:
 
 
 _run_installation()
-# CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
+CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
 
 
 # ********************************************************************************************************************
