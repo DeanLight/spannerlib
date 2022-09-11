@@ -49,7 +49,7 @@ class IEFunction:
         """
 
         if callable(self.out_types):
-            return self.out_types(output_arity)
+            return list(self.in_types) + list(self.out_types(output_arity - len(self.in_types)))
 
         # output is constant
         if not output_arity == len(list(self.in_types)) + len(list(self.out_types)):
