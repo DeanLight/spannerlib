@@ -546,7 +546,7 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
                                     f' {used_input_arity} (should be {correct_input_arity})')
 
                 # check if the correct output arity was used
-                used_output_arity = len(relation.output_term_list) + len(relation.input_term_list)
+                used_output_arity = len(relation.output_term_list)
                 correct_output_arity = len(ie_func_data.get_output_types(used_output_arity))
                 if used_output_arity != correct_output_arity:
                     raise Exception(f'used incorrect output arity for ie function {ie_func_name}:'

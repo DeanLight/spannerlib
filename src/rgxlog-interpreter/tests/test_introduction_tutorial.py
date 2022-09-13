@@ -176,25 +176,23 @@ def test_remove_rule() -> None:
     run_test(commands, expected_result, session=session)
 
 
-def test_issue_80_len() -> None:
-    def length(string: str) -> Iterable[int]:
+def test_string_len() -> None:
+    def length(string: str) -> Iterable[Tuple[int, str]]:
         # here we append the input to the output inside the ie function!
-        yield len(string)
+        yield len(string), string
 
     length_dict = dict(ie_function=length,
                        ie_function_name='Length',
                        in_rel=[DataTypes.string],
-                       out_rel=[DataTypes.integer])
+                       out_rel=[DataTypes.integer, DataTypes.string])
 
     commands = """new string(str)
-            string("a")
-            string("d")
             string("a")
             string("ab")
             string("abc")
             string("abcd")
 
-            string_length(Str, Len) <- string(Str), Length(Str) -> (Len)
+            string_length(Str, Len) <- string(Tmp), Length(Tmp) -> (Len, Str)
             ?string_length(Str, Len)
             """
 
@@ -202,7 +200,6 @@ def test_issue_80_len() -> None:
           Str  |   Len
         -------+-------
            a   |     1
-           d   |     1
           ab   |     2
           abc  |     3
          abcd  |     4

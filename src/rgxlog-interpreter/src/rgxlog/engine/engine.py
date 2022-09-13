@@ -801,20 +801,20 @@ class SqliteEngine(RgxlogEngineBase):
                     spanned_ie_output = _format_ie_output(ie_output)
 
                     # assert the ie output is properly typed
-                    self._assert_ie_output_properly_typed(ie_input, list(ie_input) + spanned_ie_output, ie_output_schema, ie_relation)
+                    self._assert_ie_output_properly_typed(ie_input, spanned_ie_output, ie_output_schema, ie_relation)
 
                     # add the output as a fact to the output relation
                     # notice - repetitions are ignored here (results are in a set)
                     if len(spanned_ie_output) != 0:
-                        output_fact = AddFact(output_relation.relation_name, list(ie_input) + spanned_ie_output, list(ie_output_schema))
+                        output_fact = AddFact(output_relation.relation_name, spanned_ie_output, list(ie_output_schema))
                         self.add_fact(output_fact)
 
         ie_relation_name = ie_relation.relation_name
         # create the output relation for the ie function, and also declare it inside SQL
-        output_relation_arity = len(ie_relation.input_term_list) + len(ie_relation.output_term_list)
+        output_relation_arity = len(ie_relation.output_term_list)
         output_relation_name = self._create_unique_relation(output_relation_arity,
                                                             prefix=f'{ie_relation_name}{SqliteEngine.SQL_SEPARATOR}output')
-        output_relation = Relation(output_relation_name, ie_relation.get_term_list(), ie_relation.get_type_list())
+        output_relation = Relation(output_relation_name, ie_relation.output_term_list, ie_relation.output_type_list)
 
         ie_inputs = _get_all_ie_function_inputs()
         ie_output_schema = ie_func.get_output_types(output_relation_arity)
@@ -952,7 +952,7 @@ class SqliteEngine(RgxlogEngineBase):
 
         # assert that the ie output is properly typed
         ie_output_is_properly_typed = ie_output_term_types == list(ie_output_schema)
-        if not ie_output_is_properly_typed and len(ie_output_term_types) - len(ie_relation.input_term_list) != 0:
+        if not ie_output_is_properly_typed and len(ie_output_term_types) != 0:
             raise TypeError(f'executing ie relation {ie_relation}\n'
                             f'with the input {ie_input}\n'
                             f'failed because one of the outputs had unexpected term types\n'

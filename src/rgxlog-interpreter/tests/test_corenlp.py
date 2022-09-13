@@ -23,7 +23,7 @@ def test_tokenize() -> None:
   Hello  |  [0, 5)
 """
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_ssplit() -> None:
@@ -40,7 +40,7 @@ def test_ssplit() -> None:
                         Hello world .
                     """
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_pos() -> None:
@@ -61,7 +61,7 @@ def test_pos() -> None:
                       Marie  |  NNP  |  [0, 5)
                     """
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_lemma() -> None:
@@ -88,7 +88,7 @@ def test_lemma() -> None:
                         I    |    I    |  [0, 1)
                     """
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 @pytest.mark.long
@@ -109,7 +109,7 @@ def test_ner() -> None:
                       France   |   COUNTRY    |  [9, 15)
                     """
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 @pytest.mark.long
@@ -131,7 +131,7 @@ def test_entity_mentions() -> None:
                        """         0 |                   14 |   ORGANIZATION    | {'ORGANIZATION': 0.98456891831803}
                     """)
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_parse() -> None:
@@ -146,7 +146,7 @@ def test_parse() -> None:
                      (ROOT<nl>  (S<nl>    (NP (DT the) (JJ quick) (JJ brown) (NN fox))<nl>    (VP (VBZ jumps)<nl>"""
                        """      (PP (IN over)<nl>        (NP (DT the) (JJ lazy) (NN dog))))))""")
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 @pytest.mark.long
@@ -169,7 +169,7 @@ def test_depparse() -> None:
                          ROOT  |          0 |      ROOT       |           5 |      jumps
                          """
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 @pytest.mark.long
@@ -192,7 +192,7 @@ def test_coref() -> None:
                             0 | The atom |  NOMINAL   | SINGULAR | NEUTRAL  | INANIMATE |            1 |          3"""
                        """ |           2 |         1 |   [1, 1)   |           True""")
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 @pytest.mark.long
@@ -215,7 +215,7 @@ def test_openie() -> None:
                          quick brown fox |    [1, 4)     | jumps over |     [4, 6)     | lazy dog |    [7, 9)
                         """)
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 # note: this test uses 3+ GB of RAM
@@ -234,7 +234,7 @@ def test_kbp() -> None:
                          Joe Smith |    [0, 2)     | per:stateorprovince_of_birth |    [-2, -1)    |  Oregon  |    """
                        """[5, 6)""")
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_sentiment() -> None:
@@ -267,7 +267,7 @@ def test_sentiment() -> None:
                        """ 0.0811364260425, 0.00393484036195]
                         """)
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 @pytest.mark.long
@@ -292,7 +292,7 @@ def test_truecase() -> None:
                           lonzo  |  [0, 5)  | INIT_UPPER |     Lonzo
                         """
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 def test_clean_xml() -> None:
@@ -319,7 +319,7 @@ def test_clean_xml() -> None:
                               -1 |   Tove   |      Tove      |                      9 |                   13
                         """)
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
 
 
 @pytest.mark.long
@@ -335,4 +335,4 @@ def test_quote() -> None:
                        0 | I'm going to Hawaii.\ |  62 |  85 |  15 |  23 |   1 |   2 | Joe Smith | Joe Smith
                        """)
 
-    # run_test(commands, expected_result)
+    run_test(commands, expected_result)
