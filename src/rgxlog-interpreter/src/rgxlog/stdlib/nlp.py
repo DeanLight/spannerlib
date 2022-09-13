@@ -1,7 +1,6 @@
 """
 this module supports nlp methods. for documentation:
 https://stanfordnlp.github.io/CoreNLP/index.html
-
 we are aware that starting the engine inside each method affects efficiency.
 still, don't set `core_nlp_engine` as a global variable,
 because that way, the java processes will not be killed.
@@ -47,7 +46,6 @@ def _install_nlp() -> None:
 
     if not STANFORD_ZIP_PATH.is_file():
         logger.info(f"downloading {STANFORD_ZIP_NAME}...")
-        #TODO debug this
         download_file_from_google_drive(STANFORD_ZIP_GOOGLE_DRIVE_ID, STANFORD_ZIP_PATH)
 
     with open(STANFORD_ZIP_PATH, "rb") as zipresp:

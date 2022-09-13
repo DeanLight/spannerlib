@@ -165,7 +165,7 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation], symbol_
         ie_func_name = relation.relation_name
         ie_func_data = symbol_table.get_ie_func_data(ie_func_name)
         input_schema = ie_func_data.get_input_types()
-        output_arity = len(relation.output_term_list)
+        output_arity = len(relation.output_term_list) + len(relation.input_term_list)
         output_schema = ie_func_data.get_output_types(output_arity)
 
         # perform the type check on both the input and output term lists
@@ -173,7 +173,8 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation], symbol_
         input_type_check_passed = check_properly_typed_term_list(
             relation.input_term_list, relation.input_type_list, input_schema, symbol_table)
         output_type_check_passed = check_properly_typed_term_list(
-            relation.output_term_list, relation.output_type_list, output_schema, symbol_table)
+            relation.input_term_list + relation.output_term_list,
+            relation.input_type_list + relation.output_type_list, output_schema, symbol_table)
         relation_is_properly_typed = input_type_check_passed and output_type_check_passed
 
     else:
@@ -214,13 +215,14 @@ def type_check_rule_free_vars(rule: Rule, symbol_table: SymbolTableBase) -> Tupl
             ie_func_name = relation.relation_name
             ie_func_data = symbol_table.get_ie_func_data(ie_func_name)
             input_schema = ie_func_data.get_input_types()
-            output_arity = len(relation.output_term_list)
+            output_arity = len(relation.output_term_list) + len(relation.input_term_list)
             output_schema = ie_func_data.get_output_types(output_arity)
 
             # perform the free variable type checking on both the input and output term lists of the ie relation
             type_check_rule_free_vars_aux(relation.input_term_list, relation.input_type_list,
                                           input_schema, free_var_to_type, conflicted_free_vars)
-            type_check_rule_free_vars_aux(relation.output_term_list, relation.output_type_list,
+            type_check_rule_free_vars_aux(relation.input_term_list + relation.output_term_list,
+                                          relation.input_type_list + relation.output_type_list,
                                           output_schema, free_var_to_type, conflicted_free_vars)
 
         else:
