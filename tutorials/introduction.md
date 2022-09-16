@@ -570,8 +570,15 @@ magic_session.register(length, "Length", [DataTypes.string], [DataTypes.integer,
 
 ```python
 %%rgxlog
-string_length_2(Str, Len) <- string(Str), Length(Str) -> (Len, Str)
-?string_length_2(Str, Len)
+# Let's test this solution:
+new string(str)
+string("a")
+string("ab")
+string("abc")
+string("abcd")
+
+string_length(Str, Len) <- string(Str), Length(Str) -> (Len, Str)
+?string_length(Str, Len)
 ```
 
 ### It works
