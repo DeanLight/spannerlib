@@ -270,7 +270,7 @@ def test_issue_80() -> None:
                 80 |      8 |     2
                 42 |     20 |     5
         """
-    iefunctions_list = (multiple_highest_2, multiple_by_2_the_highest)
+    iefunctions_list = [multiple_highest_2, multiple_by_2_the_highest]
     run_test(commands, expected_result, iefunctions_list)
 
 
