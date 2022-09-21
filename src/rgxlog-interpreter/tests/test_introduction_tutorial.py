@@ -223,10 +223,10 @@ def test_issue_80() -> None:
     in_types = [DataTypes.integer, DataTypes.integer, DataTypes.integer]
     out_types = [DataTypes.integer, DataTypes.integer]
 
-    multiple_highest_2 = dict(ie_function=multiple_highest_2,
-                              ie_function_name='multiple_highest_2',
-                              in_rel=in_types,
-                              out_rel=out_types)
+    multiple_highest_2_dict = dict(ie_function=multiple_highest_2,
+                                   ie_function_name='multiple_highest_2',
+                                   in_rel=in_types,
+                                   out_rel=out_types)
 
     def multiple_by_2_the_highest(x, y) -> Iterable[Tuple[int, int]]:
         if x < y:
@@ -236,10 +236,10 @@ def test_issue_80() -> None:
 
     in_out_types = [DataTypes.integer, DataTypes.integer]
 
-    multiple_by_2_the_highest = dict(ie_function=multiple_by_2_the_highest,
-                                     ie_function_name='multiple_by_2_the_highest',
-                                     in_rel=in_out_types,
-                                     out_rel=in_out_types)
+    multiple_by_2_the_highest_dict = dict(ie_function=multiple_by_2_the_highest,
+                                          ie_function_name='multiple_by_2_the_highest',
+                                          in_rel=in_out_types,
+                                          out_rel=in_out_types)
 
     commands = """new trio(int, int, int)
 
@@ -280,9 +280,9 @@ def test_issue_80() -> None:
                 42 |     20 |     5
         """
 
-    session = run_test(commands, expected_result, [multiple_highest_2])
+    session = run_test(commands, expected_result, [multiple_highest_2_dict])
 
-    run_test(commands2, expected_result2, [multiple_by_2_the_highest], session=session)
+    run_test(commands2, expected_result2, [multiple_by_2_the_highest_dict], session=session)
 
 
 def test_neq() -> None:
