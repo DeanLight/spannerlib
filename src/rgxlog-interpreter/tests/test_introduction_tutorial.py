@@ -271,7 +271,7 @@ def test_issue_80() -> None:
                 42 |     20 |     5
         """
 
-    run_test(commands, expected_result, [multiple_highest_2, multiple_by_2_the_highest])
+    run_test(commands, expected_result, ([multiple_highest_2], [multiple_by_2_the_highest]))
 
 
 def test_neq() -> None:
