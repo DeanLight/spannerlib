@@ -211,6 +211,69 @@ def test_issue_80_len() -> None:
     run_test(commands, expected_result, [length_dict])
 
 
+def test_issue_80() -> None:
+    def multiple_highest_2(x, y, z):
+        if (x <= y <= z) or (x <= z <= y):
+            yield y * z, x
+        elif (y <= x <= z) or (y <= z <= x):
+            yield x * z, y
+        elif (z <= x <= y) or (z <= y <= x):
+            yield y * x, z
+
+    in_types = [DataTypes.integer, DataTypes.integer, DataTypes.integer]
+    out_types = [DataTypes.integer, DataTypes.integer]
+
+    multiple_highest_2 = dict(ie_function=multiple_highest_2,
+                              ie_function_name='multiple_highest_2',
+                              in_rel=in_types,
+                              out_rel=out_types)
+
+    def multiple_by_2_the_highest(x, y):
+        if x < y:
+            yield y * 2, x
+        else:
+            yield x * 2, y
+
+    in_out_types = [DataTypes.integer, DataTypes.integer]
+
+    multiple_by_2_the_highest = dict(ie_function=multiple_by_2_the_highest,
+                                     ie_function_name='multiple_by_2_the_highest',
+                                     in_rel=in_out_types,
+                                     out_rel=in_out_types)
+
+    commands = """new trio(int, int, int)
+
+                trio(5, 6 ,7)
+                trio(4, 4, 7)
+                trio(10, 8 ,2)
+                trio(4, 4, 4)
+                trio(8, 40, 12)
+                
+                new pair(int, int)
+                pair(2, 4)
+                pair(5, 10)
+                pair(3, 3)
+                pair(10, 14)
+                
+                multiple_highest_2_from_trio(MUL, MIN) <- trio(X, Y, Z), multiple_highest_2(X, Y, Z) -> (MUL, MIN)
+                
+                multiple_by_2_the_highest_from_pairs(MUL2, MIN) <- pair(X, Y), multiple_by_2_the_highest(X, Y) -> (MUL2, MIN)
+                
+                min_is_the_same(MUL, MUL2, MIN) <- multiple_highest_2_from_trio(MUL, MIN), multiple_by_2_the_highest_from_pairs(MUL2, MIN)
+                
+                ?min_is_the_same(MUL, MUL2, MIN)
+            """
+
+    expected_result = f"""{QUERY_RESULT_PREFIX}'min_is_the_same(MUL, MUL2, MIN)':
+               MUL |   MUL2 |   MIN
+            -------+--------+-------
+                80 |      8 |     2
+                42 |     20 |     5
+        """
+
+    run_test(commands, expected_result, [multiple_highest_2, multiple_by_2_the_highest])
+
+
 def test_neq() -> None:
     def neq(x: Any, y: Any) -> Iterable:
         if x == y:
