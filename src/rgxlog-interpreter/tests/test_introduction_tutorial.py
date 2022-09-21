@@ -248,30 +248,41 @@ def test_issue_80() -> None:
                 trio(10, 8 ,2)
                 trio(4, 4, 4)
                 trio(8, 40, 12)
-                
+
                 new pair(int, int)
                 pair(2, 4)
                 pair(5, 10)
                 pair(3, 3)
                 pair(10, 14)
-                
+
                 multiple_highest_2_from_trio(MUL, MIN) <- trio(X, Y, Z), multiple_highest_2(X, Y, Z) -> (MUL, MIN)
-                
+                ?multiple_highest_2_from_trio(MUL, MIN)
+            """
+    commands2 = """
                 multiple_by_2_the_highest_from_pairs(MUL2, MIN) <- pair(X, Y), multiple_by_2_the_highest(X, Y) -> (MUL2, MIN)
-                
                 min_is_the_same(MUL, MUL2, MIN) <- multiple_highest_2_from_trio(MUL, MIN), multiple_by_2_the_highest_from_pairs(MUL2, MIN)
-                
                 ?min_is_the_same(MUL, MUL2, MIN)
             """
+    expected_result = f"""{QUERY_RESULT_PREFIX}'multiple_highest_2_from_trio(MUL, MIN)':
+                MUL |   MIN
+             -------+-------
+                 42 |     5
+                 28 |     4
+                 80 |     2
+                 16 |     4
+                480 |     8
+         """
 
-    expected_result = f"""{QUERY_RESULT_PREFIX}'min_is_the_same(MUL, MUL2, MIN)':
+    expected_result2 = f"""{QUERY_RESULT_PREFIX}'min_is_the_same(MUL, MUL2, MIN)':
                MUL |   MUL2 |   MIN
             -------+--------+-------
                 80 |      8 |     2
                 42 |     20 |     5
         """
-    iefunctions_list = [multiple_highest_2, multiple_by_2_the_highest]
-    run_test(commands, expected_result, iefunctions_list)
+
+    session = run_test(commands, expected_result, [multiple_highest_2])
+
+    run_test(commands2, expected_result2, [multiple_by_2_the_highest], session=session)
 
 
 def test_neq() -> None:
