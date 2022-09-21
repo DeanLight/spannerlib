@@ -212,7 +212,7 @@ def test_issue_80_len() -> None:
 
 
 def test_issue_80() -> None:
-    def multiple_highest_2(x, y, z) -> (int, int, int):
+    def multiple_highest_2(x, y, z) -> Iterable[int]:
         if (x <= y <= z) or (x <= z <= y):
             yield y * z, x
         elif (y <= x <= z) or (y <= z <= x):
@@ -228,7 +228,7 @@ def test_issue_80() -> None:
                               in_rel=in_types,
                               out_rel=out_types)
 
-    def multiple_by_2_the_highest(x, y) -> (int, int):
+    def multiple_by_2_the_highest(x, y) -> Iterable[int]:
         if x < y:
             yield y * 2, x
         else:
