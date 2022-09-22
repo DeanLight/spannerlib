@@ -211,7 +211,78 @@ def test_issue_80_len() -> None:
     run_test(commands, expected_result, [length_dict])
 
 
-def test_issue_80() -> None:
+def test_issue_80_1() -> None:
+    def which_century(year) -> Iterable[int]:
+        yield int(year / 100) + 1
+
+    in_out_types = [DataTypes.integer]
+
+    which_century_dict = dict(ie_function=which_century,
+                              ie_function_name='which_century',
+                              in_rel=in_out_types,
+                              out_rel=in_out_types)
+
+    def which_era(cet) -> Iterable[str]:
+        if 1 <= cet < 4:
+            yield "Targerian Regime"
+        elif 4 <= cet < 8:
+            yield "Lanister Regime"
+        elif 8 <= cet < 12:
+            yield "Stark Regime"
+        elif 12 <= cet < 16:
+            yield "Barathion Regime"
+        elif cet >= 16:
+            yield "Long Winter"
+
+    which_era_dict = dict(ie_function=which_era,
+                          ie_function_name='which_era',
+                          in_rel=[DataTypes.integer],
+                          out_rel=[DataTypes.string])
+
+    commands = """new event(str, int)
+                        event("First Dragon", 250)
+                        event("Mad king", 390)
+                        event("Winter came", 1750)
+                        event("Hodor", 999)
+                        event("Joffery died", 799)
+                        
+                        new important_year(int)
+                        important_year(999)
+                        important_year(1750)
+                        important_year(250)
+                        
+                        
+                        important_events(EVE, Y) <- event(EVE, Y), important_year(Y)
+                        
+                        important_events_per_cet(EVE, CET) <- important_events(EVE, Y), which_century(Y) -> (CET)
+                        ?important_events_per_cet(EVE, CET)
+            """
+    commands2 = """
+                        important_events_per_era(EVE, ERA) <- important_events_per_cet(EVE, CET), which_era(CET) -> (ERA)
+                        ?important_events_per_era(EVE, ERA)
+            """
+    expected_result = f"""{QUERY_RESULT_PREFIX}'important_events_per_cet(EVE, CET)':
+                         EVE      |   CET
+                    --------------+-------
+                     First Dragon |  3
+                     Winter came  |  18
+                        Hodor     |  10
+         """
+
+    expected_result2 = f"""{QUERY_RESULT_PREFIX}'important_events_per_era(EVE, ERA)':
+                         EVE      |       ERA
+                    --------------+------------------
+                     First Dragon |  Targerian Regime
+                     Winter came  |  Long Winter 
+                        Hodor     |  Stark Regime
+        """
+
+    # session = run_test(commands, expected_result, [which_century_dict])
+
+    # run_test(commands2, expected_result2, [which_era_dict], session=session)
+
+
+def test_issue_80_2() -> None:
     def multiple_highest_2(x, y, z) -> Iterable[Tuple[int, int]]:
         if (x <= y <= z) or (x <= z <= y):
             yield y * z, x
