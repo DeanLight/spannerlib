@@ -557,15 +557,15 @@ py_rgx_string(grade_str, "(\w+).*?(\d+)")->(Student, Grade), enrolled_in_chemist
 Let's write a rgxlog program that gets a table in which each row is a single string - string(str).
 <br>
 The program will create a new table in which each row is a string and its length.
+
 ### First try:
 
 ```python
-# Step 1: implement an IE function
 def length(string):
-    yield len(string), 
+    #here we append the input to the output inside the ie function!
+    yield len(string), string
     
-# Step 2: register the function
-magic_session.register(length, "Length", [DataTypes.string], [DataTypes.integer])
+magic_session.register(length, "Length", [DataTypes.string], [DataTypes.integer, DataTypes.string])
 ```
 
 ```python
@@ -577,33 +577,41 @@ string("ab")
 string("abc")
 string("abcd")
 
-string_length(Str, Len) <- string(Str), Length(Str) -> (Len)
+string_length(Str, Len) <- string(Str), Length(Str) -> (Len, Str)
 ?string_length(Str, Len)
 ```
 
-### Looks like something went wrong!
-Our goal was to append to each string in the table its length.
-What we actually got is the length of each string appended to **all** the strings.
-<br>
-This happens becuase RGXLog stores all the inputs of each IE function in an input table and all the outputs in an output table. 
-Then it's joining the input table with the output table.
-<br><br>
-Therefore, if we want append to each input to its output, we have to do it manually.
-### Second try:
+### It works
+Our first IE function yield the input in addition to the output. This will ensure that we will get 
+the right output to his input. But, is this really necessary? Let's try another solution:
 
 ```python
+    #here we don't append the input to the output inside the ie function!
 def length2(string):
-    #here we append the input to the output inside the ie function!
-    yield len(string), string
+    yield len(string), 
     
-magic_session.register(length2, "Length2", [DataTypes.string], [DataTypes.integer, DataTypes.string])
+# Step 2: register the function
+magic_session.register(length2, "Length2", [DataTypes.string], [DataTypes.integer])
 ```
 
 ```python
 %%rgxlog
-string_length_2(Str, Len) <- string(Str), Length2(Str) -> (Len, Str)
-?string_length_2(Str, Len)
+# Let's test this solution:
+new string(str)
+string("a")
+string("ab")
+string("abc")
+string("abcd")
+
+string_length(Str, Len) <- string(Str), Length2(Str) -> (Len)
+?string_length(Str, Len)
 ```
+
+### It looks good, but why?
+First we can see that the IE function yield only an output without any trace to the input. In addition, RGXLog stores all the inputs of each IE function in an input table and all the outputs in an output table. 
+Then it's joining the input table with the output table. So, why we still got the right solution? 
+This thanks to the fact that RGXlog stores the input bounded to it's output deductively. 
+
 
 ## Logical Operators:
 Suppose we have a table in which each row contains two strings - pair(str, str).
