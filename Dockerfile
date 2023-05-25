@@ -40,9 +40,13 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 ### Install Python packages listed in 'requirements.txt' using pip.
+# install workbench
 COPY . spanner_workbench
-RUN pip install --no-cache-dir -r spanner_workbench/requirements.txt
-RUN pip install -e spanner_workbench/src/rgxlog-interpreter
+RUN pip install -e spanner_workbench
+
+# install rgxlog
+RUN pip install --no-cache-dir -r spanner_workbench/old_version/requirements.txt
+RUN pip install -e spanner_workbench/old_version/src/rgxlog-interpreter
 
 # USER jovyan
 # WORKDIR /home/jovyan
