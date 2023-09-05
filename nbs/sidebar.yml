@@ -2,22 +2,31 @@ website:
   sidebar:
     contents:
       - index.ipynb
-      - 00_src.rgxlog_interpreter.src.rgxlog.engine.datatypes.primitive_types.ipynb
-      - 01_src.rgxlog_interpreter.src.rgxlog.engine.datatypes.ast_node_types.ipynb
-      - 02_src.rgxlog_interpreter.src.rgxlog.engine.ie_function.ipynb
-      - 03_src.rgxlog_interpreter.src.rgxlog.engine.state.symbol_table.ipynb
-      - 04_src.rgxlog_interpreter.src.rgxlog.engine.utils.general_utils.ipynb
-      - 05_src.rgxlog_interpreter.src.rgxlog.engine.utils.expected_grammar.ipynb
-      - 06_src.rgxlog_interpreter.src.rgxlog.engine.state.graphs.ipynb
-      - 07_src.rgxlog_interpreter.src.rgxlog.engine.engine.ipynb
-      - 08_src.rgxlog_interpreter.src.rgxlog.engine.utils.passes_utils.ipynb
-      - 09_src.rgxlog_interpreter.src.rgxlog.engine.passes.lark_passes.ipynb
-      - 10_src.rgxlog_interpreter.src.rgxlog.engine.passes.optimizations_passes.ipynb
-      - 11_src.rgxlog_interpreter.src.rgxlog.engine.passes.adding_inference_rules_to_term_graph.ipynb
-      - 12_src.rgxlog_interpreter.src.rgxlog.engine.execution.ipynb
-      - 13_src.rgxlog_interpreter.src.rgxlog.stdlib.json_path.ipynb
-      - 14_src.rgxlog_interpreter.src.rgxlog.stdlib.utils.ipynb
-      - 16_src.rgxlog_interpreter.src.rgxlog.stdlib.python_regex.ipynb
-      - 18_src.rgxlog_interpreter.src.rgxlog.magic.rgxlog_magic.ipynb
-      - 20_src.rgxlog_interpreter.tests.test_sqlite_engine.ipynb
-      - base.ipynb
+      - section: Tutorials
+        contents:
+        - introduction.ipynb
+      - section: src
+        contents:
+          - section: datatypes
+            contents:
+              - 00_primitive_types.ipynb
+              - 01_ast_node_types.ipynb
+          - section: passes
+            contents:
+              - 09_lark_passes.ipynb
+              - 10_optimizations_passes.ipynb
+              - 11_adding_inference_rules_to_term_graph.ipynb
+          - section: state
+            contents:
+              - 06_graphs.ipynb
+              - 03_symbol_table.ipynb
+          - section: utils
+            contents:
+              - 05_expected_grammar.ipynb
+              - 04_general_utils.ipynb
+              - 08_passes_utils.ipynb
+          - 07_engine.ipynb
+          - 12_execution.ipynb
+          - 02_ie_function.ipynb
+
+
