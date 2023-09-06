@@ -18,7 +18,11 @@ def get_term_list_string(term_list: Sequence[DataTypeMapping.term], #the term li
     quotes are added to string terms so they will not be confused with variables. <br>
     @raise Exception: if length of term list doesn't match the length of type list.
     """
-        
+    
+    if len(term_list) != len(type_list):
+        raise Exception(f"received different lengths of term_list ({len(term_list)}) "
+                        f"and type_list ({len(type_list)})")
+    
     terms_with_quoted_strings = [f'"{term}"' if term_type is DataTypes.string
                                  else str(term)
                                  for term, term_type in zip(term_list, type_list)]
@@ -40,7 +44,7 @@ class RelationDeclaration:
     def __str__(self) -> str:
         type_strings = []
         for term_type in self.type_list:
-            if term_type is DataTypes.string:
+            if term_type in [DataTypes.string, DataTypes.free_var_name]:
                 type_strings.append('str')
             elif term_type is DataTypes.span:
                 type_strings.append('span')
