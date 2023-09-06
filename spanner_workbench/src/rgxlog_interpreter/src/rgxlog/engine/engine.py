@@ -316,7 +316,7 @@ class SqliteEngine(RgxlogEngineBase):
         {% for left, right in constraint_pairs %}
             {{left}}={{right}}
             {% if not loop.last %}
-                ,
+                AND
             {% endif %}
         {% endfor %}
         """)
