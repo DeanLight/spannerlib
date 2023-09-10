@@ -2,8 +2,8 @@ project:
   output-dir: _docs
 
 website:
-  title: "spanner-workbench"
-  site-url: "https://loayshaqir1.github.io/spanner_workbench"
-  description: "An nbdev repo for the spanner_workbench project to help in documenting and debugging it"
+  title: "spanner_workbench"
+  site-url: "https://DeanLight.github.io/spanner_workbench"
+  description: "work bench"
   repo-branch: main
-  repo-url: "https://github.com/loayshaqir1/spanner_workbench"
+  repo-url: "https://github.com/DeanLight/spanner_workbench"
