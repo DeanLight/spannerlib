@@ -5,7 +5,6 @@ website:
       - section: Tutorials
         contents:
         - introduction.ipynb
-        - live_repl.ipynb
       - section: src
         contents:
           - section: datatypes
@@ -26,9 +25,6 @@ website:
               - 05_expected_grammar.ipynb
               - 04_general_utils.ipynb
               - 08_passes_utils.ipynb
-          - section: stdlib
-            contents:
-              - 17_rust_spanner_regex.ipynb
           - 07_engine.ipynb
           - 12_execution.ipynb
           - 02_ie_function.ipynb

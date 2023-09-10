@@ -3,11 +3,12 @@
 # %% auto 0
 __all__ = ['IEFunction']
 
-# %% ../../../../../../nbs/02_ie_function.ipynb 4
+# %% ../../../../../../nbs/02_ie_function.ipynb 3
 from typing import Iterable, Callable, Union, Tuple, List, Sequence, Any
 from .datatypes.primitive_types import DataTypes
+from fastcore.utils import *
 
-# %% ../../../../../../nbs/02_ie_function.ipynb 7
+# %% ../../../../../../nbs/02_ie_function.ipynb 4
 class IEFunction:
     """
     A class that contains all the functions that provide data

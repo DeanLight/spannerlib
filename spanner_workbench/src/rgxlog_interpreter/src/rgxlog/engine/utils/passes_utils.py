@@ -4,7 +4,7 @@
 __all__ = ['ParseNodeType', 'assert_expected_node_structure_aux', 'assert_expected_node_structure', 'unravel_lark_node',
            'get_new_rule_nodes']
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 5
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 4
 from enum import Enum
 
 from lark import Tree as LarkNode
@@ -13,7 +13,7 @@ from typing import Any, Callable, Iterable
 from ..state.graphs import GraphBase, EvalState
 from .expected_grammar import rgxlog_expected_children_names_lists
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 8
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 5
 class ParseNodeType(Enum):
     """
     will be used as parse graph node types.
@@ -28,11 +28,12 @@ class ParseNodeType(Enum):
     def __str__(self) -> str:
         return self.value
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 9
-def assert_expected_node_structure_aux(lark_node: Any # the lark node to be checked
-                                       ) -> None:
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 6
+def assert_expected_node_structure_aux(lark_node: Any) -> None:
     """
     Checks whether a lark node has a structure that the lark passes expect.
+
+    @param: lark_node: the lark node to be checked.
     """
 
     # check if lark_node is really a lark node. this is done because applying the check recursively might result in
@@ -58,14 +59,16 @@ def assert_expected_node_structure_aux(lark_node: Any # the lark node to be chec
         for child in lark_node.children:
             assert_expected_node_structure_aux(child)
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 10
-def assert_expected_node_structure(func: Callable # A function to run the decorator on
-            ) -> Callable:
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 7
+def assert_expected_node_structure(func: Callable) -> Callable:
     """
     Use this decorator to check whether a method's input lark node has a structure that is expected by the lark passes
     the lark node and its children are checked recursively
 
-    some lark nodes may have multiple structures (e.g. `Assignment`). in this case this check will succeed if the lark
+    @note that this decorator should only be used on methods that expect lark nodes that weren't converted to
+    structured nodes.
+
+    some lark nodes may have multiple structures (e.g. assignment). in this case this check will succeed if the lark
     node has one of those structures.
     """
 
@@ -75,13 +78,14 @@ def assert_expected_node_structure(func: Callable # A function to run the decora
 
     return wrapped_method
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 12
-def unravel_lark_node(func: Callable # A function to run the decorator on
-                ) -> Callable:
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 8
+def unravel_lark_node(func: Callable) -> Callable:
     """
     Even after converting a lark tree to use structured nodes, the methods in lark passes will still receive a lark
     node as an input, and the child of said lark node will be the actual structured node that the method will work
     with.
+
+    use this decorator to replace a method's lark node input with its child structured node.
     """
 
     def wrapped_method(visitor: Any, lark_node: LarkNode) -> Any:
@@ -90,7 +94,7 @@ def unravel_lark_node(func: Callable # A function to run the decorator on
 
     return wrapped_method
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 14
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 9
 def get_new_rule_nodes(parse_graph: GraphBase) -> Iterable[GraphBase.NodeIdType]:
     """
     Finds all rules that weren't added to the term graph yet.

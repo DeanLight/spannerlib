@@ -3,10 +3,10 @@
 # %% auto 0
 __all__ = ['logger', 'AddRulesToTermGraph']
 
-# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 4
+# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 3
 from fastcore.utils import *
 
-# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 5
+# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 4
 import logging
 from typing import Any
 from ..datatypes.ast_node_types import Rule
@@ -14,14 +14,14 @@ from .lark_passes import GenericPass
 from ..state.graphs import EvalState, TermGraphBase, GraphBase
 from ..utils.passes_utils import get_new_rule_nodes
 
-# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 8
+# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 5
 logger = logging.getLogger(__name__)
 
-# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 9
+# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 6
 class AddRulesToTermGraph(GenericPass):
     """
     This class traverses the parse graph and finds all the new rules.
-    It adds these rules to the term graph (using `term_graph`'s add rule method).
+    It adds these rules to the term graph (using term_graph's add rule method).
     """
 
     def __init__(self, parse_graph: GraphBase, term_graph: TermGraphBase, **kwargs: Any) -> None:
