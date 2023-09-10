@@ -3,10 +3,10 @@
 # %% auto 0
 __all__ = ['OUT_REL_ATTRIBUTE', 'FREE_VAR_PREFIX', 'naive_execution']
 
-# %% ../../../../../../nbs/12_execution.ipynb 3
+# %% ../../../../../../nbs/12_execution.ipynb 4
 from fastcore.utils import *
 
-# %% ../../../../../../nbs/12_execution.ipynb 5
+# %% ../../../../../../nbs/12_execution.ipynb 6
 from typing import (Tuple, Dict, List, Callable, Optional, Union)
 
 from spanner_workbench.src.rgxlog_interpreter.src.rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
@@ -16,45 +16,46 @@ from .state.graphs import EvalState, GraphBase, TermGraphBase, ROOT_TYPE, TermNo
 from .state.symbol_table import SymbolTableBase
 from .utils.passes_utils import ParseNodeType
 
-# %% ../../../../../../nbs/12_execution.ipynb 6
+# %% ../../../../../../nbs/12_execution.ipynb 9
 OUT_REL_ATTRIBUTE = "output_rel"
 
 FREE_VAR_PREFIX = "COL"
 
-# %% ../../../../../../nbs/12_execution.ipynb 7
-def naive_execution(parse_graph: GraphBase, term_graph: TermGraphBase,
-                    symbol_table: SymbolTableBase, rgxlog_engine: RgxlogEngineBase) -> Optional[Tuple[Query, List]]:
+# %% ../../../../../../nbs/12_execution.ipynb 10
+def naive_execution(parse_graph: GraphBase, # a parse graph to execute
+                    term_graph: TermGraphBase, # a term graph
+                    symbol_table: SymbolTableBase, # a symbol table
+                    rgxlog_engine: RgxlogEngineBase # a rgxlog engine that will be used to execute the term graph
+                    ) -> Optional[Tuple[Query, List]]:
     """
     Executes a parse graph
     this execution is generic, meaning it does not require any specific kind of term graph, symbol table or
-    rgxlog engine in order to work.
-    this execution performs no special optimization and merely serves as an interface between the term graph
+    rgxlog engine in order to work. <br>
+    This execution performs no special optimization and merely serves as an interface between the term graph
     and the rgxlog engine.
 
-    the main idea behind this class is that it uses the `term_graph` to understand how relations are related to
+    The main idea behind this class is that it uses the `term_graph` to understand how relations are related to
     one another, and thanks to that information, it is able to execute the commands in the `parse_graph`.
     for example, let's say the parse graph looks like this:
 
-    ```
+    ```prolog
     (root) -> (query relation a)
     ```
 
     and the term graph looks like this:
 
+    ```prolog
     (a)  --> union --> (b)
                    --> (c)
-
+    ```
+    
     the execution class will perform a union over `b` and `c`, and put it in a new relation, let's say `union_b_c`.
     then it will copy `union_b_c` into `a`, and finally it will query `a` and return the result.
 
     more precisely, the execution traverses the parse tree, when it reaches a query node it compute the relevant
-    relation using the term graph (i.e. if the query is ?A(X) it will compute the relation A).
-    read the docstring of compute_rule function to understand how the computation is done.
+    relation using the term graph (i.e. if the query is `?A(X)` it will compute the relation `A`).
+    read the documentation of `compute_rule` function to understand how the computation is done.
 
-    @param parse_graph: a parse graph to execute.
-    @param term_graph: a term graph.
-    @param symbol_table: a symbol table.
-    @param rgxlog_engine: a rgxlog engine that will be used to execute the term graph.
     """
 
     # it's an inner function because it needs to access all naive_execution's params
