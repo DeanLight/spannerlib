@@ -316,7 +316,7 @@ class SqliteEngine(RgxlogEngineBase):
         {% for left, right in constraint_pairs %}
             {{left}}={{right}}
             {% if not loop.last %}
-                ,
+                AND
             {% endif %}
         {% endfor %}
         """)
@@ -776,19 +776,15 @@ class SqliteEngine(RgxlogEngineBase):
                 all_ie_inputs = []
                 for bounded_input in inputs_without_constants:
                     result_input_list = []
-                    index_in_bounded_input = 0
                     for term, datatype in zip(ie_relation.input_term_list, ie_relation.input_type_list):
                         if datatype is DataTypes.free_var_name:
                             # add value from `bounded_input`
-                            result_input_list.append(bounded_input[index_in_bounded_input])
-                            index_in_bounded_input += 1
+                            result_input_list.append(bounded_input[bounding_relation.get_index_of_free_var(term)])
                         else:
                             # add a constant from the ie_relation's input
                             result_input_list.append(term)
-
-                    assert index_in_bounded_input == len(bounded_input), "parsing input relation failed"
                     all_ie_inputs.append(tuple(result_input_list))
-            return all_ie_inputs        
+            return all_ie_inputs     
 
         def _format_ie_output(raw_ie_output):
             # the output should be a tuple, but if a single value is returned, we accept it as well

@@ -289,7 +289,7 @@ class SymbolTable(SymbolTableBase):
             raise ValueError(f"IE function named {name} doesn't exist")
 
     def remove_all_ie_functions(self) -> None:
-        self._registered_ie_functions = dict()
+        self._registered_ie_functions.clear()
 
     def print_registered_ie_functions(self) -> None:
         for ie_function_name, ie_function_obj in self._registered_ie_functions.items():
@@ -297,8 +297,11 @@ class SymbolTable(SymbolTableBase):
                   f'{ie_function_obj.ie_function_def.__doc__}\n\n')
 
     def remove_rule_relation(self: SymbolTableBase, relation_name: str) -> None:
-        self._rule_relations.remove(relation_name)
-        del self._relation_to_schema[relation_name]
+        try:
+            self._rule_relations.remove(relation_name)
+            del self._relation_to_schema[relation_name]
+        except KeyError:
+            raise KeyError(f"An attempt to delete unfound relation {relation_name}")
 
     def remove_all_rule_relations(self) -> Set[str]:
         relations_names = self._rule_relations
