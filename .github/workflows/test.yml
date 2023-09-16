@@ -12,8 +12,6 @@ jobs:
       - name: Install lsb_release
         run: sudo apt-get update && sudo apt-get install -y lsb-release
       - name: Activate conda environment
-        run: |
-          eval "$(conda shell.bash hook)"
-          conda activate base  # replace 'base' with your specific environment name if different
+        run: conda activate base
       - name: Use nbdev CI Workflow
         uses: fastai/workflows/nbdev-ci@master
