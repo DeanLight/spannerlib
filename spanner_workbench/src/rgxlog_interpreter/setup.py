@@ -23,7 +23,7 @@ class PostInstallCommand(install):
         install.run(self)
 
 
-with open(os.path.join('/fixing-nbdev-ci',"README.md"), "r") as fh:
+with open("README.md", "r") as fh:
     long_description = fh.read()
 
 cmdclass_dict: Dict = {
