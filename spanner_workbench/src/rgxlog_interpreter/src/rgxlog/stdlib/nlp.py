@@ -2,13 +2,12 @@
 
 # %% auto 0
 __all__ = ['JAVA_MIN_VERSION', 'NLP_URL', 'NLP_DIR_NAME', 'CURR_DIR', 'NLP_DIR_PATH', 'JAVA_DOWNLOADER', 'INSTALLATION_PATH',
-           'STANFORD_ZIP_GOOGLE_DRIVE_ID', 'STANFORD_ZIP_NAME', 'STANFORD_ZIP_PATH', 'logger', 'CoreNLPEngine',
-           'Tokenize', 'SSplit', 'POS', 'Lemma', 'NER', 'EntityMentions', 'RGXNer', 'TokensRegex', 'CleanXML', 'Parse',
-           'DepParse', 'Coref', 'OpenIE', 'KBP', 'Quote', 'Sentiment', 'TrueCase', 'UDFeats', 'tokenize_wrapper',
-           'ssplit_wrapper', 'pos_wrapper', 'lemma_wrapper', 'ner_wrapper', 'entitymentions_wrapper',
-           'regexner_wrapper', 'tokensregex_wrapper', 'cleanxml_wrapper', 'parse_wrapper', 'dependency_parse_wrapper',
-           'coref_wrapper', 'openie_wrapper', 'kbp_wrapper', 'quote_wrapper', 'sentiment_wrapper', 'truecase_wrapper',
-           'udfeats_wrapper']
+           'STANFORD_ZIP_GOOGLE_DRIVE_ID', 'STANFORD_ZIP_NAME', 'STANFORD_ZIP_PATH', 'logger', 'Tokenize', 'SSplit',
+           'POS', 'Lemma', 'NER', 'EntityMentions', 'RGXNer', 'TokensRegex', 'CleanXML', 'Parse', 'DepParse', 'Coref',
+           'OpenIE', 'KBP', 'Quote', 'Sentiment', 'TrueCase', 'UDFeats', 'tokenize_wrapper', 'ssplit_wrapper',
+           'pos_wrapper', 'lemma_wrapper', 'ner_wrapper', 'entitymentions_wrapper', 'regexner_wrapper',
+           'tokensregex_wrapper', 'cleanxml_wrapper', 'parse_wrapper', 'dependency_parse_wrapper', 'coref_wrapper',
+           'openie_wrapper', 'kbp_wrapper', 'quote_wrapper', 'sentiment_wrapper', 'truecase_wrapper', 'udfeats_wrapper']
 
 # %% ../../../../../../nbs/15_nlp.ipynb 4
 import json
@@ -34,7 +33,6 @@ NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
 CURR_DIR = Path(os.path.join('/','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib'))
 
 NLP_DIR_PATH = str(Path(os.path.join('/','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib')) / NLP_DIR_NAME)
-print(NLP_DIR_PATH)
 JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = Path.home()
 INSTALLATION_PATH = _USER_DIR / ".jre"
@@ -42,7 +40,7 @@ INSTALLATION_PATH = _USER_DIR / ".jre"
 STANFORD_ZIP_GOOGLE_DRIVE_ID = "1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 STANFORD_ZIP_NAME = "stanford-corenlp-4.1.0.zip"
 STANFORD_ZIP_PATH = CURR_DIR / STANFORD_ZIP_NAME
-print(NLP_DIR_PATH)
+
 
 # %% ../../../../../../nbs/15_nlp.ipynb 6
 logger = logging.getLogger(__name__)
@@ -88,8 +86,11 @@ def _run_installation() -> None:
             raise IOError("installation failed")
 
 # %% ../../../../../../nbs/15_nlp.ipynb 11
-_run_installation()
-CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
+try:
+    _run_installation()
+    CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
+except:
+    pass
 
 # %% ../../../../../../nbs/15_nlp.ipynb 12
 def tokenize_wrapper(sentence: str) -> Iterator:
