@@ -9,5 +9,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Install lsb_release
+        run: sudo apt-get update && sudo apt-get install -y lsb-release
       - name: Use nbdev CI Workflow
         uses: fastai/workflows/nbdev-ci@master
