@@ -259,7 +259,7 @@ class Session:
         @return: Grammar from grammar file in string format.
         """
 
-        grammar_file_path = Path(os.path.join(os.getcwd(),'spanner_workbench','src','rgxlog_interpreter','src','rgxlog','grammar'))
+        grammar_file_path = Path(os.path.join(os.getcwd(),'..','..','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','grammar'))
         with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
             return grammar_file.read()
 
