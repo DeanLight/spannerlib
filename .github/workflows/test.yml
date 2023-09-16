@@ -13,5 +13,11 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y lsb-release
       - name: Activate conda environment
         run: conda activate base
+      - name: Print environment variables
+        run: env
+        
+      - name: Print PATH
+        run: echo $PATH
+      
       - name: Use nbdev CI Workflow
         uses: fastai/workflows/nbdev-ci@master
