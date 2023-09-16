@@ -8,6 +8,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Install RgxLog
-        run: pip install -e spanner_workbench/src/rgxlog_interpreter/src/rgxlog/
+        run: pip install -e spanner_workbench/src/rgxlog_interpreter
       - name: Use nbdev CI Workflow
         uses: fastai/workflows/nbdev-ci@master
