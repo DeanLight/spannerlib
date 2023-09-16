@@ -1023,5 +1023,5 @@ if __name__ == "__main__":
     print(my_engine.query(my_query))
 
     print(my_engine.get_table_len("yoyo"))
-    my_engine.print_sql()
+    
 
