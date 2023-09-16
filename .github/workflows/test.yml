@@ -4,8 +4,6 @@ on: [workflow_dispatch, pull_request, push]
 jobs:
   test:
     runs-on: ubuntu-latest
-    container:
-      image: loayshaqir/nbdev_ci_image
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
