@@ -2,8 +2,8 @@
 
 d = { 'settings': { 'branch': 'main',
                 'doc_baseurl': '/spanner_workbench',
-                'doc_host': 'https://loayshaqir1.github.io',
-                'git_url': 'https://github.com/loayshaqir1/spanner_workbench',
+                'doc_host': 'https://DeanLight.github.io',
+                'git_url': 'https://github.com/DeanLight/spanner_workbench',
                 'lib_path': 'spanner_workbench'},
   'syms': { 'spanner_workbench.src.rgxlog_interpreter.setup': {},
             'spanner_workbench.src.rgxlog_interpreter.src.rgxlog.engine.datatypes.ast_node_types': { 'spanner_workbench.src.rgxlog_interpreter.src.rgxlog.engine.datatypes.ast_node_types.AddFact': ( 'ast_node_types.html#addfact',
