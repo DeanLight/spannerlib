@@ -229,5 +229,8 @@ RGX_STRING_FROM_FILE = dict(ie_function=rgx_string_from_file,
 # %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 34
 #| eval: false
 # the package is installed when this module is imported
-if not _is_installed_package():
-    _download_and_install_rust_regex()
+try:
+    if not _is_installed_package():
+        _download_and_install_rust_regex()
+except:
+    logging.error("Installing rust regex has failed - check the output")

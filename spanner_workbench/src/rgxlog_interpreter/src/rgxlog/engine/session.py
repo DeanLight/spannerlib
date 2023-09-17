@@ -211,7 +211,6 @@ def queries_to_string(query_results: List[Tuple[Query, List]]) -> str:
 
 
 # %% ../../../../../../nbs/19_session.ipynb 15
-#| eval: false
 class Session:
     def __init__(self, symbol_table: Optional[SymbolTableBase] = None, parse_graph: Optional[GraphBase] = None,
                  term_graph: Optional[TermGraphBase] = None):
@@ -260,7 +259,7 @@ class Session:
         @return: Grammar from grammar file in string format.
         """
 
-        grammar_file_path = Path(os.path.join(os.getcwd(),'spanner_workbench','src','rgxlog_interpreter','src','rgxlog','grammar'))
+        grammar_file_path = Path(os.path.join(os.getcwd(),'..','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','grammar'))
         with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
             return grammar_file.read()
 
