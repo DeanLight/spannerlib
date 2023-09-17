@@ -7,9 +7,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Tell me Where you are
-        run: python -c "import os; print(os.getcwd()); print(os.listdir(os.getcwd()))"
-      - name: Install RgxLog
-        run: pip install -e spanner_workbench/src/rgxlog_interpreter
+        
       - name: Use nbdev CI Workflow
         uses: fastai/workflows/nbdev-ci@master
