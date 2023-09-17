@@ -7,7 +7,7 @@ __all__ = ['SPAN_GROUP1', 'SPAN_GROUP2', 'SPAN_PATTERN', 'QUERY_RESULT_PREFIX', 
            'type_check_rule_free_vars', 'type_check_rule_free_vars_aux', 'rule_to_relation_name', 'string_to_span',
            'extract_one_relation']
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 3
+# %% ../../../../../../../nbs/04_general_utils.ipynb 4
 import functools
 import re
 from typing import (Union, Tuple, Set, Dict, List, Optional, Callable, Any, no_type_check, Sequence)
@@ -16,7 +16,7 @@ from ..datatypes.ast_node_types import (Relation, IERelation, Rule)
 from ..datatypes.primitive_types import DataTypes, Span
 from ..state.symbol_table import SymbolTableBase
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 4
+# %% ../../../../../../../nbs/04_general_utils.ipynb 6
 SPAN_GROUP1 = "start"
 SPAN_GROUP2 = "end"
 
@@ -24,14 +24,14 @@ SPAN_GROUP2 = "end"
 SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 QUERY_RESULT_PREFIX = "printing results for query "
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 5
+# %% ../../../../../../../nbs/04_general_utils.ipynb 8
 def strip_lines(text: str) -> str:
     """
     removes leading and trailing whitespace from each line in the input text and excludes empty lines.
     """
     return "\n".join([line.strip() for line in text.splitlines() if line.strip()])
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 6
+# %% ../../../../../../../nbs/04_general_utils.ipynb 9
 def fixed_point(start: Any, # a starting value
                  step: Callable, # a step function
                    distance: Callable, # a function that measures distance between the input and the output of the step function
@@ -43,23 +43,26 @@ def fixed_point(start: Any, # a starting value
     """
     x = start
     y = step(x)
-    while distance(x, y) > thresh:
+    while distance(x, y) > min(thresh,0):
         x = y
         y = step(x)
     return x
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 7
+# %% ../../../../../../../nbs/04_general_utils.ipynb 10
 def get_free_var_names(term_list: Sequence, # a list of terms
                        type_list: Sequence # a list of the term types
                        ) -> Set[str]: # a set of all the free variable names in term_list
     """ 
     @raise Exception: if length of term list doesn't match the length of type list.
     """
+    if len(term_list) != len(type_list):
+        raise Exception(f"received different lengths of term_list ({len(term_list)}) "
+                        f"and type_list ({len(type_list)})")
     free_var_names = set(term for term, term_type in zip(term_list, type_list)
                          if term_type is DataTypes.free_var_name)
     return free_var_names
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 8
+# %% ../../../../../../../nbs/04_general_utils.ipynb 12
 @no_type_check
 def position_freevar_pairs(relation: Union[Relation, IERelation] # a relation (either a normal relation or an ie relation)
                            ) -> List[Tuple[int, str]]: # a list of all (index, free_var) pairs based on term_list
@@ -68,7 +71,7 @@ def position_freevar_pairs(relation: Union[Relation, IERelation] # a relation (e
                      if term_type is DataTypes.free_var_name]
     return pos_var_pairs
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 9
+# %% ../../../../../../../nbs/04_general_utils.ipynb 14
 def get_input_free_var_names(relation: Union[Relation, IERelation] # a relation (either a normal relation or an ie relation)
                              ) -> Set[Any]: # a set of the free variables used as input terms in the relation.
     if isinstance(relation, IERelation):
@@ -76,12 +79,12 @@ def get_input_free_var_names(relation: Union[Relation, IERelation] # a relation 
     else:
         return set()
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 10
+# %% ../../../../../../../nbs/04_general_utils.ipynb 17
 def get_output_free_var_names(relation: Union[Relation, IERelation] # a relation (either a normal relation or an ie relation)
                               ) -> Set[str]: # a set of the free variables used as output terms in the relation
     return get_free_var_names(relation.get_term_list(), relation.get_type_list())
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 11
+# %% ../../../../../../../nbs/04_general_utils.ipynb 19
 def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]] # a set of relations
                                    ) -> (Dict[str, List[Tuple[Union[Relation, IERelation], int]]]): # a mapping between each free var to the relations and corresponding columns in which it appears
     """
@@ -104,7 +107,7 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]] #
 
     return var_dict
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 12
+# %% ../../../../../../../nbs/04_general_utils.ipynb 21
 def check_properly_typed_term_list(term_list: Sequence, # the term list to be type checked
                                     type_list: Sequence, # the types of the terms in term_list
                                    correct_type_list: Sequence, # a list of the types that the terms must have to pass the type check
@@ -132,7 +135,7 @@ def check_properly_typed_term_list(term_list: Sequence, # the term list to be ty
     # all variables are properly typed, the type check succeeded
     return True
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 13
+# %% ../../../../../../../nbs/04_general_utils.ipynb 22
 @no_type_check
 def check_properly_typed_relation(relation: Union[Relation, IERelation] # the relation to be checked
                                   , symbol_table: SymbolTableBase # a symbol table (to check the types of regular variables)
@@ -171,7 +174,7 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation] # the re
 
     return relation_is_properly_typed
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 14
+# %% ../../../../../../../nbs/04_general_utils.ipynb 23
 def type_check_rule_free_vars(rule: Rule, # The rule to be checked
                                symbol_table: SymbolTableBase # a symbol table (used to get the schema of the relation)
                                 # a tuple (free_var_to_type, conflicted_free_vars) where
@@ -179,8 +182,8 @@ def type_check_rule_free_vars(rule: Rule, # The rule to be checked
                                 # conflicted_free_vars: a set of all the conflicted free variables
                                ) -> Tuple[Dict[str, DataTypes], Set[str]]:
     """
-    Free variables in rules get their type from the relations in the rule body.
-    it is possible for a free variable to be expected to be more than one type (meaning it has conflicting types).
+    Free variables in rules get their type from the relations in the rule body. <br>
+    it is possible for a free variable to be expected to be more than one type (meaning it has conflicting types). <br>
     for each free variable in the rule body relations, this method will check for its type and will check if it
     has conflicting types
     """
@@ -217,21 +220,17 @@ def type_check_rule_free_vars(rule: Rule, # The rule to be checked
 
     return free_var_to_type, conflicted_free_vars
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 15
-def type_check_rule_free_vars_aux(term_list: Sequence, type_list: Sequence, correct_type_list: Sequence,
-                                  free_var_to_type: Dict, conflicted_free_vars: Set) -> None:
+# %% ../../../../../../../nbs/04_general_utils.ipynb 24
+def type_check_rule_free_vars_aux(term_list: Sequence, # the term list of a rule body relation
+                                   type_list: Sequence, # the types of the terms in term_list
+                                     correct_type_list: Sequence, # a list of the types that the terms in the term list should have
+                                  free_var_to_type: Dict, # a mapping of free variables to their type (those that are currently known)
+                                    # a set of the free variables that are found to have conflicting types
+                                    conflicted_free_vars: Set # this function adds conflicting free variables that it finds to this set
+                                    ) -> None:
     """
-    A helper function for the method "type_check_rule_free_vars"
+    A helper function for the method `type_check_rule_free_vars`
     performs the free variables type checking on term_list.
-
-    @param term_list: the term list of a rule body relation.
-    @param type_list: the types of the terms in term_list
-    @param correct_type_list: a list of the types that the terms in the term list should have
-    @param free_var_to_type: a mapping of free variables to their type (those that are currently known)
-                             this function updates this mapping if it finds new free variables in term_list
-    @param conflicted_free_vars: a set of the free variables that are found to have conflicting types
-                                 this function adds conflicting free variables that it finds to this set.
-
     """
 
     if len(term_list) != len(type_list) or len(term_list) != len(correct_type_list):
@@ -252,26 +251,25 @@ def type_check_rule_free_vars_aux(term_list: Sequence, type_list: Sequence, corr
                 # free var does not currently have a type, map it to the correct type
                 free_var_to_type[free_var] = correct_type
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 16
-def rule_to_relation_name(rule: str) -> str:
+# %% ../../../../../../../nbs/04_general_utils.ipynb 26
+def rule_to_relation_name(rule: str # a string that represents a rule
+                          ) -> str: # the name of the rule relation
     """
     Extracts the relation name from the rule string.
-
-    @param rule: a string that represents a rule.
-    @return:  the name of the rule relation
     """
 
-    return rule.split('(')[0]
+    return rule.strip().split('(')[0]
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 17
-def string_to_span(string_of_span: str) -> Optional[Span]:
+# %% ../../../../../../../nbs/04_general_utils.ipynb 27
+def string_to_span(string_of_span: str # str represenation of a `Span` object
+                   ) -> Optional[Span]: # `Span` object initialized based on the `string_of_span` it received as input 
     span_match = re.match(SPAN_PATTERN, string_of_span)
     if not span_match:
         return None
     start, end = int(span_match.group(SPAN_GROUP1)), int(span_match.group(SPAN_GROUP2))
     return Span(span_start=start, span_end=end)
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 18
+# %% ../../../../../../../nbs/04_general_utils.ipynb 28
 def extract_one_relation(func: Callable) -> Callable:
     """
     This decorator is used by engine operators that expect to get exactly one input relation but actually get a list of relations.

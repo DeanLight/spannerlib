@@ -74,7 +74,6 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
         logger.info(f"stderr from process {command_list[0]}: {process_stderr}")
 
 # %% ../../../../../../nbs/14_utils.ipynb 7
-#| eval: false
 import os
 def download_file_from_google_drive(file_id: str, destination: Path) -> None:
     """
@@ -84,7 +83,7 @@ def download_file_from_google_drive(file_id: str, destination: Path) -> None:
     @param file_id: the id of the file to download.
     @param destination: the path to which the file will be downloaded.
     """
-    destination = Path(os.path.join('/','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib','stanford-corenlp-4.1.0.zip'))
+    destination = Path(os.path.join(os.getcwd(),'spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib','stanford-corenlp-4.1.0.zip'))
     requests_session = requests.Session()
     response = requests_session.get(GOOGLE_DRIVE_URL, params={'id': file_id}, stream=True)
 

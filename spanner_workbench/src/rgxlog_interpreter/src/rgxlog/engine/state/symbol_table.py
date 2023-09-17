@@ -3,13 +3,14 @@
 # %% auto 0
 __all__ = ['SymbolTableBase', 'SymbolTable']
 
-# %% ../../../../../../../nbs/03_symbol_table.ipynb 4
+# %% ../../../../../../../nbs/03_symbol_table.ipynb 5
 from abc import ABC, abstractmethod
 from typing import Iterable, Dict, Set, Callable, List, Union, Sequence, Tuple
 from ..datatypes.primitive_types import DataTypes, DataTypeMapping
 from ..ie_function import IEFunction
+from copy import deepcopy
 
-# %% ../../../../../../../nbs/03_symbol_table.ipynb 5
+# %% ../../../../../../../nbs/03_symbol_table.ipynb 8
 class SymbolTableBase(ABC):
     """
     An abstraction for a symbol table. <br>
@@ -202,7 +203,7 @@ class SymbolTableBase(ABC):
         symbol_table_string = ''.join(string_buffer)
         return symbol_table_string
 
-# %% ../../../../../../../nbs/03_symbol_table.ipynb 6
+# %% ../../../../../../../nbs/03_symbol_table.ipynb 29
 class SymbolTable(SymbolTableBase):
     def __init__(self) -> None:
         self._var_to_value: Dict[str, DataTypeMapping.term] = {}
@@ -282,6 +283,7 @@ class SymbolTable(SymbolTableBase):
             raise ValueError(f"'{ie_func_name}' is not a registered function.")
 
     def get_all_registered_ie_funcs(self) -> Dict[str, IEFunction]:
+        #return deepcopy(self._registered_ie_functions)
         return self._registered_ie_functions.copy()
         
     def remove_ie_function(self, name: str) -> None:
@@ -289,16 +291,19 @@ class SymbolTable(SymbolTableBase):
             raise ValueError(f"IE function named {name} doesn't exist")
 
     def remove_all_ie_functions(self) -> None:
-        self._registered_ie_functions = dict()
+        self._registered_ie_functions.clear()
 
     def print_registered_ie_functions(self) -> None:
         for ie_function_name, ie_function_obj in self._registered_ie_functions.items():
             print(f'{ie_function_name}\n{ie_function_obj.get_meta_data}\n{ie_function_obj}\n'
                   f'{ie_function_obj.ie_function_def.__doc__}\n\n')
 
-    def remove_rule_relation(self: SymbolTableBase, relation_name: str) -> None:
-        self._rule_relations.remove(relation_name)
-        del self._relation_to_schema[relation_name]
+    def remove_rule_relation(self, relation_name: str) -> None:
+        try:
+            self._rule_relations.remove(relation_name)
+            del self._relation_to_schema[relation_name]
+        except KeyError:
+            raise KeyError(f"An attempt to delete unfound relation {relation_name}")
 
     def remove_all_rule_relations(self) -> Set[str]:
         relations_names = self._rule_relations

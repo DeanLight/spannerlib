@@ -30,9 +30,9 @@ JAVA_MIN_VERSION = 1.8
 
 NLP_URL = "https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
-CURR_DIR = Path(os.path.join('/','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib'))
+CURR_DIR = Path(os.path.join(os.getcwd(),'spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib'))
 
-NLP_DIR_PATH = str(Path(os.path.join('/','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib')) / NLP_DIR_NAME)
+NLP_DIR_PATH = str(Path(os.path.join(os.getcwd(),'spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib')) / NLP_DIR_NAME)
 JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = Path.home()
 INSTALLATION_PATH = _USER_DIR / ".jre"
@@ -40,7 +40,6 @@ INSTALLATION_PATH = _USER_DIR / ".jre"
 STANFORD_ZIP_GOOGLE_DRIVE_ID = "1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 STANFORD_ZIP_NAME = "stanford-corenlp-4.1.0.zip"
 STANFORD_ZIP_PATH = CURR_DIR / STANFORD_ZIP_NAME
-
 
 # %% ../../../../../../nbs/15_nlp.ipynb 6
 logger = logging.getLogger(__name__)
@@ -91,7 +90,7 @@ try:
     _run_installation()
     CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
 except:
-    logging.error('Installation NLP has failed')
+    logger.error("Installation NLP failed")
 
 # %% ../../../../../../nbs/15_nlp.ipynb 12
 def tokenize_wrapper(sentence: str) -> Iterator:
