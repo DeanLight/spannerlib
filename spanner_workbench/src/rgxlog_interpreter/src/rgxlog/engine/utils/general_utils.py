@@ -43,7 +43,7 @@ def fixed_point(start: Any, # a starting value
     """
     x = start
     y = step(x)
-    while distance(x, y) > thresh:
+    while distance(x, y) > min(thresh,0):
         x = y
         y = step(x)
     return x
@@ -55,6 +55,9 @@ def get_free_var_names(term_list: Sequence, # a list of terms
     """ 
     @raise Exception: if length of term list doesn't match the length of type list.
     """
+    if len(term_list) != len(type_list):
+        raise Exception(f"received different lengths of term_list ({len(term_list)}) "
+                        f"and type_list ({len(type_list)})")
     free_var_names = set(term for term, term_type in zip(term_list, type_list)
                          if term_type is DataTypes.free_var_name)
     return free_var_names
@@ -261,7 +264,7 @@ def rule_to_relation_name(rule: str) -> str:
     @return:  the name of the rule relation
     """
 
-    return rule.split('(')[0]
+    return rule.strip().split('(')[0]
 
 # %% ../../../../../../../nbs/04_general_utils.ipynb 17
 def string_to_span(string_of_span: str) -> Optional[Span]:
