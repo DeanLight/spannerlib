@@ -18,4 +18,4 @@ try:
     load_ipython_extension(get_ipython())
 
 except (AttributeError, ImportError):
-    pass
+    raise ImportError("Could not load ipython_extension")

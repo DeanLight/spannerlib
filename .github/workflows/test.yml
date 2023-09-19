@@ -19,5 +19,5 @@ jobs:
       - name: Use nbdev CI Workflow
         uses: fastai/workflows/nbdev-ci@master
         with:
-          # The python version that nbdev ci must run on must match the python version when installing rgxlog
+          # The python version that nbdev ci must run on must match the python version used durnig installing rgxlog
           version: 3.8
