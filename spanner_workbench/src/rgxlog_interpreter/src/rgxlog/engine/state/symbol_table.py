@@ -10,7 +10,7 @@ from ..datatypes.primitive_types import DataTypes, DataTypeMapping
 from ..ie_function import IEFunction
 from copy import deepcopy
 
-# %% ../../../../../../../nbs/03_symbol_table.ipynb 8
+# %% ../../../../../../../nbs/03_symbol_table.ipynb 6
 class SymbolTableBase(ABC):
     """
     An abstraction for a symbol table. <br>
@@ -203,7 +203,7 @@ class SymbolTableBase(ABC):
         symbol_table_string = ''.join(string_buffer)
         return symbol_table_string
 
-# %% ../../../../../../../nbs/03_symbol_table.ipynb 29
+# %% ../../../../../../../nbs/03_symbol_table.ipynb 27
 class SymbolTable(SymbolTableBase):
     def __init__(self) -> None:
         self._var_to_value: Dict[str, DataTypeMapping.term] = {}

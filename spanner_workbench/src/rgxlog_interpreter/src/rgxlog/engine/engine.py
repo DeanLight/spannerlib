@@ -4,7 +4,7 @@
 __all__ = ['RESERVED_RELATION_PREFIX', 'FALSE_VALUE', 'TRUE_VALUE', 'logger', 'log_function_call', 'RgxlogEngineBase',
            'SqliteEngine']
 
-# %% ../../../../../../nbs/07_engine.ipynb 7
+# %% ../../../../../../nbs/07_engine.ipynb 6
 import logging
 import sqlite3 as sqlite
 import tempfile
@@ -19,7 +19,7 @@ from .datatypes.primitive_types import Span, DataTypes, DataTypeMapping
 from .ie_function import IEFunction
 from .utils.general_utils import strip_lines, string_to_span, get_free_var_to_relations_dict, get_output_free_var_names, extract_one_relation
 
-# %% ../../../../../../nbs/07_engine.ipynb 10
+# %% ../../../../../../nbs/07_engine.ipynb 7
 # rgx constants
 RESERVED_RELATION_PREFIX = "__rgxlog__"
 
@@ -28,7 +28,7 @@ TRUE_VALUE: List[Tuple] = [tuple()]
 
 logger = logging.getLogger(__name__)
 
-# %% ../../../../../../nbs/07_engine.ipynb 11
+# %% ../../../../../../nbs/07_engine.ipynb 8
 import functools
 
 def log_function_call(func):
@@ -44,7 +44,7 @@ def log_function_call(func):
         return result
     return wrapper
 
-# %% ../../../../../../nbs/07_engine.ipynb 12
+# %% ../../../../../../nbs/07_engine.ipynb 9
 class RgxlogEngineBase(ABC):
     """
     An abstraction for a rgxlog execution engine, used by `GenericExecution`.
@@ -282,7 +282,7 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-# %% ../../../../../../nbs/07_engine.ipynb 30
+# %% ../../../../../../nbs/07_engine.ipynb 27
 class SqliteEngine(RgxlogEngineBase):
     """
     in this implementation of the engine, we use python's sqlite3, which allows creating an SQL database easily, without using servers.
@@ -1088,7 +1088,7 @@ class SqliteEngine(RgxlogEngineBase):
 
  
 
-# %% ../../../../../../nbs/07_engine.ipynb 50
+# %% ../../../../../../nbs/07_engine.ipynb 47
 if __name__ == "__main__":
     my_engine = SqliteEngine()
     print("hello world")

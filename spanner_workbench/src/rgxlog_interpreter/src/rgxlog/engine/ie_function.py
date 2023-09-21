@@ -7,7 +7,7 @@ __all__ = ['IEFunction']
 from typing import Iterable, Callable, Union, Tuple, List, Sequence, Any
 from .datatypes.primitive_types import DataTypes
 
-# %% ../../../../../../nbs/02_ie_function.ipynb 7
+# %% ../../../../../../nbs/02_ie_function.ipynb 5
 class IEFunction:
     """
     A class that contains all the functions that provide data

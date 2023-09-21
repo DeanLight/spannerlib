@@ -14,10 +14,10 @@ from .lark_passes import GenericPass
 from ..state.graphs import EvalState, TermGraphBase, GraphBase
 from ..utils.passes_utils import get_new_rule_nodes
 
-# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 8
+# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 6
 logger = logging.getLogger(__name__)
 
-# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 9
+# %% ../../../../../../../nbs/11_adding_inference_rules_to_term_graph.ipynb 7
 class AddRulesToTermGraph(GenericPass):
     """
     This class traverses the parse graph and finds all the new rules.

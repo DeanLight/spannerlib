@@ -6,22 +6,21 @@ __all__ = ['OUT_REL_ATTRIBUTE', 'FREE_VAR_PREFIX', 'naive_execution']
 # %% ../../../../../../nbs/12_execution.ipynb 4
 from fastcore.utils import *
 
-# %% ../../../../../../nbs/12_execution.ipynb 6
+# %% ../../../../../../nbs/12_execution.ipynb 5
 from typing import (Tuple, Dict, List, Callable, Optional, Union)
 
-from spanner_workbench.src.rgxlog_interpreter.src.rgxlog.engine.datatypes.ast_node_types import (Relation, Query,
-                                                    IERelation)
+from .datatypes.ast_node_types import (Relation, Query, IERelation)
 from .engine import RgxlogEngineBase
 from .state.graphs import EvalState, GraphBase, TermGraphBase, ROOT_TYPE, TermNodeType, TYPE, STATE, VALUE
 from .state.symbol_table import SymbolTableBase
 from .utils.passes_utils import ParseNodeType
 
-# %% ../../../../../../nbs/12_execution.ipynb 9
+# %% ../../../../../../nbs/12_execution.ipynb 6
 OUT_REL_ATTRIBUTE = "output_rel"
 
 FREE_VAR_PREFIX = "COL"
 
-# %% ../../../../../../nbs/12_execution.ipynb 10
+# %% ../../../../../../nbs/12_execution.ipynb 7
 def naive_execution(parse_graph: GraphBase, # a parse graph to execute
                     term_graph: TermGraphBase, # a term graph
                     symbol_table: SymbolTableBase, # a symbol table
