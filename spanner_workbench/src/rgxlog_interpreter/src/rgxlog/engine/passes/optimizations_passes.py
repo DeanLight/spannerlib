@@ -16,7 +16,7 @@ from ..state.graphs import TermGraphBase, GraphBase, TermNodeType, TYPE, VALUE
 from ..utils.general_utils import get_output_free_var_names, get_input_free_var_names, fixed_point
 from ..utils.passes_utils import get_new_rule_nodes
 
-# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 9
+# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 7
 class PruneUnnecessaryProjectNodes(GenericPass):
     """
     This class prunes project nodes that gets a relation with one column (therefore, the project is redundant).
@@ -103,7 +103,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
         return len(free_vars) == 1
 
 
-# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 10
+# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 8
 class RemoveUselessRelationsFromRule(GenericPass):
     """
     This pass removes duplicated relations from a rule. <br>

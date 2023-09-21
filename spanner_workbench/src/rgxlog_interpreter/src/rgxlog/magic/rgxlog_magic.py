@@ -3,12 +3,12 @@
 # %% auto 0
 __all__ = ['RgxlogMagic']
 
-# %% ../../../../../../nbs/18_rgxlog_magic.ipynb 4
+# %% ../../../../../../nbs/18_rgxlog_magic.ipynb 3
 from typing import Optional
 
 from IPython.core.magic import (Magics, magics_class, line_cell_magic)
 
-# %% ../../../../../../nbs/18_rgxlog_magic.ipynb 5
+# %% ../../../../../../nbs/18_rgxlog_magic.ipynb 4
 @magics_class
 class RgxlogMagic(Magics):
     @line_cell_magic

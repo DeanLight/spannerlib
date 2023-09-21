@@ -4,7 +4,7 @@
 __all__ = ['logger', 'WINDOWS_OS', 'IS_POSIX', 'GOOGLE_DRIVE_URL', 'GOOGLE_DRIVE_CHUNK_SIZE', 'kill_process_and_children',
            'run_cli_command', 'download_file_from_google_drive']
 
-# %% ../../../../../../nbs/14_utils.ipynb 3
+# %% ../../../../../../nbs/14_utils.ipynb 2
 import shlex
 
 import logging
@@ -16,7 +16,7 @@ from sys import platform
 from threading import Timer
 from typing import Iterable, no_type_check, Any, Optional
 
-# %% ../../../../../../nbs/14_utils.ipynb 4
+# %% ../../../../../../nbs/14_utils.ipynb 3
 logger = logging.getLogger(__name__)
 
 WINDOWS_OS = "win32"
@@ -26,7 +26,7 @@ IS_POSIX = (platform != WINDOWS_OS)
 GOOGLE_DRIVE_URL = "https://docs.google.com/uc?export=download"
 GOOGLE_DRIVE_CHUNK_SIZE = 32768
 
-# %% ../../../../../../nbs/14_utils.ipynb 5
+# %% ../../../../../../nbs/14_utils.ipynb 4
 def kill_process_and_children(process: Popen) -> None:
     logger.info("~~~~ process timed out ~~~~")
     if process.poll() is not None:
@@ -35,7 +35,7 @@ def kill_process_and_children(process: Popen) -> None:
             child.kill()  # not recommended in real life
         process.kill()  # lastly, kill the process
 
-# %% ../../../../../../nbs/14_utils.ipynb 6
+# %% ../../../../../../nbs/14_utils.ipynb 5
 def run_cli_command(command: str, stderr: bool = False, shell: bool = False, timeout: float = -1) -> Iterable[str]:
     """
     This utility can be used to run any cli command, and iterate over the output.
@@ -73,7 +73,7 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
     if stderr:
         logger.info(f"stderr from process {command_list[0]}: {process_stderr}")
 
-# %% ../../../../../../nbs/14_utils.ipynb 7
+# %% ../../../../../../nbs/14_utils.ipynb 6
 import os
 def download_file_from_google_drive(file_id: str, destination: Path) -> None:
     """

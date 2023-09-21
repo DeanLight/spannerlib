@@ -4,7 +4,7 @@
 __all__ = ['ParseNodeType', 'assert_expected_node_structure_aux', 'assert_expected_node_structure', 'unravel_lark_node',
            'get_new_rule_nodes']
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 5
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 4
 from enum import Enum
 
 from lark import Tree as LarkNode
@@ -13,7 +13,7 @@ from typing import Any, Callable, Iterable
 from ..state.graphs import GraphBase, EvalState
 from .expected_grammar import rgxlog_expected_children_names_lists
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 8
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 5
 class ParseNodeType(Enum):
     """
     will be used as parse graph node types.
@@ -28,7 +28,7 @@ class ParseNodeType(Enum):
     def __str__(self) -> str:
         return self.value
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 9
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 6
 def assert_expected_node_structure_aux(lark_node: Any # the lark node to be checked
                                        ) -> None:
     """
@@ -58,7 +58,7 @@ def assert_expected_node_structure_aux(lark_node: Any # the lark node to be chec
         for child in lark_node.children:
             assert_expected_node_structure_aux(child)
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 10
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 7
 def assert_expected_node_structure(func: Callable # A function to run the decorator on
             ) -> Callable:
     """
@@ -75,7 +75,7 @@ def assert_expected_node_structure(func: Callable # A function to run the decora
 
     return wrapped_method
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 12
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 9
 def unravel_lark_node(func: Callable # A function to run the decorator on
                 ) -> Callable:
     """
@@ -90,7 +90,7 @@ def unravel_lark_node(func: Callable # A function to run the decorator on
 
     return wrapped_method
 
-# %% ../../../../../../../nbs/08_passes_utils.ipynb 14
+# %% ../../../../../../../nbs/08_passes_utils.ipynb 11
 def get_new_rule_nodes(parse_graph: GraphBase) -> Iterable[GraphBase.NodeIdType]:
     """
     Finds all rules that weren't added to the term graph yet.

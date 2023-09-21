@@ -13,13 +13,12 @@ from abc import ABC, abstractmethod, ABCMeta
 from itertools import count
 from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType, no_type_check, Any, Sequence
 from ..datatypes.ast_node_types import Relation, Rule, IERelation
-from spanner_workbench.src.rgxlog_interpreter.src.rgxlog.engine.utils.general_utils import get_input_free_var_names, get_output_free_var_names, \
-    get_free_var_to_relations_dict
+from ..utils.general_utils import get_input_free_var_names, get_output_free_var_names, get_free_var_to_relations_dict
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 9
+# %% ../../../../../../../nbs/06_graphs.ipynb 7
 from copy import deepcopy
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 10
+# %% ../../../../../../../nbs/06_graphs.ipynb 8
 PRETTY_INDENT = " " * 4
 ROOT_NODE_ID = "__rgxlog_root"
 ROOT_TYPE = "root"
@@ -27,7 +26,7 @@ TYPE = "type"
 STATE = "state"
 VALUE = "value"
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 11
+# %% ../../../../../../../nbs/06_graphs.ipynb 9
 class EvalState(Enum):
     """
     will be used to determine if a term is computed or not.
@@ -40,7 +39,7 @@ class EvalState(Enum):
     def __str__(self) -> str:
         return self.value        
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 12
+# %% ../../../../../../../nbs/06_graphs.ipynb 10
 class TermNodeType(Enum):
     """
     will be used to represent type of term graph nodes.
@@ -57,10 +56,10 @@ class TermNodeType(Enum):
     def __str__(self) -> str:
         return self.value
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 13
+# %% ../../../../../../../nbs/06_graphs.ipynb 11
 NodeIdType = Union[int, str]
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 14
+# %% ../../../../../../../nbs/06_graphs.ipynb 12
 class GraphBase(ABC):
     """
     This is an interface for a simple graph.
@@ -268,7 +267,7 @@ class GraphBase(ABC):
         return self.get_node_attributes(node_id)
 
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 31
+# %% ../../../../../../../nbs/06_graphs.ipynb 29
 class NetxGraph(GraphBase):
     """
     Implementation of a graph using a NetworkX graph. <br>
@@ -353,7 +352,7 @@ class NetxGraph(GraphBase):
     def get_parents(self, node_id: GraphBase.NodeIdType) -> Iterable[GraphBase.NodeIdType]:
         return self._graph.predecessors(node_id)
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 32
+# %% ../../../../../../../nbs/06_graphs.ipynb 30
 class NetxStateGraph(NetxGraph):
     """
     This is a wrapper to NetxGraph that stores a state and type for each node in the graph.
@@ -401,7 +400,7 @@ class NetxStateGraph(NetxGraph):
         term_string = f"({node_id}) ({node_attrs[STATE]}) {node_attrs[TYPE]}{term_value_string}"
         return term_string
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 34
+# %% ../../../../../../../nbs/06_graphs.ipynb 32
 class DependencyGraph(NetxGraph):
     """
     The `DependencyGraph` class is designed to map and manage dependencies between rule relations in an RGXLog program. Each rule relation in the program corresponds to a node in this graph, with the node's ID being the name of the rule relation.
@@ -542,7 +541,7 @@ class DependencyGraph(NetxGraph):
     def __str__(self) -> str:
         return self.__class__.__name__ + " is:\n" + super().__str__()
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 36
+# %% ../../../../../../../nbs/06_graphs.ipynb 34
 class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
     """
     A wrapper to `NetxStateGraph` that adds utility functions which are independent
@@ -647,7 +646,7 @@ class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         return super().__str__() + "\n" + str(self._dependency_graph)
 
 
-# %% ../../../../../../../nbs/06_graphs.ipynb 45
+# %% ../../../../../../../nbs/06_graphs.ipynb 43
 class TermGraph(TermGraphBase):
     """
         This class is designed to transform each rule node in an RGXLog program into an execution graph. These execution graphs are then added to a term graph. <br>
