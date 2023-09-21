@@ -8,29 +8,27 @@ website:
         - live_repl.ipynb
       - section: src
         contents:
-          - section: datatypes
+          - section: Generic
             contents:
-              - 00_primitive_types.ipynb
-              - 01_ast_node_types.ipynb
-          - section: passes
+              - 00b_general_utils.ipynb
+              - 00c_primitive_types.ipynb
+          - section: Grammar & Parsing
             contents:
-              - 09_lark_passes.ipynb
-              - 10_optimizations_passes.ipynb
-              - 11_adding_inference_rules_to_term_graph.ipynb
-          - section: state
+              - 01a_expected_grammar.ipynb
+              - 01b_symbol_table.ipynb
+              - 01c_lark_passes.ipynb
+              - 01d_passes_utils.ipynb
+              - 01e_optimizations_passes.ipynb
+          - section: Engine
             contents:
-              - 06_graphs.ipynb
-              - 03_symbol_table.ipynb
-          - section: utils
+              - 02a_engine.ipynb
+              - 02b_execution.ipynb
+          - section: Graphs
             contents:
-              - 05_expected_grammar.ipynb
-              - 04_general_utils.ipynb
-              - 08_passes_utils.ipynb
-          - section: stdlib
+              - 03a_ast_node_types.ipynb
+              - 03b_ie_function.ipynb
+              - 03c_graphs.ipynb
+              - 03d_adding_inference_rules_to_term_graph.ipynb
+          - section: User-Interface
             contents:
-              - 17_rust_spanner_regex.ipynb
-          - 07_engine.ipynb
-          - 12_execution.ipynb
-          - 02_ie_function.ipynb
-
-
+              - 04a_session.ipynb
