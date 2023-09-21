@@ -8,7 +8,6 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Dict, Set, Callable, List, Union, Sequence, Tuple
 from ..datatypes.primitive_types import DataTypes, DataTypeMapping
 from ..ie_function import IEFunction
-from copy import deepcopy
 
 # %% ../../../../../../../nbs/03_symbol_table.ipynb 6
 class SymbolTableBase(ABC):

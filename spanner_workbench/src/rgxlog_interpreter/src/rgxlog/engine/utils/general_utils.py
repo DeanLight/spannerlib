@@ -62,7 +62,7 @@ def get_free_var_names(term_list: Sequence, # a list of terms
                          if term_type is DataTypes.free_var_name)
     return free_var_names
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 10
+# %% ../../../../../../../nbs/04_general_utils.ipynb 12
 @no_type_check
 def position_freevar_pairs(relation: Union[Relation, IERelation] # a relation (either a normal relation or an ie relation)
                            ) -> List[Tuple[int, str]]: # a list of all (index, free_var) pairs based on term_list
@@ -71,7 +71,7 @@ def position_freevar_pairs(relation: Union[Relation, IERelation] # a relation (e
                      if term_type is DataTypes.free_var_name]
     return pos_var_pairs
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 12
+# %% ../../../../../../../nbs/04_general_utils.ipynb 16
 def get_input_free_var_names(relation: Union[Relation, IERelation] # a relation (either a normal relation or an ie relation)
                              ) -> Set[Any]: # a set of the free variables used as input terms in the relation.
     if isinstance(relation, IERelation):
@@ -79,12 +79,12 @@ def get_input_free_var_names(relation: Union[Relation, IERelation] # a relation 
     else:
         return set()
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 15
+# %% ../../../../../../../nbs/04_general_utils.ipynb 21
 def get_output_free_var_names(relation: Union[Relation, IERelation] # a relation (either a normal relation or an ie relation)
                               ) -> Set[str]: # a set of the free variables used as output terms in the relation
     return get_free_var_names(relation.get_term_list(), relation.get_type_list())
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 17
+# %% ../../../../../../../nbs/04_general_utils.ipynb 23
 def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]] # a set of relations
                                    ) -> (Dict[str, List[Tuple[Union[Relation, IERelation], int]]]): # a mapping between each free var to the relations and corresponding columns in which it appears
     """
@@ -107,7 +107,7 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]] #
 
     return var_dict
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 19
+# %% ../../../../../../../nbs/04_general_utils.ipynb 27
 def check_properly_typed_term_list(term_list: Sequence, # the term list to be type checked
                                     type_list: Sequence, # the types of the terms in term_list
                                    correct_type_list: Sequence, # a list of the types that the terms must have to pass the type check
@@ -135,7 +135,7 @@ def check_properly_typed_term_list(term_list: Sequence, # the term list to be ty
     # all variables are properly typed, the type check succeeded
     return True
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 20
+# %% ../../../../../../../nbs/04_general_utils.ipynb 28
 @no_type_check
 def check_properly_typed_relation(relation: Union[Relation, IERelation] # the relation to be checked
                                   , symbol_table: SymbolTableBase # a symbol table (to check the types of regular variables)
@@ -174,7 +174,7 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation] # the re
 
     return relation_is_properly_typed
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 21
+# %% ../../../../../../../nbs/04_general_utils.ipynb 29
 def type_check_rule_free_vars(rule: Rule, # The rule to be checked
                                symbol_table: SymbolTableBase # a symbol table (used to get the schema of the relation)
                                 # a tuple (free_var_to_type, conflicted_free_vars) where
@@ -220,7 +220,7 @@ def type_check_rule_free_vars(rule: Rule, # The rule to be checked
 
     return free_var_to_type, conflicted_free_vars
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 22
+# %% ../../../../../../../nbs/04_general_utils.ipynb 30
 def type_check_rule_free_vars_aux(term_list: Sequence, # the term list of a rule body relation
                                    type_list: Sequence, # the types of the terms in term_list
                                      correct_type_list: Sequence, # a list of the types that the terms in the term list should have
@@ -251,7 +251,7 @@ def type_check_rule_free_vars_aux(term_list: Sequence, # the term list of a rule
                 # free var does not currently have a type, map it to the correct type
                 free_var_to_type[free_var] = correct_type
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 24
+# %% ../../../../../../../nbs/04_general_utils.ipynb 32
 def rule_to_relation_name(rule: str # a string that represents a rule
                           ) -> str: # the name of the rule relation
     """
@@ -260,7 +260,7 @@ def rule_to_relation_name(rule: str # a string that represents a rule
 
     return rule.strip().split('(')[0]
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 25
+# %% ../../../../../../../nbs/04_general_utils.ipynb 33
 def string_to_span(string_of_span: str # str represenation of a `Span` object
                    ) -> Optional[Span]: # `Span` object initialized based on the `string_of_span` it received as input 
     span_match = re.match(SPAN_PATTERN, string_of_span)
@@ -269,7 +269,7 @@ def string_to_span(string_of_span: str # str represenation of a `Span` object
     start, end = int(span_match.group(SPAN_GROUP1)), int(span_match.group(SPAN_GROUP2))
     return Span(span_start=start, span_end=end)
 
-# %% ../../../../../../../nbs/04_general_utils.ipynb 26
+# %% ../../../../../../../nbs/04_general_utils.ipynb 34
 def extract_one_relation(func: Callable) -> Callable:
     """
     This decorator is used by engine operators that expect to get exactly one input relation but actually get a list of relations.
