@@ -388,6 +388,14 @@ class Session:
         else:
             self._term_graph.remove_rules_with_head(rule_head)
             self._remove_rule_relation_from_symbols_and_engine(rule_head)
+    
+    def clear_relation(self, relation_name: str # The name of the relation to clear
+                       ) -> None:
+        # @raises: Exception if relation does not exist
+        if not self._engine.is_table_exists(relation_name):
+            raise Exception(f"Relation {relation_name} does not exist")
+
+        self._engine.clear_relation(relation_name)
             
     def _add_imported_relation_to_engine(self, relation_table: Iterable, relation_name: str, relation_types: Sequence[DataTypes]) -> None:
         symbol_table = self._symbol_table
