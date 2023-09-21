@@ -19,7 +19,7 @@ from tabulate import tabulate
 import os
 
 # %% ../../../../../../nbs/19_session.ipynb 6
-from .engine import *
+from .engine import SqliteEngine
 from .datatypes.ast_node_types import AddFact, RelationDeclaration
 from .datatypes.primitive_types import Span, DataTypes, DataTypeMapping
 from .engine import FALSE_VALUE, TRUE_VALUE
