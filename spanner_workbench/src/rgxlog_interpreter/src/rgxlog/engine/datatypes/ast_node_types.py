@@ -46,12 +46,14 @@ class RelationDeclaration:
     def __str__(self) -> str:
         type_strings = []
         for term_type in self.type_list:
-            if term_type in [DataTypes.string, DataTypes.free_var_name]:
+            if term_type is DataTypes.string:
                 type_strings.append('str')
             elif term_type is DataTypes.span:
                 type_strings.append('span')
             elif term_type is DataTypes.integer:
                 type_strings.append('int')
+            elif term_type is DataTypes.free_var_name:
+                type_strings.append('free_var_name')
             else:
                 raise ValueError(f"invalid term type ({term_type})")
 

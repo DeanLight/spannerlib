@@ -303,7 +303,8 @@ class SymbolTable(SymbolTableBase):
             self._rule_relations.remove(relation_name)
             del self._relation_to_schema[relation_name]
         except KeyError:
-            raise KeyError(f"An attempt to delete unfound relation {relation_name}")
+            raise KeyError(f"An attempt to delete unfound relation {relation_name}\n \
+                           available relations: {self._rule_relations}")
 
     def remove_all_rule_relations(self) -> Set[str]:
         relations_names = self._rule_relations
