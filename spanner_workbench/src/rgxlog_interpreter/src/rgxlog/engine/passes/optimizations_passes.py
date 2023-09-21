@@ -3,10 +3,10 @@
 # %% auto 0
 __all__ = ['PruneUnnecessaryProjectNodes', 'RemoveUselessRelationsFromRule']
 
-# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 3
+# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 5
 from fastcore.utils import *
 
-# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 4
+# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 6
 from typing import Any, Set, Union, List, Tuple
 
 from ..datatypes.ast_node_types import IERelation, Relation, Rule
@@ -16,19 +16,23 @@ from ..state.graphs import TermGraphBase, GraphBase, TermNodeType, TYPE, VALUE
 from ..utils.general_utils import get_output_free_var_names, get_input_free_var_names, fixed_point
 from ..utils.passes_utils import get_new_rule_nodes
 
-# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 5
+# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 7
 class PruneUnnecessaryProjectNodes(GenericPass):
     """
     This class prunes project nodes that gets a relation with one column (therefore, the project is redundant).
-    For example, the rule A(X) <- B(X) will yield the following term graph:
+    For example: the rule `A(X) <- B(X)` will yield the following term graph:
+    ```prolog
         rule_rel node (of A)
             union node
                 project node (on X)
                    get_rel node (get B)
+    ```
     since we project a relation with one column, after this pass the term graph will be:
+    ```prolog
         rule_rel node (of A)
             union node
                 get_rel node (get B)
+    ```
     """
 
     def __init__(self, term_graph: TermGraphBase, **kwargs: Any) -> None:
@@ -51,13 +55,12 @@ class PruneUnnecessaryProjectNodes(GenericPass):
                 self.term_graph.add_edge(self.term_graph.get_parent(project_id), self.term_graph.get_child(project_id))
                 self.term_graph.remove_node(project_id)
 
-    def is_input_relation_of_node_has_arity_of_one(self, node_id: GraphBase.NodeIdType) -> bool:
+    def is_input_relation_of_node_has_arity_of_one(self, 
+                        node_id: GraphBase.NodeIdType # id of the node
+                        ) -> bool: # Wether the arity of the relation that the node gets during the execution is one
         """
-        @param node_id: id of the node.
         @note: we expect id of project/join node.
-        @return: the arity of the relation that the node gets during the execution.
         """
-
         # this methods suppose to work for both project nodes and join nodes.
         # project nodes always have one child while join nodes always have more than one child.
         # for that reason, we traverse all the children of the node.
@@ -100,14 +103,13 @@ class PruneUnnecessaryProjectNodes(GenericPass):
         return len(free_vars) == 1
 
 
-# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 6
+# %% ../../../../../../../nbs/10_optimizations_passes.ipynb 8
 class RemoveUselessRelationsFromRule(GenericPass):
     """
-    This pass removes duplicated relations from a rule.
-    For example, the rule A(X) <- B(X), C(Y) contains a redundant relation (C(Y)).
-    After this pass the rule will be A(X) <- B(X).
+    This pass removes duplicated relations from a rule. <br>
+    For example, the rule `A(X) <- B(X), C(Y)` contains a redundant relation (`C(Y)`). <br>
+    After this pass the rule will be `A(X) <- B(X)`.
 
-    @note: in the rule A(X) <- B(X, Y), C(Y); C(Y) is not redundant!
     """
 
     def __init__(self, parse_graph: GraphBase, **kwargs: Any) -> None:

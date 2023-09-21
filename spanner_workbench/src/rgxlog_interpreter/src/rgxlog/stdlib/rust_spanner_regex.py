@@ -9,7 +9,7 @@ __all__ = ['RUST_RGX_IN_TYPES', 'DOWNLOAD_RUST_URL', 'PACKAGE_GIT_URL', 'PACKAGE
            'rgx_span_out_type', 'rgx_string_out_type', 'rgx', 'rgx_span', 'rgx_string', 'rgx_span_from_file',
            'rgx_string_from_file']
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 3
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 4
 import logging
 import re
 import tempfile
@@ -22,25 +22,25 @@ import os
 from ..engine.datatypes.primitive_types import DataTypes, Span
 from .utils import run_cli_command
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 5
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 6
 RUST_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 7
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 8
 DOWNLOAD_RUST_URL = "https://rustup.rs/"
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 9
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 10
 PACKAGE_GIT_URL = "https://github.com/NNRepos/enum-spanner-rs"
 PACKAGE_NAME = "enum-spanner-rs"
 PACKAGE_WIN_FILENAME = PACKAGE_NAME + ".exe"
 REGEX_FOLDER_NAME = "enum_spanner_regex"
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 11
-REGEX_FOLDER_PATH = Path(os.path.join('/spanner_workbench','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib')) / REGEX_FOLDER_NAME
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 12
+REGEX_FOLDER_PATH = Path(os.path.join(os.path.dirname(os.getcwd()),'spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib')) / REGEX_FOLDER_NAME
 REGEX_TEMP_PATH = Path(REGEX_FOLDER_PATH) / "temp{}.txt"
 REGEX_EXE_PATH_POSIX = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_NAME
 REGEX_EXE_PATH_WIN = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_WIN_FILENAME
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 13
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 14
 RUSTUP_TOOLCHAIN = "1.34"
 CARGO_CMD_ARGS: Sequence[Union[Path, str]] = ["cargo", "+" + RUSTUP_TOOLCHAIN, "install", "--root", REGEX_FOLDER_PATH, "--git", PACKAGE_GIT_URL]
 RUSTUP_CMD_ARGS = ["rustup", "toolchain", "install", RUSTUP_TOOLCHAIN]
@@ -49,22 +49,22 @@ CARGO_TIMEOUT = 300
 RUSTUP_TIMEOUT = 300
 TIMEOUT_MINUTES = (CARGO_TIMEOUT + RUSTUP_TIMEOUT) // 60
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 15
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 16
 WINDOWS_OS = "win32"
 WHICH_WORD = "where" if platform == WINDOWS_OS else "which"
 REGEX_EXE_PATH = REGEX_EXE_PATH_WIN if platform == WINDOWS_OS else REGEX_EXE_PATH_POSIX
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 17
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 18
 ESCAPED_STRINGS_PATTERN = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"', re.DOTALL)
 SPAN_PATTERN = re.compile(r"(?P<start>\d+), ?(?P<end>\d+)")
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 18
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 19
 # etc
 TEMP_FILE_NAME = "temp"
 
 logger = logging.getLogger(__name__)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 19
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 20
 def _download_and_install_rust_regex() -> None:
     # don't use "cargo -V" because it starts downloading stuff sometimes
     with Popen([WHICH_WORD, "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
@@ -91,21 +91,21 @@ def _download_and_install_rust_regex() -> None:
 
     logger.warning("installation completed")
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 20
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 21
 def _is_installed_package() -> bool:
     return Path(REGEX_EXE_PATH).is_file()
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 21
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 22
 @no_type_check
 def rgx_span_out_type(output_arity: int) -> Tuple[DataTypes]:
     return tuple([DataTypes.span] * output_arity)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 22
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 23
 @no_type_check
 def rgx_string_out_type(output_arity: int) -> Tuple[DataTypes]:
     return tuple([DataTypes.string] * output_arity)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 23
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 24
 def _format_spanner_string_output(output: Iterable[str]) -> List[List[str]]:
     output_lists = []
     for out in output:
@@ -119,7 +119,7 @@ def _format_spanner_string_output(output: Iterable[str]) -> List[List[str]]:
 
     return output_lists
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 24
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 25
 def _format_spanner_span_output(output: Iterable[str]) -> List[List[Span]]:
     output_lists = []
     for out in output:
@@ -132,16 +132,14 @@ def _format_spanner_span_output(output: Iterable[str]) -> List[List[Span]]:
 
     return output_lists
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 25
-def rgx(regex_pattern: str, out_type: str, text: Optional[str] = None, text_file: Optional[str] = None) -> Iterable[Iterable[Union[str, Span]]]:
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 26
+def rgx(regex_pattern: str, # the pattern to run
+        out_type: str, # string/span - decides which one will be returned
+        text: Optional[str] = None, # the string on which regex is run
+        text_file: Optional[str] = None # use text from this file instead of `text`. default: None
+        ) -> Iterable[Iterable[Union[str, Span]]]: # a tuple of strings/spans
     """
     An IE function which runs regex using rust's `enum-spanner-rs` and yields tuples of strings/spans (not both).
-
-    @param text: the string on which regex is run.
-    @param regex_pattern: the pattern to run.
-    @param out_type: string/span - decides which one will be returned.
-    @param text_file: use text from this file instead of `text`. default: None
-    @return: a tuple of strings/spans.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         if text_file:
@@ -166,67 +164,59 @@ def rgx(regex_pattern: str, out_type: str, text: Optional[str] = None, text_file
         for out in regex_output:
             yield out
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 26
-def rgx_span(text: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
-    """
-    @param text: The input text for the regex operation.
-    @param regex_pattern: the pattern of the regex operation.
-    @return: tuples of spans that represents the results.
-    """
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 27
+def rgx_span(text: str, # The input text for the regex operation
+             regex_pattern: str # The pattern of the regex operation
+             ) -> Iterable[Iterable[Union[str, Span]]]: # tuples of spans that represents the results
     return rgx(regex_pattern, "span", text=text)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 27
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 28
 RGX = dict(ie_function=rgx_span,
            ie_function_name='rgx_span',
            in_rel=RUST_RGX_IN_TYPES,
            out_rel=rgx_span_out_type)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 28
-def rgx_string(text: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
-    """
-    @param text: The input text for the regex operation.
-    @param regex_pattern: the pattern of the regex operation.
-    @return: tuples of strings that represents the results.
-    """
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 29
+def rgx_string(text: str, # The input text for the regex operation
+               regex_pattern: str # he pattern of the regex operation
+               ) -> Iterable[Iterable[Union[str, Span]]]: # tuples of strings that represents the results
     return rgx(regex_pattern, "string", text=text)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 29
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 30
 RGX_STRING = dict(ie_function=rgx_string,
                   ie_function_name='rgx_string',
                   in_rel=RUST_RGX_IN_TYPES,
                   out_rel=rgx_string_out_type)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 30
-def rgx_span_from_file(text_file: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
-    """
-    @param text_file: The input file for the regex operation.
-    @param regex_pattern: the pattern of the regex operation.
-    @return: tuples of spans that represents the results.
-    """
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 31
+def rgx_span_from_file(text_file: str, # The input file for the regex operation
+                       regex_pattern: str # The pattern of the regex operation
+                       ) -> Iterable[Iterable[Union[str, Span]]]: # tuples of spans that represents the results
     return rgx(regex_pattern, "span", text_file=text_file)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 31
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 32
 RGX_FROM_FILE = dict(ie_function=rgx_span_from_file,
                      ie_function_name='rgx_span_from_file',
                      in_rel=RUST_RGX_IN_TYPES,
                      out_rel=rgx_span_out_type)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 32
-def rgx_string_from_file(text_file: str, regex_pattern: str) -> Iterable[Iterable[Union[str, Span]]]:
-    """
-    @param text_file: The input file for the regex operation.
-    @param regex_pattern: the pattern of the regex operation.
-    @return: tuples of strings that represents the results.
-    """
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 33
+def rgx_string_from_file(text_file: str, # The input file for the regex operation
+                         regex_pattern: str # The pattern of the regex operation
+                         ) -> Iterable[Iterable[Union[str, Span]]]: # tuples of strings that represents the results
     return rgx(regex_pattern, "string", text_file=text_file)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 33
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 34
 RGX_STRING_FROM_FILE = dict(ie_function=rgx_string_from_file,
                             ie_function_name='rgx_string_from_file',
                             in_rel=RUST_RGX_IN_TYPES,
                             out_rel=rgx_string_out_type)
 
-# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 34
-# the package is installed when this module is imported
-if not _is_installed_package():
-    _download_and_install_rust_regex()
+# %% ../../../../../../nbs/17_rust_spanner_regex.ipynb 35
+#| eval: false
+# the package is installed when this module is imported, exclude the scenraio of github runner
+try:
+    if not _is_installed_package() and 'runner' not in os.getcwd():
+        _download_and_install_rust_regex()
+except:
+    logger.error(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")

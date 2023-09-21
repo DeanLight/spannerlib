@@ -2,15 +2,14 @@
 
 # %% auto 0
 __all__ = ['JAVA_MIN_VERSION', 'NLP_URL', 'NLP_DIR_NAME', 'CURR_DIR', 'NLP_DIR_PATH', 'JAVA_DOWNLOADER', 'INSTALLATION_PATH',
-           'STANFORD_ZIP_GOOGLE_DRIVE_ID', 'STANFORD_ZIP_NAME', 'STANFORD_ZIP_PATH', 'logger', 'CoreNLPEngine',
-           'Tokenize', 'SSplit', 'POS', 'Lemma', 'NER', 'EntityMentions', 'RGXNer', 'TokensRegex', 'CleanXML', 'Parse',
-           'DepParse', 'Coref', 'OpenIE', 'KBP', 'Quote', 'Sentiment', 'TrueCase', 'UDFeats', 'tokenize_wrapper',
-           'ssplit_wrapper', 'pos_wrapper', 'lemma_wrapper', 'ner_wrapper', 'entitymentions_wrapper',
-           'regexner_wrapper', 'tokensregex_wrapper', 'cleanxml_wrapper', 'parse_wrapper', 'dependency_parse_wrapper',
-           'coref_wrapper', 'openie_wrapper', 'kbp_wrapper', 'quote_wrapper', 'sentiment_wrapper', 'truecase_wrapper',
-           'udfeats_wrapper']
+           'STANFORD_ZIP_GOOGLE_DRIVE_ID', 'STANFORD_ZIP_NAME', 'STANFORD_ZIP_PATH', 'logger', 'Tokenize', 'SSplit',
+           'POS', 'Lemma', 'NER', 'EntityMentions', 'RGXNer', 'TokensRegex', 'CleanXML', 'Parse', 'DepParse', 'Coref',
+           'OpenIE', 'KBP', 'Quote', 'Sentiment', 'TrueCase', 'UDFeats', 'tokenize_wrapper', 'ssplit_wrapper',
+           'pos_wrapper', 'lemma_wrapper', 'ner_wrapper', 'entitymentions_wrapper', 'regexner_wrapper',
+           'tokensregex_wrapper', 'cleanxml_wrapper', 'parse_wrapper', 'dependency_parse_wrapper', 'coref_wrapper',
+           'openie_wrapper', 'kbp_wrapper', 'quote_wrapper', 'sentiment_wrapper', 'truecase_wrapper', 'udfeats_wrapper']
 
-# %% ../../../../../../nbs/15_nlp.ipynb 4
+# %% ../../../../../../nbs/15_nlp.ipynb 3
 import json
 import logging
 from io import BytesIO
@@ -26,15 +25,14 @@ from spanner_nlp.StanfordCoreNLP import StanfordCoreNLP
 from ..engine.datatypes.primitive_types import DataTypes
 from .utils import download_file_from_google_drive
 
-# %% ../../../../../../nbs/15_nlp.ipynb 5
+# %% ../../../../../../nbs/15_nlp.ipynb 4
 JAVA_MIN_VERSION = 1.8
 
 NLP_URL = "https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
-CURR_DIR = Path(os.path.join('/nbdev_spanner_workbench','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib'))
+CURR_DIR = Path(os.path.join(os.getcwd(),'spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib'))
 
-NLP_DIR_PATH = str(Path(os.path.join('/nbdev_spanner_workbench','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib')) / NLP_DIR_NAME)
-print(NLP_DIR_PATH)
+NLP_DIR_PATH = str(Path(os.path.join(os.getcwd(),'spanner_workbench','src','rgxlog_interpreter','src','rgxlog','stdlib')) / NLP_DIR_NAME)
 JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = Path.home()
 INSTALLATION_PATH = _USER_DIR / ".jre"
@@ -42,16 +40,15 @@ INSTALLATION_PATH = _USER_DIR / ".jre"
 STANFORD_ZIP_GOOGLE_DRIVE_ID = "1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 STANFORD_ZIP_NAME = "stanford-corenlp-4.1.0.zip"
 STANFORD_ZIP_PATH = CURR_DIR / STANFORD_ZIP_NAME
-print(NLP_DIR_PATH)
 
-# %% ../../../../../../nbs/15_nlp.ipynb 6
+# %% ../../../../../../nbs/15_nlp.ipynb 5
 logger = logging.getLogger(__name__)
 
-# %% ../../../../../../nbs/15_nlp.ipynb 7
+# %% ../../../../../../nbs/15_nlp.ipynb 6
 def _is_installed_nlp() -> bool:
     return Path(NLP_DIR_PATH).is_dir()
 
-# %% ../../../../../../nbs/15_nlp.ipynb 8
+# %% ../../../../../../nbs/15_nlp.ipynb 7
 def _install_nlp() -> None:
     logger.info(f"Installing {NLP_DIR_NAME} into {CURR_DIR}.")
     if not STANFORD_ZIP_PATH.is_file():
@@ -64,7 +61,7 @@ def _install_nlp() -> None:
 
     logging.info("installation completed.")
 
-# %% ../../../../../../nbs/15_nlp.ipynb 9
+# %% ../../../../../../nbs/15_nlp.ipynb 8
 def _is_installed_java() -> bool:
     version = popen(
         "java -version 2>&1 | grep 'version' 2>&1 | awk -F\\\" '{ split($2,a,\".\"); print a[1]\".\"a[2]}'").read()
@@ -74,7 +71,7 @@ def _is_installed_java() -> bool:
 
     return Path(INSTALLATION_PATH).is_dir()
 
-# %% ../../../../../../nbs/15_nlp.ipynb 10
+# %% ../../../../../../nbs/15_nlp.ipynb 9
 def _run_installation() -> None:
     if not _is_installed_nlp():
         _install_nlp()
@@ -87,74 +84,78 @@ def _run_installation() -> None:
         else:
             raise IOError("installation failed")
 
-# %% ../../../../../../nbs/15_nlp.ipynb 11
-_run_installation()
-CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
+# %% ../../../../../../nbs/15_nlp.ipynb 10
+#| eval: false
+try:
+    _run_installation()
+    CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
+except:
+    logger.error("Installation NLP failed")
 
-# %% ../../../../../../nbs/15_nlp.ipynb 12
+# %% ../../../../../../nbs/15_nlp.ipynb 11
 def tokenize_wrapper(sentence: str) -> Iterator:
     for token in CoreNLPEngine.tokenize(sentence):
         yield token["token"], token["span"]
 
-# %% ../../../../../../nbs/15_nlp.ipynb 13
+# %% ../../../../../../nbs/15_nlp.ipynb 12
 Tokenize = dict(ie_function=tokenize_wrapper,
                 ie_function_name='Tokenize',
                 in_rel=[DataTypes.string],
                 out_rel=[DataTypes.string, DataTypes.span])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 14
+# %% ../../../../../../nbs/15_nlp.ipynb 13
 def ssplit_wrapper(sentence: str) -> Iterator:
     for s in CoreNLPEngine.ssplit(sentence):
         yield s,
 
-# %% ../../../../../../nbs/15_nlp.ipynb 15
+# %% ../../../../../../nbs/15_nlp.ipynb 14
 SSplit = dict(ie_function=ssplit_wrapper,
               ie_function_name='SSplit',
               in_rel=[DataTypes.string],
               out_rel=[DataTypes.string])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 16
+# %% ../../../../../../nbs/15_nlp.ipynb 15
 def pos_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.pos(sentence):
         yield res["token"], res["pos"], res["span"]
 
-# %% ../../../../../../nbs/15_nlp.ipynb 17
+# %% ../../../../../../nbs/15_nlp.ipynb 16
 POS = dict(ie_function=pos_wrapper,
            ie_function_name='POS',
            in_rel=[DataTypes.string],
            out_rel=[DataTypes.string, DataTypes.string, DataTypes.span])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 18
+# %% ../../../../../../nbs/15_nlp.ipynb 17
 def lemma_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.lemma(sentence):
         yield res["token"], res["lemma"], res["span"]
 
-# %% ../../../../../../nbs/15_nlp.ipynb 19
+# %% ../../../../../../nbs/15_nlp.ipynb 18
 Lemma = dict(ie_function=lemma_wrapper,
              ie_function_name='Lemma',
              in_rel=[DataTypes.string],
              out_rel=[DataTypes.string, DataTypes.string, DataTypes.span])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 20
+# %% ../../../../../../nbs/15_nlp.ipynb 19
 def ner_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.ner(sentence):
         if res["ner"] != 'O':
             yield res["token"], res["ner"], res["span"]
 
-# %% ../../../../../../nbs/15_nlp.ipynb 21
+# %% ../../../../../../nbs/15_nlp.ipynb 20
 NER = dict(ie_function=ner_wrapper,
            ie_function_name='NER',
            in_rel=[DataTypes.string],
            out_rel=[DataTypes.string, DataTypes.string, DataTypes.span])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 22
+# %% ../../../../../../nbs/15_nlp.ipynb 21
 def entitymentions_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.entitymentions(sentence):
         confidence = json.dumps(res["nerConfidences"]).replace("\"", "'")
         yield (res["docTokenBegin"], res["docTokenEnd"], res["tokenBegin"], res["tokenEnd"], res["text"],
                res["characterOffsetBegin"], res["characterOffsetEnd"], res["ner"], confidence)
 
-# %% ../../../../../../nbs/15_nlp.ipynb 23
+# %% ../../../../../../nbs/15_nlp.ipynb 22
 EntityMentions = dict(ie_function=entitymentions_wrapper,
                       ie_function_name='EntityMentions',
                       in_rel=[DataTypes.string],
@@ -162,71 +163,71 @@ EntityMentions = dict(ie_function=entitymentions_wrapper,
                                DataTypes.string, DataTypes.integer, DataTypes.integer, DataTypes.string,
                                DataTypes.string])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 24
+# %% ../../../../../../nbs/15_nlp.ipynb 23
 def regexner_wrapper(sentence: str, pattern: str) -> Iterator:
     # for res in CoreNLPEngine.regexner(sentence, pattern):
     raise NotImplementedError()
 
-# %% ../../../../../../nbs/15_nlp.ipynb 25
+# %% ../../../../../../nbs/15_nlp.ipynb 24
 RGXNer = dict(ie_function=regexner_wrapper,
               ie_function_name='RGXNer',
               in_rel=[DataTypes.string, DataTypes.string],
               out_rel=None)
 
-# %% ../../../../../../nbs/15_nlp.ipynb 26
+# %% ../../../../../../nbs/15_nlp.ipynb 25
 def tokensregex_wrapper(sentence: str, pattern: str) -> Iterator:
     # for res in CoreNLPEngine.tokensregex(sentence, pattern):
     raise NotImplementedError()
 
-# %% ../../../../../../nbs/15_nlp.ipynb 27
+# %% ../../../../../../nbs/15_nlp.ipynb 26
 TokensRegex = dict(ie_function=tokensregex_wrapper,
                    ie_function_name='TokensRegex',
                    in_rel=[DataTypes.string, DataTypes.string],
                    out_rel=None)
 
-# %% ../../../../../../nbs/15_nlp.ipynb 28
+# %% ../../../../../../nbs/15_nlp.ipynb 27
 def cleanxml_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.cleanxml(sentence)["tokens"]:
         yield res['index'], res['word'], res['originalText'], res['characterOffsetBegin'], res['characterOffsetEnd']
 
-# %% ../../../../../../nbs/15_nlp.ipynb 29
+# %% ../../../../../../nbs/15_nlp.ipynb 28
 CleanXML = dict(ie_function=cleanxml_wrapper,
                 ie_function_name='CleanXML',
                 in_rel=[DataTypes.string],
                 out_rel=[DataTypes.integer, DataTypes.string, DataTypes.string, DataTypes.integer, DataTypes.integer])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 30
+# %% ../../../../../../nbs/15_nlp.ipynb 29
 def parse_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.parse(sentence):
         # note #1: this yields a tuple
         # note #2: we replace the newlines with `<nl> because it is difficult to tell the results apart otherwise
         yield res.replace("\n", "<nl>").replace("\r", ""),
 
-# %% ../../../../../../nbs/15_nlp.ipynb 31
+# %% ../../../../../../nbs/15_nlp.ipynb 30
 Parse = dict(ie_function=parse_wrapper,
              ie_function_name='Parse',
              in_rel=[DataTypes.string],
              out_rel=[DataTypes.string])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 32
+# %% ../../../../../../nbs/15_nlp.ipynb 31
 def dependency_parse_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.dependency_parse(sentence):
         yield res['dep'], res['governor'], res['governorGloss'], res['dependent'], res['dependentGloss']
 
-# %% ../../../../../../nbs/15_nlp.ipynb 33
+# %% ../../../../../../nbs/15_nlp.ipynb 32
 DepParse = dict(ie_function=dependency_parse_wrapper,
                 ie_function_name='DepParse',
                 in_rel=[DataTypes.string],
                 out_rel=[DataTypes.string, DataTypes.integer, DataTypes.string, DataTypes.integer, DataTypes.string])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 34
+# %% ../../../../../../nbs/15_nlp.ipynb 33
 def coref_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.coref(sentence):
         yield (res['id'], res['text'], res['type'], res['number'], res['gender'], res['animacy'], res['startIndex'],
                res['endIndex'], res['headIndex'], res['sentNum'],
                tuple(res['position']), str(res['isRepresentativeMention']))
 
-# %% ../../../../../../nbs/15_nlp.ipynb 35
+# %% ../../../../../../nbs/15_nlp.ipynb 34
 Coref = dict(ie_function=coref_wrapper,
              ie_function_name='Coref',
              in_rel=[DataTypes.string],
@@ -234,76 +235,76 @@ Coref = dict(ie_function=coref_wrapper,
                       DataTypes.string, DataTypes.integer, DataTypes.integer, DataTypes.integer, DataTypes.integer,
                       DataTypes.span, DataTypes.string])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 36
+# %% ../../../../../../nbs/15_nlp.ipynb 35
 def openie_wrapper(sentence: str) -> Iterator:
     for lst in CoreNLPEngine.openie(sentence):
         for res in lst:
             yield (res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']),
                    res['object'], tuple(res['objectSpan']))
 
-# %% ../../../../../../nbs/15_nlp.ipynb 37
+# %% ../../../../../../nbs/15_nlp.ipynb 36
 OpenIE = dict(ie_function=openie_wrapper,
               ie_function_name='OpenIE',
               in_rel=[DataTypes.string],
               out_rel=[DataTypes.string, DataTypes.span, DataTypes.string, DataTypes.span, DataTypes.string,
                        DataTypes.span])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 38
+# %% ../../../../../../nbs/15_nlp.ipynb 37
 def kbp_wrapper(sentence: str) -> Iterator:
     for lst in CoreNLPEngine.kbp(sentence):
         for res in lst:
             yield (res['subject'], tuple(res['subjectSpan']), res['relation'], tuple(res['relationSpan']),
                    res['object'], tuple(res['objectSpan']))
 
-# %% ../../../../../../nbs/15_nlp.ipynb 39
+# %% ../../../../../../nbs/15_nlp.ipynb 38
 KBP = dict(ie_function=kbp_wrapper,
            ie_function_name='KBP',
            in_rel=[DataTypes.string],
            out_rel=[DataTypes.string, DataTypes.span, DataTypes.string, DataTypes.span, DataTypes.string,
                     DataTypes.span])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 40
+# %% ../../../../../../nbs/15_nlp.ipynb 39
 def quote_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.quote(sentence):
         yield (res['id'], res['text'], res['beginIndex'], res['endIndex'], res['beginToken'], res['endToken'],
                res['beginSentence'], res['endSentence'], res['speaker'], res['canonicalSpeaker'])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 41
+# %% ../../../../../../nbs/15_nlp.ipynb 40
 Quote = dict(ie_function=quote_wrapper,
              ie_function_name='Quote',
              in_rel=[DataTypes.string],
              out_rel=[DataTypes.integer, DataTypes.string, DataTypes.integer, DataTypes.integer, DataTypes.integer,
                       DataTypes.integer, DataTypes.integer, DataTypes.integer, DataTypes.string, DataTypes.string])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 42
+# %% ../../../../../../nbs/15_nlp.ipynb 41
 # currently ignoring sentimentTree
 def sentiment_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.sentiment(sentence):
         yield int(res['sentimentValue']), res['sentiment'], json.dumps(res['sentimentDistribution'])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 43
+# %% ../../../../../../nbs/15_nlp.ipynb 42
 Sentiment = dict(ie_function=sentiment_wrapper,
                  ie_function_name='Sentiment',
                  in_rel=[DataTypes.string],
                  out_rel=[DataTypes.integer, DataTypes.string, DataTypes.string])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 44
+# %% ../../../../../../nbs/15_nlp.ipynb 43
 def truecase_wrapper(sentence: str) -> Iterator:
     for res in CoreNLPEngine.truecase(sentence):
         yield res['token'], res['span'], res['truecase'], res['truecaseText']
 
-# %% ../../../../../../nbs/15_nlp.ipynb 45
+# %% ../../../../../../nbs/15_nlp.ipynb 44
 TrueCase = dict(ie_function=truecase_wrapper,
                 ie_function_name='TrueCase',
                 in_rel=[DataTypes.string],
                 out_rel=[DataTypes.string, DataTypes.span, DataTypes.string, DataTypes.string])
 
-# %% ../../../../../../nbs/15_nlp.ipynb 46
+# %% ../../../../../../nbs/15_nlp.ipynb 45
 def udfeats_wrapper(sentence: str) -> Iterator:
     # for token in CoreNLPEngine.udfeats(sentence):
     raise NotImplementedError()
 
-# %% ../../../../../../nbs/15_nlp.ipynb 47
+# %% ../../../../../../nbs/15_nlp.ipynb 46
 UDFeats = dict(ie_function=udfeats_wrapper,
                ie_function_name='UDFeats',
                in_rel=[DataTypes.string],

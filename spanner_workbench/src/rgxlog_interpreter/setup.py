@@ -2,7 +2,7 @@ from glob import glob
 from os.path import basename
 from os.path import splitext
 from typing import Dict, no_type_check
-
+import os
 import setuptools
 from setuptools.command.develop import develop
 from setuptools.command.install import install

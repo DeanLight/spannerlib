@@ -4,7 +4,7 @@
 __all__ = ['CSV_DELIMITER', 'PREDEFINED_IE_FUNCS', 'STRING_PATTERN', 'logger', 'GRAMMAR_FILE_NAME', 'format_query_results',
            'tabulate_result', 'queries_to_string', 'Session']
 
-# %% ../../../../../../nbs/19_session.ipynb 3
+# %% ../../../../../../nbs/19_session.ipynb 4
 import csv
 import logging
 import os
@@ -12,14 +12,14 @@ import re
 from pathlib import Path
 from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Sequence
 
-# %% ../../../../../../nbs/19_session.ipynb 6
+# %% ../../../../../../nbs/19_session.ipynb 5
 from lark.lark import Lark
 from pandas import DataFrame
 from tabulate import tabulate
 import os
 
-# %% ../../../../../../nbs/19_session.ipynb 7
-from .engine import *
+# %% ../../../../../../nbs/19_session.ipynb 6
+from .engine import SqliteEngine
 from .datatypes.ast_node_types import AddFact, RelationDeclaration
 from .datatypes.primitive_types import Span, DataTypes, DataTypeMapping
 from .engine import FALSE_VALUE, TRUE_VALUE
@@ -39,12 +39,11 @@ from .state.symbol_table import SymbolTable, SymbolTableBase
 from .utils.general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
 from .utils.passes_utils import LarkNode
 from ..stdlib.json_path import JsonPath, JsonPathFull
-from ..stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref,
-                              OpenIE, KBP, Quote, Sentiment, TrueCase)
+from ..stdlib.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase)
 from ..stdlib.python_regex import PYRGX, PYRGX_STRING
 from ..stdlib.rust_spanner_regex import RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE
 
-# %% ../../../../../../nbs/19_session.ipynb 8
+# %% ../../../../../../nbs/19_session.ipynb 7
 CSV_DELIMITER = ";"
 
 # ordered by rgx, json, nlp, etc.
@@ -59,14 +58,14 @@ logger = logging.getLogger(__name__)
 
 GRAMMAR_FILE_NAME = 'grammar.lark'
 
-# %% ../../../../../../nbs/19_session.ipynb 9
-def _infer_relation_type(row: Iterable) -> Sequence[DataTypes]:
+# %% ../../../../../../nbs/19_session.ipynb 8
+def _infer_relation_type(row: Iterable # an iterable of values, extracted from a csv file or a dataframe
+                        ) -> Sequence[DataTypes]: # Inferred tpye list of the given relation
     """
     Guess the relation type based on the data.
     We support both the actual types (e.g. 'Span'), and their string representation ( e.g. `"[0,8)"`).
 
-    @param row: an iterable of values, extracted from a csv file or a dataframe.
-    @raise ValueError: if there is a cell inside `row` of an illegal type.
+    **@raise** ValueError: if there is a cell inside `row` of an illegal type.
     """
     relation_types = []
     for cell in row:
@@ -83,12 +82,12 @@ def _infer_relation_type(row: Iterable) -> Sequence[DataTypes]:
 
     return relation_types
 
-# %% ../../../../../../nbs/19_session.ipynb 10
+# %% ../../../../../../nbs/19_session.ipynb 9
 def _verify_relation_types(row: Iterable, expected_types: Iterable[DataTypes]) -> None:
     if _infer_relation_type(row) != expected_types:
         raise Exception(f"row:\n{str(row)}\ndoes not match the relation's types:\n{str(expected_types)}")
 
-# %% ../../../../../../nbs/19_session.ipynb 11
+# %% ../../../../../../nbs/19_session.ipynb 10
 def _text_to_typed_data(term_list: Sequence[DataTypeMapping.term], relation_types: Sequence[DataTypes]) -> List[DataTypeMapping.term]:
     transformed_term_list: List[DataTypeMapping.term] = []
     for str_or_object, rel_type in zip(term_list, relation_types):
@@ -112,7 +111,7 @@ def _text_to_typed_data(term_list: Sequence[DataTypeMapping.term], relation_type
 
     return transformed_term_list
 
-# %% ../../../../../../nbs/19_session.ipynb 12
+# %% ../../../../../../nbs/19_session.ipynb 11
 def format_query_results(query: Query, query_results: List) -> Union[DataFrame, List]:
     """
     Formats a single result from the engine into a usable format.
@@ -148,7 +147,7 @@ def format_query_results(query: Query, query_results: List) -> Union[DataFrame, 
         return DataFrame(data=results_matrix, columns=query_free_vars)
 
 
-# %% ../../../../../../nbs/19_session.ipynb 13
+# %% ../../../../../../nbs/19_session.ipynb 12
 def tabulate_result(result: Union[DataFrame, List]) -> str:
     """
     Organizes a query result in a table
@@ -180,7 +179,7 @@ def tabulate_result(result: Union[DataFrame, List]) -> str:
     return result_string
 
 
-# %% ../../../../../../nbs/19_session.ipynb 14
+# %% ../../../../../../nbs/19_session.ipynb 13
 def queries_to_string(query_results: List[Tuple[Query, List]]) -> str:
     """
     Takes in a list of results from the engine and converts them into a single string, which contains
@@ -210,13 +209,19 @@ def queries_to_string(query_results: List[Tuple[Query, List]]) -> str:
     return "\n".join(all_result_strings)
 
 
-# %% ../../../../../../nbs/19_session.ipynb 15
+# %% ../../../../../../nbs/19_session.ipynb 14
 class Session:
-    def __init__(self, symbol_table: Optional[SymbolTableBase] = None, parse_graph: Optional[GraphBase] = None,
-                 term_graph: Optional[TermGraphBase] = None):
+    def __init__(self, 
+                 symbol_table: Optional[SymbolTableBase] = None, # symbol table to help with all semantic checks
+                 parse_graph: Optional[GraphBase] = None, # an AST that contains nodes which represent commands
+                 term_graph: Optional[TermGraphBase] = None): # a graph that holds all the connection between the relations
         """
-        parse_graph is the lark graph which contains is the result of parsing a single statement,
-        term_graph is the combined tree of all statements so far, which describes the connection between relations.
+        A class that serves as the central connection point between various modules in the system.
+
+        This class takes input data and coordinates communication between different modules by sending the relevant parts
+        of the input to each module. It also orchestrates the execution of micro passes and handles engine-related tasks. <br>
+        Finally, it formats the results before presenting them to the user.
+
         """
         if symbol_table is None:
             self._symbol_table: SymbolTableBase = SymbolTable()
@@ -259,7 +264,7 @@ class Session:
         @return: Grammar from grammar file in string format.
         """
 
-        grammar_file_path = Path(os.path.join('/nbdev_spanner_workbench','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','grammar'))
+        grammar_file_path = Path(os.path.join(os.getcwd(),'..','spanner_workbench','src','rgxlog_interpreter','src','rgxlog','grammar'))
         with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
             return grammar_file.read()
 
@@ -267,8 +272,8 @@ class Session:
         """
         Runs the passes in pass_list on tree, one after another.
         """
-        logger.debug(f"initial lark tree:\n{lark_tree.pretty()}")
-        logger.debug(f"initial term graph:\n{self._term_graph}")
+        #logger.debug(f"initial lark tree:\n{lark_tree.pretty()}")
+        #logger.debug(f"initial term graph:\n{self._term_graph}")
 
         for curr_pass in pass_list:
             curr_pass_object = curr_pass(parse_graph=self._parse_graph,
@@ -277,7 +282,7 @@ class Session:
             new_tree = curr_pass_object.run_pass(tree=lark_tree)
             if new_tree is not None:
                 lark_tree = new_tree
-                logger.debug(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
+                #logger.debug(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
     
     
     def __repr__(self) -> str:
@@ -513,13 +518,3 @@ class Session:
         """
 
         self._term_graph.print_all_rules(head)
-
-# %% ../../../../../../nbs/19_session.ipynb 16
-if __name__ == "__main__":
-    # this is for debugging. don't shadow variables like `query`, that's annoying
-    logger = logging.getLogger()
-    logger.setLevel(level=logging.DEBUG)
-    my_session = Session()
-    my_session.run_commands("""
-    b = "hi"
-    b2 = b""")

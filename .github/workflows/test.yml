@@ -1,7 +1,28 @@
 name: CI
-on:  [workflow_dispatch, pull_request, push]
+on: [workflow_dispatch, pull_request, push]
+
+env:
+  PYTHON_VERSION: 3.8
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    steps: [uses: fastai/workflows/nbdev-ci@master]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install RgxLog
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ./spanner_workbench/src/rgxlog_interpreter
+          
+      - name: Use nbdev CI Workflow
+        uses: fastai/workflows/nbdev-ci@master
+        with:
+          # The python version that nbdev ci must run on must match the python version used 
+          version: ${{ env.PYTHON_VERSION }}

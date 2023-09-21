@@ -8,10 +8,10 @@ __all__ = ['get_tree', 'GenericPass', 'VisitorPass', 'VisitorRecursivePass', 'In
            'CheckRuleSafety', 'TypeCheckAssignments', 'TypeCheckRelations', 'SaveDeclaredRelationsSchemas',
            'ResolveVariablesReferences', 'ExecuteAssignments', 'AddStatementsToNetxParseGraph']
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 4
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 5
 from fastcore.utils import *
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 5
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 6
 from abc import ABC, abstractmethod
 from lark import Transformer, Token
 from lark import Tree as LarkNode
@@ -19,55 +19,52 @@ from lark.visitors import Interpreter, Visitor_Recursive, Visitor
 from pathlib import Path
 from typing import no_type_check, Set, Sequence, Any
 
-from ..datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule,
-                                                    IERelation, RelationDeclaration, Relation)
+from ..datatypes.ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule, IERelation, RelationDeclaration, Relation)
 from ..datatypes.primitive_types import Span, DataTypes, DataTypeMapping
 from ..engine import RESERVED_RELATION_PREFIX
 from ..state.graphs import NetxStateGraph
 from ..state.symbol_table import SymbolTableBase
-from ..utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names,
-                                               fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
+from ..utils.general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names, fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
 from ..utils.passes_utils import assert_expected_node_structure, unravel_lark_node, ParseNodeType
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 6
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 7
 def get_tree(**kwargs: Any) -> Any:
     tree = kwargs.get("tree", None)
     if tree is None:
         raise Exception("Expected tree parameter")
     return tree
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 7
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 8
 class GenericPass(ABC):
     @abstractmethod
     def run_pass(self, **kwargs: Any) -> None:
         pass
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 8
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 9
 class VisitorPass(Visitor, GenericPass):
     def run_pass(self, **kwargs: Any) -> None:
         self.visit(get_tree(**kwargs))
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 9
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 10
 class VisitorRecursivePass(Visitor_Recursive, GenericPass):
     def run_pass(self, **kwargs: Any) -> None:
         self.visit(get_tree(**kwargs))
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 10
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 11
 class InterpreterPass(Interpreter, GenericPass):
     def run_pass(self, **kwargs: Any) -> None:
         self.visit(get_tree(**kwargs))
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 11
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 12
 class TransformerPass(Transformer, GenericPass):
     def run_pass(self, **kwargs: Any) -> Any:
         return self.transform(get_tree(**kwargs))
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 12
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 13
 class RemoveTokens(TransformerPass):
     """
-    a lark pass that should be used before the semantic checks
-    transforms the lark tree by removing the redundant tokens
-    note that we inherit from 'Transformer' in order to be able to visit token nodes.
+    A lark pass that should be used before the semantic checks. <br>
+    Transforms the lark tree by removing the redundant tokens. <br>
     """
 
     def __init__(self, **kw: Any) -> None:
@@ -98,7 +95,7 @@ class RemoveTokens(TransformerPass):
         unquoted_string = quoted_string[1:-1]
         return unquoted_string
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 13
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 14
 class CheckReservedRelationNames(InterpreterPass):
     """
     A lark tree semantic check.
@@ -118,10 +115,10 @@ class CheckReservedRelationNames(InterpreterPass):
                             f'names containing {RESERVED_RELATION_PREFIX} are reserved')
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 14
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 15
 class FixStrings(VisitorRecursivePass):
     """
-     Fixes the strings in the lark tree.
+     Fixes the strings in the lark tree. <br>
      Removes the line overflow escapes from strings.
      """
 
@@ -139,11 +136,11 @@ class FixStrings(VisitorRecursivePass):
         # replace the string that is stored in the node with the fixed string
         string_node.children[0] = fixed_string_value
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 15
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 16
 class ConvertSpanNodesToSpanInstances(VisitorRecursivePass):
     """
-    Converts each span node in the ast to a span instance.
-    This means that a span in the tree will be represented by a single value (a "DataTypes.Span" instance)
+    Converts each span node in the ast to a span instance. <br>
+    This means that a span in the tree will be represented by a single value (a `DataTypes.Span` instance)
     instead of two integer nodes, making it easier to work with (as other data types are also represented by
     a single value).
     """
@@ -161,13 +158,11 @@ class ConvertSpanNodesToSpanInstances(VisitorRecursivePass):
         # replace the current representation of the span in the ast with a matching Span instance
         span_node.children = [Span(span_start, span_end)]
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 16
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 17
 class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
     """
-    converts each statement node in the tree to a structured node, making it easier to parse in future passes.
-    a structured node is a class representation of a node in the abstract syntax tree.
-    note that after using this pass, non statement nodes will no longer appear in the tree, so passes that
-    should work on said nodes need to be used before this pass in the passes pipeline (e.g. FixString).
+    converts each statement node in the tree to a structured node, making it easier to parse in future passes. <br>
+    a structured node is a class representation of a node in the abstract syntax tree. <br>
     """
 
     def __init__(self, **kw: Any):
@@ -354,10 +349,10 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         return structured_ie_relation_node
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 17
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 19
 class CheckDefinedReferencedVariables(InterpreterPass):
     """
-    A lark tree semantic check.
+    A lark tree semantic check. <br>
     checks whether each variable reference refers to a defined variable.
     """
 
@@ -430,10 +425,10 @@ class CheckDefinedReferencedVariables(InterpreterPass):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 18
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 20
 class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     """
-    A lark tree semantic check.
+    A lark tree semantic check. <br>
     Checks whether each normal relation (that is not an ie relation) reference refers to a defined relation.
     Also checks if the relation reference uses the correct arity.
     """
@@ -497,14 +492,14 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 19
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 21
 class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     """
-    A lark tree semantic check.
-    Checks whether each ie relation reference refers to a defined ie function.
+    A lark tree semantic check. <br>
+    Checks whether each ie relation reference refers to a defined ie function. <br>
     Also checks if the correct input arity and output arity for the ie function were used.
 
-    currently, an ie relation can only be found in a rule's body, so this is the only place where this
+    Currently, an ie relation can only be found in a rule's body, so this is the only place where this
     check will be performed.
     """
 
@@ -544,37 +539,55 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
                                     f' {used_output_arity} (should be {correct_output_arity})')
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 20
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 22
 class CheckRuleSafety(VisitorRecursivePass):
     """
-    A lark tree semantic check.
-    checks whether the rules in the programs are safe.
+    Performs semantic checks on rules using a Lark tree to ensure their safety. <br>
+    A rule is considered "safe" when it meets certain conditions.
 
-    For a rule to be safe, two conditions must apply:
 
-    1. Every free variable in the head occurs at least once in the body as an output term of a relation.
+    * [Rule Safety Conditions](#rule-safety-conditions)
+        * [Free Variable in Rule Head](#free-variable-in-rule-head)
+        * [Bound Free Variable](#bound-free-variable)
+    * [Examples](#examples)
+    * [Safe Relations](#safe-relations)
 
-    examples:
-    a. "parent(X,Y) <- son(X)" is not a safe rule because the free variable Y only appears in the rule head.
-    b. "parent(X,Z) <- parent(X,Y), parent(Y,Z)" is a safe rule as both X,Z that appear in the rule head, also
-        appear in the rule body.
-    c. "happy(X) <- is_happy<X>(Y)" is not a safe rule as X does not appear as an output of a relation.
+    ---
 
-    2. Every free variable is bound.
-    A bound free variable is a free variable that has a constraint that imposes a
-    limit on the amount of values it can take.
+    ### Rule Safety Conditions
 
-    In order to check that every free variable is bound, we will check that every relation in the rule body
-    is a safe relation, meaning:
-    a. A safe relation is one where its input relation is safe, meaning all its input's free variables are bound.
-    normal relations are always safe as they don't have an input relation.
-    b. A bound variable is one that exists in the output of a safe relation.
+    For a rule to be considered safe, the following two conditions must be met:
 
-    examples:
-    a. "rel2(X,Y) <- rel1(X,Z),ie1<X>(Y)" is safe as the only input free variable, X, exists in the output of
-    the safe relation rel1(X,Z).
-    b. " rel2(Y) <- ie1<Z>(Y)" is not safe as the input free variable Z does not exist in the output of any
-    safe relation.
+    ### 1. Free Variable in Rule Head
+
+    Every free variable that appears in the rule head must occur at least once in the body as an output term of a relation.
+
+    #### Examples
+
+    * `parent(X,Y) <- son(X)` is not a safe rule because the free variable `Y` only appears in the rule head.  
+    * `parent(X,Z) <- parent(X,Y), parent(Y,Z)` is a safe rule since both `X` and `Z` appear in the rule body.
+
+    ### 2. Bound Free Variable
+
+    A free variable is considered "bound" if it is constrained in a manner that limits the range of values it can take.
+
+    To ensure that every free variable is bound, we must ensure that every relation in the rule body is a safe relation.
+
+    ### Safe Relations
+
+    A safe relation adheres to the following:
+
+    * Its input relation is safe, meaning all its input's free variables are bound. Normal relations are always considered safe as they don't have input relations.  
+    * A bound variable is one that exists in the output of a safe relation.
+
+    #### Examples
+
+    * `rel2(X,Y) <- rel1(X,Z), ie1<X>(Y)` is a safe rule as the only input free variable, `X`, exists in the output of the safe relation `rel1(X, Z)`.  
+    * `rel2(Y) <- ie1<Z>(Y)` is not safe as the input free variable `Z` does not exist in the output of any safe relation.
+
+    ---
+
+
     """
 
     def __init__(self, **kw: Any) -> None:
@@ -663,11 +676,11 @@ class CheckRuleSafety(VisitorRecursivePass):
 
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 21
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 23
 class TypeCheckAssignments(InterpreterPass):
     """
-    a lark semantic check
-    performs type checking for assignments
+    A lark semantic check <br>
+    performs type checking for `Assignments` <br>
     in the current version of lark, this type checking is only required for read assignments.
     """
 
@@ -691,24 +704,44 @@ class TypeCheckAssignments(InterpreterPass):
                             f'because the argument type for read() was {read_arg_type} (must be a string)')
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 22
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 24
 class TypeCheckRelations(InterpreterPass):
     """
-    A lark tree semantic check.
-    This pass makes the following assumptions and might not work correctly if they are not met
-    1. that relations and ie relations references and correct arity were checked.
-    2. variable references were checked.
-    3. it only gets a single statement as an input.
+    A Lark Tree Semantic Check
 
-    this pass performs the following checks:
-    1. checks if relation references are properly typed.
-    2. checks if ie relations are properly typed.
-    3. checks if free variables in rules do have conflicting types.
+    ### Assumptions
 
-    example for the semantic check failing on check no. 3:
+    This pass operates under the following assumptions. Failure to meet these may lead to incorrect results:
+
+    1. References to relations and IE (Information Extraction) relations, as well as their arity, have been properly checked.
+    2. Variable references have been verified.
+    3. The pass only processes a single statement as input.
+
+    ### Semantic Checks
+
+    The pass performs the following specific checks:
+
+    #### 1. Typed Relation References
+
+    It verifies if the relation references in the rule are correctly typed.
+
+    #### 2. Typed IE Relations
+
+    It verifies if the IE relations in the rule are correctly typed.
+
+    #### 3. Conflicting Types in Free Variables
+
+    Checks if free variables within rules have conflicting types. This is crucial to ensure that the rules are logically coherent.
+
+    ### Example
+
+    Here is an example that illustrates how a semantic check may fail on the third type of check:
+
+    ```prolog
     new A(str)
     new B(int)
-    C(X) <- A(X), B(X) # error since X is expected to be both an int and a string.
+    C(X) <- A(X), B(X)  # Error: X is expected to be both an int and a string.
+    ```
     """
 
     def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
@@ -755,14 +788,13 @@ class TypeCheckRelations(InterpreterPass):
                             f'{conflicted_free_vars}')
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 23
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 25
 class SaveDeclaredRelationsSchemas(InterpreterPass):
     """
-    this pass writes the relation schemas that it finds in relation declarations and rule heads* to the
+    This pass writes the relation schemas that it finds in relation declarations and rule heads* to the
     symbol table.
-    * note that a rule is a relation declaration of the rule head relation and a definition of its contents
 
-    this pass assumes that type checking was already performed on its input.
+    This pass assumes that type checking was already performed on its input.
     """
 
     def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
@@ -789,12 +821,12 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 24
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 27
 class ResolveVariablesReferences(InterpreterPass):
     """
-    a lark execution pass
-    this pass replaces variable references with their literal values.
-    also replaces DataTypes.var_name types with the real type of the variable.
+    A lark execution pass, <br>
+    this pass replaces variable references with their literal values. <br>
+    also replaces `DataTypes.var_name` types with the real type of the variable.
     """
 
     def __init__(self, symbol_table: SymbolTableBase, **kw: Any) -> None:
@@ -871,11 +903,11 @@ class ResolveVariablesReferences(InterpreterPass):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 25
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 28
 class ExecuteAssignments(InterpreterPass):
     """
-    a lark execution pass
-    executes assignments by saving variables' values and types in the symbol table
+    A lark execution pass, <br>
+    executes assignments by saving variables' values and types in the symbol table <br>
     should be used only after variable references are resolved, meaning the assigned values and read() arguments
     are guaranteed to be literals.
     """
@@ -902,13 +934,13 @@ class ExecuteAssignments(InterpreterPass):
         self.symbol_table.set_var_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
 
-# %% ../../../../../../../nbs/09_lark_passes.ipynb 26
+# %% ../../../../../../../nbs/09_lark_passes.ipynb 29
 class AddStatementsToNetxParseGraph(InterpreterPass):
     """
-    A lark execution pass.
-    This pass adds each statement in the input parse tree to the parse graph.
+    A lark execution pass. <br>
+    This pass adds each statement in the input parse tree to the parse graph. <br>
     This pass is made to work with execution.naive_execution as the execution function and
-    term_graph.NetxStateGraph as the parse graph.
+    `term_graph.NetxStateGraph` as the parse graph.
 
     Each statement in the parse graph will be a child of the parse graph's root.
 
@@ -917,13 +949,13 @@ class AddStatementsToNetxParseGraph(InterpreterPass):
 
     Some nodes in the parse graph will contain a value attribute that would contain a relation that describes
     that statement.
-    e.g. a add_fact node would have a value which is a structured_nodes.AddFact instance
-    (which inherits from structured_nodes.Relation) that describes the fact that will be added.
+    e.g. a `add_fact` node would have a value which is a `structured_nodes.AddFact` instance
+    (which inherits from `structured_nodes.Relation`) that describes the fact that will be added.
 
     Some statements are more complex and will be described by more than a single node, e.g. a rule node.
     The reason for this is that we want a single netx node to not contain more than one Relation
-    (or IERelation) instance. This will make the parse graph a "graph of relation nodes", allowing
-     for flexibility for optimization in the future.
+    (or `IERelation`) instance. This will make the parse graph a "graph of relation nodes", allowing
+    for flexibility for optimization in the future.
     """
 
     def __init__(self, parse_graph: NetxStateGraph, **kw: Any) -> None:
