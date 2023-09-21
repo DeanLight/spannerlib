@@ -10,6 +10,8 @@ from typing import Dict, no_type_check
 
 assert parse_version(setuptools.__version__)>=parse_version('36.2')
 
+
+#Setup Rgxlog
 class PostDevelopCommand(develop):
     """Post-installation for development mode."""
 
