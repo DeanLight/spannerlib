@@ -264,7 +264,12 @@ class Session:
         @return: Grammar from grammar file in string format.
         """
 
-        grammar_file_path = Path(os.path.join(os.getcwd(),'..','spanner_workbench','rgxlog','grammar'))
+        # Make the grammar_file_path generic no matter if running from notebook or from exported python file
+        current_dir = Path.cwd()
+        if current_dir.name == 'nbs':
+            current_dir = current_dir.parent
+
+        grammar_file_path = current_dir / 'spanner_workbench' / 'rgxlog' / 'grammar'
         with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
             return grammar_file.read()
 
