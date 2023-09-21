@@ -1,7 +1,7 @@
 from typing import Any
 
-from spanner_workbench.src.rgxlog_interpreter.src.rgxlog.engine.session import Session
-from spanner_workbench.src.rgxlog_interpreter.src.rgxlog.magic.rgxlog_magic import RgxlogMagic
+from .engine.session import Session
+from .magic.rgxlog_magic import RgxlogMagic
 from IPython import InteractiveShell, get_ipython
 
 magic_session = Session()
