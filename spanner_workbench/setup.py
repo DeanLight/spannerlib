@@ -5,6 +5,13 @@ from glob import glob
 from os.path import basename
 from os.path import splitext
 from typing import Dict, no_type_check
+import os
+import sys
+
+# Add the path to the spanner_workbench folder so that nbdev_preview be able to find it
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
 
 #Setup Rgxlog
 class PostDevelopCommand(develop):
