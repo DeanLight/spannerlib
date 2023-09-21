@@ -4,9 +4,6 @@
 __all__ = ['PruneUnnecessaryProjectNodes', 'RemoveUselessRelationsFromRule']
 
 # %% ../../nbs/01e_optimizations_passes.ipynb 5
-from fastcore.utils import *
-
-# %% ../../nbs/01e_optimizations_passes.ipynb 6
 from typing import Any, Set, Union, List, Tuple
 
 from .ast_node_types import IERelation, Relation, Rule
@@ -16,7 +13,7 @@ from .graphs import TermGraphBase, GraphBase, TermNodeType, TYPE, VALUE
 from .general_utils import get_output_free_var_names, get_input_free_var_names, fixed_point
 from .passes_utils import get_new_rule_nodes
 
-# %% ../../nbs/01e_optimizations_passes.ipynb 7
+# %% ../../nbs/01e_optimizations_passes.ipynb 6
 class PruneUnnecessaryProjectNodes(GenericPass):
     """
     This class prunes project nodes that gets a relation with one column (therefore, the project is redundant).
@@ -103,7 +100,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
         return len(free_vars) == 1
 
 
-# %% ../../nbs/01e_optimizations_passes.ipynb 8
+# %% ../../nbs/01e_optimizations_passes.ipynb 7
 class RemoveUselessRelationsFromRule(GenericPass):
     """
     This pass removes duplicated relations from a rule. <br>

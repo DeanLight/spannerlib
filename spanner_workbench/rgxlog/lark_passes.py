@@ -9,9 +9,6 @@ __all__ = ['get_tree', 'GenericPass', 'VisitorPass', 'VisitorRecursivePass', 'In
            'ResolveVariablesReferences', 'ExecuteAssignments', 'AddStatementsToNetxParseGraph']
 
 # %% ../../nbs/01c_lark_passes.ipynb 5
-from fastcore.utils import *
-
-# %% ../../nbs/01c_lark_passes.ipynb 6
 from abc import ABC, abstractmethod
 from lark import Transformer, Token
 from lark import Tree as LarkNode
@@ -27,40 +24,40 @@ from .symbol_table import SymbolTableBase
 from .general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names, fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
 from .passes_utils import assert_expected_node_structure, unravel_lark_node, ParseNodeType
 
-# %% ../../nbs/01c_lark_passes.ipynb 7
+# %% ../../nbs/01c_lark_passes.ipynb 6
 def get_tree(**kwargs: Any) -> Any:
     tree = kwargs.get("tree", None)
     if tree is None:
         raise Exception("Expected tree parameter")
     return tree
 
-# %% ../../nbs/01c_lark_passes.ipynb 8
+# %% ../../nbs/01c_lark_passes.ipynb 7
 class GenericPass(ABC):
     @abstractmethod
     def run_pass(self, **kwargs: Any) -> None:
         pass
 
-# %% ../../nbs/01c_lark_passes.ipynb 9
+# %% ../../nbs/01c_lark_passes.ipynb 8
 class VisitorPass(Visitor, GenericPass):
     def run_pass(self, **kwargs: Any) -> None:
         self.visit(get_tree(**kwargs))
 
-# %% ../../nbs/01c_lark_passes.ipynb 10
+# %% ../../nbs/01c_lark_passes.ipynb 9
 class VisitorRecursivePass(Visitor_Recursive, GenericPass):
     def run_pass(self, **kwargs: Any) -> None:
         self.visit(get_tree(**kwargs))
 
-# %% ../../nbs/01c_lark_passes.ipynb 11
+# %% ../../nbs/01c_lark_passes.ipynb 10
 class InterpreterPass(Interpreter, GenericPass):
     def run_pass(self, **kwargs: Any) -> None:
         self.visit(get_tree(**kwargs))
 
-# %% ../../nbs/01c_lark_passes.ipynb 12
+# %% ../../nbs/01c_lark_passes.ipynb 11
 class TransformerPass(Transformer, GenericPass):
     def run_pass(self, **kwargs: Any) -> Any:
         return self.transform(get_tree(**kwargs))
 
-# %% ../../nbs/01c_lark_passes.ipynb 13
+# %% ../../nbs/01c_lark_passes.ipynb 12
 class RemoveTokens(TransformerPass):
     """
     A lark pass that should be used before the semantic checks. <br>
@@ -95,7 +92,7 @@ class RemoveTokens(TransformerPass):
         unquoted_string = quoted_string[1:-1]
         return unquoted_string
 
-# %% ../../nbs/01c_lark_passes.ipynb 14
+# %% ../../nbs/01c_lark_passes.ipynb 13
 class CheckReservedRelationNames(InterpreterPass):
     """
     A lark tree semantic check.
@@ -115,7 +112,7 @@ class CheckReservedRelationNames(InterpreterPass):
                             f'names containing {RESERVED_RELATION_PREFIX} are reserved')
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 15
+# %% ../../nbs/01c_lark_passes.ipynb 14
 class FixStrings(VisitorRecursivePass):
     """
      Fixes the strings in the lark tree. <br>
@@ -136,7 +133,7 @@ class FixStrings(VisitorRecursivePass):
         # replace the string that is stored in the node with the fixed string
         string_node.children[0] = fixed_string_value
 
-# %% ../../nbs/01c_lark_passes.ipynb 16
+# %% ../../nbs/01c_lark_passes.ipynb 15
 class ConvertSpanNodesToSpanInstances(VisitorRecursivePass):
     """
     Converts each span node in the ast to a span instance. <br>
@@ -158,7 +155,7 @@ class ConvertSpanNodesToSpanInstances(VisitorRecursivePass):
         # replace the current representation of the span in the ast with a matching Span instance
         span_node.children = [Span(span_start, span_end)]
 
-# %% ../../nbs/01c_lark_passes.ipynb 17
+# %% ../../nbs/01c_lark_passes.ipynb 16
 class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
     """
     converts each statement node in the tree to a structured node, making it easier to parse in future passes. <br>
@@ -349,7 +346,7 @@ class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
         return structured_ie_relation_node
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 19
+# %% ../../nbs/01c_lark_passes.ipynb 18
 class CheckDefinedReferencedVariables(InterpreterPass):
     """
     A lark tree semantic check. <br>
@@ -425,7 +422,7 @@ class CheckDefinedReferencedVariables(InterpreterPass):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 20
+# %% ../../nbs/01c_lark_passes.ipynb 19
 class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     """
     A lark tree semantic check. <br>
@@ -492,7 +489,7 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 21
+# %% ../../nbs/01c_lark_passes.ipynb 20
 class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     """
     A lark tree semantic check. <br>
@@ -539,7 +536,7 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
                                     f' {used_output_arity} (should be {correct_output_arity})')
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 22
+# %% ../../nbs/01c_lark_passes.ipynb 21
 class CheckRuleSafety(VisitorRecursivePass):
     """
     Performs semantic checks on rules using a Lark tree to ensure their safety. <br>
@@ -676,7 +673,7 @@ class CheckRuleSafety(VisitorRecursivePass):
 
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 23
+# %% ../../nbs/01c_lark_passes.ipynb 22
 class TypeCheckAssignments(InterpreterPass):
     """
     A lark semantic check <br>
@@ -704,7 +701,7 @@ class TypeCheckAssignments(InterpreterPass):
                             f'because the argument type for read() was {read_arg_type} (must be a string)')
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 24
+# %% ../../nbs/01c_lark_passes.ipynb 23
 class TypeCheckRelations(InterpreterPass):
     """
     A Lark Tree Semantic Check
@@ -788,7 +785,7 @@ class TypeCheckRelations(InterpreterPass):
                             f'{conflicted_free_vars}')
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 25
+# %% ../../nbs/01c_lark_passes.ipynb 24
 class SaveDeclaredRelationsSchemas(InterpreterPass):
     """
     This pass writes the relation schemas that it finds in relation declarations and rule heads* to the
@@ -821,7 +818,7 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 27
+# %% ../../nbs/01c_lark_passes.ipynb 26
 class ResolveVariablesReferences(InterpreterPass):
     """
     A lark execution pass, <br>
@@ -903,7 +900,7 @@ class ResolveVariablesReferences(InterpreterPass):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 28
+# %% ../../nbs/01c_lark_passes.ipynb 27
 class ExecuteAssignments(InterpreterPass):
     """
     A lark execution pass, <br>
@@ -934,7 +931,7 @@ class ExecuteAssignments(InterpreterPass):
         self.symbol_table.set_var_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
 
-# %% ../../nbs/01c_lark_passes.ipynb 29
+# %% ../../nbs/01c_lark_passes.ipynb 28
 class AddStatementsToNetxParseGraph(InterpreterPass):
     """
     A lark execution pass. <br>

@@ -5,7 +5,7 @@ __all__ = ['get_term_list_string', 'RelationDeclaration', 'Relation', 'IERelatio
            'Assignment', 'ReadAssignment']
 
 # %% ../../nbs/03a_ast_node_types.ipynb 4
-from nbdev.showdoc import *
+from nbdev.showdoc import show_doc
 
 # %% ../../nbs/03a_ast_node_types.ipynb 5
 from typing import List, Tuple, Set, Union, Sequence
@@ -45,12 +45,14 @@ class RelationDeclaration:
     def __str__(self) -> str:
         type_strings = []
         for term_type in self.type_list:
-            if term_type in [DataTypes.string, DataTypes.free_var_name]:
+            if term_type is DataTypes.string:
                 type_strings.append('str')
             elif term_type is DataTypes.span:
                 type_strings.append('span')
             elif term_type is DataTypes.integer:
                 type_strings.append('int')
+            elif term_type is DataTypes.free_var_name:
+                type_strings.append('free_var_name')
             else:
                 raise ValueError(f"invalid term type ({term_type})")
 
