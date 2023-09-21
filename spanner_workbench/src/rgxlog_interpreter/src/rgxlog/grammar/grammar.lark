@@ -1,0 +1,100 @@
+start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
+
+?statement: relation_declaration
+          | add_fact
+          | remove_fact
+          | rule
+          | query
+          | assignment
+
+assignment: var_name "=" string
+          | var_name "=" span
+          | var_name "=" int
+          | var_name "=" var_name
+          | var_name "=" "read" "(" string ")" -> read_assignment
+          | var_name "=" "read" "(" var_name ")" -> read_assignment
+
+relation_declaration: "new" _SEPARATOR relation_name "(" decl_term_list ")"
+
+decl_term_list: decl_term ("," decl_term)*
+
+?decl_term: "str" -> decl_string
+          | "span" -> decl_span
+          | "int" -> decl_int
+
+rule: rule_head "<-" rule_body_relation_list
+
+rule_head: relation_name "(" free_var_name_list ")"
+
+rule_body_relation_list: rule_body_relation ("," rule_body_relation)*
+
+?rule_body_relation: relation
+                   | ie_relation
+
+relation: relation_name "(" term_list ")"
+
+ie_relation: relation_name "(" term_list ")" "->" "(" term_list ")"
+
+query: "?" relation_name "(" term_list ")"
+
+term_list: term ("," term)*
+
+?term: const_term
+     | free_var_name
+
+add_fact: relation_name "(" const_term_list ")"
+        | relation_name "(" const_term_list ")" "<-" _TRUE
+
+remove_fact: relation_name "(" const_term_list ")" "<-" _FALSE
+
+const_term_list: const_term ("," const_term)*
+
+?const_term: span
+          | string
+          | int
+          | var_name
+
+span: "[" int "," int ")"
+
+int: INT -> integer
+
+string: STRING
+
+free_var_name_list: free_var_name ("," free_var_name)*
+
+relation_name: LOWER_CASE_NAME
+             | UPPER_CASE_NAME
+
+var_name: LOWER_CASE_NAME
+
+free_var_name : UPPER_CASE_NAME
+
+_TRUE: "True"
+_FALSE: "False"
+
+LOWER_CASE_NAME: ("_"|LCASE_LETTER) ("_"|LETTER|DIGIT)*
+UPPER_CASE_NAME: UCASE_LETTER ("_"|LETTER|DIGIT)*
+
+_COMMENT: "#" /[^\n]*/
+
+_SEPARATOR: (_WS_INLINE | _LINE_OVERFLOW_ESCAPE)+
+
+STRING: "\"" (_STRING_INTERNAL (_LINE_OVERFLOW_ESCAPE)+)* _STRING_INTERNAL "\""
+
+_LINE_OVERFLOW_ESCAPE: "\\" _NEWLINE
+
+_NEWLINE: CR? LF
+CR : /\r/
+LF : /\n/
+
+// common definitions can be found at: https://github.com/lark-parser/lark/blob/master/lark/grammars/common.lark
+%import common.LCASE_LETTER
+%import common.UCASE_LETTER
+%import common.LETTER
+%import common.DIGIT
+%import common.WS_INLINE -> _WS_INLINE
+%ignore _WS_INLINE
+%import common._STRING_ESC_INNER -> _STRING_INTERNAL
+%import common.INT -> INT
+%ignore _LINE_OVERFLOW_ESCAPE
+%ignore _COMMENT
