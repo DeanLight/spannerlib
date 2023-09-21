@@ -1088,7 +1088,7 @@ class SqliteEngine(RgxlogEngineBase):
 
  
 
-# %% ../../../../../../nbs/07_engine.ipynb 47
+# %% ../../../../../../nbs/07_engine.ipynb 62
 if __name__ == "__main__":
     my_engine = SqliteEngine()
     print("hello world")

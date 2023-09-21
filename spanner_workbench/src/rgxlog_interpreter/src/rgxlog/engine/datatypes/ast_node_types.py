@@ -6,7 +6,6 @@ __all__ = ['get_term_list_string', 'RelationDeclaration', 'Relation', 'IERelatio
 
 # %% ../../../../../../../nbs/01_ast_node_types.ipynb 4
 from nbdev.showdoc import *
-from fastcore.utils import patch
 
 # %% ../../../../../../../nbs/01_ast_node_types.ipynb 5
 from typing import List, Tuple, Set, Union, Sequence
@@ -31,7 +30,7 @@ def get_term_list_string(term_list: Sequence[DataTypeMapping.term], #the term li
     term_list_string = ', '.join(terms_with_quoted_strings)
     return term_list_string
 
-# %% ../../../../../../../nbs/01_ast_node_types.ipynb 8
+# %% ../../../../../../../nbs/01_ast_node_types.ipynb 10
 class RelationDeclaration:
     """a representation of a relation_declaration statement"""
 
@@ -62,7 +61,7 @@ class RelationDeclaration:
     def __repr__(self) -> str:
         return str(self)
 
-# %% ../../../../../../../nbs/01_ast_node_types.ipynb 10
+# %% ../../../../../../../nbs/01_ast_node_types.ipynb 14
 class Relation:
     """a representation of a normal relation"""
 
@@ -126,7 +125,7 @@ class Relation:
         raise Exception(f"{free_var} doesn't exist in term_list of relation {self.relation_name}"
                         f"term_list: {self.term_list}")
 
-# %% ../../../../../../../nbs/01_ast_node_types.ipynb 15
+# %% ../../../../../../../nbs/01_ast_node_types.ipynb 21
 class IERelation:
     """
     a representation of an information extraction (ie) relation.
@@ -184,7 +183,7 @@ class IERelation:
 
         return self.output_type_list == other.type_list and self.output_term_list == other.term_list
 
-# %% ../../../../../../../nbs/01_ast_node_types.ipynb 18
+# %% ../../../../../../../nbs/01_ast_node_types.ipynb 26
 class AddFact(Relation):
     """
     a representation of an add_fact statement
@@ -196,7 +195,7 @@ class AddFact(Relation):
                         type_list: Sequence[DataTypes]): # a list of the relation term types
         super().__init__(relation_name, term_list, type_list)
 
-# %% ../../../../../../../nbs/01_ast_node_types.ipynb 20
+# %% ../../../../../../../nbs/01_ast_node_types.ipynb 30
 class RemoveFact(Relation):
     """
     a representation of a remove_fact statement
@@ -208,7 +207,7 @@ class RemoveFact(Relation):
                         type_list: Sequence[DataTypes]): # a list of the relation term types
         super().__init__(relation_name, term_list, type_list)
 
-# %% ../../../../../../../nbs/01_ast_node_types.ipynb 22
+# %% ../../../../../../../nbs/01_ast_node_types.ipynb 34
 class Query(Relation):
     """
     a representation of a query statement
@@ -220,7 +219,7 @@ class Query(Relation):
                         type_list: Sequence[DataTypes]): # a list of the relation term types
         super().__init__(relation_name, term_list, type_list)
 
-# %% ../../../../../../../nbs/01_ast_node_types.ipynb 24
+# %% ../../../../../../../nbs/01_ast_node_types.ipynb 38
 class Rule:
     """
     a representation of a rule statement.
@@ -260,7 +259,7 @@ class Rule:
 
         return relations, ie_relations
 
-# %% ../../../../../../../nbs/01_ast_node_types.ipynb 27
+# %% ../../../../../../../nbs/01_ast_node_types.ipynb 43
 class Assignment:
     """
     a representation of an assignment statement.
@@ -285,7 +284,7 @@ class Assignment:
     def __repr__(self) -> str:
         return str(self)
 
-# %% ../../../../../../../nbs/01_ast_node_types.ipynb 29
+# %% ../../../../../../../nbs/01_ast_node_types.ipynb 47
 class ReadAssignment:
     """
     a representation of a read_assignment statement.
