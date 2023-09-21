@@ -861,4 +861,5 @@ d = { 'settings': { 'branch': 'main',
                                                 'spanner_workbench.rgxlog.utils.kill_process_and_children': ( 'utils.html#kill_process_and_children',
                                                                                                               'spanner_workbench/rgxlog/utils.py'),
                                                 'spanner_workbench.rgxlog.utils.run_cli_command': ( 'utils.html#run_cli_command',
-                                                                                                    'spanner_workbench/rgxlog/utils.py')}}}
+                                                                                                    'spanner_workbench/rgxlog/utils.py')},
+            'spanner_workbench.setup': {}}}
