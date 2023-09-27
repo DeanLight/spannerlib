@@ -112,13 +112,11 @@ def _text_to_typed_data(term_list: Sequence[DataTypeMapping.term], relation_type
     return transformed_term_list
 
 # %% ../../nbs/04a_session.ipynb 11
-def format_query_results(query: Query, query_results: List) -> Union[DataFrame, List]:
+def format_query_results(query: Query, # the query that was executed, and outputted `query_results`
+                         query_results: List # the results after executing the aforementioned query
+                         ) -> Union[DataFrame, List]: # a false value, a true value, or a dataframe representing the query + its results
     """
     Formats a single result from the engine into a usable format.
-
-    @param query: the query that was executed, and outputted `query_results`.
-    @param query_results: the results after executing the aforementioned query.
-    @return: a false value, a true value, or a dataframe representing the query + its results.
     """
     assert isinstance(query_results, list), "illegal results format"
 
@@ -148,22 +146,23 @@ def format_query_results(query: Query, query_results: List) -> Union[DataFrame, 
 
 
 # %% ../../nbs/04a_session.ipynb 12
-def tabulate_result(result: Union[DataFrame, List]) -> str:
+def tabulate_result(result: Union[DataFrame, List] # the query result (free variable names are the dataframe's column names)
+                    ) -> str: # a tabulated string
     """
-    Organizes a query result in a table
-    for example:
-        {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
-          X
-       -------
-        linus
-        walter
+    Organizes a query result in a table <br>
+    for example: <br>
+    ```prolog
+    {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
+       X
+    -------
+     linus
+     walter
+    ```
+    There are two cases in which a table won't be printed:
 
-    there are two cases where a table will not be printed:
-    1. the query returned no results. in this case '[]' will be printed
-    2. the query returned a single empty tuple, in this case '[()]' will be printed
+    1. **Query returned no results**: This will result in an output of `[]`.
 
-    @param result: the query result (free variable names are the dataframe's column names).
-    @return: a tabulated string.
+    2. **Query returned a single empty tuple**: The output will be `[()]`.
     """
     if isinstance(result, DataFrame):
         # query results can be printed as a table
@@ -180,21 +179,21 @@ def tabulate_result(result: Union[DataFrame, List]) -> str:
 
 
 # %% ../../nbs/04a_session.ipynb 13
-def queries_to_string(query_results: List[Tuple[Query, List]]) -> str:
+def queries_to_string(query_results: List[Tuple[Query, List]] # List[the Query object used in execution, the execution's results (from engine)]
+                      ) -> str: # a tabulated string
     """
     Takes in a list of results from the engine and converts them into a single string, which contains
     either a table, a false value (=`[]`), or a true value (=`[tuple()]`), for each result.
 
     for example:
 
+    ```prolog
     {QUERY_RESULT_PREFIX}'lecturer_of(X, "abigail")':
-      X
-    --------
-    linus
-    walter
-
-
-    @param query_results: List[the Query object used in execution, the execution's results (from engine)].
+       X
+    -------
+     linus
+     walter
+    ```
     """
 
     all_result_strings = []
@@ -264,7 +263,12 @@ class Session:
         @return: Grammar from grammar file in string format.
         """
 
-        grammar_file_path = Path(os.path.join(os.getcwd(),'..','spanner_workbench','rgxlog','grammar'))
+        # Make the grammar_file_path generic no matter if running from notebook or from exported python file
+        current_dir = Path.cwd()
+        if current_dir.name == 'nbs':
+            current_dir = current_dir.parent
+
+        grammar_file_path = current_dir / 'spanner_workbench' / 'rgxlog' / 'grammar'
         with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
             return grammar_file.read()
 
@@ -291,15 +295,12 @@ class Session:
     def __str__(self) -> str:
         return f'Symbol Table:\n{str(self._symbol_table)}\n\nTerm Graph:\n{str(self._parse_graph)}'
     
-    def run_commands(self, query: str, print_results: bool = True, format_results: bool = False) -> (
-        Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]):
+    def run_commands(self, query: str, # The user's input
+                     print_results: bool = True, # whether to print the results to stdout or not
+                       format_results: bool = False # if this is true, return the formatted result instead of the `[Query, List]` pair
+                       ) -> (Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]): # the results of every query, in a list
         """
         Generates an AST and passes it through the pass stack.
-
-        @param format_results: if this is true, return the formatted result instead of the `[Query, List]` pair.
-        @param query: the user's input.
-        @param print_results: whether to print the results to stdout or not.
-        @return: the results of every query, in a list.
         """
         query_results = []
         parse_tree = self._parser.parse(query)
@@ -325,7 +326,7 @@ class Session:
         """
         Registers an ie function.
 
-        @see params in IEFunction's __init__.
+        @see params in `IEFunction`'s __init__.
         """
         self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
@@ -337,12 +338,10 @@ class Session:
         return self._pass_stack.copy()
     
 
-    def set_pass_stack(self, user_stack: List[Type[GenericPass]]) -> List[Type[GenericPass]]:
+    def set_pass_stack(self, user_stack: List[Type[GenericPass]] #  a user supplied pass stack
+                       ) -> List[Type[GenericPass]]: # success message with the new pass stack
         """
         Sets a new pass stack instead of the current one.
-
-        @param user_stack: a user supplied pass stack.
-        @return: success message with the new pass stack.
         """
 
         if type(user_stack) is not list:
@@ -363,22 +362,20 @@ class Session:
         self._symbol_table.remove_rule_relation(relation_name)
         self._engine.remove_table(relation_name)
         
-    def remove_rule(self, rule: str) -> None:
+    def remove_rule(self, rule: str # The rule to be removed
+                    ) -> None:
         """
         Remove a rule from the rgxlog's engine.
-
-        @param rule: the rule to be removed.
         """
         is_last = self._term_graph.remove_rule(rule)
         if is_last:
             relation_name = rule_to_relation_name(rule)
             self._remove_rule_relation_from_symbols_and_engine(relation_name)
             
-    def remove_all_rules(self, rule_head: Optional[str] = None) -> None:
+    def remove_all_rules(self, rule_head: Optional[str] = None # if rule head is not none we remove all rules with rule_head
+                         ) -> None:
         """
         Removes all rules from the engine.
-
-        @param rule_head: if rule head is not none we remove all rules with rule_head.
         """
 
         if rule_head is None:
@@ -450,13 +447,12 @@ class Session:
 
         self._add_imported_relation_to_engine(data, relation_name, relation_types)
         
-    def send_commands_result_into_csv(self, commands: str, csv_file_name: Path, delimiter: str = CSV_DELIMITER) -> None:
+    def send_commands_result_into_csv(self, commands: str, # the commands to run
+                                      csv_file_name: Path, # the file into which the output will be written
+                                      delimiter: str = CSV_DELIMITER # a csv separator between values
+                                      ) -> None:
         """
         run commands as usual and output their formatted results into a csv file (the commands should contain a query)
-        @param commands: the commands to run
-        @param csv_file_name: the file into which the output will be written
-        @param delimiter: a csv separator between values
-        @return: None
         """
         commands_results = self.run_commands(commands, print_results=False)
         if len(commands_results) != 1:
@@ -472,11 +468,10 @@ class Session:
                 writer = csv.writer(f, delimiter=delimiter)
                 writer.writerows(formatted_result)
                 
-    def send_commands_result_into_df(self, commands: str) -> Union[DataFrame, List]:
+    def send_commands_result_into_df(self, commands: str # the commands to run
+                                     ) -> Union[DataFrame, List]: # formatted results (possibly a dataframe)
         """
         run commands as usual and output their formatted results into a dataframe (the commands should contain a query)
-        @param commands: the commands to run
-        @return: formatted results (possibly a dataframe)
         """
         commands_results = self.run_commands(commands, print_results=False)
         if len(commands_results) != 1:
@@ -505,24 +500,23 @@ class Session:
         """
         self._symbol_table.print_registered_ie_functions()
         
-    def remove_ie_function(self, name: str) -> None:
+    def remove_ie_function(self, name: str # the name of the ie function to remove
+                           ) -> None:
         """
         Removes a function from the symbol table.
-
-        @param name: the name of the ie function to remove.
         """
         self._symbol_table.remove_ie_function(name)
+
     def remove_all_ie_functions(self) -> None:
         """
         Removes all the ie functions from the symbol table.
         """
         self._symbol_table.remove_all_ie_functions()
         
-    def print_all_rules(self, head: Optional[str] = None) -> None:
+    def print_all_rules(self, head: Optional[str] = None # if specified it will print only rules with the given head relation name
+                        ) -> None:
         """
         Prints all the rules that are registered.
-
-        @param head: if specified it will print only rules with the given head relation name.
         """
 
         self._term_graph.print_all_rules(head)
