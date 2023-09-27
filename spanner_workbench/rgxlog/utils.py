@@ -83,7 +83,13 @@ def download_file_from_google_drive(file_id: str, destination: Path) -> None:
     @param file_id: the id of the file to download.
     @param destination: the path to which the file will be downloaded.
     """
-    destination = Path(os.path.join(os.getcwd(),'spanner_workbench','rgxlog','stanford-corenlp-4.1.0.zip'))
+    current_dir = Path.cwd()
+    path_parts = current_dir.parts
+    if 'nbs' in current_dir.parts:
+        index_of_nbs = current_dir.parts.index('nbs')
+        current_dir = current_dir.joinpath(*path_parts[:index_of_nbs])
+
+    destination = Path(os.path.join(current_dir,'spanner_workbench','rgxlog','stanford-corenlp-4.1.0.zip'))
     requests_session = requests.Session()
     response = requests_session.get(GOOGLE_DRIVE_URL, params={'id': file_id}, stream=True)
 

@@ -265,8 +265,10 @@ class Session:
 
         # Make the grammar_file_path generic no matter if running from notebook or from exported python file
         current_dir = Path.cwd()
-        if current_dir.name == 'nbs':
-            current_dir = current_dir.parent
+        path_parts = current_dir.parts
+        if 'nbs' in current_dir.parts:
+            index_of_nbs = current_dir.parts.index('nbs')
+            current_dir = current_dir.joinpath(*path_parts[:index_of_nbs])
 
         grammar_file_path = current_dir / 'spanner_workbench' / 'rgxlog' / 'grammar'
         with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
