@@ -19,6 +19,7 @@ from tabulate import tabulate
 import os
 
 # %% ../../nbs/04a_session.ipynb 6
+from .utils import get_base_file_path
 from .engine import SqliteEngine
 from .ast_node_types import AddFact, RelationDeclaration
 from .primitive_types import Span, DataTypes, DataTypeMapping
@@ -264,12 +265,7 @@ class Session:
         """
 
         # Make the grammar_file_path generic no matter if running from notebook or from exported python file
-        current_dir = Path.cwd()
-        path_parts = current_dir.parts
-        if 'nbs' in current_dir.parts:
-            index_of_nbs = current_dir.parts.index('nbs')
-            current_dir = current_dir.joinpath(*path_parts[:index_of_nbs])
-
+        current_dir = get_base_file_path(Path.cwd())
         grammar_file_path = current_dir / 'spanner_workbench' / 'rgxlog' / 'grammar'
         with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
             return grammar_file.read()

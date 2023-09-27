@@ -2,12 +2,12 @@
 
 # %% auto 0
 __all__ = ['RUST_RGX_IN_TYPES', 'DOWNLOAD_RUST_URL', 'PACKAGE_GIT_URL', 'PACKAGE_NAME', 'PACKAGE_WIN_FILENAME',
-           'REGEX_FOLDER_NAME', 'current_dir', 'path_parts', 'REGEX_FOLDER_PATH', 'REGEX_TEMP_PATH',
-           'REGEX_EXE_PATH_POSIX', 'REGEX_EXE_PATH_WIN', 'RUSTUP_TOOLCHAIN', 'CARGO_CMD_ARGS', 'RUSTUP_CMD_ARGS',
-           'SHORT_TIMEOUT', 'CARGO_TIMEOUT', 'RUSTUP_TIMEOUT', 'TIMEOUT_MINUTES', 'WINDOWS_OS', 'WHICH_WORD',
-           'REGEX_EXE_PATH', 'ESCAPED_STRINGS_PATTERN', 'SPAN_PATTERN', 'TEMP_FILE_NAME', 'logger', 'RGX', 'RGX_STRING',
-           'RGX_FROM_FILE', 'RGX_STRING_FROM_FILE', 'rgx_span_out_type', 'rgx_string_out_type', 'rgx', 'rgx_span',
-           'rgx_string', 'rgx_span_from_file', 'rgx_string_from_file']
+           'REGEX_FOLDER_NAME', 'REGEX_FOLDER_PATH', 'REGEX_TEMP_PATH', 'REGEX_EXE_PATH_POSIX', 'REGEX_EXE_PATH_WIN',
+           'RUSTUP_TOOLCHAIN', 'CARGO_CMD_ARGS', 'RUSTUP_CMD_ARGS', 'SHORT_TIMEOUT', 'CARGO_TIMEOUT', 'RUSTUP_TIMEOUT',
+           'TIMEOUT_MINUTES', 'WINDOWS_OS', 'WHICH_WORD', 'REGEX_EXE_PATH', 'ESCAPED_STRINGS_PATTERN', 'SPAN_PATTERN',
+           'TEMP_FILE_NAME', 'logger', 'RGX', 'RGX_STRING', 'RGX_FROM_FILE', 'RGX_STRING_FROM_FILE',
+           'rgx_span_out_type', 'rgx_string_out_type', 'rgx', 'rgx_span', 'rgx_string', 'rgx_span_from_file',
+           'rgx_string_from_file']
 
 # %% ../../../nbs/ie_func/04d_rust_spanner_regex.ipynb 4
 import logging
@@ -20,7 +20,7 @@ from typing import Tuple, List, Union, Iterable, Sequence, no_type_check, Callab
 import os
 
 from ..primitive_types import DataTypes, Span
-from ..utils import run_cli_command
+from ..utils import run_cli_command, get_base_file_path
 
 # %% ../../../nbs/ie_func/04d_rust_spanner_regex.ipynb 6
 RUST_RGX_IN_TYPES = [DataTypes.string, DataTypes.string]
@@ -35,13 +35,7 @@ PACKAGE_WIN_FILENAME = PACKAGE_NAME + ".exe"
 REGEX_FOLDER_NAME = "enum_spanner_regex"
 
 # %% ../../../nbs/ie_func/04d_rust_spanner_regex.ipynb 12
-current_dir = Path.cwd()
-path_parts = current_dir.parts
-if 'nbs' in current_dir.parts:
-    index_of_nbs = current_dir.parts.index('nbs')
-    current_dir = current_dir.joinpath(*path_parts[:index_of_nbs])
-
-REGEX_FOLDER_PATH = Path(os.path.join(current_dir,'spanner_workbench','rgxlog')) / REGEX_FOLDER_NAME
+REGEX_FOLDER_PATH = Path(os.path.join(get_base_file_path(Path.cwd()),'spanner_workbench','rgxlog')) / REGEX_FOLDER_NAME
 REGEX_TEMP_PATH = Path(REGEX_FOLDER_PATH) / "temp{}.txt"
 REGEX_EXE_PATH_POSIX = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_NAME
 REGEX_EXE_PATH_WIN = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_WIN_FILENAME
