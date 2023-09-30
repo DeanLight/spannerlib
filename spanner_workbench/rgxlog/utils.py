@@ -33,14 +33,15 @@ def wrapped_patch(func : Callable, *args, **kwargs) -> Callable:
     `func` is an `abstractmethods`
     """
     cls = next(iter(get_type_hints(func).values()))
-    abstracts_needed = set(cls.__abstractmethods__)
-    abstracts_needed.discard(func.__name__)
-    cls.__abstractmethods__ = abstracts_needed
-
-    # Apply the original `patch` decorator
-    patch(*args, **kwargs)(func)
-
-    return func
+    try:
+        abstracts_needed = set(cls.__abstractmethods__)
+        abstracts_needed.discard(func.__name__)
+        cls.__abstractmethods__ = abstracts_needed
+    except AttributeError: # If the class does not inherit from an abstract class
+        pass
+    finally:
+        # Apply the original `patch` decorator
+        patch(*args, **kwargs)(func)
 
 # %% ../../nbs/00a_utils.ipynb 5
 def kill_process_and_children(process: Popen) -> None:

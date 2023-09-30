@@ -2,7 +2,11 @@
 
 # %% auto 0
 __all__ = ['CSV_DELIMITER', 'PREDEFINED_IE_FUNCS', 'STRING_PATTERN', 'logger', 'GRAMMAR_FILE_NAME', 'format_query_results',
-           'tabulate_result', 'queries_to_string', 'Session']
+           'tabulate_result', 'queries_to_string', 'Session', 'run_commands', 'register', 'get_pass_stack',
+           'set_pass_stack', 'remove_rule', 'remove_all_rules', 'clear_relation', 'import_relation_from_csv',
+           'import_relation_from_df', 'send_commands_result_into_csv', 'send_commands_result_into_df',
+           'export_relation_into_df', 'export_relation_into_csv', 'print_registered_ie_functions', 'remove_ie_function',
+           'remove_all_ie_functions', 'print_all_rules']
 
 # %% ../../nbs/04a_session.ipynb 4
 import csv
@@ -42,6 +46,7 @@ from .ie_func.json_path import JsonPath, JsonPathFull
 from .ie_func.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase)
 from .ie_func.python_regex import PYRGX, PYRGX_STRING
 from .ie_func.rust_spanner_regex import RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE
+from .utils import wrapped_patch
 
 # %% ../../nbs/04a_session.ipynb 7
 CSV_DELIMITER = ";"
@@ -520,3 +525,285 @@ class Session:
         """
 
         self._term_graph.print_all_rules(head)
+
+# %% ../../nbs/04a_session.ipynb 15
+@wrapped_patch
+def _run_passes(self: Session, lark_tree: LarkNode, pass_list: list) -> None:
+    """
+    Runs the passes in pass_list on tree, one after another.
+    """
+    #logger.debug(f"initial lark tree:\n{lark_tree.pretty()}")
+    #logger.debug(f"initial term graph:\n{self._term_graph}")
+
+    for curr_pass in pass_list:
+        curr_pass_object = curr_pass(parse_graph=self._parse_graph,
+                                        symbol_table=self._symbol_table,
+                                        term_graph=self._term_graph)
+        new_tree = curr_pass_object.run_pass(tree=lark_tree)
+        if new_tree is not None:
+            lark_tree = new_tree
+            #logger.debug(f"lark tree after {curr_pass.__name__}:\n{lark_tree.pretty()}")
+
+# %% ../../nbs/04a_session.ipynb 16
+@wrapped_patch
+def run_commands(self: Session, query: str, # The user's input
+                    print_results: bool = True, # whether to print the results to stdout or not
+                    format_results: bool = False # if this is true, return the formatted result instead of the `[Query, List]` pair
+                    ) -> (Union[List[Union[List, List[Tuple], DataFrame]], List[Tuple[Query, List]]]): # the results of every query, in a list
+    """
+    Generates an AST and passes it through the pass stack.
+    """
+    query_results = []
+    parse_tree = self._parser.parse(query)
+    for statement in parse_tree.children:
+        self._run_passes(statement, self._pass_stack)
+        query_result = self._execution(parse_graph=self._parse_graph,
+                                        symbol_table=self._symbol_table,
+                                        rgxlog_engine=self._engine,
+                                        term_graph=self._term_graph)
+        if query_result is not None:
+            query_results.append(query_result)
+            if print_results:
+                print(queries_to_string([query_result]))
+
+    if format_results:
+        return [format_query_results(*query_result) for query_result in query_results]
+    else:
+        return query_results
+
+# %% ../../nbs/04a_session.ipynb 17
+@wrapped_patch
+def register(self: Session, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes],
+            out_rel: Union[List[DataTypes], Callable[[int], Sequence[DataTypes]]]) -> None:
+    """
+    Registers an ie function.
+
+    @see params in `IEFunction`'s __init__.
+    """
+    self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
+
+# %% ../../nbs/04a_session.ipynb 18
+@wrapped_patch
+def get_pass_stack(self: Session) -> List[Type[GenericPass]]:
+    """
+    @return: the current pass stack.
+    """
+
+    return self._pass_stack.copy()
+
+# %% ../../nbs/04a_session.ipynb 19
+@wrapped_patch
+def set_pass_stack(self: Session, user_stack: List[Type[GenericPass]] #  a user supplied pass stack
+                    ) -> List[Type[GenericPass]]: # success message with the new pass stack
+    """
+    Sets a new pass stack instead of the current one.
+    """
+
+    if type(user_stack) is not list:
+        raise TypeError('user stack should be a list of passes')
+    for pass_ in user_stack:
+        if not issubclass(pass_, GenericPass):
+            raise TypeError('user stack should be a subclass of `GenericPass`')
+
+    self._pass_stack = user_stack.copy()
+    return self.get_pass_stack()
+
+# %% ../../nbs/04a_session.ipynb 20
+@wrapped_patch
+def _remove_rule_relation_from_symbols_and_engine(self: Session, relation_name: str) -> None:
+    """
+    Removes the relation from the symbol table and the execution tables.
+
+    @param relation_name: the name of the relation ot remove.
+    """
+    self._symbol_table.remove_rule_relation(relation_name)
+    self._engine.remove_table(relation_name)
+
+# %% ../../nbs/04a_session.ipynb 21
+@wrapped_patch
+def remove_rule(self: Session, rule: str # The rule to be removed
+                ) -> None:
+    """
+    Remove a rule from the rgxlog's engine.
+    """
+    is_last = self._term_graph.remove_rule(rule)
+    if is_last:
+        relation_name = rule_to_relation_name(rule)
+        self._remove_rule_relation_from_symbols_and_engine(relation_name)
+
+# %% ../../nbs/04a_session.ipynb 22
+@wrapped_patch
+def remove_all_rules(self: Session, rule_head: Optional[str] = None # if rule head is not none we remove all rules with rule_head
+                        ) -> None:
+    """
+    Removes all rules from the engine.
+    """
+
+    if rule_head is None:
+        self._term_graph = TermGraph()
+        relations_names = self._symbol_table.remove_all_rule_relations()
+        self._engine.remove_tables(relations_names)
+    else:
+        self._term_graph.remove_rules_with_head(rule_head)
+        self._remove_rule_relation_from_symbols_and_engine(rule_head)
+
+# %% ../../nbs/04a_session.ipynb 23
+@wrapped_patch
+def clear_relation(self: Session, relation_name: str # The name of the relation to clear
+                    ) -> None:
+    # @raises: Exception if relation does not exist
+    if not self._engine.is_table_exists(relation_name):
+        raise Exception(f"Relation {relation_name} does not exist")
+
+    self._engine.clear_relation(relation_name)
+
+# %% ../../nbs/04a_session.ipynb 24
+@wrapped_patch
+def _add_imported_relation_to_engine(self: Session, relation_table: Iterable, relation_name: str, relation_types: Sequence[DataTypes]) -> None:
+    symbol_table = self._symbol_table
+    engine = self._engine
+    # first make sure the types are legal, then we add them to the engine (to make sure
+    #  we don't add them in case of an error)
+    facts = []
+
+    for row in relation_table:
+        _verify_relation_types(row, relation_types)
+        typed_line = _text_to_typed_data(row, relation_types)
+        facts.append(AddFact(relation_name, typed_line, relation_types))
+
+    # declare relation if it does not exist
+    if not symbol_table.contains_relation(relation_name):
+        engine.declare_relation_table(RelationDeclaration(relation_name, relation_types))
+        symbol_table.add_relation_schema(relation_name, relation_types, False)
+
+    for fact in facts:
+        engine.add_fact(fact)
+
+# %% ../../nbs/04a_session.ipynb 25
+@wrapped_patch
+def import_relation_from_csv(self: Session, csv_file_name: Path, relation_name: str = None, delimiter: str = CSV_DELIMITER) -> None:
+    if not Path(csv_file_name).is_file():
+        raise IOError("csv file does not exist")
+
+    if os.stat(csv_file_name).st_size == 0:
+        raise IOError("csv file is empty")
+
+    # the relation_name is either an argument or the file's name
+    if relation_name is None:
+        relation_name = Path(csv_file_name).stem
+
+    with open(csv_file_name) as fh:
+        reader = csv.reader(fh, delimiter=delimiter)
+
+        # read first line and go back to start of file - make sure there is no empty line!
+        relation_types = _infer_relation_type(next(reader))
+        fh.seek(0)
+
+        self._add_imported_relation_to_engine(reader, relation_name, relation_types)
+
+# %% ../../nbs/04a_session.ipynb 26
+@wrapped_patch
+def import_relation_from_df(self: Session, relation_df: DataFrame, relation_name: str) -> None:
+    data = relation_df.values.tolist()
+
+    if not isinstance(data, list):
+        raise Exception("dataframe could not be converted to list")
+
+    if len(data) < 1:
+        raise Exception("dataframe is empty")
+
+    relation_types = _infer_relation_type(data[0])
+
+    self._add_imported_relation_to_engine(data, relation_name, relation_types)
+
+# %% ../../nbs/04a_session.ipynb 27
+@wrapped_patch
+def send_commands_result_into_csv(self: Session, commands: str, # the commands to run
+                                    csv_file_name: Path, # the file into which the output will be written
+                                    delimiter: str = CSV_DELIMITER # a csv separator between values
+                                    ) -> None:
+    """
+    run commands as usual and output their formatted results into a csv file (the commands should contain a query)
+    """
+    commands_results = self.run_commands(commands, print_results=False)
+    if len(commands_results) != 1:
+        raise Exception("the commands must have exactly one output")
+
+    formatted_result = format_query_results(*commands_results[0])
+
+    if isinstance(formatted_result, DataFrame):
+        formatted_result.to_csv(csv_file_name, index=False, sep=delimiter)
+    else:
+        # true or false
+        with open(csv_file_name, "w", newline="") as f:
+            writer = csv.writer(f, delimiter=delimiter)
+            writer.writerows(formatted_result)
+
+# %% ../../nbs/04a_session.ipynb 28
+@wrapped_patch
+def send_commands_result_into_df(self: Session, commands: str # the commands to run
+                                    ) -> Union[DataFrame, List]: # formatted results (possibly a dataframe)
+    """
+    run commands as usual and output their formatted results into a dataframe (the commands should contain a query)
+    """
+    commands_results = self.run_commands(commands, print_results=False)
+    if len(commands_results) != 1:
+        raise Exception("the commands must have exactly one output")
+
+    return format_query_results(*commands_results[0])
+
+# %% ../../nbs/04a_session.ipynb 29
+@wrapped_patch
+def _relation_name_to_query(self: Session, relation_name: str) -> str:
+    symbol_table = self._symbol_table
+    relation_schema = symbol_table.get_relation_schema(relation_name)
+    relation_arity = len(relation_schema)
+    query = (f"?{relation_name}(" + ", ".join(f"{FREE_VAR_PREFIX}{i}" for i in range(relation_arity)) + ")")
+    return query
+
+# %% ../../nbs/04a_session.ipynb 30
+@wrapped_patch
+def export_relation_into_df(self: Session, relation_name: str) -> Union[DataFrame, List]:
+    query = self._relation_name_to_query(relation_name)
+    return self.send_commands_result_into_df(query)
+
+# %% ../../nbs/04a_session.ipynb 31
+@wrapped_patch
+def export_relation_into_csv(self: Session, csv_file_name: Path, relation_name: str, delimiter: str = CSV_DELIMITER) -> None:
+    query = self._relation_name_to_query(relation_name)
+    self.send_commands_result_into_csv(query, csv_file_name, delimiter)
+
+# %% ../../nbs/04a_session.ipynb 32
+@wrapped_patch
+def print_registered_ie_functions(self: Session) -> None:
+    """
+    Prints information about the registered ie functions.
+    """
+    self._symbol_table.print_registered_ie_functions()
+
+# %% ../../nbs/04a_session.ipynb 33
+@wrapped_patch
+def remove_ie_function(self: Session, name: str # the name of the ie function to remove
+                        ) -> None:
+    """
+    Removes a function from the symbol table.
+    """
+    self._symbol_table.remove_ie_function(name)
+
+# %% ../../nbs/04a_session.ipynb 34
+@wrapped_patch
+def remove_all_ie_functions(self: Session) -> None:
+    """
+    Removes all the ie functions from the symbol table.
+    """
+    self._symbol_table.remove_all_ie_functions()
+
+# %% ../../nbs/04a_session.ipynb 35
+@wrapped_patch
+def print_all_rules(self: Session, head: Optional[str] = None # if specified it will print only rules with the given head relation name
+                    ) -> None:
+    """
+    Prints all the rules that are registered.
+    """
+
+    self._term_graph.print_all_rules(head)
