@@ -780,14 +780,14 @@ class TermGraph(TermGraphBase):
 
         return bounding_graph
 
-    def add_relation(self, relation: Relation) -> GraphBase.NodeIdType:
+    def add_relation(self, 
+                     relation: Relation # the relation to add
+                     # returns the relation node id if is_rule is false
+                     ) -> GraphBase.NodeIdType: # otherwise returns the relation child node id (union node)
         """
         Adds the relation to the graph. if it's already inside nothing is done.
 
-        @param relation: the relation to add.
         @note: we assume the relation is rule relation and not declared relation.
-        @return: returns the relation node id if is_rule is false.
-                 otherwise returns the relation child node id (union node).
         """
 
         relation_name = relation.relation_name
@@ -801,17 +801,17 @@ class TermGraph(TermGraphBase):
 
         return union_id
 
-    def get_relation_union_node(self, relation_name: str) -> GraphBase.NodeIdType:
-        """
-        @param relation_name: name of a relation.
-        @return: the union node of the given relation.
-        """
+    def get_relation_union_node(self, 
+                                relation_name: str # name of a relation
+                                ) -> GraphBase.NodeIdType: # the union node of the given relation
 
         union_id, = self.get_children(relation_name)  # relation has only one child (the union node).
         return union_id
 
     @no_type_check
-    def add_rule_to_term_graph(self, rule: Rule) -> None:
+    def add_rule_to_term_graph(self, 
+                               rule: Rule # the rule to add
+                               ) -> None:
         """
         Generates the execution tree of the rule and adds it to the term graph.
         Implements the following pseudo code:
@@ -823,8 +823,6 @@ class TermGraph(TermGraphBase):
             for each ie_function:
             make calc_node
             connect to join of all bounding bodies
-
-        @param rule: the rule to add.
         """
 
         # maps each relation to it's node id in the term graph.
@@ -833,23 +831,19 @@ class TermGraph(TermGraphBase):
         # stores the nodes that were added to to execution graph
         nodes = set()
 
-        def add_node(node_id) -> None:
+        def add_node(node_id # a new node that was added
+                     ) -> None:
             """
             Saves all the nodes that were added due to the rule.
-
-            @param node_id: a new node that was added.
             """
             nodes.add(node_id)
 
-        def add_join_branch(head_id, joined_relations: Set[Union[Relation, IERelation]],
-                            future_ie_relations: Optional[Set[IERelation]] = None):
+        def add_join_branch(head_id, # the node to which join node will be connected
+                            joined_relations: Set[Union[Relation, IERelation]], # a set of relations
+                            future_ie_relations: Optional[Set[IERelation]] = None # a set of ie relations that will be added to branch in the future
+                            ) -> int: # the id of the join node
             """
             Connects all the relations to a join node. Connects the join_node to head_id.
-
-            @param head_id: the node to which join node will be connected.
-            @param joined_relations: a set of relations.
-            @param future_ie_relations: a set of ie relations that will be added to branch in the future.
-            @return: the id of the join node.
             """
 
             future_ies = set() if future_ie_relations is None else future_ie_relations
@@ -874,12 +868,11 @@ class TermGraph(TermGraphBase):
 
             return join_node_id_
 
-        def add_relation_to(relation: Union[Relation, IERelation], father_node_id: int) -> None:
+        def add_relation_to(relation: Union[Relation, IERelation], # a relation
+                            father_node_id: int # the node to which the relation will be connected
+                            ) -> None:
             """
             Adds relation to father id.
-
-            @param relation: a relation.
-            @param father_node_id: the node to which the relation will be connected.
             """
 
             get_rel_id = self.add_node(type=TermNodeType.GET_REL, value=relation)
@@ -894,13 +887,12 @@ class TermGraph(TermGraphBase):
                 self.add_edge(get_rel_id, relation.relation_name)
 
         @no_type_check
-        def add_relation_branch(relation: Union[Relation, IERelation], join_node_id_: int) -> None:
+        def add_relation_branch(relation: Union[Relation, IERelation], # a relation
+                                join_node_id_: int # the join node to which the relation will be connected
+                                ) -> None:
             """
             Adds relation to the join node.
             Finds all the columns of the relation that needed to be filtered and Adds select branch if needed.
-
-            @param relation: a relation.
-            @param join_node_id_: the join node to which the relation will be connected.
             """
 
             # check if the branch already exists (if relations is ie relation the branch already exists)
@@ -924,14 +916,12 @@ class TermGraph(TermGraphBase):
                 # no need to add select node
                 add_relation_to(relation, join_node_id_)
 
-        def add_calc_branch(join_node_id_: int, ie_relation_: IERelation, bounding_graph_: OrderedDict) -> int:
+        def add_calc_branch(join_node_id_: int, # the join node to which the branch will be connected
+                            ie_relation_: IERelation, # an ie relation
+                            bounding_graph_: OrderedDict # the bounding graph of the ie relations
+                            ) -> int: # the calc_node's id
             """
             Adds a calc branch of the ie relation.
-
-            @param join_node_id_: the join node to which the branch will be connected.
-            @param ie_relation_: an ie relation.
-            @param bounding_graph_: the bounding graph of the ie relations.
-            @return: the calc_node's id.
             """
             calc_node_id_ = self.add_node(type=TermNodeType.CALC, value=ie_relation_)
             add_node(calc_node_id_)
@@ -965,13 +955,13 @@ class TermGraph(TermGraphBase):
         self.add_rule_node(rule, nodes)
         self._dependency_graph.add_dependencies(head_relation, relations)
 
-    def remove_rule(self, rule: str) -> bool:
+    def remove_rule(self, 
+                    rule: str # the rule to remove. unlike add_rule, here rule should be string as it is a user input
+                    ) -> bool: # true if the head relation was deleted, false otherwise
         """
         Removes a rule from term graph.
 
-        @param rule: the rule to remove. unlike add_rule, here rule should be string as it is a user input.
         @raise Exception if the rule doesn't exist in the term graph
-        @return: true if the head relation was deleted, false otherwise.
         """
 
         if rule not in self._rule_to_nodes:
