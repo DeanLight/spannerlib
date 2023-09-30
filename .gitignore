@@ -3,8 +3,7 @@ _proc/
 
 # nlp
 **/stanford-corenlp-4.1.0
-/src/rgxlog-interpreter/src/rgxlog/stdlib/stanford-corenlp-4.1.0.zip
-
+spanner_workbench/rgxlog/stanford-corenlp-4.1.0.zip
 
 *.bak
 .gitattributes
