@@ -1,5 +1,4 @@
 from typing import Any
-
 from .session import Session
 from .rgxlog_magic import RgxlogMagic
 from IPython import InteractiveShell, get_ipython

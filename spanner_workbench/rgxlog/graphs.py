@@ -4,7 +4,7 @@
 __all__ = ['PRETTY_INDENT', 'ROOT_NODE_ID', 'ROOT_TYPE', 'TYPE', 'STATE', 'VALUE', 'NodeIdType', 'EvalState', 'TermNodeType',
            'GraphBase', 'NetxGraph', 'NetxStateGraph', 'DependencyGraph', 'TermGraphBase', 'TermGraph']
 
-# %% ../../nbs/03c_graphs.ipynb 6
+# %% ../../nbs/03c_graphs.ipynb 5
 from collections import OrderedDict
 from enum import Enum
 
@@ -14,11 +14,12 @@ from itertools import count
 from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType, no_type_check, Any, Sequence
 from .ast_node_types import Relation, Rule, IERelation
 from .general_utils import get_input_free_var_names, get_output_free_var_names, get_free_var_to_relations_dict
+from .utils import patch_method
 
-# %% ../../nbs/03c_graphs.ipynb 7
+# %% ../../nbs/03c_graphs.ipynb 6
 from copy import deepcopy
 
-# %% ../../nbs/03c_graphs.ipynb 8
+# %% ../../nbs/03c_graphs.ipynb 7
 PRETTY_INDENT = " " * 4
 ROOT_NODE_ID = "__rgxlog_root"
 ROOT_TYPE = "root"
@@ -26,7 +27,7 @@ TYPE = "type"
 STATE = "state"
 VALUE = "value"
 
-# %% ../../nbs/03c_graphs.ipynb 9
+# %% ../../nbs/03c_graphs.ipynb 8
 class EvalState(Enum):
     """
     will be used to determine if a term is computed or not.
@@ -39,7 +40,7 @@ class EvalState(Enum):
     def __str__(self) -> str:
         return self.value        
 
-# %% ../../nbs/03c_graphs.ipynb 10
+# %% ../../nbs/03c_graphs.ipynb 9
 class TermNodeType(Enum):
     """
     will be used to represent type of term graph nodes.
@@ -56,10 +57,10 @@ class TermNodeType(Enum):
     def __str__(self) -> str:
         return self.value
 
-# %% ../../nbs/03c_graphs.ipynb 11
+# %% ../../nbs/03c_graphs.ipynb 10
 NodeIdType = Union[int, str]
 
-# %% ../../nbs/03c_graphs.ipynb 12
+# %% ../../nbs/03c_graphs.ipynb 11
 class GraphBase(ABC):
     """
     This is an interface for a simple graph.
@@ -267,7 +268,7 @@ class GraphBase(ABC):
         return self.get_node_attributes(node_id)
 
 
-# %% ../../nbs/03c_graphs.ipynb 29
+# %% ../../nbs/03c_graphs.ipynb 28
 class NetxGraph(GraphBase):
     """
     Implementation of a graph using a NetworkX graph. <br>
@@ -352,7 +353,7 @@ class NetxGraph(GraphBase):
     def get_parents(self, node_id: GraphBase.NodeIdType) -> Iterable[GraphBase.NodeIdType]:
         return self._graph.predecessors(node_id)
 
-# %% ../../nbs/03c_graphs.ipynb 30
+# %% ../../nbs/03c_graphs.ipynb 29
 class NetxStateGraph(NetxGraph):
     """
     This is a wrapper to NetxGraph that stores a state and type for each node in the graph.
@@ -400,7 +401,7 @@ class NetxStateGraph(NetxGraph):
         term_string = f"({node_id}) ({node_attrs[STATE]}) {node_attrs[TYPE]}{term_value_string}"
         return term_string
 
-# %% ../../nbs/03c_graphs.ipynb 32
+# %% ../../nbs/03c_graphs.ipynb 31
 class DependencyGraph(NetxGraph):
     """
     The `DependencyGraph` class is designed to map and manage dependencies between rule relations in an RGXLog program. Each rule relation in the program corresponds to a node in this graph, with the node's ID being the name of the rule relation.
@@ -541,7 +542,7 @@ class DependencyGraph(NetxGraph):
     def __str__(self) -> str:
         return self.__class__.__name__ + " is:\n" + super().__str__()
 
-# %% ../../nbs/03c_graphs.ipynb 34
+# %% ../../nbs/03c_graphs.ipynb 33
 class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
     """
     A wrapper to `NetxStateGraph` that adds utility functions which are independent
@@ -646,7 +647,7 @@ class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         return super().__str__() + "\n" + str(self._dependency_graph)
 
 
-# %% ../../nbs/03c_graphs.ipynb 43
+# %% ../../nbs/03c_graphs.ipynb 42
 class TermGraph(TermGraphBase):
     """
         This class is designed to transform each rule node in an RGXLog program into an execution graph. These execution graphs are then added to a term graph. <br>
@@ -780,225 +781,222 @@ class TermGraph(TermGraphBase):
 
         return bounding_graph
 
-    def add_relation(self, relation: Relation) -> GraphBase.NodeIdType:
+# %% ../../nbs/03c_graphs.ipynb 43
+@patch_method
+def add_relation(self: TermGraph, 
+                    relation: Relation # the relation to add
+                    # returns the relation node id if is_rule is false
+                    ) -> GraphBase.NodeIdType: # otherwise returns the relation child node id (union node)
+    """
+    Adds the relation to the graph. if it's already inside nothing is done.
+
+    @note: we assume the relation is rule relation and not declared relation.
+    """
+
+    relation_name = relation.relation_name
+    if self.is_contains_node(relation_name):
+        return self.get_relation_union_node(relation_name)
+
+    self.add_node(node_id=relation_name, type=TermNodeType.RULE_REL, value=relation)
+    self.add_edge(self.get_root_id(), relation_name)
+    union_id: GraphBase.NodeIdType = self.add_node(type=TermNodeType.UNION)
+    self.add_edge(relation_name, union_id)
+
+    return union_id
+
+# %% ../../nbs/03c_graphs.ipynb 44
+@patch_method
+def get_relation_union_node(self: TermGraph, 
+                            relation_name: str # name of a relation
+                            ) -> GraphBase.NodeIdType: # the union node of the given relation
+
+    union_id, = self.get_children(relation_name)  # relation has only one child (the union node).
+    return union_id
+
+# %% ../../nbs/03c_graphs.ipynb 45
+@patch_method
+def add_rule_to_term_graph(self: TermGraph, 
+                            rule: Rule # the rule to add
+                            ) -> None:
+    """
+    Generates the execution tree of the rule and adds it to the term graph.
+    Implements the following pseudo code:
+
+    def generate_computation_graph(self, head, body):
+        bounding_graph = find_bounding_graph(body)
+        build_root
+        connect_all_bodies_to_root_with_join
+        for each ie_function:
+        make calc_node
+        connect to join of all bounding bodies
+    """
+
+    # maps each relation to it's node id in the term graph.
+    relation_to_branch_id: Dict[Union[Relation, IERelation], int] = {}
+
+    # stores the nodes that were added to to execution graph
+    nodes = set()
+
+    def add_node(node_id # a new node that was added
+                    ) -> None:
         """
-        Adds the relation to the graph. if it's already inside nothing is done.
+        Saves all the nodes that were added due to the rule.
+        """
+        nodes.add(node_id)
 
-        @param relation: the relation to add.
-        @note: we assume the relation is rule relation and not declared relation.
-        @return: returns the relation node id if is_rule is false.
-                 otherwise returns the relation child node id (union node).
+    def add_join_branch(head_id, # the node to which join node will be connected
+                        joined_relations: Set[Union[Relation, IERelation]], # a set of relations
+                        future_ie_relations: Optional[Set[IERelation]] = None # a set of ie relations that will be added to branch in the future
+                        ) -> int: # the id of the join node
+        """
+        Connects all the relations to a join node. Connects the join_node to head_id.
         """
 
-        relation_name = relation.relation_name
-        if self.is_contains_node(relation_name):
-            return self.get_relation_union_node(relation_name)
+        future_ies = set() if future_ie_relations is None else future_ie_relations
+        total_relations = joined_relations | future_ies
 
-        self.add_node(node_id=relation_name, type=TermNodeType.RULE_REL, value=relation)
-        self.add_edge(self.get_root_id(), relation_name)
-        union_id: GraphBase.NodeIdType = self.add_node(type=TermNodeType.UNION)
-        self.add_edge(relation_name, union_id)
+        # check if there is one relation (we don't need join)
+        if len(total_relations) == 1 and len(joined_relations) == 1:
+            add_relation_branch(next(iter(total_relations)), head_id)
+            return head_id
 
-        return union_id
+        join_dict = get_free_var_to_relations_dict(total_relations)
+        if not join_dict:
+            return head_id
 
-    def get_relation_union_node(self, relation_name: str) -> GraphBase.NodeIdType:
+        # add join node
+        join_node_id_ = self.add_node(type=TermNodeType.JOIN, value=join_dict)
+        add_node(join_node_id_)
+
+        self.add_edge(head_id, join_node_id_)
+        for relation in joined_relations:
+            add_relation_branch(relation, join_node_id_)
+
+        return join_node_id_
+
+    def add_relation_to(relation: Union[Relation, IERelation], # a relation
+                        father_node_id: int # the node to which the relation will be connected
+                        ) -> None:
         """
-        @param relation_name: name of a relation.
-        @return: the union node of the given relation.
+        Adds relation to father id.
         """
 
-        union_id, = self.get_children(relation_name)  # relation has only one child (the union node).
-        return union_id
+        get_rel_id = self.add_node(type=TermNodeType.GET_REL, value=relation)
+        add_node(get_rel_id)
+
+        # cache the branch
+        relation_to_branch_id[relation] = get_rel_id
+        self.add_edge(father_node_id, get_rel_id)
+
+        # if relation is a rule relation we connect it to the root of the relation (rel_id)
+        if self.is_contains_node(relation.relation_name):
+            self.add_edge(get_rel_id, relation.relation_name)
 
     @no_type_check
-    def add_rule_to_term_graph(self, rule: Rule) -> None:
+    def add_relation_branch(relation: Union[Relation, IERelation], # a relation
+                            join_node_id_: int # the join node to which the relation will be connected
+                            ) -> None:
         """
-        Generates the execution tree of the rule and adds it to the term graph.
-        Implements the following pseudo code:
-
-        def generate_computation_graph(self, head, body):
-            bounding_graph = find_bounding_graph(body)
-            build_root
-            connect_all_bodies_to_root_with_join
-            for each ie_function:
-            make calc_node
-            connect to join of all bounding bodies
-
-        @param rule: the rule to add.
+        Adds relation to the join node.
+        Finds all the columns of the relation that needed to be filtered and Adds select branch if needed.
         """
 
-        # maps each relation to it's node id in the term graph.
-        relation_to_branch_id: Dict[Union[Relation, IERelation], int] = {}
+        # check if the branch already exists (if relations is ie relation the branch already exists)
+        if relation in relation_to_branch_id:
+            self.add_edge(join_node_id_, relation_to_branch_id[relation])
+            return
 
-        # stores the nodes that were added to to execution graph
-        nodes = set()
+        free_vars = get_output_free_var_names(relation)
+        term_list = relation.get_term_list()
 
-        def add_node(node_id) -> None:
-            """
-            Saves all the nodes that were added due to the rule.
+        # check if there is a constant (A("4")), or there is a free var that appears multiple times (A(X, X))
+        if len(free_vars) != len(term_list) or len(term_list) != len(set(term_list)):
+            # create select node and connect relation branch to it
+            select_info = relation.get_select_cols_values_and_types()
+            select_node_id = self.add_node(type=TermNodeType.SELECT, value=select_info)
+            add_node(select_node_id)
+            self.add_edge(join_node_id_, select_node_id)
+            add_relation_to(relation, select_node_id)
+            relation_to_branch_id[relation] = select_node_id
+        else:
+            # no need to add select node
+            add_relation_to(relation, join_node_id_)
 
-            @param node_id: a new node that was added.
-            """
-            nodes.add(node_id)
-
-        def add_join_branch(head_id, joined_relations: Set[Union[Relation, IERelation]],
-                            future_ie_relations: Optional[Set[IERelation]] = None):
-            """
-            Connects all the relations to a join node. Connects the join_node to head_id.
-
-            @param head_id: the node to which join node will be connected.
-            @param joined_relations: a set of relations.
-            @param future_ie_relations: a set of ie relations that will be added to branch in the future.
-            @return: the id of the join node.
-            """
-
-            future_ies = set() if future_ie_relations is None else future_ie_relations
-            total_relations = joined_relations | future_ies
-
-            # check if there is one relation (we don't need join)
-            if len(total_relations) == 1 and len(joined_relations) == 1:
-                add_relation_branch(next(iter(total_relations)), head_id)
-                return head_id
-
-            join_dict = get_free_var_to_relations_dict(total_relations)
-            if not join_dict:
-                return head_id
-
-            # add join node
-            join_node_id_ = self.add_node(type=TermNodeType.JOIN, value=join_dict)
-            add_node(join_node_id_)
-
-            self.add_edge(head_id, join_node_id_)
-            for relation in joined_relations:
-                add_relation_branch(relation, join_node_id_)
-
-            return join_node_id_
-
-        def add_relation_to(relation: Union[Relation, IERelation], father_node_id: int) -> None:
-            """
-            Adds relation to father id.
-
-            @param relation: a relation.
-            @param father_node_id: the node to which the relation will be connected.
-            """
-
-            get_rel_id = self.add_node(type=TermNodeType.GET_REL, value=relation)
-            add_node(get_rel_id)
-
-            # cache the branch
-            relation_to_branch_id[relation] = get_rel_id
-            self.add_edge(father_node_id, get_rel_id)
-
-            # if relation is a rule relation we connect it to the root of the relation (rel_id)
-            if self.is_contains_node(relation.relation_name):
-                self.add_edge(get_rel_id, relation.relation_name)
-
-        @no_type_check
-        def add_relation_branch(relation: Union[Relation, IERelation], join_node_id_: int) -> None:
-            """
-            Adds relation to the join node.
-            Finds all the columns of the relation that needed to be filtered and Adds select branch if needed.
-
-            @param relation: a relation.
-            @param join_node_id_: the join node to which the relation will be connected.
-            """
-
-            # check if the branch already exists (if relations is ie relation the branch already exists)
-            if relation in relation_to_branch_id:
-                self.add_edge(join_node_id_, relation_to_branch_id[relation])
-                return
-
-            free_vars = get_output_free_var_names(relation)
-            term_list = relation.get_term_list()
-
-            # check if there is a constant (A("4")), or there is a free var that appears multiple times (A(X, X))
-            if len(free_vars) != len(term_list) or len(term_list) != len(set(term_list)):
-                # create select node and connect relation branch to it
-                select_info = relation.get_select_cols_values_and_types()
-                select_node_id = self.add_node(type=TermNodeType.SELECT, value=select_info)
-                add_node(select_node_id)
-                self.add_edge(join_node_id_, select_node_id)
-                add_relation_to(relation, select_node_id)
-                relation_to_branch_id[relation] = select_node_id
-            else:
-                # no need to add select node
-                add_relation_to(relation, join_node_id_)
-
-        def add_calc_branch(join_node_id_: int, ie_relation_: IERelation, bounding_graph_: OrderedDict) -> int:
-            """
-            Adds a calc branch of the ie relation.
-
-            @param join_node_id_: the join node to which the branch will be connected.
-            @param ie_relation_: an ie relation.
-            @param bounding_graph_: the bounding graph of the ie relations.
-            @return: the calc_node's id.
-            """
-            calc_node_id_ = self.add_node(type=TermNodeType.CALC, value=ie_relation_)
-            add_node(calc_node_id_)
-
-            # join all the ie relation's bounding relations. The bounding relations already exists in the graph!
-            # (since we iterate on the ie relations in the same order they were bounded).
-            bounding_relations = bounding_graph_[ie_relation_]
-            add_join_branch(calc_node_id_, bounding_relations)
-            self.add_edge(join_node_id_, calc_node_id_)
-            return calc_node_id_
-
-        head_relation = rule.head_relation
-        relations, ie_relations = rule.get_relations_by_type()
-        # computes the bounding graph (it's actually an ordered dict).
-        bounding_graph = TermGraph._compute_bounding_graph(relations, ie_relations)
-
-        # make root
-        union_id = self.add_relation(head_relation)
-        project_id = self.add_node(type=TermNodeType.PROJECT, value=head_relation.term_list)
-        self.add_edge(union_id, project_id)
-        add_node(project_id)
-
-        # connect all regular relations to join node
-        join_node_id = add_join_branch(project_id, relations, ie_relations)
-
-        # iterate over ie relations in the same order they were bounded
-        for ie_relation in bounding_graph:
-            calc_node_id = add_calc_branch(join_node_id, ie_relation, bounding_graph)
-            relation_to_branch_id[ie_relation] = calc_node_id
-
-        self.add_rule_node(rule, nodes)
-        self._dependency_graph.add_dependencies(head_relation, relations)
-
-    def remove_rule(self, rule: str) -> bool:
+    def add_calc_branch(join_node_id_: int, # the join node to which the branch will be connected
+                        ie_relation_: IERelation, # an ie relation
+                        bounding_graph_: OrderedDict # the bounding graph of the ie relations
+                        ) -> int: # the calc_node's id
         """
-        Removes a rule from term graph.
-
-        @param rule: the rule to remove. unlike add_rule, here rule should be string as it is a user input.
-        @raise Exception if the rule doesn't exist in the term graph
-        @return: true if the head relation was deleted, false otherwise.
+        Adds a calc branch of the ie relation.
         """
+        calc_node_id_ = self.add_node(type=TermNodeType.CALC, value=ie_relation_)
+        add_node(calc_node_id_)
 
-        if rule not in self._rule_to_nodes:
-            raise ValueError(f"The rule '{rule}' was never registered "
-                             f"(you can run 'print_all_rules' to see all the registered rules)")
+        # join all the ie relation's bounding relations. The bounding relations already exists in the graph!
+        # (since we iterate on the ie relations in the same order they were bounded).
+        bounding_relations = bounding_graph_[ie_relation_]
+        add_join_branch(calc_node_id_, bounding_relations)
+        self.add_edge(join_node_id_, calc_node_id_)
+        return calc_node_id_
 
-        actual_rule, nodes = self._rule_to_nodes[rule]
-        rule_name = actual_rule.head_relation.relation_name
-        union_node = self.get_relation_union_node(rule_name)
+    head_relation = rule.head_relation
+    relations, ie_relations = rule.get_relations_by_type()
+    # computes the bounding graph (it's actually an ordered dict).
+    bounding_graph = TermGraph._compute_bounding_graph(relations, ie_relations)
 
-        is_last_rule_path = len(list(self.get_children(union_node))) == 1
-        is_rule_used = self._dependency_graph.is_relation_in_use(rule_name)
+    # make root
+    union_id = self.add_relation(head_relation)
+    project_id = self.add_node(type=TermNodeType.PROJECT, value=head_relation.term_list)
+    self.add_edge(union_id, project_id)
+    add_node(project_id)
 
-        # check if something is connected to the rel_root and the root is going to be deleted (this shouldn't happen)
-        if is_last_rule_path and is_rule_used:
-            raise RuntimeError(f"The rule '{rule}' can't be deleted since '{rule_name}' is used in another existing "
-                               f"rule.")
+    # connect all regular relations to join node
+    join_node_id = add_join_branch(project_id, relations, ie_relations)
 
-        self._graph.remove_nodes_from(nodes)
-        del self._rule_to_nodes[rule]
+    # iterate over ie relations in the same order they were bounded
+    for ie_relation in bounding_graph:
+        calc_node_id = add_calc_branch(join_node_id, ie_relation, bounding_graph)
+        relation_to_branch_id[ie_relation] = calc_node_id
 
-        self._dependency_graph.remove_rule(actual_rule)
+    self.add_rule_node(rule, nodes)
+    self._dependency_graph.add_dependencies(head_relation, relations)
 
-        if is_last_rule_path:
-            self._graph.remove_nodes_from((rule_name, union_node))
-            self._dependency_graph.remove_relation(rule_name)
-            return True
 
-        return False
+# %% ../../nbs/03c_graphs.ipynb 46
+@patch_method
+def remove_rule(self: TermGraph, 
+                rule: str # the rule to remove. unlike add_rule, here rule should be string as it is a user input
+                ) -> bool: # true if the head relation was deleted, false otherwise
+    """
+    Removes a rule from term graph.
 
+    @raise Exception if the rule doesn't exist in the term graph
+    """
+
+    if rule not in self._rule_to_nodes:
+        raise ValueError(f"The rule '{rule}' was never registered "
+                            f"(you can run 'print_all_rules' to see all the registered rules)")
+
+    actual_rule, nodes = self._rule_to_nodes[rule]
+    rule_name = actual_rule.head_relation.relation_name
+    union_node = self.get_relation_union_node(rule_name)
+
+    is_last_rule_path = len(list(self.get_children(union_node))) == 1
+    is_rule_used = self._dependency_graph.is_relation_in_use(rule_name)
+
+    # check if something is connected to the rel_root and the root is going to be deleted (this shouldn't happen)
+    if is_last_rule_path and is_rule_used:
+        raise RuntimeError(f"The rule '{rule}' can't be deleted since '{rule_name}' is used in another existing "
+                            f"rule.")
+
+    self._graph.remove_nodes_from(nodes)
+    del self._rule_to_nodes[rule]
+
+    self._dependency_graph.remove_rule(actual_rule)
+
+    if is_last_rule_path:
+        self._graph.remove_nodes_from((rule_name, union_node))
+        self._dependency_graph.remove_relation(rule_name)
+        return True
+
+    return False
