@@ -2,8 +2,7 @@
 
 # %% auto 0
 __all__ = ['PRETTY_INDENT', 'ROOT_NODE_ID', 'ROOT_TYPE', 'TYPE', 'STATE', 'VALUE', 'NodeIdType', 'EvalState', 'TermNodeType',
-           'GraphBase', 'NetxGraph', 'NetxStateGraph', 'DependencyGraph', 'TermGraphBase', 'TermGraph', 'add_relation',
-           'get_relation_union_node', 'add_rule_to_term_graph', 'remove_rule']
+           'GraphBase', 'NetxGraph', 'NetxStateGraph', 'DependencyGraph', 'TermGraphBase', 'TermGraph']
 
 # %% ../../nbs/03c_graphs.ipynb 5
 from collections import OrderedDict
@@ -15,7 +14,7 @@ from itertools import count
 from typing import Set, List, Dict, Iterable, Union, Optional, OrderedDict as OrderedDictType, no_type_check, Any, Sequence
 from .ast_node_types import Relation, Rule, IERelation
 from .general_utils import get_input_free_var_names, get_output_free_var_names, get_free_var_to_relations_dict
-from .utils import wrapped_patch
+from .utils import patch_method
 
 # %% ../../nbs/03c_graphs.ipynb 6
 from copy import deepcopy
@@ -783,7 +782,7 @@ class TermGraph(TermGraphBase):
         return bounding_graph
 
 # %% ../../nbs/03c_graphs.ipynb 43
-@wrapped_patch
+@patch_method
 def add_relation(self: TermGraph, 
                     relation: Relation # the relation to add
                     # returns the relation node id if is_rule is false
@@ -806,7 +805,7 @@ def add_relation(self: TermGraph,
     return union_id
 
 # %% ../../nbs/03c_graphs.ipynb 44
-@wrapped_patch
+@patch_method
 def get_relation_union_node(self: TermGraph, 
                             relation_name: str # name of a relation
                             ) -> GraphBase.NodeIdType: # the union node of the given relation
@@ -815,7 +814,7 @@ def get_relation_union_node(self: TermGraph,
     return union_id
 
 # %% ../../nbs/03c_graphs.ipynb 45
-@wrapped_patch
+@patch_method
 def add_rule_to_term_graph(self: TermGraph, 
                             rule: Rule # the rule to add
                             ) -> None:
@@ -964,7 +963,7 @@ def add_rule_to_term_graph(self: TermGraph,
 
 
 # %% ../../nbs/03c_graphs.ipynb 46
-@wrapped_patch
+@patch_method
 def remove_rule(self: TermGraph, 
                 rule: str # the rule to remove. unlike add_rule, here rule should be string as it is a user input
                 ) -> bool: # true if the head relation was deleted, false otherwise
