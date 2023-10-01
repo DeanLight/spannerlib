@@ -488,7 +488,7 @@ def add_fact(self: SqliteEngine,
 
     self._run_sql_from_jinja_template(sql_template, template_dict)
 
-# %% ../../nbs/02a_engine.ipynb 32
+# %% ../../nbs/02a_engine.ipynb 31
 @patch_method
 def remove_fact(self: SqliteEngine, 
                 fact: RemoveFact # the fact to be removed
@@ -516,7 +516,7 @@ def remove_fact(self: SqliteEngine,
 
     self._run_sql_from_jinja_template(sql_template, template_dict)
 
-# %% ../../nbs/02a_engine.ipynb 34
+# %% ../../nbs/02a_engine.ipynb 32
 @patch_method
 def query(self: SqliteEngine, 
                 query: Query, # the query to be performed
@@ -561,7 +561,7 @@ def query(self: SqliteEngine,
 
     return spanned_query_result
 
-# %% ../../nbs/02a_engine.ipynb 35
+# %% ../../nbs/02a_engine.ipynb 33
 @patch_method
 def remove_tables(self: SqliteEngine, 
             table_names: Iterable[str] # tables to remove
@@ -572,7 +572,7 @@ def remove_tables(self: SqliteEngine,
     for table_name in table_names:
         self.remove_table(table_name)
 
-# %% ../../nbs/02a_engine.ipynb 37
+# %% ../../nbs/02a_engine.ipynb 35
 @patch_method
 def remove_table(self: SqliteEngine, 
                 table_name: str # the table to remove
@@ -584,7 +584,7 @@ def remove_table(self: SqliteEngine,
         sql_command = f"DROP TABLE {table_name}"
         self._run_sql(sql_command)
 
-# %% ../../nbs/02a_engine.ipynb 39
+# %% ../../nbs/02a_engine.ipynb 37
 @patch_method
 def declare_relation_table(self: SqliteEngine, 
                 relation_decl: RelationDeclaration # the declaration info
@@ -606,7 +606,7 @@ def declare_relation_table(self: SqliteEngine,
 
     self._run_sql_from_jinja_template(sql_template, template_dict)
 
-# %% ../../nbs/02a_engine.ipynb 40
+# %% ../../nbs/02a_engine.ipynb 38
 @patch_method
 def is_table_exists(self: SqliteEngine, 
                     table_name: str # the table which is checked for existence.
@@ -617,20 +617,20 @@ def is_table_exists(self: SqliteEngine,
     sql_check_if_exists = f"{SqliteEngine.SQL_SELECT} name FROM {SqliteEngine.SQL_TABLE_OF_TABLES} WHERE " f"type='table' AND name='{table_name}'"
     return bool(self._run_sql(sql_check_if_exists))
 
-# %% ../../nbs/02a_engine.ipynb 42
+# %% ../../nbs/02a_engine.ipynb 40
 @patch_method
 def clear_relation(self: SqliteEngine, table_name: str) -> None:
     sql_command = f"DELETE FROM {table_name}"
     self._run_sql(sql_command)
 
-# %% ../../nbs/02a_engine.ipynb 43
+# %% ../../nbs/02a_engine.ipynb 41
 @patch_method
 def get_table_len(self: SqliteEngine, table_name: str) -> int:
     sql_command = f"SELECT COUNT(*) FROM {table_name}"
     table_len, = self._run_sql(sql_command)[0]
     return table_len
 
-# %% ../../nbs/02a_engine.ipynb 44
+# %% ../../nbs/02a_engine.ipynb 42
 @patch_method
 @extract_one_relation
 def operator_select(self: SqliteEngine, 
@@ -717,7 +717,7 @@ def operator_select(self: SqliteEngine,
 
     return selected_relation
 
-# %% ../../nbs/02a_engine.ipynb 45
+# %% ../../nbs/02a_engine.ipynb 43
 @patch_method
 def operator_join(self: SqliteEngine, 
             relations: List[Relation], # a list of normal relation
@@ -823,7 +823,7 @@ def operator_join(self: SqliteEngine,
 
     return joined_relation
 
-# %% ../../nbs/02a_engine.ipynb 46
+# %% ../../nbs/02a_engine.ipynb 44
 @patch_method
 @extract_one_relation
 def operator_project(self: SqliteEngine, 
@@ -871,7 +871,7 @@ def operator_project(self: SqliteEngine,
     self._run_sql(sql_command)
     return new_relation
 
-# %% ../../nbs/02a_engine.ipynb 47
+# %% ../../nbs/02a_engine.ipynb 45
 @patch_method
 def operator_union(self: SqliteEngine, 
                 relations: List[Relation], # a list of relations to unite
@@ -914,7 +914,7 @@ def operator_union(self: SqliteEngine,
     self._run_sql(sql_command)
     return united_relation
 
-# %% ../../nbs/02a_engine.ipynb 48
+# %% ../../nbs/02a_engine.ipynb 46
 @patch_method
 @extract_one_relation
 def operator_copy(self: SqliteEngine, src_rel: Relation, output_relation: Optional[Relation] = None, *args: Any) -> Relation:
@@ -945,7 +945,7 @@ def operator_copy(self: SqliteEngine, src_rel: Relation, output_relation: Option
     return dest_rel
 
 
-# %% ../../nbs/02a_engine.ipynb 50
+# %% ../../nbs/02a_engine.ipynb 48
 @patch_method
 def compute_ie_relation(self: SqliteEngine, 
                 ie_relation: IERelation, # an ie relation that determines the input and output terms of the ie function
@@ -1039,7 +1039,7 @@ def compute_ie_relation(self: SqliteEngine,
 
     return output_relation
 
-# %% ../../nbs/02a_engine.ipynb 52
+# %% ../../nbs/02a_engine.ipynb 50
 @patch_method
 def _run_sql_from_jinja_template(self: SqliteEngine, sql_template: str, template_dict: Optional[dict] = None) -> None:
     if not template_dict:
@@ -1048,7 +1048,7 @@ def _run_sql_from_jinja_template(self: SqliteEngine, sql_template: str, template
     sql_command = Template(strip_lines(sql_template)).render(**template_dict)
     self._run_sql(sql_command)
 
-# %% ../../nbs/02a_engine.ipynb 53
+# %% ../../nbs/02a_engine.ipynb 51
 @patch_method
 def _run_sql(self: SqliteEngine, command: str, command_args: Optional[List] = None, do_commit: bool = False) -> List:
     logger.debug(f"sql {command=}")
@@ -1066,7 +1066,7 @@ def _run_sql(self: SqliteEngine, command: str, command_args: Optional[List] = No
 
     return self.sql_cursor.fetchall()
 
-# %% ../../nbs/02a_engine.ipynb 54
+# %% ../../nbs/02a_engine.ipynb 52
 @patch_method
 def _create_unique_relation(self: SqliteEngine, 
                             arity: int, # the relation's arity
@@ -1094,7 +1094,7 @@ def _create_unique_relation(self: SqliteEngine,
     self.declare_relation_table(unique_relation_decl)
     return unique_relation_name
 
-# %% ../../nbs/02a_engine.ipynb 55
+# %% ../../nbs/02a_engine.ipynb 53
 @patch_method
 def _convert_relation_term_to_string_or_int(self: SqliteEngine, datatype: DataTypes, term: DataTypeMapping.term) -> Union[str, int]:
     if datatype is DataTypes.integer:
@@ -1104,12 +1104,12 @@ def _convert_relation_term_to_string_or_int(self: SqliteEngine, datatype: DataTy
         unquoted_term = str(term).strip('"')
         return f'"{unquoted_term}"'
 
-# %% ../../nbs/02a_engine.ipynb 56
+# %% ../../nbs/02a_engine.ipynb 54
 @patch_method
 def _get_col_name(self: SqliteEngine, col_id: int) -> str:
     return f'{SqliteEngine.RELATION_COLUMN_PREFIX}{col_id}'
 
-# %% ../../nbs/02a_engine.ipynb 57
+# %% ../../nbs/02a_engine.ipynb 55
 @patch_method
 def _get_all_relation_tuples(self: SqliteEngine, 
                              relation: Relation # a relation to be queried
@@ -1130,7 +1130,7 @@ def _get_all_relation_tuples(self: SqliteEngine,
     all_relation_tuples = self.query(query)
     return all_relation_tuples
 
-# %% ../../nbs/02a_engine.ipynb 88
+# %% ../../nbs/02a_engine.ipynb 86
 if __name__ == "__main__":
     my_engine = SqliteEngine()
     print("hello world")
