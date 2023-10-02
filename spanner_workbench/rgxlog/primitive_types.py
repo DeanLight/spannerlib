@@ -70,7 +70,7 @@ class Span:
     def __repr__(self) -> str:
         return self.__name__
 
-# %% ../../nbs/00c_primitive_types.ipynb 8
+# %% ../../nbs/00c_primitive_types.ipynb 11
 class DataTypeMapping:
     """
     The DataTypeMapping class Maps between the supported DataTypes to their object type

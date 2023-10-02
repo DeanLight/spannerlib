@@ -6,7 +6,7 @@ __all__ = ['SymbolTableBase', 'SymbolTable']
 # %% ../../nbs/01b_symbol_table.ipynb 5
 from abc import ABC, abstractmethod
 from typing import Iterable, Dict, Set, Callable, List, Union, Sequence, Tuple
-from .primitive_types import DataTypes, DataTypeMapping
+from .primitive_types import DataTypes, DataTypeMapping, Span
 from .ie_function import IEFunction
 
 # %% ../../nbs/01b_symbol_table.ipynb 6
