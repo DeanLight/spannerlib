@@ -1,0 +1,23 @@
+digraph automaton {
+	node [shape=doublecircle]
+	q7
+	q8
+
+	node [shape=circle]
+	q1 -> q1 [label=" [...] "]
+	q3 -> q3 [label=" [...] "]
+	q2 -> q3 [label=" [...] "]
+	q3 -> q4 [label=" [...] "]
+	q6 -> q6 [label=" [c-c] "]
+	q5 -> q6 [label=" [c-c] "]
+	q6 -> q7 [label=" group_c⊣ "]
+	q4 -> q5 [label=" ⊢group_c "]
+	q1 -> q2 [label=" [...] "]
+	q8 -> q8 [label=" [...] "]
+	q7 -> q8 [label=" [...] "]
+	q0 -> q1 [label=" [...] "]
+	q0 -> q2 [label=" [...] "]
+
+	node [shape=point]
+	before_q0 -> q0
+}

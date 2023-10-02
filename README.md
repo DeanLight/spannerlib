@@ -11,6 +11,7 @@ The spanner workbench is an interpreter and a REPL system for spanner-like langu
 To download and install RGXLog run the following commands in your terminal:
 
 ```bash
+TODO update
 git clone https://github.com/DeanLight/spanner_workbench
 cd spanner_workbench
 
