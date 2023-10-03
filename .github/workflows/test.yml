@@ -22,6 +22,10 @@ jobs:
           # The python version that nbdev ci must run on must match the python version used 
           version: ${{ env.PYTHON_VERSION }}
           skip_test: true
-      - name: Test notebooks separately
+          
+      - name: Run Tests
         run: |
-          python nbdev_test.py
+            test_output=$(python nbdev_test.py 2>&1)  # Capture both stdout and stderr
+            echo "$test_output"  # Print the test output for debugging purposes
+            echo "$test_output" | grep -q "nbdev Tests Failed On The Following Notebooks:" && exit 1 || true
+        shell: bash
