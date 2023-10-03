@@ -26,3 +26,7 @@ jobs:
         with:
           # The python version that nbdev ci must run on must match the python version used 
           version: ${{ env.PYTHON_VERSION }}
+          skip_test: true
+      - name: Test notebooks separately
+        run: |
+          python nbdev_test.py
