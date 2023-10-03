@@ -49,8 +49,8 @@ def log_function_call(func):
         return result
     return wrapper
 
-# %% ../../nbs/02a_engine.ipynb 9
-class RgxlogEngineBase(ABC):
+# %% ../../nbs/02a_engine.ipynb 10
+class RgxlogEngineBase():
     """
     An abstraction for a rgxlog execution engine, used by `GenericExecution`.
     it includes relational algebra operators like join and project, database modification operators like
@@ -287,7 +287,7 @@ class RgxlogEngineBase(ABC):
         """
         pass
 
-# %% ../../nbs/02a_engine.ipynb 27
+# %% ../../nbs/02a_engine.ipynb 29
 class SqliteEngine(RgxlogEngineBase):
     """
     in this implementation of the engine, we use python's sqlite3, which allows creating an SQL database easily, without using servers.
@@ -421,7 +421,7 @@ class SqliteEngine(RgxlogEngineBase):
 
  
 
-# %% ../../nbs/02a_engine.ipynb 28
+# %% ../../nbs/02a_engine.ipynb 30
 # Helper method for testing
 @patch_method
 def table_to_dataframe(self : SqliteEngine ,name) -> pd.DataFrame:
@@ -444,7 +444,7 @@ def table_to_dataframe(self : SqliteEngine ,name) -> pd.DataFrame:
             
             return df
 
-# %% ../../nbs/02a_engine.ipynb 29
+# %% ../../nbs/02a_engine.ipynb 31
 @patch_method
 def print_sql(self: SqliteEngine):
     self.sql_cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -466,7 +466,146 @@ def print_sql(self: SqliteEngine):
             print(row)
         print()
 
-# %% ../../nbs/02a_engine.ipynb 30
+# %% ../../nbs/02a_engine.ipynb 32
+@patch_method
+def _run_sql_from_jinja_template(self: SqliteEngine, sql_template: str, template_dict: Optional[dict] = None) -> None:
+    if not template_dict:
+        template_dict = {}
+
+    sql_command = Template(strip_lines(sql_template)).render(**template_dict)
+    self._run_sql(sql_command)
+
+# %% ../../nbs/02a_engine.ipynb 33
+@patch_method
+def _run_sql(self: SqliteEngine, command: str, command_args: Optional[List] = None, do_commit: bool = False) -> List:
+    logger.debug(f"sql {command=}")
+    if command_args:
+        logger.debug(f"...with args: {command_args}")
+
+    if command_args:
+        self.sql_cursor.execute(command, command_args)
+    else:
+        self.sql_cursor.execute(command)
+
+    if do_commit:
+        # save to file
+        self.sql_conn.commit()
+
+    return self.sql_cursor.fetchall()
+
+# %% ../../nbs/02a_engine.ipynb 34
+@patch_method
+def _get_col_name(self: SqliteEngine, col_id: int) -> str:
+    return f'{SqliteEngine.RELATION_COLUMN_PREFIX}{col_id}'
+
+# %% ../../nbs/02a_engine.ipynb 35
+@patch_method
+def get_table_len(self: SqliteEngine, table_name: str) -> int:
+    sql_command = f"SELECT COUNT(*) FROM {table_name}"
+    table_len, = self._run_sql(sql_command)[0]
+    return table_len
+
+# %% ../../nbs/02a_engine.ipynb 36
+@patch_method
+def declare_relation_table(self: SqliteEngine, 
+                relation_decl: RelationDeclaration # the declaration info
+                ):
+    """
+    Declares a relation as an SQL table, whose types are named t0, t1, ...
+    if the relation is already declared, do nothing.
+    """
+    # create the relation table. we don't use an id because it would allow inserting the same values twice
+    # note: to ignore duplicates, we can either use UNIQUE when creating the table, or DISTINCT when selecting.
+    #  right now we use DISTINCT
+    if self.is_table_exists(relation_decl.relation_name):
+        return
+
+    # note: sqlite can guess datatypes. if this causes bugs, use `{SqliteEngine._datatype_to_sql_type(relation_type)}`.
+    col_names = [f"{self._get_col_name(i)}" for i in range(len(relation_decl.type_list))]
+    template_dict = {"rel_name": relation_decl.relation_name, "col_names": col_names}
+    sql_template = 'CREATE TABLE {{rel_name}} ({{col_names | join(", ")}})'
+
+    self._run_sql_from_jinja_template(sql_template, template_dict)
+
+# %% ../../nbs/02a_engine.ipynb 37
+@patch_method
+def _create_unique_relation(self: SqliteEngine, 
+                            arity: int, # the relation's arity
+                            # will be used as a part of the relation's name
+                            prefix: str = "" # for example: prefix='join' -> full name = `__rgxlog__join{counter}``
+                            ) -> str: # the new relation's name
+    """
+    Declares a new relation with the requested arity in SQL, the relation will have a unique name.
+    """
+    # create the name of the new relation
+    unique_relation_id = next(self.unique_relation_id_counter)
+    if RESERVED_RELATION_PREFIX in prefix:
+        # we don't want relations to be called __rgxlog__rgxlog__rgxlog...
+        unique_relation_name = f'{prefix}{unique_relation_id}'
+    else:
+        unique_relation_name = f'{RESERVED_RELATION_PREFIX}{prefix}{unique_relation_id}'
+
+    # in SQLite there's no typechecking so we just need to make sure that the schema has the correct arity
+    unique_relation_schema = [DataTypes.free_var_name] * arity
+
+    # create the declaration
+    unique_relation_decl = RelationDeclaration(unique_relation_name, unique_relation_schema)
+
+    # create the relation's SQL table, and return its name
+    self.declare_relation_table(unique_relation_decl)
+    return unique_relation_name
+
+# %% ../../nbs/02a_engine.ipynb 38
+@patch_method
+def _convert_relation_term_to_string_or_int(self: SqliteEngine, datatype: DataTypes, term: DataTypeMapping.term) -> Union[str, int]:
+    if datatype is DataTypes.integer:
+        assert isinstance(term, int), "an integer must be of int type"
+        return term
+    else:
+        unquoted_term = str(term).strip('"')
+        return f'"{unquoted_term}"'
+
+# %% ../../nbs/02a_engine.ipynb 39
+@patch_method
+def clear_relation(self: SqliteEngine, table_name: str) -> None:
+    sql_command = f"DELETE FROM {table_name}"
+    self._run_sql(sql_command)
+
+# %% ../../nbs/02a_engine.ipynb 40
+@patch_method
+def is_table_exists(self: SqliteEngine, 
+                    table_name: str # the table which is checked for existence.
+                    )-> bool: # True if it exists, else False.
+    """
+    Checks whether a table exists in the database. 
+    """
+    sql_check_if_exists = f"{SqliteEngine.SQL_SELECT} name FROM {SqliteEngine.SQL_TABLE_OF_TABLES} WHERE " f"type='table' AND name='{table_name}'"
+    return bool(self._run_sql(sql_check_if_exists))
+
+# %% ../../nbs/02a_engine.ipynb 42
+@patch_method
+def remove_table(self: SqliteEngine, 
+                table_name: str # the table to remove
+                ):
+    """
+    Removes a table from the sql database, if it exists.
+    """
+    if self.is_table_exists(table_name):
+        sql_command = f"DROP TABLE {table_name}"
+        self._run_sql(sql_command)
+
+# %% ../../nbs/02a_engine.ipynb 44
+@patch_method
+def remove_tables(self: SqliteEngine, 
+            table_names: Iterable[str] # tables to remove
+            ):
+    """
+    Removes the given tables from sql.
+    """
+    for table_name in table_names:
+        self.remove_table(table_name)
+
+# %% ../../nbs/02a_engine.ipynb 47
 @patch_method
 def add_fact(self: SqliteEngine, 
             fact: AddFact # the fact to be added
@@ -488,7 +627,7 @@ def add_fact(self: SqliteEngine,
 
     self._run_sql_from_jinja_template(sql_template, template_dict)
 
-# %% ../../nbs/02a_engine.ipynb 31
+# %% ../../nbs/02a_engine.ipynb 51
 @patch_method
 def remove_fact(self: SqliteEngine, 
                 fact: RemoveFact # the fact to be removed
@@ -516,121 +655,7 @@ def remove_fact(self: SqliteEngine,
 
     self._run_sql_from_jinja_template(sql_template, template_dict)
 
-# %% ../../nbs/02a_engine.ipynb 32
-@patch_method
-def query(self: SqliteEngine, 
-                query: Query, # the query to be performed
-                allow_duplicates: bool = False # if True, query result may contain duplicate values
-                ) -> List[Tuple]: # a query results which is True, False, or a list of tuples
-    """
-    Outputs a preformatted query result, e.g. [("a",5),("b",6)].
-    notice that `query` isn't a string; it's a `Query` object which inherits from `Relation`.
-    for example, parsing the string `?excellent("bill","ted")` yields the following `Query`:
-
-    ```prolog
-    relation_name = excellent
-    term_list = ["bill", "ted"]
-    type_list = [DataType.string, DataType.string]
-    ```
-    """
-    query_free_var_indexes = self._get_free_variable_indexes(query.type_list)
-    has_free_vars = bool(query_free_var_indexes)
-    select_info = query.get_select_cols_values_and_types()
-
-    # create temporary tables for the select/project, and delete them
-    selected_relation = self.operator_select(query, select_info)
-    selected_relation_name = selected_relation.relation_name
-
-    free_var_names_for_project = [term for term, term_type in zip(query.term_list, query.type_list)
-                                    if term_type is DataTypes.free_var_name]
-    if has_free_vars:
-        projected_relation_name = self.operator_project(selected_relation, free_var_names_for_project).relation_name
-    else:
-        projected_relation_name = selected_relation_name
-
-    query_result = self._run_sql(f"{SqliteEngine.SQL_SELECT} * FROM {projected_relation_name}", do_commit=True)
-
-    self.remove_table(selected_relation_name)
-    self.remove_table(projected_relation_name)
-
-    # we need to convert values of type `True` and `Span` into their true form. `False` is already in its true form.
-    if (not has_free_vars) and query_result != FALSE_VALUE:
-        query_result = TRUE_VALUE
-
-    spanned_query_result = self._convert_strings_to_spans_in_query_result(query_result)
-
-    return spanned_query_result
-
-# %% ../../nbs/02a_engine.ipynb 33
-@patch_method
-def remove_tables(self: SqliteEngine, 
-            table_names: Iterable[str] # tables to remove
-            ):
-    """
-    Removes the given tables from sql.
-    """
-    for table_name in table_names:
-        self.remove_table(table_name)
-
-# %% ../../nbs/02a_engine.ipynb 35
-@patch_method
-def remove_table(self: SqliteEngine, 
-                table_name: str # the table to remove
-                ):
-    """
-    Removes a table from the sql database, if it exists.
-    """
-    if self.is_table_exists(table_name):
-        sql_command = f"DROP TABLE {table_name}"
-        self._run_sql(sql_command)
-
-# %% ../../nbs/02a_engine.ipynb 37
-@patch_method
-def declare_relation_table(self: SqliteEngine, 
-                relation_decl: RelationDeclaration # the declaration info
-                ):
-    """
-    Declares a relation as an SQL table, whose types are named t0, t1, ...
-    if the relation is already declared, do nothing.
-    """
-    # create the relation table. we don't use an id because it would allow inserting the same values twice
-    # note: to ignore duplicates, we can either use UNIQUE when creating the table, or DISTINCT when selecting.
-    #  right now we use DISTINCT
-    if self.is_table_exists(relation_decl.relation_name):
-        return
-
-    # note: sqlite can guess datatypes. if this causes bugs, use `{SqliteEngine._datatype_to_sql_type(relation_type)}`.
-    col_names = [f"{self._get_col_name(i)}" for i in range(len(relation_decl.type_list))]
-    template_dict = {"rel_name": relation_decl.relation_name, "col_names": col_names}
-    sql_template = 'CREATE TABLE {{rel_name}} ({{col_names | join(", ")}})'
-
-    self._run_sql_from_jinja_template(sql_template, template_dict)
-
-# %% ../../nbs/02a_engine.ipynb 38
-@patch_method
-def is_table_exists(self: SqliteEngine, 
-                    table_name: str # the table which is checked for existence.
-                    )-> bool: # True if it exists, else False.
-    """
-    Checks whether a table exists in the database. 
-    """
-    sql_check_if_exists = f"{SqliteEngine.SQL_SELECT} name FROM {SqliteEngine.SQL_TABLE_OF_TABLES} WHERE " f"type='table' AND name='{table_name}'"
-    return bool(self._run_sql(sql_check_if_exists))
-
-# %% ../../nbs/02a_engine.ipynb 40
-@patch_method
-def clear_relation(self: SqliteEngine, table_name: str) -> None:
-    sql_command = f"DELETE FROM {table_name}"
-    self._run_sql(sql_command)
-
-# %% ../../nbs/02a_engine.ipynb 41
-@patch_method
-def get_table_len(self: SqliteEngine, table_name: str) -> int:
-    sql_command = f"SELECT COUNT(*) FROM {table_name}"
-    table_len, = self._run_sql(sql_command)[0]
-    return table_len
-
-# %% ../../nbs/02a_engine.ipynb 42
+# %% ../../nbs/02a_engine.ipynb 56
 @patch_method
 @extract_one_relation
 def operator_select(self: SqliteEngine, 
@@ -717,7 +742,7 @@ def operator_select(self: SqliteEngine,
 
     return selected_relation
 
-# %% ../../nbs/02a_engine.ipynb 43
+# %% ../../nbs/02a_engine.ipynb 60
 @patch_method
 def operator_join(self: SqliteEngine, 
             relations: List[Relation], # a list of normal relation
@@ -823,7 +848,7 @@ def operator_join(self: SqliteEngine,
 
     return joined_relation
 
-# %% ../../nbs/02a_engine.ipynb 44
+# %% ../../nbs/02a_engine.ipynb 62
 @patch_method
 @extract_one_relation
 def operator_project(self: SqliteEngine, 
@@ -871,7 +896,7 @@ def operator_project(self: SqliteEngine,
     self._run_sql(sql_command)
     return new_relation
 
-# %% ../../nbs/02a_engine.ipynb 45
+# %% ../../nbs/02a_engine.ipynb 66
 @patch_method
 def operator_union(self: SqliteEngine, 
                 relations: List[Relation], # a list of relations to unite
@@ -914,7 +939,7 @@ def operator_union(self: SqliteEngine,
     self._run_sql(sql_command)
     return united_relation
 
-# %% ../../nbs/02a_engine.ipynb 46
+# %% ../../nbs/02a_engine.ipynb 70
 @patch_method
 @extract_one_relation
 def operator_copy(self: SqliteEngine, src_rel: Relation, output_relation: Optional[Relation] = None, *args: Any) -> Relation:
@@ -945,7 +970,73 @@ def operator_copy(self: SqliteEngine, src_rel: Relation, output_relation: Option
     return dest_rel
 
 
-# %% ../../nbs/02a_engine.ipynb 48
+# %% ../../nbs/02a_engine.ipynb 73
+@patch_method
+def query(self: SqliteEngine, 
+                query: Query, # the query to be performed
+                allow_duplicates: bool = False # if True, query result may contain duplicate values
+                ) -> List[Tuple]: # a query results which is True, False, or a list of tuples
+    """
+    Outputs a preformatted query result, e.g. [("a",5),("b",6)].
+    notice that `query` isn't a string; it's a `Query` object which inherits from `Relation`.
+    for example, parsing the string `?excellent("bill","ted")` yields the following `Query`:
+
+    ```prolog
+    relation_name = excellent
+    term_list = ["bill", "ted"]
+    type_list = [DataType.string, DataType.string]
+    ```
+    """
+    query_free_var_indexes = self._get_free_variable_indexes(query.type_list)
+    has_free_vars = bool(query_free_var_indexes)
+    select_info = query.get_select_cols_values_and_types()
+
+    # create temporary tables for the select/project, and delete them
+    selected_relation = self.operator_select(query, select_info)
+    selected_relation_name = selected_relation.relation_name
+
+    free_var_names_for_project = [term for term, term_type in zip(query.term_list, query.type_list)
+                                    if term_type is DataTypes.free_var_name]
+    if has_free_vars:
+        projected_relation_name = self.operator_project(selected_relation, free_var_names_for_project).relation_name
+    else:
+        projected_relation_name = selected_relation_name
+
+    query_result = self._run_sql(f"{SqliteEngine.SQL_SELECT} * FROM {projected_relation_name}", do_commit=True)
+
+    self.remove_table(selected_relation_name)
+    self.remove_table(projected_relation_name)
+
+    # we need to convert values of type `True` and `Span` into their true form. `False` is already in its true form.
+    if (not has_free_vars) and query_result != FALSE_VALUE:
+        query_result = TRUE_VALUE
+
+    spanned_query_result = self._convert_strings_to_spans_in_query_result(query_result)
+
+    return spanned_query_result
+
+# %% ../../nbs/02a_engine.ipynb 81
+@patch_method
+def _get_all_relation_tuples(self: SqliteEngine, 
+                             relation: Relation # a relation to be queried
+                             ) -> List[Tuple]: # all the tuples of 'relation' as a list of tuples
+
+    relation_name = relation.relation_name
+    relation_arity = len(relation.term_list)
+
+    # in order to get all of the tuples of the relation, we'll query the relation with a query that only has
+    # free variable terms, where each one of the free variables has a different name
+    # for example for the relation 'Parent(str, str)', we'll construct the query '?Parent(X0, X1)'
+    query_relation_name = relation_name
+    query_terms = [f'X{i}' for i in range(relation_arity)]
+    query_term_types = [DataTypes.free_var_name] * relation_arity
+    query = Query(query_relation_name, query_terms, query_term_types)
+
+    # query the relation using the query we've constructed, and return the result
+    all_relation_tuples = self.query(query)
+    return all_relation_tuples
+
+# %% ../../nbs/02a_engine.ipynb 82
 @patch_method
 def compute_ie_relation(self: SqliteEngine, 
                 ie_relation: IERelation, # an ie relation that determines the input and output terms of the ie function
@@ -1039,98 +1130,7 @@ def compute_ie_relation(self: SqliteEngine,
 
     return output_relation
 
-# %% ../../nbs/02a_engine.ipynb 50
-@patch_method
-def _run_sql_from_jinja_template(self: SqliteEngine, sql_template: str, template_dict: Optional[dict] = None) -> None:
-    if not template_dict:
-        template_dict = {}
-
-    sql_command = Template(strip_lines(sql_template)).render(**template_dict)
-    self._run_sql(sql_command)
-
-# %% ../../nbs/02a_engine.ipynb 51
-@patch_method
-def _run_sql(self: SqliteEngine, command: str, command_args: Optional[List] = None, do_commit: bool = False) -> List:
-    logger.debug(f"sql {command=}")
-    if command_args:
-        logger.debug(f"...with args: {command_args}")
-
-    if command_args:
-        self.sql_cursor.execute(command, command_args)
-    else:
-        self.sql_cursor.execute(command)
-
-    if do_commit:
-        # save to file
-        self.sql_conn.commit()
-
-    return self.sql_cursor.fetchall()
-
-# %% ../../nbs/02a_engine.ipynb 52
-@patch_method
-def _create_unique_relation(self: SqliteEngine, 
-                            arity: int, # the relation's arity
-                            # will be used as a part of the relation's name
-                            prefix: str = "" # for example: prefix='join' -> full name = `__rgxlog__join{counter}``
-                            ) -> str: # the new relation's name
-    """
-    Declares a new relation with the requested arity in SQL, the relation will have a unique name.
-    """
-    # create the name of the new relation
-    unique_relation_id = next(self.unique_relation_id_counter)
-    if RESERVED_RELATION_PREFIX in prefix:
-        # we don't want relations to be called __rgxlog__rgxlog__rgxlog...
-        unique_relation_name = f'{prefix}{unique_relation_id}'
-    else:
-        unique_relation_name = f'{RESERVED_RELATION_PREFIX}{prefix}{unique_relation_id}'
-
-    # in SQLite there's no typechecking so we just need to make sure that the schema has the correct arity
-    unique_relation_schema = [DataTypes.free_var_name] * arity
-
-    # create the declaration
-    unique_relation_decl = RelationDeclaration(unique_relation_name, unique_relation_schema)
-
-    # create the relation's SQL table, and return its name
-    self.declare_relation_table(unique_relation_decl)
-    return unique_relation_name
-
-# %% ../../nbs/02a_engine.ipynb 53
-@patch_method
-def _convert_relation_term_to_string_or_int(self: SqliteEngine, datatype: DataTypes, term: DataTypeMapping.term) -> Union[str, int]:
-    if datatype is DataTypes.integer:
-        assert isinstance(term, int), "an integer must be of int type"
-        return term
-    else:
-        unquoted_term = str(term).strip('"')
-        return f'"{unquoted_term}"'
-
-# %% ../../nbs/02a_engine.ipynb 54
-@patch_method
-def _get_col_name(self: SqliteEngine, col_id: int) -> str:
-    return f'{SqliteEngine.RELATION_COLUMN_PREFIX}{col_id}'
-
-# %% ../../nbs/02a_engine.ipynb 55
-@patch_method
-def _get_all_relation_tuples(self: SqliteEngine, 
-                             relation: Relation # a relation to be queried
-                             ) -> List[Tuple]: # all the tuples of 'relation' as a list of tuples
-
-    relation_name = relation.relation_name
-    relation_arity = len(relation.term_list)
-
-    # in order to get all of the tuples of the relation, we'll query the relation with a query that only has
-    # free variable terms, where each one of the free variables has a different name
-    # for example for the relation 'Parent(str, str)', we'll construct the query '?Parent(X0, X1)'
-    query_relation_name = relation_name
-    query_terms = [f'X{i}' for i in range(relation_arity)]
-    query_term_types = [DataTypes.free_var_name] * relation_arity
-    query = Query(query_relation_name, query_terms, query_term_types)
-
-    # query the relation using the query we've constructed, and return the result
-    all_relation_tuples = self.query(query)
-    return all_relation_tuples
-
-# %% ../../nbs/02a_engine.ipynb 86
+# %% ../../nbs/02a_engine.ipynb 114
 if __name__ == "__main__":
     my_engine = SqliteEngine()
     print("hello world")

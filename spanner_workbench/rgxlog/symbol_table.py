@@ -9,7 +9,7 @@ from typing import Iterable, Dict, Set, Callable, List, Union, Sequence, Tuple
 from .primitive_types import DataTypes, DataTypeMapping, Span
 from .ie_function import IEFunction
 
-# %% ../../nbs/01b_symbol_table.ipynb 6
+# %% ../../nbs/01b_symbol_table.ipynb 7
 class SymbolTableBase(ABC):
     """
     An abstraction for a symbol table. <br>
@@ -202,7 +202,7 @@ class SymbolTableBase(ABC):
         symbol_table_string = ''.join(string_buffer)
         return symbol_table_string
 
-# %% ../../nbs/01b_symbol_table.ipynb 27
+# %% ../../nbs/01b_symbol_table.ipynb 29
 class SymbolTable(SymbolTableBase):
     def __init__(self) -> None:
         self._var_to_value: Dict[str, DataTypeMapping.term] = {}
