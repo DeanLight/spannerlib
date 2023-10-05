@@ -19,7 +19,7 @@ from sys import platform
 from typing import Tuple, List, Union, Iterable, Sequence, no_type_check, Callable, Optional
 import os
 
-from ..primitive_types import DataTypes, Span
+# from rgxlog.primitive_types import DataTypes, Span
 from ..utils import run_cli_command, get_base_file_path
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 6
