@@ -16,13 +16,16 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           
-      - name: Install RgxLog
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ./spanner_workbench
-          
       - name: Use nbdev CI Workflow
         uses: fastai/workflows/nbdev-ci@master
         with:
           # The python version that nbdev ci must run on must match the python version used 
           version: ${{ env.PYTHON_VERSION }}
+          skip_test: true
+          
+      - name: Run Tests
+        run: |
+            test_output=$(python nbdev_test.py 2>&1)  # Capture both stdout and stderr
+            echo "$test_output"  # Print the test output for debugging purposes
+            echo "$test_output" | grep -q "nbdev Tests Failed On The Following Notebooks:" && exit 1 || true
+        shell: bash
