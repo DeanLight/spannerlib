@@ -217,7 +217,6 @@ RGX_STRING_FROM_FILE = dict(ie_function=rgx_string_from_file,
 # the package is installed when this module is imported, exclude the scenraio of github runner
 try:
     if not _is_installed_package() and 'runner' not in os.getcwd():
-        # _download_and_install_rust_regex()
-        pass
+        _download_and_install_rust_regex()
 except:
     logger.error(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")
