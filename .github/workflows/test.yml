@@ -25,7 +25,12 @@ jobs:
           
       - name: Run Tests
         run: |
-            test_output=$(python nbdev_test.py 2>&1)  # Capture both stdout and stderr
-            echo "$test_output"  # Print the test output for debugging purposes
-            echo "$test_output" | grep -q "nbdev Tests Failed On The Following Notebooks:" && exit 1 || true
+          # Capture both stdout and stderr to a temporary file
+          python nbdev_test.py > test_output.txt 2>&1 || true
+          cat test_output.txt  # Print the test output for debugging purposes
+
+          if grep -q "nbdev Tests Failed On The Following Notebooks:" test_output.txt; then
+            echo "nbdev Tests Failed"
+            exit 1
+          fi
         shell: bash
