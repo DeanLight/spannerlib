@@ -7,18 +7,13 @@ processes = []
 for file in files_to_test:
     command = f"nbdev_test --path {file} --do_print"
     try:
-        process = subprocess.Popen(command, shell=True)
+        # Redirect stderr to stdout
+        process = subprocess.Popen(command, shell=True, stderr=subprocess.STDOUT)
         processes.append(process)
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
+        # An error occurred in the subprocess
         print(f"Error occurred while testing {file}: {e}")
 
 # Wait for all subprocesses to finish
 for process in processes:
-    # Get the output and error streams
-    output, error = process.communicate()
-
-    if process.returncode != 0:
-        # An error occurred in the subprocess
-        print(f"Error occurred while testing {file}: {error.decode('utf-8')}")
-
     process.wait()
