@@ -14,4 +14,11 @@ for file in files_to_test:
 
 # Wait for all subprocesses to finish
 for process in processes:
+    # Get the output and error streams
+    output, error = process.communicate()
+
+    if process.returncode != 0:
+        # An error occurred in the subprocess
+        print(f"Error occurred while testing {file}: {error.decode('utf-8')}")
+
     process.wait()
