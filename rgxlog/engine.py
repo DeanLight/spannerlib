@@ -13,7 +13,7 @@ import logging
 import sqlite3 as sqlite
 import tempfile
 import pandas as pd
-# from abc import abstractmethod
+from abc import abstractmethod
 from itertools import count
 from jinja2 import Template
 from pathlib import Path
