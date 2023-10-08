@@ -1,0 +1,126 @@
+\documentclass[a4paper,11pt,pdftex]{article}
+
+\usepackage{a4wide}
+\usepackage{xspace}
+\usepackage{url}
+
+\newcommand{\implname}{Spanner Workbench\xspace}
+\newcommand{\ie}{IE\xspace}
+
+
+\begin{document}
+
+\title{\implname\\Design Document}
+\date{\today}
+
+\maketitle
+
+The \emph{\implname} is intended to become of an implementation that allows
+declarative expression of Information Extraction tasks. \implname is based on
+the (rule-based) approach to Information Extraction as expressed by
+XLog~\cite{SDNR07}, SystemT~\cite{CKLRRV10}, and DeepDive~\cite{DBLP:journals/cacm/ZhangRCSWW17}. In this approach, complex extractor logic is expressed by combining \emph{primitive extractors} (e.g., tokenizers, dictionaries, part-of-speech taggers, regular expressions matchers, \dots) through algebraic combinators.
+
+In particular, \implname implements the theoretical framework of Document
+Spanners~\cite{FaginKRV15}, which formalizes the rule-based approach to Information
+Extraction cited above. In this framework, a \emph{document spanner} (or just
+spanner for short) is any function that takes a document as input and yields a
+relation over the \emph{spans} (text intervals) of this input.  Various
+languages for expressing document spanners have recently been studied. \implname
+will implement \textsf{RGXLog}~\cite{DBLP:conf/icdt/PeterfreundCFK19}, which is the closure of  regular expression formulas under recursive Datalog programs.
+
+This design document is intended to describe the concrete syntax of \ie programs in version 0.1 of the \implname. 
+
+\section{Syntax and Semantics}
+\label{sec:syntax}
+
+\paragraph*{Primitive extractors.} The only primitive extractors that we intend to support in version 0.1 are \emph{functional regex formulas}. Essentially, a regex formula is a regular expression with capture variables. In the literature~\cite{FaginKRV15} such functional regex formulas are often given a very simple syntax, e.g.,
+\[ \gamma ::= \emptyset \mid \varepsilon \mid \sigma \mid \gamma \vee \gamma \mid \gamma \cdot \gamma \mid \gamma^* \mid x\{\gamma\},\]
+where $\varepsilon$ represents the empty string, $\sigma$ ranges over alphabet letters, and $x$ ranges over variable names.
+While this minimalistic syntax is appealing for theoretical investigation, it is
+cumbersome to use in practice. Indeed, regular expressions in practice have many
+convenient abbreviations (see e.g.,
+\url{https://www.pcre.org/current/doc/html/pcre2pattern.html}).
+
+
+As a concrete syntax for regex formulas, it is proposed to use the syntax of
+Perl regular expressions, where we interpret \emph{named capture groups} to
+indicate variable capture. (See
+\url{https://www.regular-expressions.info/named.html} for a discussion on named
+capture groups.) Unnamed capture groups are not supported ignored. Backreferences are not allowed (since this allows recognition of non-regular languages). As usual, functional regex formulas are given a \emph{all-match} semantics instead of the unique match semantics supported by Python/Perl/POSIX regular expressions. We enforce functionality by syntactic checks.
+
+While in principle Perl regular expression allow naming capture groups using both the .NET syntax and the python syntax, we choose the .NET syntax.
+
+
+Some examples:
+\begin{itemize}
+\item The expression \verb!a(?<x>b)c(?<y>d)! has two named capture groups: \verb!(?<x>b)! and \verb!(?<y>d)! where the former matches $b$ (binding the matched span to $x$, and the latter matches $d$ (binding the matched span to $y$). As such, matching the entire expression against the document $abcd$ is successful, and outputs the singleton relation with the tuple $t$ where $t(x) = [1,2>$ and $t(y) = [3,4>$.
+\item  The expression \verb![.*(?<year>\d\d\d\d).*(?<amount>\d+)\sEUR! matches the input document \verb!In 2019 we earned 2000 EUR!, extracting 2019 in \verb!year!, and 2000 in \verb!amount!
+\item The above examples use the .NET syntax. The Python syntax would be  \verb!a(?P<x>b)c(?P<y>d)! and \verb![.*(?P<year>\d\d\d\d).*(?P<amount>\d+)\sEUR!, respecitvely.
+\end{itemize}
+
+Other important decisions:
+\begin{itemize}
+\item We implicitly assume that a regular expression formula is prefixed by $.*$ and suffixed by $.*$ (which means it will find any  occurrence of the regex in the string), \emph{unless} it starts with the anchors (\verb!^! and  \verb!$!) that ask it to match the entire string? This means that in the second example above, there was no need  explicitly add \verb!.*! at the beginning to make sure that matching could start anywhere.
+\item We assume that the input string is UTF8 encoded. This is compatible with ASCII, but also allows to process international text.
+\end{itemize}
+
+
+\paragraph*{Rules, Programs and Queries}
+\label{sec:rules}
+
+In version 0.1, a \emph{program} will essentially be a (standard) Datalog program where:
+\begin{itemize}
+\item all predicate symbols are \emph{intensional}
+\item regex formulas function as \emph{extensional} relations
+\item all variables are of \emph{span} type. (I.e., every variable can only store spans, not strings or other data).
+\end{itemize}
+This corresponds to what is described in ``Recursive Programs for Document Spanners'', published in ICDT 2019.
+
+\smallskip
+Syntactic considerations:
+\begin{itemize}
+\item It is proposed to use \verb!<-! for separating rule heads from rule bodies.
+\item It is proposed to not impose any syntactic restrictions on relation and variable names.  (In some Datalog variants, variable names must start with a capital \dots).
+\item Inside a rule body, a regex formulas is denoted as follows:  $\textsf{RGX}\texttt{<}f\texttt{>}(x_1,\dots,x_n)$. Here, $f$ is a regex formula and $x_1, \dots, x_n$ is a listing of all the variables in $f$. (Note that these variables may appear in a different order in $f$).
+\item To specify that a regex formula inside a rule needs to executed on a specific input document,  we  use  epxressions like \[ \verb!extract RGX<f>(x_1,\dots,x_n)  from  d!\]  that specifies the regex formula as well as where to extract from. Here, $d$ is allowed to be (1) a constant string or (2) a string variable. We allow defining and instantiating string variables by the syntax
+  \[ d= \textsf{'some string'},\]
+  (which initializes $d$ to the corresponding string literal, or \[ d = \textsf{read('data/a.txt')}\]
+  which loads the contents of the file \verb!data/a.txt! into string variable $d$.
+
+% \item To specify that a regex program needs to be run on a given input document we allow special expressions like \[ \verb!extract R(x,z,_) from d!\]  that specifies the target relation to extract, as well as where to extract from. Here, $d$ is allowed to be (1) a constant string or (2) a string variable. We allow defining and instantiating string variables by the syntax
+%   \[ d= \textsf{'some string'},\]
+%   (which initializes $d$ to the corresponding string literal, or \[ d = \textsf{read('data/a.txt')}\]
+%   which loads the contents of the file \verb!data/a.txt! into string variable $d$.
+\end{itemize}
+
+\smallskip
+
+
+Left for future work:
+\begin{itemize}
+\item Provisions for modularity (e.g., grouping rules in modules, having namespaces to avoid nameclashes etc) will not be included in version 0.1, and are postponed to a later version.
+\item Syntactic sugar for things that are expressible, but cumbersome to expres (e.g., the $\varsigma$ operator, same length, prefix, \dots)  will not be included in version 0.1, and are postponed to a later version.
+\end{itemize}
+
+ 
+
+
+\bibliographystyle{abbrv}
+\bibliography{biblio}
+
+
+
+
+
+
+
+
+
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
