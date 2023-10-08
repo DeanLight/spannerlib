@@ -46,10 +46,6 @@ class Span:
                  span_end: int): # the last (excluded) index of the span.
         if not (isinstance(span_start, int) and isinstance(span_end, int)):
             raise TypeError("Span's start/end must be integers")
-        if span_start < 0 or span_end < 0:
-            raise ValueError("Span's start/end must be >= 0")
-        if not(span_end > span_start):
-            raise ValueError("span_end must be greater than span_start")
         self.span_start = span_start
         self.span_end = span_end
 
@@ -74,7 +70,7 @@ class Span:
     def __repr__(self) -> str:
         return self.__name__
 
-# %% ../nbs/00c_primitive_types.ipynb 8
+# %% ../nbs/00c_primitive_types.ipynb 11
 class DataTypeMapping:
     """
     The DataTypeMapping class Maps between the supported DataTypes to their object type

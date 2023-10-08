@@ -298,6 +298,126 @@ def _run_passes(self: Session, lark_tree: LarkNode, pass_list: list) -> None:
 
 # %% ../nbs/04a_session.ipynb 16
 @patch_method
+def get_pass_stack(self: Session) -> List[Type[GenericPass]]:
+    """
+    @return: the current pass stack.
+    """
+
+    return self._pass_stack.copy()
+
+# %% ../nbs/04a_session.ipynb 18
+@patch_method
+def set_pass_stack(self: Session, user_stack: List[Type[GenericPass]] #  a user supplied pass stack
+                    ) -> List[Type[GenericPass]]: # success message with the new pass stack
+    """
+    Sets a new pass stack instead of the current one.
+    """
+
+    if type(user_stack) is not list:
+        raise TypeError('user stack should be a list of passes')
+    for pass_ in user_stack:
+        if not issubclass(pass_, GenericPass):
+            raise TypeError('user stack should be a subclass of `GenericPass`')
+
+    self._pass_stack = user_stack.copy()
+    return self.get_pass_stack()
+
+# %% ../nbs/04a_session.ipynb 20
+@patch_method
+def print_all_rules(self: Session, head: Optional[str] = None # if specified it will print only rules with the given head relation name
+                    ) -> None:
+    """
+    Prints all the rules that are registered.
+    """
+
+    self._term_graph.print_all_rules(head)
+
+# %% ../nbs/04a_session.ipynb 21
+@patch_method
+def _remove_rule_relation_from_symbols_and_engine(self: Session, relation_name: str) -> None:
+    """
+    Removes the relation from the symbol table and the execution tables.
+
+    @param relation_name: the name of the relation ot remove.
+    """
+    self._symbol_table.remove_rule_relation(relation_name)
+    self._engine.remove_table(relation_name)
+
+# %% ../nbs/04a_session.ipynb 22
+@patch_method
+def _add_imported_relation_to_engine(self: Session, relation_table: Iterable, relation_name: str, relation_types: Sequence[DataTypes]) -> None:
+    symbol_table = self._symbol_table
+    engine = self._engine
+    # first make sure the types are legal, then we add them to the engine (to make sure
+    #  we don't add them in case of an error)
+    facts = []
+
+    for row in relation_table:
+        _verify_relation_types(row, relation_types)
+        typed_line = _text_to_typed_data(row, relation_types)
+        facts.append(AddFact(relation_name, typed_line, relation_types))
+
+    # declare relation if it does not exist
+    if not symbol_table.contains_relation(relation_name):
+        engine.declare_relation_table(RelationDeclaration(relation_name, relation_types))
+        symbol_table.add_relation_schema(relation_name, relation_types, False)
+
+    for fact in facts:
+        engine.add_fact(fact)
+
+# %% ../nbs/04a_session.ipynb 23
+@patch_method
+def import_relation_from_df(self: Session, relation_df: DataFrame, #The DataFrame containing the data to be imported
+                            relation_name: str #The name to be assigned to the relation. It can be an existing relation or a new one
+                            ) -> None:
+    data = relation_df.values.tolist()
+
+    if not isinstance(data, list):
+        raise Exception("dataframe could not be converted to list")
+
+    if len(data) < 1:
+        raise Exception("dataframe is empty")
+
+    relation_types = _infer_relation_type(data[0])
+
+    self._add_imported_relation_to_engine(data, relation_name, relation_types)
+
+# %% ../nbs/04a_session.ipynb 24
+@patch_method
+def send_commands_result_into_df(self: Session, commands: str # the commands to run
+                                    ) -> Union[DataFrame, List]: # formatted results (possibly a dataframe)
+    """
+    run commands as usual and output their formatted results into a dataframe (the commands should contain a query)
+    """
+    commands_results = self.run_commands(commands, print_results=False)
+    if len(commands_results) != 1:
+        raise Exception("the commands must have exactly one output")
+
+    return format_query_results(*commands_results[0])
+
+# %% ../nbs/04a_session.ipynb 25
+@patch_method
+def _relation_name_to_query(self: Session, relation_name: str) -> str:
+    symbol_table = self._symbol_table
+    relation_schema = symbol_table.get_relation_schema(relation_name)
+    relation_arity = len(relation_schema)
+    query = (f"?{relation_name}(" + ", ".join(f"{FREE_VAR_PREFIX}{i}" for i in range(relation_arity)) + ")")
+    return query
+
+# %% ../nbs/04a_session.ipynb 26
+@patch_method
+def export_relation_into_df(self: Session, relation_name: str) -> Union[DataFrame, List]:
+    query = self._relation_name_to_query(relation_name)
+    return self.send_commands_result_into_df(query)
+
+# %% ../nbs/04a_session.ipynb 27
+@patch_method
+def export_relation_into_csv(self: Session, csv_file_name: Path, relation_name: str, delimiter: str = CSV_DELIMITER) -> None:
+    query = self._relation_name_to_query(relation_name)
+    self.send_commands_result_into_csv(query, csv_file_name, delimiter)
+
+# %% ../nbs/04a_session.ipynb 28
+@patch_method
 def run_commands(self: Session, query: str, # The user's input
                     print_results: bool = True, # whether to print the results to stdout or not
                     format_results: bool = False # if this is true, return the formatted result instead of the `[Query, List]` pair
@@ -323,7 +443,7 @@ def run_commands(self: Session, query: str, # The user's input
     else:
         return query_results
 
-# %% ../nbs/04a_session.ipynb 17
+# %% ../nbs/04a_session.ipynb 33
 @patch_method
 def register(self: Session, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes],
             out_rel: Union[List[DataTypes], Callable[[int], Sequence[DataTypes]]]) -> None:
@@ -334,44 +454,7 @@ def register(self: Session, ie_function: Callable, ie_function_name: str, in_rel
     """
     self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-# %% ../nbs/04a_session.ipynb 18
-@patch_method
-def get_pass_stack(self: Session) -> List[Type[GenericPass]]:
-    """
-    @return: the current pass stack.
-    """
-
-    return self._pass_stack.copy()
-
-# %% ../nbs/04a_session.ipynb 19
-@patch_method
-def set_pass_stack(self: Session, user_stack: List[Type[GenericPass]] #  a user supplied pass stack
-                    ) -> List[Type[GenericPass]]: # success message with the new pass stack
-    """
-    Sets a new pass stack instead of the current one.
-    """
-
-    if type(user_stack) is not list:
-        raise TypeError('user stack should be a list of passes')
-    for pass_ in user_stack:
-        if not issubclass(pass_, GenericPass):
-            raise TypeError('user stack should be a subclass of `GenericPass`')
-
-    self._pass_stack = user_stack.copy()
-    return self.get_pass_stack()
-
-# %% ../nbs/04a_session.ipynb 20
-@patch_method
-def _remove_rule_relation_from_symbols_and_engine(self: Session, relation_name: str) -> None:
-    """
-    Removes the relation from the symbol table and the execution tables.
-
-    @param relation_name: the name of the relation ot remove.
-    """
-    self._symbol_table.remove_rule_relation(relation_name)
-    self._engine.remove_table(relation_name)
-
-# %% ../nbs/04a_session.ipynb 21
+# %% ../nbs/04a_session.ipynb 40
 @patch_method
 def remove_rule(self: Session, rule: str # The rule to be removed
                 ) -> None:
@@ -383,7 +466,7 @@ def remove_rule(self: Session, rule: str # The rule to be removed
         relation_name = rule_to_relation_name(rule)
         self._remove_rule_relation_from_symbols_and_engine(relation_name)
 
-# %% ../nbs/04a_session.ipynb 22
+# %% ../nbs/04a_session.ipynb 47
 @patch_method
 def remove_all_rules(self: Session, rule_head: Optional[str] = None # if rule head is not none we remove all rules with rule_head
                         ) -> None:
@@ -399,7 +482,7 @@ def remove_all_rules(self: Session, rule_head: Optional[str] = None # if rule he
         self._term_graph.remove_rules_with_head(rule_head)
         self._remove_rule_relation_from_symbols_and_engine(rule_head)
 
-# %% ../nbs/04a_session.ipynb 23
+# %% ../nbs/04a_session.ipynb 54
 @patch_method
 def clear_relation(self: Session, relation_name: str # The name of the relation to clear
                     ) -> None:
@@ -409,66 +492,7 @@ def clear_relation(self: Session, relation_name: str # The name of the relation 
 
     self._engine.clear_relation(relation_name)
 
-# %% ../nbs/04a_session.ipynb 24
-@patch_method
-def _add_imported_relation_to_engine(self: Session, relation_table: Iterable, relation_name: str, relation_types: Sequence[DataTypes]) -> None:
-    symbol_table = self._symbol_table
-    engine = self._engine
-    # first make sure the types are legal, then we add them to the engine (to make sure
-    #  we don't add them in case of an error)
-    facts = []
-
-    for row in relation_table:
-        _verify_relation_types(row, relation_types)
-        typed_line = _text_to_typed_data(row, relation_types)
-        facts.append(AddFact(relation_name, typed_line, relation_types))
-
-    # declare relation if it does not exist
-    if not symbol_table.contains_relation(relation_name):
-        engine.declare_relation_table(RelationDeclaration(relation_name, relation_types))
-        symbol_table.add_relation_schema(relation_name, relation_types, False)
-
-    for fact in facts:
-        engine.add_fact(fact)
-
-# %% ../nbs/04a_session.ipynb 25
-@patch_method
-def import_relation_from_csv(self: Session, csv_file_name: Path, relation_name: str = None, delimiter: str = CSV_DELIMITER) -> None:
-    if not Path(csv_file_name).is_file():
-        raise IOError("csv file does not exist")
-
-    if os.stat(csv_file_name).st_size == 0:
-        raise IOError("csv file is empty")
-
-    # the relation_name is either an argument or the file's name
-    if relation_name is None:
-        relation_name = Path(csv_file_name).stem
-
-    with open(csv_file_name) as fh:
-        reader = csv.reader(fh, delimiter=delimiter)
-
-        # read first line and go back to start of file - make sure there is no empty line!
-        relation_types = _infer_relation_type(next(reader))
-        fh.seek(0)
-
-        self._add_imported_relation_to_engine(reader, relation_name, relation_types)
-
-# %% ../nbs/04a_session.ipynb 26
-@patch_method
-def import_relation_from_df(self: Session, relation_df: DataFrame, relation_name: str) -> None:
-    data = relation_df.values.tolist()
-
-    if not isinstance(data, list):
-        raise Exception("dataframe could not be converted to list")
-
-    if len(data) < 1:
-        raise Exception("dataframe is empty")
-
-    relation_types = _infer_relation_type(data[0])
-
-    self._add_imported_relation_to_engine(data, relation_name, relation_types)
-
-# %% ../nbs/04a_session.ipynb 27
+# %% ../nbs/04a_session.ipynb 61
 @patch_method
 def send_commands_result_into_csv(self: Session, commands: str, # the commands to run
                                     csv_file_name: Path, # the file into which the output will be written
@@ -491,41 +515,7 @@ def send_commands_result_into_csv(self: Session, commands: str, # the commands t
             writer = csv.writer(f, delimiter=delimiter)
             writer.writerows(formatted_result)
 
-# %% ../nbs/04a_session.ipynb 28
-@patch_method
-def send_commands_result_into_df(self: Session, commands: str # the commands to run
-                                    ) -> Union[DataFrame, List]: # formatted results (possibly a dataframe)
-    """
-    run commands as usual and output their formatted results into a dataframe (the commands should contain a query)
-    """
-    commands_results = self.run_commands(commands, print_results=False)
-    if len(commands_results) != 1:
-        raise Exception("the commands must have exactly one output")
-
-    return format_query_results(*commands_results[0])
-
-# %% ../nbs/04a_session.ipynb 29
-@patch_method
-def _relation_name_to_query(self: Session, relation_name: str) -> str:
-    symbol_table = self._symbol_table
-    relation_schema = symbol_table.get_relation_schema(relation_name)
-    relation_arity = len(relation_schema)
-    query = (f"?{relation_name}(" + ", ".join(f"{FREE_VAR_PREFIX}{i}" for i in range(relation_arity)) + ")")
-    return query
-
-# %% ../nbs/04a_session.ipynb 30
-@patch_method
-def export_relation_into_df(self: Session, relation_name: str) -> Union[DataFrame, List]:
-    query = self._relation_name_to_query(relation_name)
-    return self.send_commands_result_into_df(query)
-
-# %% ../nbs/04a_session.ipynb 31
-@patch_method
-def export_relation_into_csv(self: Session, csv_file_name: Path, relation_name: str, delimiter: str = CSV_DELIMITER) -> None:
-    query = self._relation_name_to_query(relation_name)
-    self.send_commands_result_into_csv(query, csv_file_name, delimiter)
-
-# %% ../nbs/04a_session.ipynb 32
+# %% ../nbs/04a_session.ipynb 63
 @patch_method
 def print_registered_ie_functions(self: Session) -> None:
     """
@@ -533,7 +523,7 @@ def print_registered_ie_functions(self: Session) -> None:
     """
     self._symbol_table.print_registered_ie_functions()
 
-# %% ../nbs/04a_session.ipynb 33
+# %% ../nbs/04a_session.ipynb 65
 @patch_method
 def remove_ie_function(self: Session, name: str # the name of the ie function to remove
                         ) -> None:
@@ -542,7 +532,7 @@ def remove_ie_function(self: Session, name: str # the name of the ie function to
     """
     self._symbol_table.remove_ie_function(name)
 
-# %% ../nbs/04a_session.ipynb 34
+# %% ../nbs/04a_session.ipynb 67
 @patch_method
 def remove_all_ie_functions(self: Session) -> None:
     """
@@ -550,7 +540,7 @@ def remove_all_ie_functions(self: Session) -> None:
     """
     self._symbol_table.remove_all_ie_functions()
 
-# %% ../nbs/04a_session.ipynb 35
+# %% ../nbs/04a_session.ipynb 69
 @patch_method
 def print_all_rules(self: Session, head: Optional[str] = None # if specified it will print only rules with the given head relation name
                     ) -> None:
@@ -559,3 +549,45 @@ def print_all_rules(self: Session, head: Optional[str] = None # if specified it 
     """
 
     self._term_graph.print_all_rules(head)
+
+# %% ../nbs/04a_session.ipynb 74
+@patch_method
+def import_relation_from_csv(self: Session, csv_file_name: Path, #The path to the CSV file that is being imported
+                             relation_name: str = None, #The name of the relation. If not provided, it will be derived from the CSV file name
+                             delimiter: str = CSV_DELIMITER #The delimiter used in the CSV file
+                             )-> None: 
+    if not Path(csv_file_name).is_file():
+        raise IOError("csv file does not exist")
+
+    if os.stat(csv_file_name).st_size == 0:
+        raise IOError("csv file is empty")
+
+    # the relation_name is either an argument or the file's name
+    if relation_name is None:
+        relation_name = Path(csv_file_name).stem
+
+    with open(csv_file_name) as fh:
+        reader = csv.reader(fh, delimiter=delimiter)
+
+        # read first line and go back to start of file - make sure there is no empty line!
+        relation_types = _infer_relation_type(next(reader))
+        fh.seek(0)
+
+        self._add_imported_relation_to_engine(reader, relation_name, relation_types)
+
+# %% ../nbs/04a_session.ipynb 79
+@patch_method
+def import_relation_from_df(self: Session, relation_df: DataFrame, #The DataFrame containing the data to be imported
+                            relation_name: str #The name to be assigned to the relation. It can be an existing relation or a new one
+                            ) -> None:
+    data = relation_df.values.tolist()
+
+    if not isinstance(data, list):
+        raise Exception("dataframe could not be converted to list")
+
+    if len(data) < 1:
+        raise Exception("dataframe is empty")
+
+    relation_types = _infer_relation_type(data[0])
+
+    self._add_imported_relation_to_engine(data, relation_name, relation_types)
