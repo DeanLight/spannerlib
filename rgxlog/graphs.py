@@ -401,7 +401,7 @@ class NetxStateGraph(NetxGraph):
         term_string = f"({node_id}) ({node_attrs[STATE]}) {node_attrs[TYPE]}{term_value_string}"
         return term_string
 
-# %% ../nbs/03c_graphs.ipynb 31
+# %% ../nbs/03c_graphs.ipynb 34
 class DependencyGraph(NetxGraph):
     """
     The `DependencyGraph` class is designed to map and manage dependencies between rule relations in an RGXLog program. Each rule relation in the program corresponds to a node in this graph, with the node's ID being the name of the rule relation.
@@ -542,7 +542,7 @@ class DependencyGraph(NetxGraph):
     def __str__(self) -> str:
         return self.__class__.__name__ + " is:\n" + super().__str__()
 
-# %% ../nbs/03c_graphs.ipynb 33
+# %% ../nbs/03c_graphs.ipynb 36
 class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
     """
     A wrapper to `NetxStateGraph` that adds utility functions which are independent
@@ -647,7 +647,7 @@ class TermGraphBase(NetxStateGraph, metaclass=ABCMeta):
         return super().__str__() + "\n" + str(self._dependency_graph)
 
 
-# %% ../nbs/03c_graphs.ipynb 42
+# %% ../nbs/03c_graphs.ipynb 45
 class TermGraph(TermGraphBase):
     """
         This class is designed to transform each rule node in an RGXLog program into an execution graph. These execution graphs are then added to a term graph. <br>
@@ -781,7 +781,7 @@ class TermGraph(TermGraphBase):
 
         return bounding_graph
 
-# %% ../nbs/03c_graphs.ipynb 43
+# %% ../nbs/03c_graphs.ipynb 46
 @patch_method
 def add_relation(self: TermGraph, 
                     relation: Relation # the relation to add
@@ -804,7 +804,7 @@ def add_relation(self: TermGraph,
 
     return union_id
 
-# %% ../nbs/03c_graphs.ipynb 44
+# %% ../nbs/03c_graphs.ipynb 47
 @patch_method
 def get_relation_union_node(self: TermGraph, 
                             relation_name: str # name of a relation
@@ -813,7 +813,7 @@ def get_relation_union_node(self: TermGraph,
     union_id, = self.get_children(relation_name)  # relation has only one child (the union node).
     return union_id
 
-# %% ../nbs/03c_graphs.ipynb 45
+# %% ../nbs/03c_graphs.ipynb 48
 @patch_method
 def add_rule_to_term_graph(self: TermGraph, 
                             rule: Rule # the rule to add
@@ -962,7 +962,7 @@ def add_rule_to_term_graph(self: TermGraph,
     self._dependency_graph.add_dependencies(head_relation, relations)
 
 
-# %% ../nbs/03c_graphs.ipynb 46
+# %% ../nbs/03c_graphs.ipynb 49
 @patch_method
 def remove_rule(self: TermGraph, 
                 rule: str # the rule to remove. unlike add_rule, here rule should be string as it is a user input
