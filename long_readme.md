@@ -70,7 +70,7 @@ Here is a [python implementation of a Datalog library](https://github.com/pcarbo
 ### relevant papers
 
 * [spannerlog](papers/spanner_log_Y_nachshon.pdf)
-* [Recursive RGXLog](papers/Recures_programs_for_document_spanners.pdf)
+* [Recursive RGXLog](https://drops.dagstuhl.de/opus/volltexte/2019/10315/pdf/LIPIcs-ICDT-2019-13.pdf)
 
 ## version consideration
 * We finished working on 0.0.5 which is the MVP of a working RGXlog REPL
@@ -448,7 +448,7 @@ Without going into an involved derivation of the structure of this engine, i can
     * This tree will need to save the evaluation state of each node (i.e. {computed,not-computed,dirty})
     * We can work with a networkX tree for now.
     * In version 0.0.5 we do not need to merge terms with overlapping structures, see example below.
-    * An example of such a tree can be seen in figure 1 [here](papers/Provenance_and_Probabilities_in_Relational_Databases.pdf) (note that in that case the logic is of abstract semi-rings over terms, but the idea is the same)
+    * An example of such a tree can be seen in figure 1 [here](https://databasetheory.org/sites/default/files/2018-05/03_principles_Senellart.pdf) (note that in that case the logic is of abstract semi-rings over terms, but the idea is the same)
 * A variable table
     * A mapping between variables and the nodes they point to in the term forest
     * can be a python dict for now
