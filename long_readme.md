@@ -69,7 +69,7 @@ Here is a [python implementation of a Datalog library](https://github.com/pcarbo
 
 ### relevant papers
 
-* [spannerlog](papers/spanner_log_Y_nachshon.pdf)
+* [spannerlog](https://dl.acm.org/doi/10.1145/2932194.2932200)
 * [Recursive RGXLog](https://drops.dagstuhl.de/opus/volltexte/2019/10315/pdf/LIPIcs-ICDT-2019-13.pdf)
 
 ## version consideration
