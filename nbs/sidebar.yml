@@ -5,6 +5,7 @@ website:
       - section: Tutorials
         contents:
         - introduction.ipynb
+        - advanced_usage.ipynb
         - live_repl.ipynb
       - section: src
         contents:
