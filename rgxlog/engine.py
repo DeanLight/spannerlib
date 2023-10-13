@@ -9,6 +9,7 @@ from nbdev.showdoc import show_doc
 from fastcore.basics import patch
 
 # %% ../nbs/02a_engine.ipynb 6
+#| output: false
 import logging
 import sqlite3 as sqlite
 import tempfile

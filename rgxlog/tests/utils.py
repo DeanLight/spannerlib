@@ -7,6 +7,7 @@ __all__ = ['TEMP_FILE_NAME', 'is_equal_stripped_sorted_tables', 'is_equal_datafr
            'run_commands_into_csv_test']
 
 # %% ../../nbs/tests/05_tests_utils.ipynb 3
+#| output: false
 import numpy as np
 import tempfile
 from pandas import DataFrame

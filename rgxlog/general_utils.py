@@ -8,6 +8,7 @@ __all__ = ['SPAN_GROUP1', 'SPAN_GROUP2', 'SPAN_PATTERN', 'QUERY_RESULT_PREFIX', 
            'extract_one_relation']
 
 # %% ../nbs/00b_general_utils.ipynb 4
+#| output: false
 import functools
 import re
 from typing import (Union, Tuple, Set, Dict, List, Optional, Callable, Any, no_type_check, Sequence)

@@ -8,6 +8,7 @@ __all__ = ['get_term_list_string', 'RelationDeclaration', 'Relation', 'IERelatio
 from nbdev.showdoc import show_doc
 
 # %% ../nbs/03a_ast_node_types.ipynb 5
+#| output: false
 from typing import List, Tuple, Set, Union, Sequence
 from .primitive_types import DataTypes, DataTypeMapping, Span
 

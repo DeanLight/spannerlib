@@ -1,5 +1,3 @@
-![Tests](https://github.com/DeanLight/spanner_workbench/actions/workflows/regression_testing.yml/badge.svg)
-
 The spanner workbench is an interpreter and a REPL system for spanner-like languages. Our goal in developing the spanner workbench is twofold:
 
 * First and foremost, to allow students learning about spanner languages an easy to use system to play around with the languages.
@@ -11,23 +9,21 @@ The spanner workbench is an interpreter and a REPL system for spanner-like langu
 To download and install RGXLog run the following commands in your terminal:
 
 ```bash
-TODO update
 git clone https://github.com/DeanLight/spanner_workbench
 cd spanner_workbench
 
-pip install -r requirements.txt
-pip install -e src/rgxlog-interpreter 
+pip install -e .
 ```
 
 download corenlp to
-`spanner_workbench/src/rgxlog-interpreter/src/rgxlog/stdlib`
+`spanner_workbench/rgxlog/`
 
 from [this link](https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl)
 
 ```bash
 # verify everything worked
 # first time might take a couple of minutes since run time assets are being configured
-pytest ./src/rgxlog-interpreter/tests -s
+python nbdev_test.py
 
 ```
 
@@ -39,7 +35,7 @@ cd spanner_workbench
 ```
 
 download corenlp to
-`spanner_workbench/src/rgxlog-interpreter/src/rgxlog/stdlib`
+`spanner_workbench/rgxlog/`
 
 from [this link](https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl)
 
@@ -59,7 +55,7 @@ docker run --name swc --rm -it \
   spanner_workbench_image jupyter notebook --no-browser --allow-root
 
 #Verify tests inside the container
-pytest /spanner_workbench/src/rgxlog-interpreter/tests -s
+python /spanner_workbench/nbdev_test.py
 
 ```
 
@@ -120,5 +116,5 @@ printing results for query 'ancestor(Ancestor, Descendant)':
 
 ### Relevant papers
 
-* [spannerlog](papers/spanner_log_Y_nachshon.pdf)
-* [Recursive RGXLog](papers/Recures_programs_for_document_spanners.pdf)
+* [spannerlog](https://dl.acm.org/doi/10.1145/2932194.2932200)
+* [Recursive RGXLog](https://drops.dagstuhl.de/opus/volltexte/2019/10315/pdf/LIPIcs-ICDT-2019-13.pdf)
