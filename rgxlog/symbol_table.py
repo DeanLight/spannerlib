@@ -4,6 +4,7 @@
 __all__ = ['SymbolTableBase', 'SymbolTable']
 
 # %% ../nbs/01b_symbol_table.ipynb 5
+#| output: false
 from abc import ABC, abstractmethod
 from typing import Iterable, Dict, Set, Callable, List, Union, Sequence, Tuple
 from .primitive_types import DataTypes, DataTypeMapping

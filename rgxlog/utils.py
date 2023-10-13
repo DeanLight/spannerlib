@@ -53,17 +53,15 @@ def kill_process_and_children(process: Popen) -> None:
         process.kill()  # lastly, kill the process
 
 # %% ../nbs/00a_utils.ipynb 6
-def run_cli_command(command: str, stderr: bool = False, shell: bool = False, timeout: float = -1) -> Iterable[str]:
+def run_cli_command(command: str, # a single command string
+                    stderr: bool = False, # if true, suppress stderr output. default: `False`
+                    # if true, spawn shell process (e.g. /bin/sh), which allows using system variables (e.g. $HOME),
+                    # but is considered a security risk (see: https://docs.python.org/3/library/subprocess.html#security-considerations)
+                    shell: bool = False, 
+                    timeout: float = -1 # if positive, kill the process after `timeout` seconds. default: `-1`
+                    ) -> Iterable[str]: # string iterator
     """
     This utility can be used to run any cli command, and iterate over the output.
-
-    @param timeout: if positive, kill the process after `timeout` seconds. default: `-1`.
-    @param stderr: if true, suppress stderr output. default: `False`.
-    @param shell: if true, spawn shell process (e.g. /bin/sh), which allows using system variables (e.g. $HOME),
-        but is considered a security risk (see:
-        https://docs.python.org/3/library/subprocess.html#security-considerations).
-    @param command: a single command string.
-    @return: string iterator.
     """
     # `shlex.split` just splits the command into a list properly
     command_list = shlex.split(command, posix=IS_POSIX)
@@ -91,7 +89,8 @@ def run_cli_command(command: str, stderr: bool = False, shell: bool = False, tim
         logger.info(f"stderr from process {command_list[0]}: {process_stderr}")
 
 # %% ../nbs/00a_utils.ipynb 7
-def get_base_file_path(current_dir : Path) -> Path:
+def get_base_file_path(current_dir : Path # The path of the current directory
+                       ) -> Path: # The absolute path of parent folder of nbs
     path_parts = current_dir.parts
     if 'nbs' in current_dir.parts:
         index_of_nbs = current_dir.parts.index('nbs')
@@ -100,13 +99,11 @@ def get_base_file_path(current_dir : Path) -> Path:
 
 # %% ../nbs/00a_utils.ipynb 8
 import os
-def download_file_from_google_drive(file_id: str, destination: Path) -> None:
+def download_file_from_google_drive(file_id: str, # the id of the file to download
+                                     destination: Path # the path to which the file will be downloaded
+                                     ) -> None:
     """
-    Downloads a file from google drive.
-    Taken from https://stackoverflow.com/questions/25010369/wget-curl-large-file-from-google-drive/39225039#39225039.
-
-    @param file_id: the id of the file to download.
-    @param destination: the path to which the file will be downloaded.
+    [Downloads a file from Google Drive](https://stackoverflow.com/questions/25010369/wget-curl-large-file-from-google-drive/39225039#39225039)
     """
     destination = Path(os.path.join(get_base_file_path(Path.cwd()),'rgxlog','stanford-corenlp-4.1.0.zip'))
     requests_session = requests.Session()

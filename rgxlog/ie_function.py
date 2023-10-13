@@ -4,6 +4,7 @@
 __all__ = ['IEFunction']
 
 # %% ../nbs/03b_ie_function.ipynb 4
+#| output: false
 from typing import Iterable, Callable, Union, Tuple, List, Sequence, Any
 from .primitive_types import DataTypes
 

@@ -19,6 +19,7 @@ from tabulate import tabulate
 import os
 
 # %% ../nbs/04a_session.ipynb 6
+#| output: false
 from .utils import get_base_file_path
 from .engine import SqliteEngine
 from .ast_node_types import AddFact, RelationDeclaration
