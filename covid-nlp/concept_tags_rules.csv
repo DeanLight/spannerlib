@@ -1,0 +1,19 @@
+(?i)(?:hcov|covid(?:(?:-)?(?:\s)?19|10)?|2019-cov|cov2|ncov-19|covd 19|no-cov|sars cov),COVID-19,lemma
+(?i)(?:coivid|(?:novel )?corona(?:virus)?(?: (?:20)?19)?|sars(?:\s)?(?:-)?(?:\s)?cov(?:id)?(?:-)?(?:2|19)),COVID-19,lemma
+(?i)(?:\+(?: ve)?|\(\+\)|positive|\bpos\b|active|confirmed),positive,lemma
+(?i)(?:pneum(?:onia)?|pna|hypoxia|septic shoc|ards\(?(?:(?:[12])/2)\)?|(?:hypoxemic|acute|severe)? resp(?:iratory)? failure(?:\(?(?:[12]/2)\)?)?)",associated_diagnosis,lemma
+(?i)(?:(?:diagnos(?:is|ed)|dx(\.)?)(?:of|with)?),diagnosis,lemma
+(?i)(?:^screen),screening,lemma
+(?i)(?:in contact with|any one|co-worker|at work|(?:the|a)(?:wo)?man|(?:another|a) (?:pt|patient|pt\.)),other_experiencer,lemma
+(?i)(?:patient|pt(?:\.)?|vt|veteran),patient,lemma
+(?i)(?:like_num (?:days|day|weeks|week|months|month) (?:ago|prior)),timesx,lemma
+(?i)(?:(?:antibody|antibodies|ab) test),antibody test,lemma
+(?i)(?:(?:coronavirus|hcovs?|ncovs?|covs?)(?:\s)?(?:-)?(?:\s)?(?: infection)?(?: strain)?(?:\s)?(?:229(?:e)?|oc(?:-)?(?:43)?|o43|0c43|43|nl(?:16(?:3|5))?|hku(?:t|-)?1|hkui|emc|63)),OTHER_CORONAVIRUS,lemma
+(?i)(?:(?:229(?:e)?|oc(?:-)?(?:43)?|o43|0c43|43|nl(?:16(?:3|5))?|hku(?:t|-)?1|hkui|emc|63) (?:coronavirus|hcovs?|ncovs?|covs?)),OTHER_CORONAVIRUS,lemma
+(?i)(?:non(?:\s)?(?:-)?(?:\s)?(?:novel|covid|ncovid|covid-19)(?: coronavirus)?|other coronavirus),OTHER_CORONAVIRUS,lemma
+(?i)(?:wife|husband|spouse|family|member|girlfriend|boyfriend|mother|father|nephew|niece|grandparent|grandparents|granddaughter|relative|relatives|caregiver),family,pos
+(?i)(?:grandchild|grandson|cousin|grandmother|grandfather|parent|son|daughter|mom|dad|brother|sister|aunt|uncle|child|children|sibling|siblings),family,pos
+(?i)(?:someone|somebody|person|anyone|anybody|people|individual|individuals|teacher|anybody|employees|employer|customer|client|residents),other_experiencer,pos
+(?i)(?:resident|pts|patients|coworker|coworkers|workers|colleague|captain|captains|pilot|pilots|sailor|sailors|meeting),other_experiencer,pos
+(?i)(?:boyfriend|persons|person|church|convention|guest|party|attendee|conference|roommate|friend|friends|coach|player|neighbor|manager|boss),other_experiencer,pos
+(?i)(?:cashier|landlord|worked|works|^mate|nobody|mates|housemate|housemates|hotel|soldier|airport|tsa|lady|ladies|lobby|staffer|staffers),other_experiencer,pos
