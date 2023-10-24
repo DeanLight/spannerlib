@@ -43,7 +43,10 @@ jobs:
           else
             test -f setup.py && pip install -e ".[dev]"
           fi
+      - name: Build Docs
+        run: |
           python nbdev_preview.py
+          
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
