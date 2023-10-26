@@ -6,6 +6,7 @@ website:
         contents:
         - introduction.ipynb
         - advanced_usage.ipynb
+        - building_your_optimization.ipynb
         - live_repl.ipynb
       - section: src
         contents:
