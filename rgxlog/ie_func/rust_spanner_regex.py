@@ -6,8 +6,8 @@ __all__ = ['RUST_RGX_IN_TYPES', 'DOWNLOAD_RUST_URL', 'PACKAGE_GIT_URL', 'PACKAGE
            'RUSTUP_TOOLCHAIN', 'CARGO_CMD_ARGS', 'RUSTUP_CMD_ARGS', 'SHORT_TIMEOUT', 'CARGO_TIMEOUT', 'RUSTUP_TIMEOUT',
            'TIMEOUT_MINUTES', 'WINDOWS_OS', 'WHICH_WORD', 'REGEX_EXE_PATH', 'ESCAPED_STRINGS_PATTERN', 'SPAN_PATTERN',
            'TEMP_FILE_NAME', 'logger', 'RGX', 'RGX_STRING', 'RGX_FROM_FILE', 'RGX_STRING_FROM_FILE',
-           'rgx_span_out_type', 'rgx_string_out_type', 'rgx', 'rgx_span', 'rgx_string', 'rgx_span_from_file',
-           'rgx_string_from_file']
+           'download_and_install_rust_regex', 'rgx_span_out_type', 'rgx_string_out_type', 'rgx', 'rgx_span',
+           'rgx_string', 'rgx_span_from_file', 'rgx_string_from_file']
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 4
 import logging
@@ -65,7 +65,11 @@ TEMP_FILE_NAME = "temp"
 logger = logging.getLogger(__name__)
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 20
-def _download_and_install_rust_regex() -> None:
+def _is_installed_package() -> bool:
+    return Path(REGEX_EXE_PATH).is_file()
+
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 21
+def download_and_install_rust_regex() -> None:
     # don't use "cargo -V" because it starts downloading stuff sometimes
     with Popen([WHICH_WORD, "cargo"], stdout=PIPE, stderr=PIPE) as cargo:
         errcode = cargo.wait(SHORT_TIMEOUT)
@@ -90,10 +94,6 @@ def _download_and_install_rust_regex() -> None:
         raise Exception("installation failed - check the output")
 
     logger.warning("installation completed")
-
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 21
-def _is_installed_package() -> bool:
-    return Path(REGEX_EXE_PATH).is_file()
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 22
 @no_type_check
@@ -211,12 +211,3 @@ RGX_STRING_FROM_FILE = dict(ie_function=rgx_string_from_file,
                             ie_function_name='rgx_string_from_file',
                             in_rel=RUST_RGX_IN_TYPES,
                             out_rel=rgx_string_out_type)
-
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 35
-#| eval: false
-# the package is installed when this module is imported, exclude the scenraio of github runner
-try:
-    if not _is_installed_package() and 'runner' not in os.getcwd():
-        _download_and_install_rust_regex()
-except:
-    logger.error(f"cargo or rustup are not installed in $PATH. please install rust: {DOWNLOAD_RUST_URL}")

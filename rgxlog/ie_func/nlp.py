@@ -2,12 +2,13 @@
 
 # %% auto 0
 __all__ = ['JAVA_MIN_VERSION', 'NLP_URL', 'NLP_DIR_NAME', 'CURR_DIR', 'NLP_DIR_PATH', 'JAVA_DOWNLOADER', 'INSTALLATION_PATH',
-           'STANFORD_ZIP_GOOGLE_DRIVE_ID', 'STANFORD_ZIP_NAME', 'STANFORD_ZIP_PATH', 'logger', 'Tokenize', 'SSplit',
-           'POS', 'Lemma', 'NER', 'EntityMentions', 'RGXNer', 'TokensRegex', 'CleanXML', 'Parse', 'DepParse', 'Coref',
-           'OpenIE', 'KBP', 'Quote', 'Sentiment', 'TrueCase', 'UDFeats', 'tokenize_wrapper', 'ssplit_wrapper',
-           'pos_wrapper', 'lemma_wrapper', 'ner_wrapper', 'entitymentions_wrapper', 'regexner_wrapper',
-           'tokensregex_wrapper', 'cleanxml_wrapper', 'parse_wrapper', 'dependency_parse_wrapper', 'coref_wrapper',
-           'openie_wrapper', 'kbp_wrapper', 'quote_wrapper', 'sentiment_wrapper', 'truecase_wrapper', 'udfeats_wrapper']
+           'STANFORD_ZIP_GOOGLE_DRIVE_ID', 'STANFORD_ZIP_NAME', 'STANFORD_ZIP_PATH', 'logger', 'CoreNLPEngine',
+           'Tokenize', 'SSplit', 'POS', 'Lemma', 'NER', 'EntityMentions', 'RGXNer', 'TokensRegex', 'CleanXML', 'Parse',
+           'DepParse', 'Coref', 'OpenIE', 'KBP', 'Quote', 'Sentiment', 'TrueCase', 'UDFeats',
+           'download_and_install_nlp', 'tokenize_wrapper', 'ssplit_wrapper', 'pos_wrapper', 'lemma_wrapper',
+           'ner_wrapper', 'entitymentions_wrapper', 'regexner_wrapper', 'tokensregex_wrapper', 'cleanxml_wrapper',
+           'parse_wrapper', 'dependency_parse_wrapper', 'coref_wrapper', 'openie_wrapper', 'kbp_wrapper',
+           'quote_wrapper', 'sentiment_wrapper', 'truecase_wrapper', 'udfeats_wrapper']
 
 # %% ../../nbs/ie_func/04b_nlp.ipynb 3
 import json
@@ -84,12 +85,14 @@ def _run_installation() -> None:
             raise IOError("installation failed")
 
 # %% ../../nbs/ie_func/04b_nlp.ipynb 10
-#| eval: false
-try:
-    _run_installation()
-    CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
-except:
-    logger.error("Installation NLP failed")
+CoreNLPEngine = None
+def download_and_install_nlp():
+    global CoreNLPEngine
+    try:
+        _run_installation()
+        CoreNLPEngine = StanfordCoreNLP(NLP_DIR_PATH)
+    except:
+        logger.error("Installation NLP failed")
 
 # %% ../../nbs/ie_func/04b_nlp.ipynb 11
 def tokenize_wrapper(sentence: str) -> Iterator:
