@@ -1,0 +1,5 @@
+(?i)(?:COVID-19(?: COVID-19)+),COVID-19
+(?i)(?:positive(?: positive)+),positive
+(?i)(?:patient(?: patient)+),patient
+(?i)(?:other_experiencer(?: other_experiencer)+),other_experiencer
+(?i)(?:screening(?: screening)+),screening
