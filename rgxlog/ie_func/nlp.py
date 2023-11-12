@@ -31,7 +31,7 @@ JAVA_MIN_VERSION = 1.8
 
 NLP_URL = "https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
-CURR_DIR = Path(os.path.join(get_base_file_path(Path.cwd()),'rgxlog'))
+CURR_DIR = Path(os.path.join(get_base_file_path(),'rgxlog'))
 NLP_DIR_PATH = str(CURR_DIR / NLP_DIR_NAME)
 JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = Path.home()

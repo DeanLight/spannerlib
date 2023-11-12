@@ -267,7 +267,7 @@ class Session:
         """
 
         # Make the grammar_file_path generic no matter if running from notebook or from exported python file
-        current_dir = get_base_file_path(Path.cwd())
+        current_dir = get_base_file_path()
 
         grammar_file_path = current_dir / 'rgxlog'
         with open(grammar_file_path / GRAMMAR_FILE_NAME, 'r') as grammar_file:
