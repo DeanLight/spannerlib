@@ -91,7 +91,7 @@ def run_cli_command(command: str, # a single command string
 
 # %% ../nbs/00a_utils.ipynb 7
 def get_base_file_path() -> Path: # The absolute path of parent folder of nbs
-    current_dir = os.path.dirname(__file__)
+    current_dir = Path(os.path.dirname(__file__))
     path_parts = current_dir.parts
     index_of_nbs = current_dir.parts.index('rgxlog')
     current_dir = current_dir.joinpath(*path_parts[:index_of_nbs])
