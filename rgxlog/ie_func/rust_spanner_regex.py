@@ -35,7 +35,7 @@ PACKAGE_WIN_FILENAME = PACKAGE_NAME + ".exe"
 REGEX_FOLDER_NAME = "enum_spanner_regex"
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 12
-REGEX_FOLDER_PATH = Path(os.path.join(get_base_file_path(Path.cwd()),'rgxlog')) / REGEX_FOLDER_NAME
+REGEX_FOLDER_PATH = Path(os.path.join(get_base_file_path(),'rgxlog')) / REGEX_FOLDER_NAME
 REGEX_TEMP_PATH = Path(REGEX_FOLDER_PATH) / "temp{}.txt"
 REGEX_EXE_PATH_POSIX = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_NAME
 REGEX_EXE_PATH_WIN = Path(REGEX_FOLDER_PATH) / "bin" / PACKAGE_WIN_FILENAME

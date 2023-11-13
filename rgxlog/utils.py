@@ -9,6 +9,7 @@ import shlex
 import logging
 import psutil
 import requests
+import os
 from pathlib import Path
 from subprocess import Popen, PIPE
 from sys import platform
@@ -89,12 +90,11 @@ def run_cli_command(command: str, # a single command string
         logger.info(f"stderr from process {command_list[0]}: {process_stderr}")
 
 # %% ../nbs/00a_utils.ipynb 7
-def get_base_file_path(current_dir : Path # The path of the current directory
-                       ) -> Path: # The absolute path of parent folder of nbs
+def get_base_file_path() -> Path: # The absolute path of parent folder of nbs
+    current_dir = Path(os.path.dirname(__file__))
     path_parts = current_dir.parts
-    if 'nbs' in current_dir.parts:
-        index_of_nbs = current_dir.parts.index('nbs')
-        current_dir = current_dir.joinpath(*path_parts[:index_of_nbs])
+    index_of_rgxlog = current_dir.parts.index('rgxlog')
+    current_dir = current_dir.joinpath(*path_parts[:index_of_rgxlog])
     return current_dir
 
 # %% ../nbs/00a_utils.ipynb 8
