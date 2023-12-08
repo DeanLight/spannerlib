@@ -1,1 +1,0 @@
-problem_list : like_num . associated_diagnosis like_num . COVID-19 like_num 
