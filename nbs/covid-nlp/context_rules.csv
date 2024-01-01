@@ -1,0 +1,172 @@
+(?i)(?:positive COVID-19|COVID-19 (?:\([^)]*\)) (?:positive|detected)|COVID-19(?: positive)? associated_diagnosis)#positive
+(?i)(?:COVID-19 status : positive)#positive
+(?i)(?:associated_diagnosis COVID-19|associated_diagnosis (?:with|w|w//|from) (?:associated_diagnosis )?COVID-19)#positive
+(?i)(?:COVID-19 positive(?: patient| precaution)?|associated_diagnosis (?:due|secondary) to COVID-19)#positive
+(?i)(?:(?:current|recent) COVID-19 diagnosis)#positive
+(?i)(?:COVID-19 (?:- )?related (?:admission|associated_diagnosis)|admitted (?:due to|(?:with|w|w/)) COVID-19)#positive
+(?i)(?:COVID-19 infection|b34(?:\.)?2|b97.29|u07.1)#positive
+(?i)(?:COVID-19 eval(?:uation)?|(?:positive )? COVID-19 symptoms|rule out COVID-19)#uncertain
+(?i)(?:patient (?:do )?have COVID-19)#positive
+(?i)(?:diagnosis : COVID-19(?: (?:test|screen)(?:ing|ed|s)? positive)?(?: positive)?)#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:not|non) (?:- )?detecte?d)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,1} negative screening|negative screening(?: (?!<IGNORE>)\S+){0,1} COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,2} : negative)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:not be|none) detected)#negated
+(?i)(?:free from(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? not (?:be )?tested)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,4} not indicated)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? NEGATIVE NEG)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,3} negative test)#negated
+(?i)(?:negative test(?: (?!<IGNORE>)\S+){0,3} COVID-19)#negated
+(?i)(?:without any(?: (?!<IGNORE>)\S+){0,1} COVID-19)#negated
+(?i)(?:denie(?:s|d)(?: any| travel)?(?: (?!<IGNORE>)\S+){0,9} COVID-19)#negated
+(?i)(?:no (?:evidence(?: of)?|(?:hx|-hx|history) of|diagnosis (?:of)?)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:no(?: (?!<IGNORE>)\S+){0,1} COVID-19)#negated
+(?i)(?:no (?:positive|one|residents|confirm case|contact(?: w/?(?:ith)?$))(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? no confirm case)#negated
+(?i)(?:(?:no|n't) (?:be )? confirm(?: (?!<IGNORE>)\S+){0,1} COVID-19)#negated
+(?i)(?:(?:no known|not have)(?: (?!<IGNORE>)\S+){0,4} COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:answer(?:ed|s|ing)? (?:no|negative|neg)|negative))#negated
+(?i)(?:(?:answer(?:ed|s|ing)? (?:no|negative|neg)|(?:neg|negative)(?: for)?)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:not positive(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? not positive)#negated
+(?i)(?:excluded(?: (?!<IGNORE>)\S+){0,3} COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,3} excluded)#negated
+(?i)(?:no risk factor for(?: (?!<IGNORE>)\S+){0,4} COVID-19)#uncertain
+(?i)(?:negative screening(?: for)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? screening (?:negative|neg))#negated
+(?i)(?:(?:screening (?:negative|neg) for|do (?:not|n't) have (?:any )?(?:signs|symptoms|ss|s/s))(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? do not screening positive)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:be negative|not test positive))#negated
+(?i)(?:(?:be negative|not test positive|not? screening(?: for)|no signs of|no (?:sign|symptom|indication(?:of|for)?)|not? test(?:\S+)? for)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:no exposure|(?:without|w/o) (?:signs|symptoms)(?:or (?:signs|symptoms))|do)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,4} not have)#negated
+(?i)(?:(?:(?:not|n't) have a (?:positive )?diagnosis|do not meet criteria|no concern (?:for|of)|not? (?:at )risk)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:(?:not|n't) have a (?:positive )?diagnosis|do not meet criteria))#negated
+(?i)(?:(?:no suspicion(?: for)|not suspect|ruled out for|no(?: recent) travel|not be in|clear(?:ed|s|ing) (?:of|for|from))(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:not(?: (?!<IGNORE>)\S+){0,3} COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:be ruled out|be not likely|not have contact with))#negated
+(?i)(?:(?:no (?:hx|history) (?:of )travel|not have contact with|no symptoms of|no risk factors|no (?:confirm case|report))(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:no (?:exposure|contact) (?:to|with)|not test(?:\S+)? positive))#negated
+(?i)(?:(?:no (?:exposure|contact) (?:to|with)|do (?:not|n't) meet(?: screening)(?: criteria)(?: for)|not test(?:\S+)? positive(?: for)|not tested(?: or diagnosis))(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:no|any)(?: known) contact(?: with)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,3} : no)#negated
+(?i)(?:(?:(?:not|never) diagnosis with|not been tested (?:for )?or diagnosis with)(?: (?!<IGNORE>)\S+){0,1} COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,1} confirm)#positive
+(?i)(?:(?:confirm|known)(?: (?!<IGNORE>)\S+){0,1} COVID-19)#positive
+(?i)(?:(?:(?:test(?:\S+)?)?positive(?: for)?|notif(?:y|ied) of positive (?:results?|test(?:\S+)?|status))(?: (?!<IGNORE>)\S+)*? COVID-19)#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:positiv(?:e|ity)|test(?:\S+)? positive|(?:test|pcr) remains positive|notif(?:y|ied) of positive (?:results?|test(?:ing)?|status)))#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:positiv(?:e|ity)|test(?:\S+)? positive|(?:test|pcr) remains positive|notif(?:y|ied) of positive (?:results?|test(?:ing)?|status)))#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,2} (?:positive status|results be positive))#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,4} results positive)#positive
+(?i)(?:results positive(?: (?!<IGNORE>)\S+){0,4} COVID-19)#positive
+(?i)(?:notif(?:y|ied) (?:the )? (?:veteran|patient|family) of positive (?:results?|test(?:ing)?|status)(?: (?!<IGNORE>)\S+)*? COVID-19)#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? notif(?:y|ied) (?:the )? (?:veteran|patient|family) of positive (?:results?|test(?:ing)?|status))#positive
+(?i)(?:likely secondary to(?: (?!<IGNORE>)\S+){0,0} COVID-19)#positive
+(?i)(?:(?:problem(?: list)? (?:of|:)|(?:active|current|acute) problems :|admi(?:t|ssion) diagnosis(?: :)?)(?: (?!<IGNORE>)\S+){0,9} COVID-19)#positive
+(?i)(?:(?:reason for admission :|treatment of|(?:admitting )diagnosis(?: :)?)(?: (?!<IGNORE>)\S+){0,3} COVID-19)#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,3} diagnosis like_num)#positive
+(?i)(?:(?:Reason for admission :|inpatient with|discharged from|in m?icu (?:for|with))(?: (?!<IGNORE>)\S+){0,5} COVID-19)#admission
+(?i)(?:(?:admit(?:ted|s|ting) (?:like_num|with|for)|admitted (?:to|on)|Reason for ICU :|admission for)(?: (?!<IGNORE>)\S+)*? COVID-19)#admission
+(?i)(?:Reason for ED visit or Hospital Admission :(?: (?!<IGNORE>)\S+){0,1} COVID-19)#admission
+(?i)(?:(?:(?:in|to) (?:the )(?:hospital|icu|micu) (?:for|due to)|hospitali(?:zed)?(?: timesx)? (?:for|due to))(?: (?!<IGNORE>)\S+){0,4} COVID-19)#admission
+(?i)(?:(?:diagnosis with|found to be positive for)(?: (?!<IGNORE>)\S+){0,5} COVID-19)#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,5} found to be positive)#positive
+(?i)(?:(?:positive test|presum(?:e|ed|es|ing) positive|not(?: yet)? recover(?:s|ing|ed)?)(?: (?!<IGNORE>)\S+)*? COVID-19)#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:positive test|presum(?:e|ed|es|ing) positive))#positive
+(?i)(?:(?:management of|ards(?: (?:from|with|secondary to))?|acute respiratory distress|post - extubation)(?: (?!<IGNORE>)\S+){0,2} COVID-19)#positive
+(?i)(?:(?:in(?: the)? setting of|in the s / o|found to have|present(?:s|ed|ing)? with)(?: (?!<IGNORE>)\S+){0,5} COVID-19)#positive
+(?i)(?:resp(?:iratory) failure(?:(?: (?:with|due to))?|like_num|\( like_num \))(?: (?!<IGNORE>)\S+){0,3} COVID-19)#positive
+(?i)(?:(?:active(?: for)|recovering from)(?: (?!<IGNORE>)\S+){0,1} COVID-19)#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,2} recovering from)#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,4} (?:detected|value : detected|POSITIVEH))#positive
+(?i)(?:(?:\d+(?: )?-|like_num )year(?:(?: )?-(?: )?old| old) (?:(?:aa|white|black|hispanic|caucasian) )?(?:\b(?!family\b|other_experiencer\b)\S+\b )?(?:with|w|w/|admitted)(?: (?!<IGNORE>)\S+){0,9} COVID-19)#patient_experiencer
+(?i)(?:(?:like_num (?:y[or]|y / o)|[\d]+yo) (?:\b(?!family\b|other_experiencer\b)\S+\b )?(?:patient |veteran )?(?:with|w|w/)(?: (?!<IGNORE>)\S+){0,9} COVID-19)#patient_experiencer
+(?i)(?:the (?:veteran|vet|patient) have(?: (?!<IGNORE>)\S+){0,2} COVID-19)#patient_experiencer
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,1} precaution)#future
+(?i)(?:(?:(?:precaution|protection|protect) (?:for|against)|concern about|reports of|vaccine|protect yourself|prevent(?:ed|ion|s|ing)|avoid)(?: (?!<IGNORE>)\S+)*? COVID-19)#future
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:prevent(?:ed|ion|s|ing)|vaccine|educat\S*|instruction))#future
+(?i)(?:(?:questions (?:about|regarding|re|concerning|on|for)|(?:anxiety|ask(?:ing|ed|es|ed)?) about|educat(?:ion|ed|ing|ed)?|instruction)(?: (?!<IGNORE>)\S+)*? COVID-19)#future
+(?i)(?:(?:information(?: )?(?:on|about|regarding|re)?|protocols?)(?: (?!<IGNORE>)\S+){0,2} COVID-19)#future
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,2} protocols?)#future
+(?i)(?:(?:materials|fact(?: )?sheet|literature|(?:informat(?:ion|ed|ing) )?handouts?|(?:anxious|worr(?:ied|ies|y|ying)) (?:about|re|regarding))(?: (?!<IGNORE>)\S+)*? COVID-19)#future
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:materials|fact(?: )?sheet|literature|(?:informat(?:ion|ed|ing) )?handouts?))#future
+(?i)(?:if(?: (?!<IGNORE>)\S+){0,9} COVID-19)#future
+(?i)(?:(?:advisor(?:y|ies)|travel screen(?: :)?|Travel History Questionnaire|prescreen|front gate)(?: (?!<IGNORE>)\S+)*? COVID-19)#screening
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,2} (?:questionnaire :|questionn?aire|question\S*|prescreen|front gate))#screening
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,9} screen\S*)#screening
+(?i)(?:screen\S*(?: (?!<IGNORE>)\S+){0,9} COVID-19)#screening
+(?i)(?:have you(?: (?!<IGNORE>)\S+)*? COVID-19)#not relevant
+(?i)(?:(?:mers)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:This patient was screened for the following suspected travel related illness(?:es)?)(?: (?!<IGNORE>)\S+)*? COVID-19)#future
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? This patient was screened for the following suspected travel related illness(?:es)?)#future
+(?i)(?:(?:will(?: be) travel|travel plans|if you need|plan to travel)(?: (?!<IGNORE>)\S+)*? COVID-19)#future
+(?i)(?:(?:(?:limit|reduce|lower|minimize)(?: the)? (?:risk|chance|possibility) of|if you)(?: (?!<IGNORE>)\S+)*? COVID-19)#future
+(?i)(?:(?:(?:(?:-)?hx|history|) of)(?: (?!<IGNORE>)\S+){0,3} COVID-19)#negated
+(?i)(?:(?:^(?:check|test|retest|eval)(?: for)?)(?: (?!<IGNORE>)\S+)*? COVID-19)#test
+(?i)(?:(?:work(?:-|\s)up)(?: (?!<IGNORE>)\S+)*? COVID-19)#test
+(?i)(?:(?:evaluation)(?: (?!<IGNORE>)\S+){0,1} COVID-19)#test
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,1} (?:evaluation))#test
+(?i)(?:(?:swab|PCR|specimen sent)(?: (?!<IGNORE>)\S+)*? COVID-19)#test
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:swab|PCR|specimen sent))#test
+(?i)(?:(?:awaiting results|at risk for|risk for|currently being ruled out or has tested positive for|to exclude)(?: (?!<IGNORE>)\S+)*? COVID-19)#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:awaiting results|currently being ruled out or has tested positive for|(?:patient|person) of interest))#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,0} (?:risk))#uncertain
+(?i)(?:(?:investigation of)(?: (?!<IGNORE>)\S+){0,0} COVID-19)#uncertain
+(?i)(?:(?:question of|differential diagnosis :|ddx :)(?: (?!<IGNORE>)\S+){0,3} COVID-19)#uncertain
+(?i)(?:(?:awaiting|questionnaire|r(?:/)?o(?:\.)?)(?: (?!<IGNORE>)\S+){0,1} COVID-19)#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,1} (?:awaiting|questionnaire|r(?:/)?o(?:\.)?))#uncertain
+(?i)(?:(?:under investigation|(?:may|might) be positive(?: for)?|flew|tarvel(?:ed)?|travelled)(?: (?!<IGNORE>)\S+)*? COVID-19)#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:under investigation|(?:may|might) be positive))#uncertain
+(?i)(?:(?:facility (?:with|has)(?: a)?|known to have|(?:same )?room|patients with)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:(?:area|county|community|city) (?:with|of)|in the building|(?:several|multiple|one)(?:of )?(?:the )? other_experiencer)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:in the building))#negated
+(?i)(?:(?:(?:he|she) thinks (?:he|she) (?:have|had|has)|\S+ would like)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:positive (?:screen|criteria|triage)|(?:^test )?pending|screen positive|unlikely to be)(?: (?!<IGNORE>)\S+)*? COVID-19)#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:positive (?:screen|criteria|triage)|(?:^test )?pending|screen positive|possible positive))#uncertain
+(?i)(?:(?:(?:possible|potential)? exposure|possibly|possible positive)(?: (?!<IGNORE>)\S+)*? COVID-19)#uncertain
+(?i)(?:(?:risk of|likely|probable|probably)(?: (?!<IGNORE>)\S+){0,3} COVID-19)#uncertain
+(?i)(?:(?:suspicion(?: for)?|^suspect|differential diagnosis|ddx(?: :)?|doubt)(?: (?!<IGNORE>)\S+)*? COVID-19)#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:suspicion|^suspect|differential diagnosis|ddx(?: :)?|may have been exposed))#uncertain
+(?i)(?:(?:(?:positive )?(?:sign|symptom) of)(?: (?!<IGNORE>)\S+){0,3} COVID-19)#uncertain
+(?i)(?:(?:sx|s/s|rule (?:- )out|be ruled out(?: for)?|^(?:vs\.?|versus)$)(?: (?!<IGNORE>)\S+){0,4} COVID-19)#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,4} (?:sx|s/s|rule (?:- )out|^(?:vs\.?|versus)$))#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:(?:possible|potential)? exposure|may have been exposed))#uncertain
+(?i)(?:(?:concern(:?s)?(?: for| of)?|if (?:negative|positive)|c/f|assess(?:ed)? for|concerning for)(?: (?!<IGNORE>)\S+)*? COVID-19)#uncertain
+(?i)(?:(?:unlikely(?: to be positive)?|low (?:suspicion|probability|risk (?:for|in|of)))(?: (?!<IGNORE>)\S+)*? COVID-19)#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:unlikely(?: to be positive)?|low (?:suspicion|probability)|is unlikely))#uncertain
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,2} (?:extremely low))#uncertain
+(?i)(?:(?:low risk of)(?: (?!<IGNORE>)\S+){0,2} COVID-19)#uncertain
+(?i)(?:(?:(?:other_experiencer|family) ^test positive(?: for)?|any one|contact with(?: known))(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:other_experiencer|family)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:other_experiencer|any one|contact with(?: known)))#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,0} (?:(?:a|an|another) \S+ tested positive))#negated
+(?i)(?:(?:had contact|same (?:building|floor)|care for|clean)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:had contact|same (?:building|floor)|care for|clean))#negated
+(?i)(?:(?:concern(?:ed)? about)(?: (?!<IGNORE>)\S+){0,2} COVID-19)#negated
+(?i)(?:(?:patient concern (?:for|of)|desire|(?:concerned|prepare) (?:for|about))(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:seen in|a (?:positive|confirmed) case of|cases|epidemic|pandemic)(?: (?!<IGNORE>)\S+){0,1} COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,1} (?:cases|epidemic|pandemic|national emergency|crisis|situation|mandate|\?))#negated
+(?i)(?:(?:national emergency|crisis|situation|mandate)(?: (?!<IGNORE>)\S+){0,1} COVID-19)#negated
+(?i)(?:(?:seen in(?: the)? setting of)(?: (?!<IGNORE>)\S+){0,5} COVID-19)#negated
+(?i)(?:(?:^cancel (?:flight|plan|trip|vacation)|supposed to (?:travel|go|visit)|called off|goals :)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:^cancel (?:flight|plan|trip|vacation)|supposed to (?:travel|go|visit)|called off))#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:in the (?:area|community)|outbreak))#negated
+(?i)(?:(?:in the (?:area|community)|outbreak)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:news|media|tv|television|broadcast|headline(?:s)?|newspaper(?:s)?|clinic cancellation)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:news|media|tv|television|broadcast|headline(?:s)?|newspaper(?:s)?|clinic cancellation))#negated
+(?i)(?:(?:^read about|deploy|(?:come|been) in close contact(?: with)?)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:^read about|deploy|(?:come|been) in close contact(?: with)?|error))#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:have you had close contact|web(?:\s)?site|internet|world(?:\s|-)?wide|countries with cases))#negated
+(?i)(?:(?:have you had close contact|the group|session|(?:nurse(?:s)?|rn) notes)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:web(?:\s)?site|internet|world(?:\s|-)?wide|countries with cases|error)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:(?:(?:person|patients) with(?: confirmed)?(?: or)?(?: suspected)?|cases of)(?: (?!<IGNORE>)\S+){0,2} COVID-19)#negated
+(?i)(?:elective(?: (?!<IGNORE>)\S+){0,4} COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,4} elective)#negated
+(?i)(?:(?:reschedule|barrier to travel|positive (?:individual(?:s)?|contact(?:s)?|patient(?:s)?))(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:reschedule|barrier to travel|positive (?:individual(?:s)?|contact(?:s)?|patient(?:s)?)))#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:(?:someone|person) who (?:has|have) tested positive|contact with))#negated
+(?i)(?:(?:(?:someone|person) who (?:has|have) tested positive|contact with)(?: (?!<IGNORE>)\S+)*? COVID-19)#negated
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+){0,0} (?:\(resolved\)))#positive
+(?i)(?:COVID-19(?: (?!<IGNORE>)\S+)*? (?:social worker|initially negative|likely recovered|not aware|positive (?:case|symptom|sign)|client history|emergency contact|several positive|special instructions :))#IGNORE
+(?i)(?:(?:social worker|initially negative|likely recovered|not aware|positive (?:case|symptom|sign)|client history|emergency contact|several positive|special instructions :)(?: (?!<IGNORE>)\S+)*? COVID-19)#IGNORE
