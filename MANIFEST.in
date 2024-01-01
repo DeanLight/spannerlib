@@ -2,5 +2,5 @@ include settings.ini
 include LICENSE
 include CONTRIBUTING.md
 include README.md
-include rgxlog/grammar.lark
+include spanner_workbench/grammar.lark
 recursive-exclude * __pycache__

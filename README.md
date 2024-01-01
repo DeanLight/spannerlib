@@ -6,7 +6,7 @@ The spanner workbench is an interpreter and a REPL system for spanner-like langu
 ## Installation
 
 ### Unix
-To download and install RGXLog run the following commands in your terminal:
+To download and install spanner_workbench run the following commands in your terminal:
 
 ```bash
 git clone https://github.com/DeanLight/spanner_workbench
@@ -16,7 +16,7 @@ pip install -e .
 ```
 
 download corenlp to
-`spanner_workbench/rgxlog/`
+`spanner_workbench/spanner_workbench/`
 
 from [this link](https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl)
 
@@ -35,7 +35,7 @@ cd spanner_workbench
 ```
 
 download corenlp to
-`spanner_workbench/rgxlog/`
+`spanner_workbench/spanner_workbench/`
 
 from [this link](https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl)
 
@@ -117,4 +117,4 @@ printing results for query 'ancestor(Ancestor, Descendant)':
 ### Relevant papers
 
 * [spannerlog](https://dl.acm.org/doi/10.1145/2932194.2932200)
-* [Recursive RGXLog](https://drops.dagstuhl.de/opus/volltexte/2019/10315/pdf/LIPIcs-ICDT-2019-13.pdf)
+* [Recursive spanner_workbench](https://drops.dagstuhl.de/opus/volltexte/2019/10315/pdf/LIPIcs-ICDT-2019-13.pdf)
