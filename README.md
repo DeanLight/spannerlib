@@ -92,6 +92,8 @@ printing results for query 'ancestor(Ancestor, Descendant)':
 
 [Advanced usage](https://github.com/DeanLight/spanner_workbench/blob/a7c61f015361c836952740dd0b6500401a9cccaf/tutorials/Advanced%20usage.md)
 
+[Covid pipeline](nbs/covid-nlp/covid_pipeline.md)
+
 ## Resources
 
 ### Sources of inspiration
