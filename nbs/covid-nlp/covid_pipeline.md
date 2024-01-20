@@ -44,19 +44,19 @@ As we mentioned the pipline uses medSpacy framework so first we need to import s
 We need to install some requirements to work with [medspacy](https://github.com/medspacy/medspacy) framework 
 
 
-```
+```python
 !pip install spacy
 !python -m spacy download en_core_web_sm
 ```
 
-```
+```python
 import spacy
 ```
 
 Installing the rgxlog framework and import what we need from the rgxlog framework
 
 
-```
+```python
 import sys
 from pathlib import Path
 current_python=f"{sys.executable}"
@@ -64,12 +64,12 @@ package_path=Path("../..")
 ```
 
 
-```
+```python
 ! {current_python} -m pip install {package_path}
 ```
 
 
-```
+```python
 import re
 import csv
 import pandas as pd
@@ -83,7 +83,7 @@ from rgxlog import magic_session
 Defining some generic ie functions that will be used in every stage of the pipline:
 
 
-```
+```python
 def read_from_file(text_path):
     """
     Reads from file and return it's content.
@@ -105,7 +105,7 @@ magic_session.register(ie_function=read_from_file,
 ```
 
 
-```
+```python
 # usage example
 for value in read_from_file("sample1.txt"):
     print(value)
@@ -115,7 +115,7 @@ for value in read_from_file("sample1.txt"):
     
 
 
-```
+```python
 def print_csv_file(file_path):
     """
     Print the contents of a CSV file in a human-readable format.
@@ -130,7 +130,7 @@ def print_csv_file(file_path):
 ```
 
 
-```
+```python
 # usage example
 
 data_to_write = [
@@ -156,7 +156,7 @@ print_csv_file('example.csv')
     
 
 
-```
+```python
 def select_containing_span(spans):
     """
     This function takes a list of spans, where each span is represented
@@ -195,7 +195,7 @@ def select_containing_span(spans):
 ```
 
 
-```
+```python
 # usage example
 spans = [ 
      ['Label1', Span(2, 8)],
@@ -210,7 +210,7 @@ for label, span in resolved_spans:
     
 
 
-```
+```python
 def replace_spans(spans_table, paths_table, session):
     """
     This function takes tables a spans tables and path table for the files paths,
@@ -259,7 +259,7 @@ def replace_spans(spans_table, paths_table, session):
 ```
 
 
-```
+```python
 # usage example
 with open('example.txt', 'w') as file:
     file.write('The boy has novel coronavirus')
@@ -281,7 +281,7 @@ for value in read_from_file("example.txt"):
     
 
 
-```
+```python
 def is_span_contained(span1, span2):
     """
     Checks if one span is contained within the other span and returns the smaller span if yes.
@@ -306,7 +306,7 @@ magic_session.register(is_span_contained, "is_span_contained", in_rel=[DataTypes
 ```
 
 
-```
+```python
 # usage example
 span1 = Span(2, 12)
 span2 = Span(8, 9)
@@ -318,7 +318,7 @@ for span in is_span_contained(span1, span2):
     
 
 
-```
+```python
 def get_relative_span(span1, span2):
     """
     Computes the relative position of the conatined span within the other span.
@@ -344,7 +344,7 @@ magic_session.register(get_relative_span, "get_relative_span", in_rel=[DataTypes
 ```
 
 
-```
+```python
 # usage example 
 span1 = Span(2, 12)
 span2 = Span(2, 5)
@@ -356,7 +356,7 @@ for span in get_relative_span(span1, span2):
     
 
 
-```
+```python
 def sent_tokenization(text_path):
     """
     This function reads a text file, processes its content using spaCy's English language model,
@@ -381,7 +381,7 @@ magic_session.register(ie_function=sent_tokenization, ie_function_name = "sent_t
 ```
 
 
-```
+```python
 # usage example 
 for sentence in sent_tokenization("sample1.txt"):
     print(sentence)
@@ -397,7 +397,7 @@ for sentence in sent_tokenization("sample1.txt"):
 The paths of the text files to be classified should be written in "files_paths.csv" file
 
 
-```
+```python
 print_csv_file('files_paths.csv')
 ```
 
@@ -411,14 +411,14 @@ print_csv_file('files_paths.csv')
     
 
 
-```
+```python
 magic_session.import_relation_from_csv("files_paths.csv", relation_name="FilesPaths", delimiter=",")
 ```
 
 The initial files contents:
 
 
-```
+```python
 %%rgxlog
 FilesContent(Path, Content) <- FilesPaths(Path), read_from_file(Path) -> (Content)
 ?FilesContent(Path, Content)
@@ -440,7 +440,7 @@ FilesContent(Path, Content) <- FilesPaths(Path), read_from_file(Path) -> (Conten
 Before we continue we have to do some pre processing to help ease the next stages, we will certain words in each list to it's lemma forms, here a list of the words that we want to lemmatize
 
 
-```
+```python
 print_csv_file('lemma_words.txt')
 ```
 
@@ -484,7 +484,7 @@ print_csv_file('lemma_words.txt')
 We will define a helper method to do that:
 
 
-```
+```python
 def lemmatize_text(text_path, lemma_words_path):
     """
     This function reads a text file, lemmatizes its content using spaCy's English language model,
@@ -524,7 +524,7 @@ def lemmatize_text(text_path, lemma_words_path):
 ```
 
 
-```
+```python
 # usage example
 with open('example.txt', 'w') as file:
     file.write('The boy was sick')
@@ -538,7 +538,7 @@ print(lemmatized_text)
 Iterate over the texts to lemmatize them
 
 
-```
+```python
 with open('files_paths.csv', 'r') as file:
     # Create a CSV reader object
     csv_reader = csv.reader(file)
@@ -552,7 +552,7 @@ with open('files_paths.csv', 'r') as file:
 As we can see for example in sample2.txt, was has changed to be.
 
 
-```
+```python
 %%rgxlog
 ?FilesContent(Path, Content)
 ```
@@ -593,7 +593,7 @@ Instead what we did is to define regex patterns, we have added these pattern in 
 Each rule in the csv file is like this : regexPattern, label, type
 
 
-```
+```python
 print_csv_file('concept_tags_rules.csv')
 ```
 
@@ -619,7 +619,7 @@ print_csv_file('concept_tags_rules.csv')
     
 
 
-```
+```python
 magic_session.import_relation_from_csv("concept_tags_rules.csv", relation_name="ConceptTagRules", delimiter=",")
 ```
 
@@ -640,7 +640,7 @@ Example for a lemma rule from the original NLP:
 We used the py_rgx_span to capture the patterns, and will use the spans later on in replace_spans that will replace each span with the correct label
 
 
-```
+```python
 %%rgxlog
 LemmaMatches(Label, Span, Path) <- FilesContent(Path, Content), ConceptTagRules(Pattern, Label, "lemma"), py_rgx_span(Content, Pattern) -> (Span)
 ```
@@ -648,7 +648,7 @@ LemmaMatches(Label, Span, Path) <- FilesContent(Path, Content), ConceptTagRules(
 Before:
 
 
-```
+```python
 %%rgxlog
 ?FilesContent(Path, Content)
 ```
@@ -667,7 +667,7 @@ Before:
     
 
 
-```
+```python
 # replace the matches with the correct label
 replace_spans("LemmaMatches", "FilesPaths", magic_session)
 ```
@@ -722,7 +722,7 @@ After:
 As we can see for example in the sample1.txt, every other covid-19 name was changed to COVID-19.
 
 
-```
+```python
 %%rgxlog
 ?FilesContent(Path, Content)
 ```
@@ -766,7 +766,7 @@ Example of the a rule from the original NLP:
 The patterns we've defined will match words listed under "IN", We specifically capture words if their Part-of-Speech (POS) falls into one of the categories: ["NOUN", "PROPN", "PRON", "ADJ"]. To accomplish this, two functions are employed: the first function determines the POS of each token, and the second one, py_rgx_span, captures the predefined patterns. After matching words, We confirm the accurate POS tags of the matched words using spans.
 
 
-```
+```python
 def annotate_text_with_pos(text_path):
     """
     This function reads a text file, processes its content using spaCy's English language model,
@@ -794,7 +794,7 @@ magic_session.register(ie_function=annotate_text_with_pos, ie_function_name = "a
 ```
 
 
-```
+```python
 # usage example
 with open('example.txt', 'w') as file:
     file.write('sick boy')
@@ -808,7 +808,7 @@ for POS, span in annotate_text_with_pos('example.txt'):
     
 
 
-```
+```python
 %%rgxlog
 POSTable(POS, Span, Path) <- FilesContent(Path, Content), annotate_text_with_pos(Path) -> (POS, Span)
 ?POSTable(POS, Span, Path)
@@ -876,7 +876,7 @@ POSRuleMatches(Label, Span, Path) <- POSTable(POS, Span, Path), POSMatches(Label
 Before:
 
 
-```
+```python
 %%rgxlog
 ?FilesContent(Path, Content)
 ```
@@ -895,7 +895,7 @@ Before:
     
 
 
-```
+```python
 # replace the matches with the correct label
 replace_spans("POSRuleMatches", "FilesPaths", magic_session)
 ```
@@ -929,7 +929,7 @@ After:
 As we can see for example in sample1.txt, wife has changed to family.
 
 
-```
+```python
 %%rgxlog
 ?FilesContent(Path, Content)
 ```
@@ -972,7 +972,7 @@ Similar to the concept tag apporach we defined regex patterns, we have added the
 Each rule in the csv file is like this : regexPattern, label
 
 
-```
+```python
 print_csv_file('target_rules.csv')
 ```
 
@@ -999,12 +999,12 @@ print_csv_file('target_rules.csv')
     
 
 
-```
+```python
 magic_session.import_relation_from_csv("target_rules.csv", relation_name="TargetTagRules", delimiter=",")
 ```
 
 
-```
+```python
 %%rgxlog
 TargetTagMatches(Label, Span, Path) <- FilesContent(Path, Content), TargetTagRules(Pattern, Label), py_rgx_span(Content, Pattern) -> (Span)
 ```
@@ -1012,7 +1012,7 @@ TargetTagMatches(Label, Span, Path) <- FilesContent(Path, Content), TargetTagRul
 Before:
 
 
-```
+```python
 %%rgxlog
 ?FilesContent(Path, Content)
 ```
@@ -1031,7 +1031,7 @@ Before:
     
 
 
-```
+```python
 replace_spans("TargetTagMatches", "FilesPaths", magic_session)
 ```
 
@@ -1064,7 +1064,7 @@ After:
 As we can see in sample6.txt, the covid positive exposure has changed to covid, in order to not give false positive.
 
 
-```
+```python
 %%rgxlog
 ?FilesContent(Path, Content)
 ```
@@ -1105,7 +1105,7 @@ Similar to the approach used in the concept tagger stage, regex patterns were de
 Each rule in the CSV file follows this format: regexPattern, sectionLabel
 
 
-```
+```python
 print_csv_file('section_rules.csv')
 ```
 
@@ -1134,12 +1134,12 @@ print_csv_file('section_rules.csv')
     
 
 
-```
+```python
 magic_session.import_relation_from_csv("section_rules.csv", relation_name="SectionRules", delimiter=",")
 ```
 
 
-```
+```python
 %%rgxlog
 SectionRulesMatches(Label, Span, Path) <- FilesContent(Path, Content), SectionRules(Pattern, Label), py_rgx_span(Content, Pattern) -> (Span)
 ?SectionRulesMatches(Label, Span, Path)
@@ -1155,7 +1155,7 @@ SectionRulesMatches(Label, Span, Path) <- FilesContent(Path, Content), SectionRu
 Before:
 
 
-```
+```python
 %%rgxlog
 ?FilesContent(Path, Content)
 ```
@@ -1174,7 +1174,7 @@ Before:
     
 
 
-```
+```python
 replace_spans("SectionRulesMatches", "FilesPaths", magic_session)
 ```
 
@@ -1207,7 +1207,7 @@ After:
 As we can see in sample 3, current problems has changed to problems_list.
 
 
-```
+```python
 %%rgxlog
 ?FilesContent(Path, Content)
 ```
@@ -1230,7 +1230,7 @@ As we can see in sample 3, current problems has changed to problems_list.
  Next, we will explore how to assert attributes indicating whether a mention of COVID-19 is positive or not. In our project, we have created a table     named 'CovidAttributes' that contains all attributes for each COVID-19 mention. This table will be used for classifying documents.
 
 
-```
+```python
 %%rgxlog
 #Here, we employ a pattern to identify entities present in specific sections and mark them as positive,
 #and adding them to the 'CovidAttributes' table.
@@ -1266,7 +1266,7 @@ CovidMatches(Path, Span) <- FilesContent(Path, Content), py_rgx_span(Content, "C
     
 
 
-```
+```python
 %%rgxlog
 SectionCovidAttributes(Path, CovidSpan, CovidAttribute) <- SectionMatches(Path, Span1, CovidAttribute), CovidMatches(Path, Span2), is_span_contained(Span1, Span2) -> (CovidSpan)
 ?SectionCovidAttributes(Path, CovidSpan, CovidAttribute)
@@ -1284,7 +1284,7 @@ SectionCovidAttributes(Path, CovidSpan, CovidAttribute) <- SectionMatches(Path, 
 In the subsequent stages, where attributes are assigned to COVID-19 mentions, a departure from the previous stages occurs. Here, patterns are no longer applied to the entire text, instead, they are applied at the sentence level, since the attributes of COVID-19 mentions are typically determined by the context of the sentence in which they appear. This means the text is processed and tokenized into sentences using spaCy's English language model. This process is accomplished through the use of  ie functions and relations.
 
 
-```
+```python
 %%rgxlog
 #Sentences of the text
 Sents(Path, Sent) <- FilesPaths(Path), sent_tokenization(Path) -> (Sent)
@@ -1333,7 +1333,7 @@ SentSpans(Path, Sent, SentSpan) <- FilesContent(Path, Content), Sents(Path, Sent
     
 
 
-```
+```python
 %%rgxlog
 CovidAttributes(Path, CovidSpan, CovidAttribute, Sent) <- SectionCovidAttributes(Path, AbsCovidSpan, CovidAttribute),\
 SentSpans(Path, Sent, SentSpan) ,get_relative_span(AbsCovidSpan, SentSpan) -> (CovidSpan)
@@ -1369,7 +1369,7 @@ Example for this rule is:
    **allowed_types** specify on what labels should this rule be applied on 
 
 
-```
+```python
 print_csv_file('context_rules.csv')
 ```
 
@@ -1548,12 +1548,12 @@ print_csv_file('context_rules.csv')
     
 
 
-```
+```python
 magic_session.import_relation_from_csv("context_rules.csv", relation_name="ContextRules", delimiter="#")
 ```
 
 
-```
+```python
 %%rgxlog
 #covid_attributes: negated, other_experiencer, is_future, not_relevant, uncertain, positive
 ContextMatches(CovidAttribute, Span, Path, Sent) <- Sents(Path, Sent), ContextRules(Pattern, CovidAttribute),\
@@ -1591,7 +1591,7 @@ CovidSpans(Path, Span, Sent) <- Sents(Path, Sent), py_rgx_span(Sent, "COVID-19")
     
 
 
-```
+```python
 %%rgxlog
 CovidAttributes(Path, CovidSpan, CovidAttribute, Sent) <- ContextMatches(CovidAttribute, Span1, Path, Sent), CovidSpans(Path, Span2, Sent), is_span_contained(Span1, Span2) -> (CovidSpan)
 ?CovidAttributes(Path, CovidSpan, CovidAttribute, Sent)
@@ -1631,7 +1631,7 @@ Additionally, in some cases, the entire COVID-19 mention is removed by eliminati
 
 Example rule in the original project:
 
-```
+```python
 PostprocessingRule(
         patterns=[
             PostprocessingPattern(lambda ent: ent.label_ == "COVID-19"),
@@ -1656,7 +1656,7 @@ In our case, we assign "IGNORE" attribute to the COVID-19 mention causing it to 
 Each rule in the CSV file follows this format: regexPattern, Attribute
 
 
-```
+```python
 print_csv_file('postprocess_pattern_rules.csv')
 ```
 
@@ -1669,12 +1669,12 @@ print_csv_file('postprocess_pattern_rules.csv')
     
 
 
-```
+```python
 magic_session.import_relation_from_csv("postprocess_pattern_rules.csv", relation_name="PostprocessRules", delimiter="#")
 ```
 
 
-```
+```python
 %%rgxlog
 PostprocessMatches(CovidAttribute, Span, Path, Sent) <- Sents(Path, Sent), PostprocessRules(Pattern, CovidAttribute),\
 py_rgx_span(Sent, Pattern) -> (Span)
@@ -1689,7 +1689,7 @@ py_rgx_span(Sent, Pattern) -> (Span)
     
 
 
-```
+```python
 %%rgxlog
 CovidAttributes(Path, CovidSpan, CovidAttribute, Sent) <- PostprocessMatches(CovidAttribute, Span1, Path, Sent), CovidSpans(Path, Span2, Sent), is_span_contained(Span1, Span2) -> (CovidSpan)
 ?CovidAttributes(Path, CovidSpan, CovidAttribute, Sent)
@@ -1712,7 +1712,7 @@ CovidAttributes(Path, CovidSpan, CovidAttribute, Sent) <- PostprocessMatches(Cov
     
 
 #### 2) Postprocess rules utilizing existing attributes and patterns:
-```
+```python
 PostprocessingRule(
         patterns=[
         
@@ -1751,7 +1751,7 @@ Each rule in the CSV file follows this format: regexPattern, ExistingAttribute, 
 
 
 
-```
+```python
 print_csv_file('postprocess_attributes_rules.csv')
 ```
 
@@ -1763,12 +1763,12 @@ print_csv_file('postprocess_attributes_rules.csv')
     
 
 
-```
+```python
 magic_session.import_relation_from_csv("postprocess_attributes_rules.csv", relation_name="PostprocessRulesWithAttributes", delimiter="#")
 ```
 
 
-```
+```python
 %%rgxlog
 PostprocessWithAttributesMatches(CovidAttribute, NewAttribute, Span, Path, Sent) <- Sents(Path, Sent), PostprocessRulesWithAttributes(Pattern, CovidAttribute, NewAttribute),\
 py_rgx_span(Sent, Pattern) -> (Span)
@@ -1783,7 +1783,7 @@ py_rgx_span(Sent, Pattern) -> (Span)
     
 
 
-```
+```python
 %%rgxlog
 CovidAttributes(Path, CovidSpan, NewAttribute, Sent) <- CovidAttributes(Path, CovidSpan, CovidAttribute, Sent), PostprocessWithAttributesMatches(CovidAttribute, NewAttribute, Span, Path, Sent)
 ?CovidAttributes(Path, CovidSpan, NewAttribute, Sent)
@@ -1812,7 +1812,7 @@ marked as positive. To Implement this rule in our project, we defined a new rela
 
 
 
-```
+```python
 def next_sent(text_path):
     with open(text_path, 'r') as file:
         contents = file.read()
@@ -1829,7 +1829,7 @@ magic_session.register(ie_function=next_sent, ie_function_name = "next_sent", in
 ```
 
 
-```
+```python
 # usage example
 for first_sent, second_sent in next_sent("sample1.txt"):
     print(f"sentence: {first_sent}", f"next sentence: {second_sent}")
@@ -1840,7 +1840,7 @@ for first_sent, second_sent in next_sent("sample1.txt"):
     
 
 
-```
+```python
 %%rgxlog
 NextSent(Path, Sent1, Sent2) <- FilesPaths(Path), next_sent(Path) -> (Sent1, Sent2)
 ?NextSent(Path, Sent1, Sent2)
@@ -1859,7 +1859,7 @@ NextSent(Path, Sent1, Sent2) <- FilesPaths(Path), next_sent(Path) -> (Sent1, Sen
     
 
 
-```
+```python
 %%rgxlog
 new PostProcessWithNextSentenceRules(str, str)
 PostProcessWithNextSentenceRules("(?i)(?:^(?:positive|detected)|results?(?: be)? positive)", "positive")
@@ -1898,7 +1898,7 @@ Document Classifier stage has 2 parts:
 
 
 
-```
+```python
 def attribute_filter(group):
     """
     Filters attributes within each "CovidSpan" of a DataFrame table based on specific conditions.
@@ -1930,7 +1930,7 @@ def attribute_filter(group):
 ```
 
 
-```
+```python
 # usage example
 data = {'Path': ["sample1.txt", "sample1.txt", "sample1.txt", "sample2.txt"],
         'Attribute': ['IGNORE', 'negated', 'positive', 'positive']}
@@ -1958,7 +1958,7 @@ print(df_example)
     
 
 
-```
+```python
 df = (magic_session.run_commands("?CovidAttributes(Path, CovidSpan, CovidAttribute, Sent)", print_results=False, format_results=True))[0]
 if len(df) == 0:
     df = DataFrame(columns=["Path","CovidSpan","CovidAttribute"])
@@ -2051,7 +2051,7 @@ df
 
 
 
-```
+```python
 def classify_doc_helper(group):
     """
 Classifies a document as 'POS', 'UNK', or 'NEG' based on COVID-19 attributes.
@@ -2077,7 +2077,7 @@ Returns:
 ```
 
 
-```
+```python
 # usage example
 data = {'Path': ["sample1.txt", "sample1.txt", "sample1.txt", "sample2.txt"],
         'Attribute': ['uncertain', 'negated', 'positive', 'positive']}
@@ -2106,7 +2106,7 @@ print(df_example)
     
 
 
-```
+```python
 df['DocResult'] = df.groupby('Path')['CovidAttribute'].transform(classify_doc_helper)
 df = df[['Path', 'DocResult']]
 df = df.drop_duplicates().reset_index(drop=True)
@@ -2179,7 +2179,7 @@ df
 At this step, we assign a classification result 'UNK' to paths not identified in the previous DataFrame result. This occurs when our pipeline doesn't detect any mention of COVID-19 or its synonyms in the text of those paths. As a result, these paths are excluded from all types of relations, consistent with our primary focus on COVID-19 entities.
 
 
-```
+```python
 df_path = (magic_session.run_commands("?FilesPaths(Path)", print_results=False, format_results=True))[0]
 df = (pd.merge(df, df_path, on='Path', how='outer'))
 df['DocResult'] = df['DocResult'].fillna("UNK")
@@ -2267,7 +2267,7 @@ Let's commence by providing an estimated count of total lines in each implementa
 
 And here's a detailed comparison:
 
-![Screenshot%20%2825%29.png](covid_pipeline_files/Screenshot%20%2825%29.png)
+![comparison.png](covid_pipeline_files/comparison.png)
 
 Now, we will present the combined rgxlog and python code (excluding "generic ie" functions and excluding queries) to visually illustrate the compactness of the implementation:
 
