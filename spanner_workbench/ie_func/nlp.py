@@ -19,19 +19,20 @@ from pathlib import Path
 from typing import Iterator
 from zipfile import ZipFile
 import os
+import configparser
 
 import jdk
 from spanner_nlp.StanfordCoreNLP import StanfordCoreNLP
 
 from ..primitive_types import DataTypes
-from ..utils import download_file_from_google_drive, get_base_file_path
+from ..utils import download_file_from_google_drive, get_base_file_path, get_lib_name
 
 # %% ../../nbs/ie_func/04b_nlp.ipynb 4
 JAVA_MIN_VERSION = 1.8
 
 NLP_URL = "https://drive.google.com/u/0/uc?export=download&id=1QixGiHD2mHKuJtB69GHDQA0wTyXtHzjl"
 NLP_DIR_NAME = 'stanford-corenlp-4.1.0'
-CURR_DIR = Path(os.path.join(get_base_file_path(),'rgxlog'))
+CURR_DIR = get_base_file_path()/get_lib_name()
 NLP_DIR_PATH = str(CURR_DIR / NLP_DIR_NAME)
 JAVA_DOWNLOADER = "install-jdk"
 _USER_DIR = Path.home()

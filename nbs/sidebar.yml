@@ -9,7 +9,7 @@ website:
         - building_your_optimization.ipynb
         - live_repl.ipynb
         - extended_version.ipynb
-        - covid-nlp/covid_pipeline.ipynb
+        - covid-nlp/000_covid_pipeline.ipynb
       - section: src
         contents:
           - section: Generic
