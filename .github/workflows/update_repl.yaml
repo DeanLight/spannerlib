@@ -21,4 +21,4 @@ jobs:
           destination-repository-name: 'spanner-workbench-live-repl'
           user-email: light.skep@gmail.com
           target-branch: main
-          target-directory: content/rgxlog
+          target-directory: content/spanner_workbench
