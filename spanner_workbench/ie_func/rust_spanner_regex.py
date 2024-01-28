@@ -168,6 +168,11 @@ def rgx(regex_pattern: str, # the pattern to run
 def rgx_span(text: str, # The input text for the regex operation
              regex_pattern: str # The pattern of the regex operation
              ) -> Iterable[Iterable[Union[str, Span]]]: # tuples of spans that represents the results
+    """computes the spans of all the matches of the regex pattern in the text
+
+    based on the [enum-spanner-rs](https://github.com/PoDMR/enum-spanner-rs) rust package
+
+    """
     return rgx(regex_pattern, "span", text=text)
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 28
