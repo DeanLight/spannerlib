@@ -8,7 +8,7 @@ website:
         - stdlib.ipynb
         - advanced_usage.ipynb
         - building_your_optimization.ipynb
-        - live_repl.ipynb
+        # - live_repl.ipynb
         - extended_version.ipynb
         - covid-nlp/000_covid_pipeline.ipynb
       - section: src
