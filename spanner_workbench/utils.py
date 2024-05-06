@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['logger', 'WINDOWS_OS', 'IS_POSIX', 'GOOGLE_DRIVE_URL', 'GOOGLE_DRIVE_CHUNK_SIZE', 'get_git_root',
            'get_base_file_path', 'get_lib_name', 'patch_method', 'kill_process_and_children', 'run_cli_command',
-           'download_file_from_google_drive']
+           'download_file_from_google_drive', 'df_to_list']
 
 # %% ../nbs/00a_utils.ipynb 2
 import shlex
@@ -143,3 +143,7 @@ def download_file_from_google_drive(file_id: str, # the id of the file to downlo
         response = requests_session.get(GOOGLE_DRIVE_URL, params=params, stream=True)
 
     save_response_content()
+
+# %% ../nbs/00a_utils.ipynb 10
+def df_to_list(df):
+    return df.to_dict(orient='records')

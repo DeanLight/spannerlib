@@ -211,6 +211,7 @@ class SymbolTable(SymbolTableBase):
         self._relation_to_schema: Dict[str, Sequence[DataTypes]] = {}
         self._registered_ie_functions: Dict[str, IEFunction] = {}
         self._rule_relations: Set[str] = set()
+        #TODO here and in base, add a dict of registered agg functions, mirror ie functions
 
     def set_var_value_and_type(self, var_name: str, var_value: DataTypeMapping.term, var_type: DataTypes) -> None:
         self._var_to_value[var_name] = var_value

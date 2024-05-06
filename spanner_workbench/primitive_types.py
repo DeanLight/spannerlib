@@ -68,7 +68,7 @@ class Span:
         return hash((self.span_start, self.span_end))
 
     def __repr__(self) -> str:
-        return self.__name__
+        return f'[{self.span_start}, {self.span_end})'
 
 # %% ../nbs/00c_primitive_types.ipynb 11
 class DataTypeMapping:
