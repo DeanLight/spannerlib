@@ -1,0 +1,35 @@
+\begin{thebibliography}{1}
+
+\bibitem{CKLRRV10}
+L.~Chiticariu, R.~Krishnamurthy, Y.~Li, S.~Raghavan, F.~Reiss, and
+  S.~Vaithyanathan.
+\newblock Systemt: An algebraic approach to declarative information extraction.
+\newblock In {\em {ACL} 2010, Proceedings of the 48th Annual Meeting of the
+  Association for Computational Linguistics, July 11-16, 2010, Uppsala,
+  Sweden}, pages 128--137, 2010.
+
+\bibitem{FaginKRV15}
+R.~Fagin, B.~Kimelfeld, F.~Reiss, and S.~Vansummeren.
+\newblock Document spanners: {A} formal approach to information extraction.
+\newblock {\em J. {ACM}}, 62(2):12:1--12:51, 2015.
+
+\bibitem{DBLP:conf/icdt/PeterfreundCFK19}
+L.~Peterfreund, B.~ten Cate, R.~Fagin, and B.~Kimelfeld.
+\newblock Recursive programs for document spanners.
+\newblock In {\em 22nd International Conference on Database Theory, {ICDT}
+  2019, March 26-28, 2019, Lisbon, Portugal}, pages 13:1--13:18, 2019.
+
+\bibitem{SDNR07}
+W.~Shen, A.~Doan, J.~F. Naughton, and R.~Ramakrishnan.
+\newblock Declarative information extraction using datalog with embedded
+  extraction predicates.
+\newblock In {\em Proceedings of the 33rd International Conference on Very
+  Large Data Bases, University of Vienna, Austria, September 23-27, 2007},
+  pages 1033--1044, 2007.
+
+\bibitem{DBLP:journals/cacm/ZhangRCSWW17}
+C.~Zhang, C.~R{\'{e}}, M.~J. Cafarella, J.~Shin, F.~Wang, and S.~Wu.
+\newblock Deepdive: declarative knowledge base construction.
+\newblock {\em Commun. {ACM}}, 60(5):93--102, 2017.
+
+\end{thebibliography}

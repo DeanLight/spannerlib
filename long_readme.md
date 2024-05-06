@@ -1,46 +1,46 @@
 
-# Spanner Workbench
+# Spannerlib
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
 <!-- code_chunk_output -->
 
-- [Spanner Workbench](#spanner-workbench)
-    - [external resources](#external-resources)
-        - [Sources of inspiration](#sources-of-inspiration)
-        - [resources about building interpreters](#resources-about-building-interpreters)
-        - [relevant papers](#relevant-papers)
-    - [version consideration](#version-consideration)
-    - [The REPL of the interpreter](#the-repl-of-the-interpreter)
-    - [version 0.1](#version-01)
-        - [session overview](#session-overview)
-        - [lexer and parser](#lexer-and-parser)
-            - [separation of the AST into standalone statements](#separation-of-the-ast-into-standalone-statements)
-        - [passes](#passes)
-            - [AST transformation passes:](#ast-transformation-passes)
-            - [semantic checks passes:](#semantic-checks-passes)
-            - [execution passes:](#execution-passes)
-        - [term graph](#term-graph)
-        - [execution](#execution)
-        - [files structure](#files-structure)
-    - [Initial thoughts about building the workbench (predates version 0.1)](#initial-thoughts-about-building-the-workbench-predates-version-01)
-        - [Lexer and Parser](#lexer-and-parser-1)
-        - [The micro-passes in general](#the-micro-passes-in-general)
-            - [design considerations](#design-considerations)
-                - [version consideration](#version-consideration-1)
-            - [implementation](#implementation)
-                - [version considerations](#version-considerations)
-        - [required passes](#required-passes)
-            - [version considerations](#version-considerations-1)
-    - [The Engine](#the-engine)
-        - [Datalog evaluation pass](#datalog-evaluation-pass)
-            - [version considerations](#version-considerations-2)
-        - [regex evaluation](#regex-evaluation)
-        - [garbage collection](#garbage-collection)
+- [Spannerlib](#spannerlib)
+  - [external resources](#external-resources)
+    - [Sources of inspiration](#sources-of-inspiration)
+    - [resources about building interpreters](#resources-about-building-interpreters)
+    - [relevant papers](#relevant-papers)
+  - [version consideration](#version-consideration)
+  - [The REPL of the interpreter](#the-repl-of-the-interpreter)
+  - [version 0.0.5](#version-005)
+    - [session overview](#session-overview)
+    - [lexer and parser](#lexer-and-parser)
+      - [separation of the AST into standalone statements](#separation-of-the-ast-into-standalone-statements)
+    - [passes](#passes)
+        - [AST transformation passes:](#ast-transformation-passes)
+        - [semantic checks passes:](#semantic-checks-passes)
+        - [execution passes:](#execution-passes)
+      - [term graph passes:](#term-graph-passes)
+    - [execution function](#execution-function)
+    - [term graph and parse graph](#term-graph-and-parse-graph)
+    - [execution](#execution)
+  - [Initial thoughts about building the workbench (predates version 0.0.5)](#initial-thoughts-about-building-the-workbench-predates-version-005)
+      - [Lexer and Parser](#lexer-and-parser-1)
+    - [The micro-passes in general](#the-micro-passes-in-general)
+      - [design considerations](#design-considerations)
+        - [version consideration](#version-consideration-1)
+      - [implementation](#implementation)
+        - [version considerations](#version-considerations)
+    - [required passes](#required-passes)
+        - [version considerations](#version-considerations-1)
+  - [The Engine](#the-engine)
+        - [version considerations](#version-considerations-2)
+    - [regex evaluation](#regex-evaluation)
+    - [garbage collection](#garbage-collection)
 
 <!-- /code_chunk_output -->
 
-The spanner workbench is an interpreter and a REPL system for spanner-like languages.
-Our goal in developing the spanner workbench is twofold:
+Spannerlib is an interpreter and a REPL system for spanner-like languages.
+Our goal in developing Spannerlib is twofold:
 
 * First and foremost, to allow students learning about spanner languages an easy-to-use system to play around with the languages.
 * A later goal is to provide an easily modifiable framework that allows researchers to easily test and deploy new algorithms and optimizations to spanner languages.
@@ -70,10 +70,10 @@ Here is a [python implementation of a Datalog library](https://github.com/pcarbo
 ### relevant papers
 
 * [spannerlog](https://dl.acm.org/doi/10.1145/2932194.2932200)
-* [Recursive RGXLog](https://drops.dagstuhl.de/opus/volltexte/2019/10315/pdf/LIPIcs-ICDT-2019-13.pdf)
+* [Recursive spannerlog](https://drops.dagstuhl.de/opus/volltexte/2019/10315/pdf/LIPIcs-ICDT-2019-13.pdf)
 
 ## version consideration
-* We finished working on 0.0.5 which is the MVP of a working RGXlog REPL
+* We finished working on 0.0.5 which is the MVP of a working spannerlog REPL
     * No optimization of any kind,
     * Execution via delegation of all regexs to a regex library and all datalog fragments as is to pydatalog
 * version 0.1 will have naive yet more granular execution passes and will expose a pass stack
@@ -89,7 +89,7 @@ implement a Read Evaluate Print Loop (REPL) interface for the interpreter.
 You can think of it like the frontend and the backend of the app.
 
 The way we decided to implement the front end of the workbench if to use jupyter notebook's magic system. As seen below, it is a system that allows you to delegate running a piece of code to an external module.
-Specifically for our case, we can delegate running code that is written in our own syntax (RGXLog at the moment) to an instance of our interpreter.
+Specifically for our case, we can delegate running code that is written in our own syntax (spannerlog at the moment) to an instance of our interpreter.
 
 Here is an example of language bash magic.
 ![bash_magic](doc/bash_magic_example.png)
@@ -122,14 +122,14 @@ As the graph shows, the session:
 4. Runs the semantic checks, optimization and execution passes on each statement.
 5. Returns the results object. In the current implementation, the results object is a string that contains the results of the queries in the program.
 
-All of the relevant files to the session can be found at the [engine](/src/rgxlog-interpreter/src/rgxlog/engine/) folder. The session is implemented at [session.py](/src/rgxlog-interpreter/src/rgxlog/engine/session.py)
+All of the relevant files to the session can be found at the [engine](/src/spannerlog-interpreter/src/spannerlog/engine/) folder. The session is implemented at [session.py](/src/spannerlog-interpreter/src/spannerlog/engine/session.py)
 
 Below you can find more details about each step of the implementation of the session
 
 ### lexer and parser
 
 The lexical analyses and parsing are done using lark's lexer and parser.
-* lark's lexer and parser receive a grammar file as an input, which can be found [here](/src/rgxlog-interpreter/src/rgxlog/grammar/grammar.lark)
+* lark's lexer and parser receive a grammar file as an input, which can be found [here](/src/spannerlog-interpreter/src/spannerlog/grammar/grammar.lark)
 
 * A handy cheat sheet that will help you to read the grammar can be found at: https://cheatography.com/erezsh/cheat-sheets/lark/
 
@@ -139,12 +139,12 @@ The lexical analyses and parsing are done using lark's lexer and parser.
 * note that we also import token definitions from lark's common module, it can be found here:
   https://github.com/lark-parser/lark/blob/master/lark/grammars/common.lark
 
-* [the introductory RGXlog tutorial](/tutorials/introduction.ipynb) can help you understand the features that this grammar provides.
+* [the introductory spannerlog tutorial](/tutorials/introduction.ipynb) can help you understand the features that this grammar provides.
 
 
 #### separation of the AST into standalone statements
 
-In the current implementation, while the session receives a whole RGXlog program (a jupyter notebook cell), it performs the semantic checks, optimizations, and execution on standalone statements.
+In the current implementation, while the session receives a whole spannerlog program (a jupyter notebook cell), it performs the semantic checks, optimizations, and execution on standalone statements.
 
 This greatly simplifies the implementation of the passes, as they don't have to keep track of previous statements. Instead, a pass can get the context it needs from the symbol table.
 
@@ -160,7 +160,7 @@ In future versions this will need to be fixed, meaning, should a statement in a 
 
 ### passes
 
-All the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at [lark_passes.py](/src/rgxlog-interpreter/src/rgxlog/engine/passes/lark_passes.py)
+All the semantic and optimization passes are currently implemented as lark transformers/visitors. The implementations can be found at [lark_passes.py](/src/spannerlog-interpreter/src/spannerlog/engine/passes/lark_passes.py)
 
 The only exception is `AddRulesToComputationTermGraph` pass, you can learn more about it in the [execution](#execution) section.
 
@@ -180,13 +180,13 @@ A few words on each pass:
 
 * FixStrings - Removes line overflow escapes from strings.
 
-* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at [primitve_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/primitive_types.py).
+* ConvertSpanNodesToSpanInstances - With the exception of spans, all of the term types allowed in the program are python primitives. For similar behavior to python primitives, span subtrees are converted to instances of the Span class which can be found at [primitve_types.py](/src/spannerlog-interpreter/src/spannerlog/engine/datatypes/primitive_types.py).
 
-* ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at [ast_node_types.py](/src/rgxlog-interpreter/src/rgxlog/engine/datatypes/ast_node_types.py). Note that passes that appear after this pass in the pass stack can only visit statement AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
+* ConvertStatementsToStructuredNodes - Converts a statement subtree to a single node that contains an instance of a class that represents that statement. Those classes can be found at [ast_node_types.py](/src/spannerlog-interpreter/src/spannerlog/engine/datatypes/ast_node_types.py). Note that passes that appear after this pass in the pass stack can only visit statement AST nodes. For example, FixStrings cannot appear after this pass in the pass stack, as it visits string nodes.
 
 ##### semantic checks passes:
 
-* CheckReservedRelationNames - Asserts that the program does not contain relations that start with "\_\_rgxlog\_\_". This name is used for temporary relations in the datalog execution engine.
+* CheckReservedRelationNames - Asserts that the program does not contain relations that start with "\_\_spannerlog\_\_". This name is used for temporary relations in the datalog execution engine.
 
 * CheckDefinedReferencedVariables - Asserts that referenced variables are defined.
 
@@ -227,7 +227,7 @@ A few words on each pass:
 
 ###  term graph and parse graph
 
-The term graph and parse graphs implementations can be found at [graphs.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/graphs.py).
+The term graph and parse graphs implementations can be found at [graphs.py](/src/spannerlog-interpreter/src/spannerlog/engine/state/graphs.py).
 They are implemented using networkx.
 
 The parse graph does not handle variable assignment statements.
@@ -264,65 +264,17 @@ we'll get a parse graph that will look like this:
 ![parse graph example](doc/parse_graph.png)
 
 a detailed explanation regarding the term graph can be found in the `TermGraph` class's docstring,
-in [graphs.py](/src/rgxlog-interpreter/src/rgxlog/engine/state/graphs.py)
+in [graphs.py](/src/spannerlog-interpreter/src/spannerlog/engine/state/graphs.py)
 
 ### execution
 
-the parse graph execution is done by the `naive_execution` function, which can be found at [execution.py](/src/rgxlog-interpreter/src/rgxlog/engine/execution.py).
+the parse graph execution is done by the `naive_execution` function, which can be found at [execution.py](/src/spannerlog-interpreter/src/spannerlog/engine/execution.py).
 
 this function executes the parse graph statement by statement. It skips statements that were already computed.
 
-the pass uses the `SqliteEngine` which can also be found at [engine.py](/src/rgxlog-interpreter/src/rgxlog/engine/engine.py)
+the pass uses the `SqliteEngine` which can also be found at [engine.py](/src/spannerlog-interpreter/src/spannerlog/engine/engine.py)
 
-### files structure
 
-```
-└───engine
-    │
-    │   execution.py - the implementation of `naive_execution`
-    │	
-    │   engine.py - the implementation of `SqliteEngine`
-    │	
-    │   session.py - the implementation of the `Session`
-    │
-    │   ie_function.py - contains a class that defines all the functions that provide data needed for using a single information extraction function
-    │
-    │
-    ├───datatypes
-    │	
-    │       ast_node_types.py - contains classes that represent statements and relations.
-    │	
-    │       primitive_types.py - contains classes that represent rgxlog's primitive types. 
-    │       Also contains an enum for primitive types that is used throughout the passes.
-    │	
-    │
-    ├───passes
-    │	
-    │       lark_passes.py - implementations of lark passes
-    │
-    │       adding_inference_rules_to_term_graph.py - implementations of term graph passes
-    │
-    ├───state
-    │	
-    │       symbol_table.py - implementations of the symbol table
-    │	
-    │       graphs.py - implementations of the term and parse graphs
-    │
-    ├───utils
-	│
-    │      expected_grammar.py - contains a structure that helps asserting that a pass received an 
-	│      expected ast node structure
-	│		
-    │      general_utils.py - General utilities that are not specific to any kind of pass, 
-	│      execution engine, etc...
-	│		
-    │      passes_utils.py - helper functions and function decorators that are used in passes
-    
- └───stdlib
-    │
-    │      contains implementations of standard library IE functions, which are registered by default
-    │
-```
 
 ## Initial thoughts about building the workbench (predates version 0.0.5)
 
@@ -405,7 +357,7 @@ The first two we get for free with lark. For the last one, we need to make sure 
 
 ### required passes
 
-I will list the passes that we have to implement to have a functioning RGXLog interpreter.
+I will list the passes that we have to implement to have a functioning spannerlog interpreter.
 
 Semantic passes
 

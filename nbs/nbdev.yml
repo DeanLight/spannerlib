@@ -2,8 +2,8 @@ project:
   output-dir: _docs
 
 website:
-  title: "spanner workbench"
-  site-url: "https://DeanLight.github.io/spanner_workbench"
+  title: "Spannerlib"
+  site-url: "https://DeanLight.github.io/spannerlib"
   description: "work bench"
   repo-branch: master
-  repo-url: "https://github.com/DeanLight/spanner_workbench"
+  repo-url: "https://github.com/DeanLight/spannerlib"
