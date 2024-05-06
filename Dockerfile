@@ -34,6 +34,6 @@ RUN conda install -c anaconda -y python=${PY_VER}
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# install rgxlog
-COPY . spanner_workbench
-RUN pip install -e spanner_workbench
+# install spannerlog
+COPY . spannerlib
+RUN pip install -e spannerlib
