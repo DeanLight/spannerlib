@@ -11,6 +11,7 @@ from .primitive_types import DataTypes, DataTypeMapping
 from .ie_function import IEFunction
 
 # %% ../nbs/01b_symbol_table.ipynb 6
+# TODO agg - remove these ABCs and use the actual symbol table class
 class SymbolTableBase(ABC):
     """
     An abstraction for a symbol table. <br>
@@ -211,8 +212,9 @@ class SymbolTable(SymbolTableBase):
         self._relation_to_schema: Dict[str, Sequence[DataTypes]] = {}
         self._registered_ie_functions: Dict[str, IEFunction] = {}
         self._rule_relations: Set[str] = set()
-        #TODO here and in base, add a dict of registered agg functions, mirror ie functions
+        #TODO agg - here and in base, add a dict of registered agg functions, mirror ie functions
 
+    # TOOD agg - simplify all these getters and setters, it will be too verbose anyway when rewriting
     def set_var_value_and_type(self, var_name: str, var_value: DataTypeMapping.term, var_type: DataTypes) -> None:
         self._var_to_value[var_name] = var_value
         self._var_to_type[var_name] = var_type

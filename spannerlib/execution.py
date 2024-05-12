@@ -53,7 +53,10 @@ def naive_execution(parse_graph: GraphBase, # a parse graph to execute
     read the documentation of `compute_rule` function to understand how the computation is done.
 
     """
+    # TODO agg - can we maker recursion check also an explicit computation node?
+    # so we can have the computation graph be made explicit here?
 
+    
     # it's an inner function because it needs to access all naive_execution's params
     def compute_rule(relation_name: str, do_reset: bool = True) -> None:
         """
@@ -193,6 +196,8 @@ def naive_execution(parse_graph: GraphBase, # a parse graph to execute
             TermNodeType.JOIN: spannerlog_engine.operator_join,
             TermNodeType.PROJECT: spannerlog_engine.operator_project,
             TermNodeType.SELECT: spannerlog_engine.operator_select
+            # TODO agg - add term nodes for groupby and aggregate_CALC
+            # see if we can simplify the code by making an operator for CALC, CALC_AGG which we need to add and GET_REL
         }
 
         term_attrs = term_graph[node_id]

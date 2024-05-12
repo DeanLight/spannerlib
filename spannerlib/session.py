@@ -249,14 +249,16 @@ class Session:
             CheckDefinedReferencedVariables,
             CheckReferencedRelationsExistenceAndArity,
             CheckReferencedIERelationsExistenceAndArity,
+            #TODO agg - add here checkAggFunctionsExistanceAndArity
             CheckRuleSafety,
             TypeCheckAssignments,
-            TypeCheckRelations,
+            TypeCheckRelations, # TODO agg - add here type check for agg function
             SaveDeclaredRelationsSchemas,
             ResolveVariablesReferences,
             ExecuteAssignments,
+             # note that AddStatementsToNetxParseGraph and AddRulesToTermGraph are mutually exclusive, only one will actually run per statement
             AddStatementsToNetxParseGraph,
-            AddRulesToTermGraph
+            AddRulesToTermGraph # TODO agg - change this pass to also add the group by and aggregation operations
         ]
 
         self._grammar = Session._get_grammar_from_file()
