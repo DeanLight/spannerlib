@@ -21,3 +21,5 @@ for file in files_to_test:
 # Wait for all subprocesses to finish
 for process in processes:
     process.wait()
+
+
