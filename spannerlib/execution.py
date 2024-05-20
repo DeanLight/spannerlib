@@ -10,7 +10,7 @@ from .ast_node_types import (Relation, Query, IERelation)
 from .engine import spannerlogEngineBase
 from .graphs import EvalState, GraphBase, TermGraphBase, ROOT_TYPE, TermNodeType, TYPE, STATE, VALUE
 from .symbol_table import SymbolTableBase
-from .passes_utils import ParseNodeType
+from .lark_passes import ParseNodeType
 
 # %% ../nbs/02b_execution.ipynb 5
 OUT_REL_ATTRIBUTE = "output_rel"

@@ -6,12 +6,11 @@ __all__ = ['ParseNodeType', 'assert_expected_node_structure_aux', 'assert_expect
 
 # %% ../nbs/01d_passes_utils.ipynb 4
 from enum import Enum
-
 from lark import Tree as LarkNode
 from typing import Any, Callable, Iterable
 
 from .graphs import GraphBase, EvalState
-from .expected_grammar import spannerlog_expected_children_names_lists
+from .grammar import spannerlog_expected_children_names_lists
 
 # %% ../nbs/01d_passes_utils.ipynb 5
 class ParseNodeType(Enum):

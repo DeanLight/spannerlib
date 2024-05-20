@@ -16,13 +16,14 @@ from lark.visitors import Interpreter, Visitor_Recursive, Visitor
 from pathlib import Path
 from typing import no_type_check, Set, Sequence, Any
 
+
 from .ast_node_types import (Assignment, ReadAssignment, AddFact, RemoveFact, Query, Rule, IERelation, RelationDeclaration, Relation)
 from .primitive_types import Span, DataTypes, DataTypeMapping
 from .engine import RESERVED_RELATION_PREFIX
 from .graphs import NetxStateGraph
 from .symbol_table import SymbolTableBase
 from .general_utils import (get_free_var_names, get_output_free_var_names, get_input_free_var_names, fixed_point, check_properly_typed_relation, type_check_rule_free_vars)
-from .passes_utils import assert_expected_node_structure, unravel_lark_node, ParseNodeType
+from .passes_utils import assert_expected_node_structure, unravel_lark_node,ParseNodeType
 
 # %% ../nbs/01c_lark_passes.ipynb 6
 def get_tree(**kwargs: Any) -> Any:

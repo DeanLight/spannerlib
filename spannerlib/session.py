@@ -46,6 +46,7 @@ from .ie_func.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, Cle
 from .ie_func.python_regex import PYRGX, PYRGX_STRING
 from .ie_func.rust_spanner_regex import RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE
 from .utils import patch_method, get_base_file_path, get_lib_name
+from .grammar import parse_spannerlog
 
 # %% ../nbs/04a_session.ipynb 7
 CSV_DELIMITER = ";"
@@ -261,9 +262,6 @@ class Session:
             AddRulesToTermGraph # TODO agg - change this pass to also add the group by and aggregation operations
         ]
 
-        self._grammar = Session._get_grammar_from_file()
-
-        self._parser = Lark(self._grammar, parser='lalr')
     
     @staticmethod
     def _get_grammar_from_file() -> str:
@@ -420,7 +418,7 @@ def run_commands(self: Session, query: str, # The user's input
     Generates an AST and passes it through the pass stack.
     """
     query_results = []
-    parse_tree = self._parser.parse(query)
+    parse_tree = parse_spannerlog(query,start='start')
     for statement in parse_tree.children:
         self._run_passes(statement, self._pass_stack)
         query_result = self._execution(parse_graph=self._parse_graph,
