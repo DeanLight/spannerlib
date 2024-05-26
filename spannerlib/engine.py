@@ -16,7 +16,7 @@ import tempfile
 import pandas as pd
 from abc import abstractmethod
 from itertools import count
-from jinja2 import Template
+import jinja2
 from pathlib import Path
 from typing import Iterable, Optional, Set, Tuple, Any, List, Union, Dict, no_type_check, Sequence, Callable
 from .ast_node_types import RelationDeclaration, AddFact, RemoveFact, Query, IERelation, Relation
@@ -472,14 +472,20 @@ def print_sql(self: SqliteEngine):
 def _run_sql_from_jinja_template(self: SqliteEngine, sql_template: str, template_dict: Optional[dict] = None) -> None:
     if not template_dict:
         template_dict = {}
-
-    sql_command = Template(strip_lines(sql_template)).render(**template_dict)
+    #TODO figure out how to make jinja2 print less whitespace but not fuck up the SQL syntax
+    # jinja_env = jinja2.Environment(
+    #     trim_blocks=True,
+    #     lstrip_blocks=True
+    #     )
+    # sql_command = jinja_env.from_string(strip_lines(sql_template)).render(**template_dict)
+    sql_command = jinja2.Template(strip_lines(sql_template)).render(**template_dict)
     self._run_sql(sql_command)
 
 # %% ../nbs/02a_engine.ipynb 33
 @patch_method
 def _run_sql(self: SqliteEngine, command: str, command_args: Optional[List] = None, do_commit: bool = False) -> List:
-    logger.debug(f"sql {command=}")
+    #logger.debug(f"sql {command=}")
+    logger.debug(f"sql {command}")
     if command_args:
         logger.debug(f"...with args: {command_args}")
 
@@ -821,14 +827,13 @@ def operator_join(self: SqliteEngine,
                         "relations_temp_names": inner_join_list, "join_constraints": on_constraints_list}
 
     sql_template = ("""
-    INSERT INTO {{new_rel_name}} {{SELECT}}
-    {% for left, right in new_columns_names %}
+    INSERT INTO {{new_rel_name}} {{SELECT}} 
+    {%+ for left, right in new_columns_names %}
         {{left}} AS {{right}}
         {% if not loop.last %}
         ,
         {% endif %}
     {% endfor %}
-
     FROM {{first_rel_name}} AS {{first_rel_temp_name}}
     {% for left, right in relations_temp_names %}
         INNER JOIN {{left}} AS {{right}}
@@ -924,7 +929,7 @@ def operator_union(self: SqliteEngine,
             # render a jinja template into an SQL select
             relation_string_template = '{{SELECT}} {{ selected_cols | join(", ") }} FROM {{rel_name}}'
             template_dict = {"SELECT": SqliteEngine.SQL_SELECT, "selected_cols": selection_list, "rel_name": relation.relation_name}
-            rendered_relation_string = Template(strip_lines(relation_string_template)).render(**template_dict)
+            rendered_relation_string = jinja2.Template(strip_lines(relation_string_template)).render(**template_dict)
             union_list.append(rendered_relation_string)
 
     new_arity = len(relations)
@@ -1116,6 +1121,7 @@ def compute_ie_relation(self: SqliteEngine,
                     output_fact = AddFact(output_relation.relation_name, list(ie_input) + spanned_ie_output, list(ie_output_schema))
                     self.add_fact(output_fact)
 
+    logger.debug(f"Computing IE relation {ie_relation.relation_name} based on bounding relation {bounding_relation}")
     ie_relation_name = ie_relation.relation_name
     # create the output relation for the ie function, and also declare it inside SQL
     output_relation_arity = len(ie_relation.input_term_list) + len(ie_relation.output_term_list)

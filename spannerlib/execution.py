@@ -12,12 +12,13 @@ from .graphs import EvalState, GraphBase, TermGraphBase, ROOT_TYPE, TermNodeType
 from .symbol_table import SymbolTableBase
 from .lark_passes import ParseNodeType
 
-# %% ../nbs/02b_execution.ipynb 5
+# %% ../nbs/02b_execution.ipynb 8
 OUT_REL_ATTRIBUTE = "output_rel"
 
 FREE_VAR_PREFIX = "COL"
 
-# %% ../nbs/02b_execution.ipynb 6
+# %% ../nbs/02b_execution.ipynb 9
+#TODO agg - split the naive execution of queries from other basic operations
 def naive_execution(parse_graph: GraphBase, # a parse graph to execute
                     term_graph: TermGraphBase, # a term graph
                     symbol_table: SymbolTableBase, # a symbol table

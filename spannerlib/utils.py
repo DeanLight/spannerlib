@@ -2,8 +2,8 @@
 
 # %% auto 0
 __all__ = ['logger', 'WINDOWS_OS', 'IS_POSIX', 'GOOGLE_DRIVE_URL', 'GOOGLE_DRIVE_CHUNK_SIZE', 'get_git_root',
-           'get_base_file_path', 'get_lib_name', 'patch_method', 'kill_process_and_children', 'run_cli_command',
-           'download_file_from_google_drive', 'df_to_list']
+           'get_base_file_path', 'get_lib_name', 'checkLogs', 'patch_method', 'kill_process_and_children',
+           'run_cli_command', 'download_file_from_google_drive', 'df_to_list']
 
 # %% ../nbs/00a_utils.ipynb 2
 import shlex
@@ -20,7 +20,7 @@ from threading import Timer
 from typing import no_type_check, get_type_hints, Iterable, Any, Optional, Callable
 from fastcore.basics import patch
 
-# %% ../nbs/00a_utils.ipynb 3
+# %% ../nbs/00a_utils.ipynb 4
 logger = logging.getLogger(__name__)
 
 WINDOWS_OS = "win32"
@@ -30,14 +30,14 @@ IS_POSIX = (platform != WINDOWS_OS)
 GOOGLE_DRIVE_URL = "https://docs.google.com/uc?export=download"
 GOOGLE_DRIVE_CHUNK_SIZE = 32768
 
-# %% ../nbs/00a_utils.ipynb 4
+# %% ../nbs/00a_utils.ipynb 5
 def get_git_root(path='.'):
 
         git_repo = git.Repo(path, search_parent_directories=True)
         git_root = git_repo.git.rev_parse("--show-toplevel")
         return Path(git_root)
 
-# %% ../nbs/00a_utils.ipynb 5
+# %% ../nbs/00a_utils.ipynb 6
 def get_base_file_path() -> Path: # The absolute path of parent folder of nbs
     return get_git_root()
 
@@ -48,7 +48,45 @@ def get_lib_name() -> str:
     setting_ini = setting_ini['DEFAULT']
     return setting_ini['lib_name']
 
-# %% ../nbs/00a_utils.ipynb 6
+# %% ../nbs/00a_utils.ipynb 7
+from contextlib import contextmanager
+import logging
+
+@contextmanager
+def checkLogs(level: int=logging.DEBUG, name :str=None, toFile=None):
+    """context manager for temporarily changing logging levels. used for debugging purposes
+
+    Args:
+        level (logging.Level: optional): logging level to change the logger to. Defaults to logging.DEBUG.
+        name (str: optional): module name to raise logging level for. Defaults to root logger
+        toFile (Path: optional): File to output logs to. Defaults to None
+        
+
+    Yields:
+        [logging.Logger]: the logger object that we raised the level of
+    """
+    logger = logging.getLogger(name)
+    current_level = logger.getEffectiveLevel()
+    format = "%(name)s - %(levelname)s - %(message)s"
+    logger.setLevel(level)
+    if len(logger.handlers) == 0:
+        sh = logging.StreamHandler()
+        sh.setFormatter(logging.Formatter(format))
+        logger.addHandler(sh)
+    if toFile != None:
+        fh = logging.FileHandler(toFile)
+        fh.setFormatter(logging.Formatter(format))
+        logger.addHandler(fh)
+    try:
+        yield logger
+    finally:
+        logger.setLevel(current_level)
+        if toFile != None:
+            logger.removeHandler(fh)
+        if len(logger.handlers) == 1:
+            logger.handlers= []
+
+# %% ../nbs/00a_utils.ipynb 8
 def patch_method(func : Callable, *args, **kwargs) -> None:
     """
     Applies fastcore's `patch` decorator and removes `func` from `cls.__abstractsmethods__` in case <br>
@@ -65,7 +103,7 @@ def patch_method(func : Callable, *args, **kwargs) -> None:
         # Apply the original `patch` decorator
         patch(*args, **kwargs)(func)
 
-# %% ../nbs/00a_utils.ipynb 7
+# %% ../nbs/00a_utils.ipynb 9
 def kill_process_and_children(process: Popen) -> None:
     logger.info("~~~~ process timed out ~~~~")
     if process.poll() is not None:
@@ -74,7 +112,7 @@ def kill_process_and_children(process: Popen) -> None:
             child.kill()  # not recommended in real life
         process.kill()  # lastly, kill the process
 
-# %% ../nbs/00a_utils.ipynb 8
+# %% ../nbs/00a_utils.ipynb 10
 def run_cli_command(command: str, # a single command string
                     stderr: bool = False, # if true, suppress stderr output. default: `False`
                     # if true, spawn shell process (e.g. /bin/sh), which allows using system variables (e.g. $HOME),
@@ -110,7 +148,7 @@ def run_cli_command(command: str, # a single command string
     if stderr:
         logger.info(f"stderr from process {command_list[0]}: {process_stderr}")
 
-# %% ../nbs/00a_utils.ipynb 9
+# %% ../nbs/00a_utils.ipynb 11
 import os
 def download_file_from_google_drive(file_id: str, # the id of the file to download
                                      destination: Path # the path to which the file will be downloaded
@@ -144,6 +182,6 @@ def download_file_from_google_drive(file_id: str, # the id of the file to downlo
 
     save_response_content()
 
-# %% ../nbs/00a_utils.ipynb 10
+# %% ../nbs/00a_utils.ipynb 12
 def df_to_list(df):
     return df.to_dict(orient='records')
