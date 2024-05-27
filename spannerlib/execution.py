@@ -8,7 +8,7 @@ from typing import (Tuple, Dict, List, Callable, Optional, Union)
 
 from .ast_node_types import (Relation, Query, IERelation)
 from .engine import spannerlogEngineBase
-from .graphs import EvalState, GraphBase, TermGraphBase, ROOT_TYPE, TermNodeType, TYPE, STATE, VALUE
+from .graphs import EvalState,  ROOT_TYPE, TermNodeType, TYPE, STATE, VALUE
 from .symbol_table import SymbolTableBase
 from .lark_passes import ParseNodeType
 
@@ -19,8 +19,8 @@ FREE_VAR_PREFIX = "COL"
 
 # %% ../nbs/02b_execution.ipynb 9
 #TODO agg - split the naive execution of queries from other basic operations
-def naive_execution(parse_graph: GraphBase, # a parse graph to execute
-                    term_graph: TermGraphBase, # a term graph
+def naive_execution(parse_graph, # a parse graph to execute
+                    term_graph, # a term graph
                     symbol_table: SymbolTableBase, # a symbol table
                     spannerlog_engine: spannerlogEngineBase # a spannerlog engine that will be used to execute the term graph
                     ) -> Optional[Tuple[Query, List]]:
@@ -102,7 +102,7 @@ def naive_execution(parse_graph: GraphBase, # a parse graph to execute
         mutually_recursive = term_graph.get_mutually_recursive_relations(relation_name)
         current_computed_relation = None
 
-        def compute_postorder(node_id: GraphBase.NodeIdType) -> None:
+        def compute_postorder(node_id) -> None:
             """
             Runs postorder dfs over the term graph and evaluates the tree.
 

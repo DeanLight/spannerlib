@@ -9,7 +9,7 @@ from typing import Any, Set, Union, List, Tuple
 from .ast_node_types import IERelation, Relation, Rule
 from .primitive_types import DataTypes
 from .lark_passes import GenericPass
-from .graphs import TermGraphBase, GraphBase, TermNodeType, TYPE, VALUE
+from .graphs import TermNodeType, TYPE, VALUE
 from .general_utils import get_output_free_var_names, get_input_free_var_names, fixed_point
 from .passes_utils import get_new_rule_nodes
 
@@ -32,7 +32,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
     ```
     """
 
-    def __init__(self, term_graph: TermGraphBase, **kwargs: Any) -> None:
+    def __init__(self, term_graph, **kwargs: Any) -> None:
         self.term_graph = term_graph
 
     def run_pass(self, **kwargs: Any) -> None:
@@ -53,7 +53,7 @@ class PruneUnnecessaryProjectNodes(GenericPass):
                 self.term_graph.remove_node(project_id)
 
     def is_input_relation_of_node_has_arity_of_one(self, 
-                        node_id: GraphBase.NodeIdType # id of the node
+                        node_id # id of the node
                         ) -> bool: # Wether the arity of the relation that the node gets during the execution is one
         """
         @note: we expect id of project/join node.
@@ -109,7 +109,7 @@ class RemoveUselessRelationsFromRule(GenericPass):
 
     """
 
-    def __init__(self, parse_graph: GraphBase, **kwargs: Any) -> None:
+    def __init__(self, parse_graph, **kwargs: Any) -> None:
         self.parse_graph = parse_graph
 
     @staticmethod

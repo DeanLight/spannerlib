@@ -5,7 +5,7 @@ __all__ = ['SpannerlogGrammar', 'spannerlog_expected_children_names_lists', 'par
 
 # %% ../nbs/01d_spannerlog_grammar.ipynb 3
 from typing import no_type_check, Set, Sequence, Any, Callable
-from .graphs import GraphBase, EvalState
+#from spannerlib.graphs import GraphBase, EvalState
 from typing import Sequence, Dict
 from lark import Lark,Token, Tree, Transformer
 import yaml

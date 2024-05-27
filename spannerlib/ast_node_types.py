@@ -62,7 +62,7 @@ class RelationDeclaration:
         return relation_declaration_string
 
     def __repr__(self) -> str:
-        return str(self)
+        return f'{self.__class__.__name__}({self.relation_name}, {self.type_list})'
 
 # %% ../nbs/03a_ast_node_types.ipynb 14
 class Relation:
@@ -87,7 +87,7 @@ class Relation:
         return relation_string
 
     def __repr__(self) -> str:
-        return str(self)
+        return f'{self.__class__.__name__}({self})'
 
     def get_term_list(self) -> Sequence[DataTypeMapping.term]:
         return self.term_list
@@ -170,7 +170,7 @@ class IERelation:
         return ie_relation_string
 
     def __repr__(self) -> str:
-        return str(self)
+        return f'{self.__class__.__name__}({str(self)})'
 
     def get_term_list(self) -> List[DataTypeMapping.term]:
         return self.input_term_list + self.output_term_list
@@ -247,7 +247,7 @@ class Rule:
         return f"{self.head_relation} <- {', '.join(map(str, self.body_relation_list))}"
 
     def __repr__(self) -> str:
-        return str(self)
+        return f'{self.__class__.__name__}({str(self)})'
 
     def get_relations_by_type(self) -> Tuple[Set, Set]:
         """

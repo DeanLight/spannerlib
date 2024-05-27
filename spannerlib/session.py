@@ -14,6 +14,7 @@ from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_ty
 
 # %% ../nbs/04a_session.ipynb 5
 from lark.lark import Lark
+import networkx as nx
 from pandas import DataFrame
 from tabulate import tabulate
 import os
@@ -37,7 +38,7 @@ from .lark_passes import (RemoveTokens, FixStrings, CheckReservedRelationNames,
                                               TypeCheckAssignments, TypeCheckRelations,
                                               SaveDeclaredRelationsSchemas, ResolveVariablesReferences,
                                               ExecuteAssignments, AddStatementsToNetxParseGraph, GenericPass)
-from .graphs import TermGraph, NetxStateGraph, GraphBase, TermGraphBase
+#from spannerlib.graphs import TermGraph, NetxStateGraph, GraphBase, TermGraphBase
 from .symbol_table import SymbolTable, SymbolTableBase
 from .general_utils import rule_to_relation_name, string_to_span, SPAN_PATTERN, QUERY_RESULT_PREFIX
 from .passes_utils import LarkNode
@@ -216,8 +217,8 @@ def queries_to_string(query_results: List[Tuple[Query, List]] # List[the Query o
 class Session:
     def __init__(self, 
                  symbol_table: Optional[SymbolTableBase] = None, # symbol table to help with all semantic checks
-                 parse_graph: Optional[GraphBase] = None, # an AST that contains nodes which represent commands
-                 term_graph: Optional[TermGraphBase] = None): # a graph that holds all the connection between the relations
+                 parse_graph: Optional[nx.Digraph] = None, # an AST that contains nodes which represent commands
+                 term_graph: Optional[nx.DiGraph] = None): # a graph that holds all the connection between the relations
         """
         A class that serves as the central connection point between various modules in the system.
 
@@ -233,10 +234,9 @@ class Session:
         else:
             self._symbol_table = symbol_table
 
-        self._parse_graph = NetxStateGraph() if parse_graph is None else parse_graph
-        self._term_graph: TermGraphBase = TermGraph() if term_graph is None else term_graph
+        self._parse_graph = nx.DiGraph() if parse_graph is None else parse_graph
+        self._term_graph = nx.DiGraph() if term_graph is None else term_graph
         self._engine = SqliteEngine()
-        self._execution = naive_execution
 
         self._pass_stack: List[Type[GenericPass]] = [
             RemoveTokens,
@@ -255,8 +255,10 @@ class Session:
             ResolveVariablesReferences,
             ExecuteAssignments,
              # note that AddStatementsToNetxParseGraph and AddRulesToTermGraph are mutually exclusive, only one will actually run per statement
-            AddStatementsToNetxParseGraph,
-            AddRulesToTermGraph # TODO agg - change this pass to also add the group by and aggregation operations
+            # TODO agg remove AddStatementsToNetxParseGraph just use the parsetree directly
+            # TODO remove AddRulesToTermGraph, make it a side effect of the execution§
+            # AddStatementsToNetxParseGraph,
+            # AddRulesToTermGraph # TODO agg - change this pass to also add the group by and aggregation operations
         ]
 
     def __repr__(self) -> str:
@@ -455,14 +457,7 @@ def run_commands(self: Session, query: str, # The user's input
     else:
         return query_results
 
-# %% ../nbs/04a_session.ipynb 41
-def plan_query(query,term_graph,optimization_passes=None):
-    if optimization_passes is None:
-        optimization_passes = []
-
-    
-
-# %% ../nbs/04a_session.ipynb 46
+# %% ../nbs/04a_session.ipynb 30
 @patch_method
 def register(self: Session, ie_function: Callable, ie_function_name: str, in_rel: List[DataTypes],
             out_rel: Union[List[DataTypes], Callable[[int], Sequence[DataTypes]]]) -> None:
@@ -473,7 +468,14 @@ def register(self: Session, ie_function: Callable, ie_function_name: str, in_rel
     """
     self._symbol_table.register_ie_function(ie_function, ie_function_name, in_rel, out_rel)
 
-# %% ../nbs/04a_session.ipynb 51
+# %% ../nbs/04a_session.ipynb 49
+def plan_query(query,term_graph,optimization_passes=None):
+    if optimization_passes is None:
+        optimization_passes = []
+
+    
+
+# %% ../nbs/04a_session.ipynb 58
 @patch_method
 def remove_rule(self: Session, rule: str # The rule to be removed
                 ) -> None:
@@ -485,7 +487,7 @@ def remove_rule(self: Session, rule: str # The rule to be removed
         relation_name = rule_to_relation_name(rule)
         self._remove_rule_relation_from_symbols_and_engine(relation_name)
 
-# %% ../nbs/04a_session.ipynb 58
+# %% ../nbs/04a_session.ipynb 65
 @patch_method
 def remove_all_rules(self: Session, rule_head: Optional[str] = None # if rule head is not none we remove all rules with rule_head
                         ) -> None:
@@ -501,7 +503,7 @@ def remove_all_rules(self: Session, rule_head: Optional[str] = None # if rule he
         self._term_graph.remove_rules_with_head(rule_head)
         self._remove_rule_relation_from_symbols_and_engine(rule_head)
 
-# %% ../nbs/04a_session.ipynb 65
+# %% ../nbs/04a_session.ipynb 72
 @patch_method
 def clear_relation(self: Session, relation_name: str # The name of the relation to clear
                     ) -> None:
@@ -511,7 +513,7 @@ def clear_relation(self: Session, relation_name: str # The name of the relation 
 
     self._engine.clear_relation(relation_name)
 
-# %% ../nbs/04a_session.ipynb 72
+# %% ../nbs/04a_session.ipynb 79
 @patch_method
 def send_commands_result_into_csv(self: Session, commands: str, # the commands to run
                                     csv_file_name: Path, # the file into which the output will be written
@@ -534,7 +536,7 @@ def send_commands_result_into_csv(self: Session, commands: str, # the commands t
             writer = csv.writer(f, delimiter=delimiter)
             writer.writerows(formatted_result)
 
-# %% ../nbs/04a_session.ipynb 74
+# %% ../nbs/04a_session.ipynb 81
 @patch_method
 def print_registered_ie_functions(self: Session) -> None:
     """
@@ -542,7 +544,7 @@ def print_registered_ie_functions(self: Session) -> None:
     """
     self._symbol_table.print_registered_ie_functions()
 
-# %% ../nbs/04a_session.ipynb 76
+# %% ../nbs/04a_session.ipynb 83
 @patch_method
 def remove_ie_function(self: Session, name: str # the name of the ie function to remove
                         ) -> None:
@@ -551,7 +553,7 @@ def remove_ie_function(self: Session, name: str # the name of the ie function to
     """
     self._symbol_table.remove_ie_function(name)
 
-# %% ../nbs/04a_session.ipynb 78
+# %% ../nbs/04a_session.ipynb 85
 @patch_method
 def remove_all_ie_functions(self: Session) -> None:
     """
@@ -559,7 +561,7 @@ def remove_all_ie_functions(self: Session) -> None:
     """
     self._symbol_table.remove_all_ie_functions()
 
-# %% ../nbs/04a_session.ipynb 80
+# %% ../nbs/04a_session.ipynb 87
 @patch_method
 def print_all_rules(self: Session, head: Optional[str] = None # if specified it will print only rules with the given head relation name
                     ) -> None:
@@ -569,7 +571,7 @@ def print_all_rules(self: Session, head: Optional[str] = None # if specified it 
 
     self._term_graph.print_all_rules(head)
 
-# %% ../nbs/04a_session.ipynb 85
+# %% ../nbs/04a_session.ipynb 92
 @patch_method
 def import_rel(self: Session, data: Union[DataFrame,Path], #Either a dataframe or a path to a csv file to import.
                              relation_name: str = None, #The name of the relation. If not provided when importing a csv, it will be derived from the file name.

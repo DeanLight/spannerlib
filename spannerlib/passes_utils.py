@@ -9,7 +9,7 @@ from enum import Enum
 from lark import Tree as LarkNode
 from typing import Any, Callable, Iterable
 
-from .graphs import GraphBase, EvalState
+from .graphs import EvalState
 from .grammar import spannerlog_expected_children_names_lists
 
 # %% ../nbs/01d_passes_utils.ipynb 5
@@ -90,7 +90,7 @@ def unravel_lark_node(func: Callable # A function to run the decorator on
     return wrapped_method
 
 # %% ../nbs/01d_passes_utils.ipynb 11
-def get_new_rule_nodes(parse_graph: GraphBase) -> Iterable[GraphBase.NodeIdType]:
+def get_new_rule_nodes(parse_graph):
     """
     Finds all rules that weren't added to the term graph yet.
     """

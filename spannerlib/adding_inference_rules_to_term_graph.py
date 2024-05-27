@@ -8,7 +8,7 @@ import logging
 from typing import Any
 from .ast_node_types import Rule
 from .lark_passes import GenericPass
-from .graphs import EvalState, TermGraphBase, GraphBase
+from .graphs import EvalState
 from .passes_utils import get_new_rule_nodes
 
 # %% ../nbs/03d_adding_inference_rules_to_term_graph.ipynb 5
@@ -21,7 +21,7 @@ class AddRulesToTermGraph(GenericPass):
     It adds these rules to the term graph (using `term_graph`'s add rule method).
     """
 
-    def __init__(self, parse_graph: GraphBase, term_graph: TermGraphBase, **kwargs: Any) -> None:
+    def __init__(self, parse_graph, term_graph, **kwargs: Any) -> None:
         self.parse_graph = parse_graph
         self.term_graph = term_graph
 
