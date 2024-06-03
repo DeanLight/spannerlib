@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['logger', 'WINDOWS_OS', 'IS_POSIX', 'GOOGLE_DRIVE_URL', 'GOOGLE_DRIVE_CHUNK_SIZE', 'SPAN_GROUP1', 'SPAN_GROUP2',
-           'SPAN_PATTERN', 'QUERY_RESULT_PREFIX', 'UniqueIdGenerator', 'uniq_id', 'get_git_root', 'get_base_file_path',
+           'SPAN_PATTERN', 'QUERY_RESULT_PREFIX', 'UniqueId', 'uniq_id', 'get_git_root', 'get_base_file_path',
            'get_lib_name', 'checkLogs', 'patch_method', 'kill_process_and_children', 'run_cli_command',
            'download_file_from_google_drive', 'df_to_list', 'strip_lines', 'fixed_point', 'get_free_var_names',
            'position_freevar_pairs', 'get_input_free_var_names', 'get_output_free_var_names',
@@ -29,15 +29,17 @@ from singleton_decorator import singleton
 
 # %% ../nbs/000_utils.ipynb 3
 @singleton
-class UniqueIdGenerator:
+class UniqueId:
     def __init__(self):
-        self.counter = itertools.count()
+        self.reset()
     def __call__(self):
         return next(self.counter)
+    def reset(self):
+        self.counter = itertools.count()
     
 
 def uniq_id():
-    return UniqueIdGenerator()()
+    return UniqueId()()
 
 # %% ../nbs/000_utils.ipynb 5
 logger = logging.getLogger(__name__)
