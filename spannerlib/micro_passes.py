@@ -114,7 +114,7 @@ def check_referenced_vars_exist(ast,sess):
             raise ValueError(f'Variable {var_name} is not defined')
 
 
-# %% ../nbs/010_micro_passes.ipynb 44
+# %% ../nbs/010_micro_passes.ipynb 43
 class CheckRuleSafety(VisitorRecursivePass):
     """
     Performs semantic checks on rules using a Lark tree to ensure their safety. <br>
@@ -167,7 +167,7 @@ class CheckRuleSafety(VisitorRecursivePass):
     pass
 
 
-# %% ../nbs/010_micro_passes.ipynb 52
+# %% ../nbs/010_micro_passes.ipynb 51
 class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     """
     A lark tree semantic check. <br>
@@ -234,7 +234,7 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
-# %% ../nbs/010_micro_passes.ipynb 53
+# %% ../nbs/010_micro_passes.ipynb 52
 class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     """
     A lark tree semantic check. <br>
@@ -281,7 +281,7 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
                                     f' {used_output_arity} (should be {correct_output_arity})')
 
 
-# %% ../nbs/010_micro_passes.ipynb 55
+# %% ../nbs/010_micro_passes.ipynb 54
 class CheckRuleSafety(VisitorRecursivePass):
     """
     Performs semantic checks on rules using a Lark tree to ensure their safety. <br>
@@ -418,7 +418,7 @@ class CheckRuleSafety(VisitorRecursivePass):
 
 
 
-# %% ../nbs/010_micro_passes.ipynb 57
+# %% ../nbs/010_micro_passes.ipynb 56
 class TypeCheckAssignments(InterpreterPass):
     """
     A lark semantic check <br>
@@ -446,7 +446,7 @@ class TypeCheckAssignments(InterpreterPass):
                             f'because the argument type for read() was {read_arg_type} (must be a string)')
 
 
-# %% ../nbs/010_micro_passes.ipynb 59
+# %% ../nbs/010_micro_passes.ipynb 58
 class TypeCheckRelations(InterpreterPass):
     """
     A Lark Tree Semantic Check
@@ -530,7 +530,7 @@ class TypeCheckRelations(InterpreterPass):
                             f'{conflicted_free_vars}')
 
 
-# %% ../nbs/010_micro_passes.ipynb 61
+# %% ../nbs/010_micro_passes.ipynb 60
 class SaveDeclaredRelationsSchemas(InterpreterPass):
     """
     This pass writes the relation schemas that it finds in relation declarations and rule heads* to the
@@ -563,7 +563,7 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
 
-# %% ../nbs/010_micro_passes.ipynb 64
+# %% ../nbs/010_micro_passes.ipynb 63
 class ResolveVariablesReferences(InterpreterPass):
     """
     A lark execution pass, <br>
@@ -645,7 +645,7 @@ class ResolveVariablesReferences(InterpreterPass):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-# %% ../nbs/010_micro_passes.ipynb 66
+# %% ../nbs/010_micro_passes.ipynb 65
 class ExecuteAssignments(InterpreterPass):
     """
     A lark execution pass, <br>
@@ -676,7 +676,7 @@ class ExecuteAssignments(InterpreterPass):
         self.symbol_table.set_var_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
 
-# %% ../nbs/010_micro_passes.ipynb 69
+# %% ../nbs/010_micro_passes.ipynb 68
 #TODO agg - rewrite this to not exist? and if it exist use a naive netx graph
 class AddStatementsToNetxParseGraph(InterpreterPass):
     """
