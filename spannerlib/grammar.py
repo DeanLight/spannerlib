@@ -126,11 +126,15 @@ def lark_to_nx_aux(tree,node_id,g,counter):
     if isinstance(tree, Token):
         g.add_node(node_id,val=tree.value)
     elif isinstance(tree, Tree):
-        if isinstance(tree.data,Token):
-            node_type = tree.data.value
+        if len(tree.children) == 0:
+            node_key = "val"
         else:
-            node_type = tree.data
-        g.add_node(node_id,type=node_type)
+            node_key = "type"
+        if isinstance(tree.data,Token):
+            node_val = tree.data.value
+        else:
+            node_val = tree.data
+        g.add_node(node_id,**{node_key:node_val})
         for i,child in enumerate(tree.children):
             child_id = next(counter)
             g.add_edge(node_id,child_id,idx=i)
@@ -139,6 +143,16 @@ def lark_to_nx_aux(tree,node_id,g,counter):
 
 
 def lark_to_nx(t):
+    """turn a lark tree into a networkx digraph
+    data of inner nodes is saved under a key 'type'
+    data of leaves is saved under a key 'val'
+
+    Args:
+        t (lark.Tree): lark tree
+
+    Returns:
+        nx.Digraph: the nx graph
+    """
     g = nx.DiGraph()
     counter = itertools.count()
     lark_to_nx_aux(t,next(counter),g,counter)

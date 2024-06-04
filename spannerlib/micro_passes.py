@@ -2,10 +2,10 @@
 
 # %% auto 0
 __all__ = ['PrimitiveType', 'Type', 'Span', 'Var', 'FreeVar', 'RelationDefinition', 'Relation', 'IEFunction', 'IERelation',
-           'Rule', 'fix_strings', 'ConvertStatementsToStructuredNodes', 'CheckReferencedRelationsExistenceAndArity',
-           'CheckReferencedIERelationsExistenceAndArity', 'CheckRuleSafety', 'TypeCheckAssignments',
-           'TypeCheckRelations', 'SaveDeclaredRelationsSchemas', 'ResolveVariablesReferences', 'ExecuteAssignments',
-           'AddStatementsToNetxParseGraph']
+           'Rule', 'remove_new_lines_from_strings', 'check_referenced_vars_exist', 'CheckRuleSafety',
+           'CheckReferencedRelationsExistenceAndArity', 'CheckReferencedIERelationsExistenceAndArity',
+           'TypeCheckAssignments', 'TypeCheckRelations', 'SaveDeclaredRelationsSchemas', 'ResolveVariablesReferences',
+           'ExecuteAssignments', 'AddStatementsToNetxParseGraph']
 
 # %% ../nbs/010_micro_passes.ipynb 3
 from abc import ABC, abstractmethod
@@ -62,7 +62,7 @@ Type = Union[PrimitiveType,Var,FreeVar]
 class RelationDefinition(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
-    scheme: List[PrimitiveType]
+    scheme: List[type]
 
 class Relation(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -72,8 +72,8 @@ class Relation(BaseModel):
 class IEFunction(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
-    in_schema: List[PrimitiveType]
-    out_schema: List[PrimitiveType]
+    in_schema: List[type]
+    out_schema: List[type]
     func: Callable
 
 class IERelation(BaseModel):
@@ -87,205 +87,87 @@ class Rule(BaseModel):
     head: Relation
     body: List[Union[Relation,IERelation]]
 
-# %% ../nbs/010_micro_passes.ipynb 16
-def fix_strings(ast,sess):
+# %% ../nbs/010_micro_passes.ipynb 17
+def remove_new_lines_from_strings(ast,sess):
     for match in rewrite_iter(ast,
         lhs='v[type="string",val]'):
-        match['v']['val'] = match['v']['val'].replace('\\\n','')
+        # TODO we also remove the starting and ending quotes, TODO make them disapear in the parsing stage
+        match['v']['val'] = match['v']['val'].replace('\\\n','')[1:-1]
 
 
-# %% ../nbs/010_micro_passes.ipynb 23
-class ConvertStatementsToStructuredNodes(VisitorRecursivePass):
+# %% ../nbs/010_micro_passes.ipynb 27
+def check_referenced_vars_exist(ast,sess):
+
+    # first rename all left hand sign variables 
+    # as type "var_name_lhs"
+    # so we can seperate them from reference variables
+    for assignment_type in ["assignment","read_assignment"]:
+        for match in rewrite_iter(ast,
+                lhs=f"""X[type="{assignment_type}"]-[idx=0]->LHS[type="var_name",val]"""
+                ):
+            match['LHS']['type'] = "var_name_lhs"
+
+    # now for each reference variable check if it is in the symbol table
+    for match in rewrite_iter(ast,lhs=f"""X[type="var_name",val]"""):
+        var_name = match['X']['val'].name
+        if not var_name in sess.symbol_table:
+            raise ValueError(f'Variable {var_name} is not defined')
+
+
+# %% ../nbs/010_micro_passes.ipynb 44
+class CheckRuleSafety(VisitorRecursivePass):
     """
-    converts each statement node in the tree to a structured node, making it easier to parse in future passes. <br>
-    a structured node is a class representation of a node in the abstract syntax tree. <br>
+    Performs semantic checks on rules using a Lark tree to ensure their safety. <br>
+    A rule is considered "safe" when it meets certain conditions.
+
+
+    * [Rule Safety Conditions](#rule-safety-conditions)
+        * [Free Variable in Rule Head](#free-variable-in-rule-head)
+        * [Bound Free Variable](#bound-free-variable)
+    * [Examples](#examples)
+    * [Safe Relations](#safe-relations)
+
+    ---
+
+    ### Rule Safety Conditions
+
+    For a rule to be considered safe, the following two conditions must be met:
+
+    ### 1. Free Variable in Rule Head
+
+    Every free variable that appears in the rule head must occur at least once in the body as an output term of a relation.
+
+    #### Examples
+
+    * `parent(X,Y) <- son(X)` is not a safe rule because the free variable `Y` only appears in the rule head.  
+    * `parent(X,Z) <- parent(X,Y), parent(Y,Z)` is a safe rule since both `X` and `Z` appear in the rule body.
+
+    ### 2. Bound Free Variable
+
+    A free variable is considered "bound" if it is constrained in a manner that limits the range of values it can take.
+
+    To ensure that every free variable is bound, we must ensure that every relation in the rule body is a safe relation.
+
+    ### Safe Relations
+
+    A safe relation adheres to the following:
+
+    * Its input relation is safe, meaning all its input's free variables are bound. Normal relations are always considered safe as they don't have input relations.  
+    * A bound variable is one that exists in the output of a safe relation.
+
+    #### Examples
+
+    * `rel2(X,Y) <- rel1(X,Z), ie1<X>(Y)` is a safe rule as the only input free variable, `X`, exists in the output of the safe relation `rel1(X, Z)`.  
+    * `rel2(Y) <- ie1<Z>(Y)` is not safe as the input free variable `Z` does not exist in the output of any safe relation.
+
+    ---
+
+
     """
-
-    def __init__(self, **kw: Any):
-        super().__init__()
-
-    @no_type_check
-    @assert_expected_node_structure
-    def assignment(self, assignment_node: LarkNode):
-
-        # get the attributes that defines this assignment: the variable name, the assigned value and the
-        # assigned value type
-        var_name_node = assignment_node.children[0]
-        value_node = assignment_node.children[1]
-        var_name = var_name_node.children[0]
-        value = value_node.children[0]
-        value_type = DataTypes.from_string(value_node.data)
-
-        # create the structured node and use it as a replacement for the current assignment representation
-        structured_assignment_node = Assignment(var_name, value, value_type)
-        assignment_node.children = [structured_assignment_node]
-
-    @no_type_check
-    @assert_expected_node_structure
-    def read_assignment(self, assignment_node: LarkNode):
-
-        # get the attributes that defines this read assignment: the variable name, the argument for the read function
-        # and its type
-        var_name_node = assignment_node.children[0]
-        read_arg_node = assignment_node.children[1]
-        var_name = var_name_node.children[0]
-        read_arg = read_arg_node.children[0]
-        read_arg_type = DataTypes.from_string(read_arg_node.data)
-
-        # create the structured node and use it as a replacement for the current assignment representation
-        structured_assignment_node = ReadAssignment(var_name, read_arg, read_arg_type)
-        assignment_node.children = [structured_assignment_node]
-
-    @no_type_check
-    @assert_expected_node_structure
-    def add_fact(self, fact_node: LarkNode):
-
-        # a fact is defined by a relation, create that relation using the utility function
-        relation = self._create_structured_relation_node(fact_node)
-
-        # create a structured node and use it to replace the current fact representation
-        structured_fact_node = AddFact(relation.relation_name, relation.term_list, relation.type_list)
-        fact_node.children = [structured_fact_node]
-
-    @no_type_check
-    @assert_expected_node_structure
-    def remove_fact(self, fact_node: LarkNode):
-
-        # a fact is defined by a relation, create that relation using the utility function
-        relation = self._create_structured_relation_node(fact_node)
-
-        # create a structured node and use it to replace the current fact representation
-        structured_fact_node = RemoveFact(relation.relation_name, relation.term_list, relation.type_list)
-        fact_node.children = [structured_fact_node]
-
-    @no_type_check
-    @assert_expected_node_structure
-    def query(self, query_node: LarkNode):
-
-        # a query is defined by a relation, create that relation using the utility function
-        relation = self._create_structured_relation_node(query_node)
-
-        # create a structured node and use it to replace the current query representation
-        structured_query_node = Query(relation.relation_name, relation.term_list, relation.type_list)
-        query_node.children = [structured_query_node]
-
-    @no_type_check
-    @assert_expected_node_structure
-    def relation_declaration(self, relation_decl_node: LarkNode):
-        relation_name_node = relation_decl_node.children[0]
-        decl_term_list_node = relation_decl_node.children[1]
-
-        # get the attributes of the relation declaration: the declared relation name and the types of its terms
-        relation_name = relation_name_node.children[0]
-        type_list = []
-        for decl_term_node in decl_term_list_node.children:
-            decl_term_type = decl_term_node.data
-            if decl_term_type == "decl_string":
-                type_list.append(DataTypes.string)
-            elif decl_term_type == "decl_span":
-                type_list.append(DataTypes.span)
-            elif decl_term_type == "decl_int":
-                type_list.append(DataTypes.integer)
-            else:
-                raise Exception(f'unexpected declaration term node type: {decl_term_type}')
-
-        # create a structured node and use it to replace the current relation declaration representation
-        relation_decl_struct_node = RelationDeclaration(relation_name, type_list)
-        relation_decl_node.children = [relation_decl_struct_node]
-
-    @no_type_check
-    @assert_expected_node_structure
-    def rule(self, rule_node: LarkNode):
-        rule_head_node = rule_node.children[0]
-        rule_body_relation_nodes = rule_node.children[1]
-
-        # create the structured relation node that defines the head relation of the rule
-        structured_head_relation_node = self._create_structured_relation_node(rule_head_node)
-
-        # for each rule body relation, create a matching structured relation node
-        structured_body_relation_list = []
-        for relation_node in rule_body_relation_nodes.children:
-
-            relation_type = relation_node.data
-            if relation_type == "relation":
-                structured_relation_node = self._create_structured_relation_node(relation_node)
-            elif relation_type == "ie_relation":
-                structured_relation_node = self._create_structured_ie_relation_node(relation_node)
-            else:
-                raise Exception(f'unexpected relation type: {relation_type}')
-
-            structured_body_relation_list.append(structured_relation_node)
-
-        # create a list of the types of the relations in the rule body
-        body_relation_type_list = [relation_node.data for relation_node in rule_body_relation_nodes.children]
-
-        # create a structured rule node
-        structured_rule_node = Rule(structured_head_relation_node, structured_body_relation_list,
-                                    body_relation_type_list)
-
-        # replace the current rule representation with the structured rule node
-        rule_node.children = [structured_rule_node]
-
-    @staticmethod
-    @no_type_check
-    def _create_structured_relation_node(relation_node: LarkNode) -> Relation:
-        """
-        a utility function that constructs a structured relation node.
-        while a relation node isn't a statement in and of itself, it is useful for defining
-        a structured rule node (which is constructed from multiple relations).
-        This is also a useful method for getting the attributes of a relation that defines a fact or a query
-        (as facts and queries are actions that are defined by a relation).
-
-        @param relation_node: a lark node that is structured like a relation (e.g. relation, add_fact, query).
-        @return: a structured node that represents the relation (structured_nodes.Relation instance).
-        """
-
-        relation_name_node = relation_node.children[0]
-        term_list_node = relation_node.children[1]
-
-        # get the attributes that define a relation: its name, its terms, and the type of its terms
-        relation_name = relation_name_node.children[0]
-        term_list = [term_node.children[0] for term_node in term_list_node.children]
-        type_list = [DataTypes.from_string(term_node.data) for term_node in term_list_node.children]
-
-        # create a structured relation node and return it
-        structured_relation_node = Relation(relation_name, term_list, type_list)
-        return structured_relation_node
-
-    @staticmethod
-    @no_type_check
-    def _create_structured_ie_relation_node(ie_relation_node: LarkNode) -> IERelation:
-        """
-        a utility function that constructs a structured ie relation node.
-        while an ie relation node isn't a statement in and of itself, it is useful for defining
-        a structured rule node (which is constructed from multiple relations which may include ie relations).
-
-        @param ie_relation_node: an ie_relation lark node.
-        @return: a structured node that represents the ie relation (a structured_nodes.IERelation instance).
-        """
-
-        relation_name_node = ie_relation_node.children[0]
-        input_term_list_node = ie_relation_node.children[1]
-        output_term_list_node = ie_relation_node.children[2]
-
-        # get the name of the ie relation
-        relation_name = relation_name_node.children[0]
-
-        # get the input terms of the ie relation and their types
-        input_term_list = [term_node.children[0] for term_node in input_term_list_node.children]
-        input_type_list = [DataTypes.from_string(term_node.data) for term_node in input_term_list_node.children]
-
-        # get the output terms of the ie relation and their types
-        output_term_list = [term_node.children[0] for term_node in output_term_list_node.children]
-        output_type_list = [DataTypes.from_string(term_node.data) for term_node in output_term_list_node.children]
-
-        # create a structured ie relation node and return it
-        structured_ie_relation_node = IERelation(relation_name, input_term_list, input_type_list,
-                                                 output_term_list, output_type_list)
-        return structured_ie_relation_node
+    pass
 
 
-# %% ../nbs/010_micro_passes.ipynb 26
+# %% ../nbs/010_micro_passes.ipynb 52
 class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     """
     A lark tree semantic check. <br>
@@ -352,7 +234,7 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
-# %% ../nbs/010_micro_passes.ipynb 27
+# %% ../nbs/010_micro_passes.ipynb 53
 class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     """
     A lark tree semantic check. <br>
@@ -399,7 +281,7 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
                                     f' {used_output_arity} (should be {correct_output_arity})')
 
 
-# %% ../nbs/010_micro_passes.ipynb 28
+# %% ../nbs/010_micro_passes.ipynb 55
 class CheckRuleSafety(VisitorRecursivePass):
     """
     Performs semantic checks on rules using a Lark tree to ensure their safety. <br>
@@ -536,7 +418,7 @@ class CheckRuleSafety(VisitorRecursivePass):
 
 
 
-# %% ../nbs/010_micro_passes.ipynb 29
+# %% ../nbs/010_micro_passes.ipynb 57
 class TypeCheckAssignments(InterpreterPass):
     """
     A lark semantic check <br>
@@ -564,7 +446,7 @@ class TypeCheckAssignments(InterpreterPass):
                             f'because the argument type for read() was {read_arg_type} (must be a string)')
 
 
-# %% ../nbs/010_micro_passes.ipynb 30
+# %% ../nbs/010_micro_passes.ipynb 59
 class TypeCheckRelations(InterpreterPass):
     """
     A Lark Tree Semantic Check
@@ -648,7 +530,7 @@ class TypeCheckRelations(InterpreterPass):
                             f'{conflicted_free_vars}')
 
 
-# %% ../nbs/010_micro_passes.ipynb 31
+# %% ../nbs/010_micro_passes.ipynb 61
 class SaveDeclaredRelationsSchemas(InterpreterPass):
     """
     This pass writes the relation schemas that it finds in relation declarations and rule heads* to the
@@ -681,7 +563,7 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
 
-# %% ../nbs/010_micro_passes.ipynb 33
+# %% ../nbs/010_micro_passes.ipynb 64
 class ResolveVariablesReferences(InterpreterPass):
     """
     A lark execution pass, <br>
@@ -763,7 +645,7 @@ class ResolveVariablesReferences(InterpreterPass):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-# %% ../nbs/010_micro_passes.ipynb 34
+# %% ../nbs/010_micro_passes.ipynb 66
 class ExecuteAssignments(InterpreterPass):
     """
     A lark execution pass, <br>
@@ -794,7 +676,7 @@ class ExecuteAssignments(InterpreterPass):
         self.symbol_table.set_var_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
 
-# %% ../nbs/010_micro_passes.ipynb 35
+# %% ../nbs/010_micro_passes.ipynb 69
 #TODO agg - rewrite this to not exist? and if it exist use a naive netx graph
 class AddStatementsToNetxParseGraph(InterpreterPass):
     """
