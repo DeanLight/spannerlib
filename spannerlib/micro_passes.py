@@ -2,10 +2,11 @@
 
 # %% auto 0
 __all__ = ['PrimitiveType', 'Type', 'Span', 'Var', 'FreeVar', 'RelationDefinition', 'Relation', 'IEFunction', 'IERelation',
-           'Rule', 'remove_new_lines_from_strings', 'check_referenced_vars_exist', 'CheckRuleSafety',
+           'Rule', 'pretty', 'remove_new_lines_from_strings', 'check_referenced_vars_exist', 'rules_to_dataclasses',
+           'consistent_free_var_types_in_rule', 'is_rule_safe', 'add_to_symbol_table', 'assign_vars_to_symbol_table',
            'CheckReferencedRelationsExistenceAndArity', 'CheckReferencedIERelationsExistenceAndArity',
-           'TypeCheckAssignments', 'TypeCheckRelations', 'SaveDeclaredRelationsSchemas', 'ResolveVariablesReferences',
-           'ExecuteAssignments', 'AddStatementsToNetxParseGraph']
+           'CheckRuleSafety', 'TypeCheckAssignments', 'TypeCheckRelations', 'SaveDeclaredRelationsSchemas',
+           'ResolveVariablesReferences', 'ExecuteAssignments', 'AddStatementsToNetxParseGraph']
 
 # %% ../nbs/010_micro_passes.ipynb 3
 from abc import ABC, abstractmethod
@@ -31,7 +32,7 @@ from graph_rewrite import draw, draw_match, rewrite, rewrite_iter
 
 from .grammar import parse_spannerlog
 
-# %% ../nbs/010_micro_passes.ipynb 9
+# %% ../nbs/010_micro_passes.ipynb 10
 from enum import Enum
 from typing import Any
 from pydantic import ConfigDict
@@ -52,9 +53,13 @@ class Span(BaseModel):
 
 class Var(BaseModel):
     name: str
+    def __hash__(self):
+        return hash(self.name)
 
 class FreeVar(BaseModel):
     name: str
+    def __hash__(self):
+        return hash(self.name)
 
 PrimitiveType=Union[str,int,Span]
 Type = Union[PrimitiveType,Var,FreeVar]
@@ -76,18 +81,45 @@ class IEFunction(BaseModel):
     out_schema: List[type]
     func: Callable
 
+
 class IERelation(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
     in_terms: List[Type]
     out_terms: List[Type]
-
+    def __hash__(self):
+        hash_str = f'''{self.name}_in_{'_'.join([str(x) for x in self.in_terms])}_out_{'_'.join([str(x) for x in self.out_terms])}'''
+        return hash(hash_str)
 class Rule(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     head: Relation
     body: List[Union[Relation,IERelation]]
 
-# %% ../nbs/010_micro_passes.ipynb 17
+# %% ../nbs/010_micro_passes.ipynb 11
+def pretty(obj):
+    """pretty printing dataclasses for user messages,
+    making them look like spannerlog code instead of python code"""
+    
+    if isinstance(obj,Span):
+        return f"[{obj.start},{obj.end})"
+    elif isinstance(obj,(Var,FreeVar)):
+        return obj.name
+    elif isinstance(obj,RelationDefinition):
+        return f"{obj.name}({','.join(pretty(o) for o in obj.scheme)})"
+    elif isinstance(obj,Relation):
+        return f"{obj.name}({','.join(pretty(o) for o in obj.terms)})"
+    elif isinstance(obj,IERelation):
+        return f"{obj.name}({','.join(pretty(o) for o in obj.in_terms)}) -> ({','.join(pretty(o) for o in obj.out_terms)})"
+    elif isinstance(obj,IEFunction):
+        return f"{obj.name}({','.join(pretty(o) for o in obj.in_schema)}) -> ({','.join(pretty(o) for o in obj.out_schema)})"
+    elif isinstance(obj,Rule):
+        return f"{pretty(obj.head)} <- {','.join(pretty(o) for o in obj.body)}"
+    elif isinstance(obj,type):
+        return obj.__name__
+    else:
+        return str(obj)
+
+# %% ../nbs/010_micro_passes.ipynb 20
 def remove_new_lines_from_strings(ast,sess):
     for match in rewrite_iter(ast,
         lhs='v[type="string",val]'):
@@ -95,7 +127,7 @@ def remove_new_lines_from_strings(ast,sess):
         match['v']['val'] = match['v']['val'].replace('\\\n','')[1:-1]
 
 
-# %% ../nbs/010_micro_passes.ipynb 27
+# %% ../nbs/010_micro_passes.ipynb 30
 def check_referenced_vars_exist(ast,sess):
 
     # first rename all left hand sign variables 
@@ -114,60 +146,211 @@ def check_referenced_vars_exist(ast,sess):
             raise ValueError(f'Variable {var_name} is not defined')
 
 
+# %% ../nbs/010_micro_passes.ipynb 40
+def rules_to_dataclasses(ast,sess):
+   for match in rewrite_iter(ast,
+      lhs='''
+         statement[type="rule"]->head[type="rule_head",val];
+         statement->body[type="rule_body_relation_list"]
+      ''',p='statement[type]'):
+      body_nodes = list(ast.successors(match.mapping['body']))
+      head = match['head']['val']
+      match['statement']['val'] = Rule(head=match['head']['val'],body=[ast.nodes[body_node]['val'] for body_node in body_nodes])
+      ast.remove_nodes_from(body_nodes)
+   return ast
+
 # %% ../nbs/010_micro_passes.ipynb 43
-class CheckRuleSafety(VisitorRecursivePass):
+def _check_rule_consistency(rule,sess):
+    # for each free var we encounter, what is the type is is according to the relation schema
+    free_var_to_type = {}
+    # what is the first relation we found each var in, useful for error messages
+    first_rel_to_define_free_var = {}
+
+    # go over each body relation
+    for rel_idx,relation in enumerate(rule.body):
+
+        # if ie relation split into two relations
+        rel_type_terms_and_schema_list = []
+        if isinstance(relation,Relation):
+            rel_type_terms_and_schema_list.append(('relation',relation.terms,sess.relation_schemas[relation.name].scheme))
+        elif isinstance(relation,IERelation):
+            rel_type_terms_and_schema_list.append(('ie input relation',relation.in_terms,sess.ie_funcs[relation.name].in_schema))
+            rel_type_terms_and_schema_list.append(('ie output relation',relation.out_terms,sess.ie_funcs[relation.name].out_schema))
+
+        # for each relation type in the body relation
+        for rel_type_terms_and_schema in rel_type_terms_and_schema_list:
+            rel_type,terms,expected_schema = rel_type_terms_and_schema
+            # for each term in the relation that is a free var
+            for term_idx,(term,expected_type) in enumerate(zip(terms,expected_schema)):
+                if isinstance(term,FreeVar):
+                    # check if was defined before in other body relations
+                    # if so must have same type as before
+                    if term.name in free_var_to_type:
+                        if free_var_to_type[term.name] != expected_type:
+                            predefined_relation,predefined_term_idx = first_rel_to_define_free_var[term.name]
+                            raise ValueError(f"In rule {pretty(rule)}, in body {rel_type} {pretty(relation)}, FreeVar {term.name} position {term_idx} expects type {pretty(expected_type)} "
+                                            f"but was previously defined in relation {pretty(predefined_relation)} position {predefined_term_idx} with type {pretty(free_var_to_type[term.name])}")
+                    # if not register it to the mapping
+                    else:
+                        free_var_to_type[term.name] = expected_type
+                        first_rel_to_define_free_var[term.name] = (relation.name,term_idx)
+
+    # for rule head, make sure all free vars are defined in the body
+    # and if the rule head was used in another rule, make sure it has the same types
+    head_name, head_terms = rule.head.name, rule.head.terms
+
+    current_head_schema = []
+    for term in head_terms:
+        if not isinstance(term,FreeVar):
+            raise ValueError(f"In rule {pretty(rule)}, in head clause {head_name}, only FreeVars are allowed")
+        if not term.name in free_var_to_type:
+            raise ValueError(f"In rule {pretty(rule)}, FreeVar {term.name} is used in the head but was not defined in the body")
+
+    current_head_schema = RelationDefinition(name=head_name,scheme=[free_var_to_type[term.name] for term in head_terms])
+
+    if head_name in sess.relation_schemas:
+        expected_head_schema = sess.relation_schemas[head_name]
+        if expected_head_schema != current_head_schema:
+            raise ValueError(f"In rule {pretty(rule)}, expected schema {pretty(expected_head_schema)} from a previously defined rule to {head_name} but got {pretty(current_head_schema)}")
+
+def consistent_free_var_types_in_rule(ast,sess):
+    for match in rewrite_iter(ast,lhs='X[type="rule",val]'):
+        rule = match['X']['val']
+        _check_rule_consistency(rule,sess)
+    return ast
+
+# %% ../nbs/010_micro_passes.ipynb 46
+def is_rule_safe(rule:Rule):
     """
-    Performs semantic checks on rules using a Lark tree to ensure their safety. <br>
-    A rule is considered "safe" when it meets certain conditions.
-
-
-    * [Rule Safety Conditions](#rule-safety-conditions)
-        * [Free Variable in Rule Head](#free-variable-in-rule-head)
-        * [Bound Free Variable](#bound-free-variable)
-    * [Examples](#examples)
-    * [Safe Relations](#safe-relations)
-
+    Checks that the Spannerlog Rule is safe
     ---
+    In spannerlog, rule safety is a semantic property that ensures that IE relation's inputs are limited 
+    in the values they can be assigned to by other relations in the rule body.
+    This could include outputs of other IE relations.
 
-    ### Rule Safety Conditions
+    We call a free variable in a rule body "bound" if it exists in the output of any safe relation in the rule body.
+    For normal relations, they only have output terms, so all their free variables are considered bound.
 
-    For a rule to be considered safe, the following two conditions must be met:
+    We call a relation in a rule's body safe if all its input free variables are bound.
+    For normal relations, they don't have input relations, so they are always considered safe.
 
-    ### 1. Free Variable in Rule Head
+    We call a rule safe if all of its body relations are safe.
 
-    Every free variable that appears in the rule head must occur at least once in the body as an output term of a relation.
+    This basically means that we need to make sure there is at least one order of IE relation evaluation, in which
+    each IE relation input variables is bound by the normal relations and the output relation of the previous IE relations.
 
-    #### Examples
-
-    * `parent(X,Y) <- son(X)` is not a safe rule because the free variable `Y` only appears in the rule head.  
-    * `parent(X,Z) <- parent(X,Y), parent(Y,Z)` is a safe rule since both `X` and `Z` appear in the rule body.
-
-    ### 2. Bound Free Variable
-
-    A free variable is considered "bound" if it is constrained in a manner that limits the range of values it can take.
-
-    To ensure that every free variable is bound, we must ensure that every relation in the rule body is a safe relation.
-
-    ### Safe Relations
-
-    A safe relation adheres to the following:
-
-    * Its input relation is safe, meaning all its input's free variables are bound. Normal relations are always considered safe as they don't have input relations.  
-    * A bound variable is one that exists in the output of a safe relation.
-
-    #### Examples
-
-    * `rel2(X,Y) <- rel1(X,Z), ie1<X>(Y)` is a safe rule as the only input free variable, `X`, exists in the output of the safe relation `rel1(X, Z)`.  
-    * `rel2(Y) <- ie1<Z>(Y)` is not safe as the input free variable `Z` does not exist in the output of any safe relation.
-
+    Examples:
+    * `rel2(X,Y) <- rel1(X,Z), ie1(X)->(Y)` is a safe rule as the only input free variable, `X`, exists in the output of the safe relation `rel1(X, Z)`.  
+    * `rel2(Y) <- ie1(Z)->(Y)` is not safe as the input free variable `Z` does not exist in the output of any safe relation.
+    * `rel2(Z,W) <- rel1(X,Y),ie1(Z,Y)->(W),ie2(W,Y)->Z` is not safe as both ie functions require each other's output as input, creating a circular dependency.
     ---
-
-
     """
-    pass
+
+    # get all free vars in regular relations
+    normal_relations_free_vars = set()
+    for body in rule.body:
+        if isinstance(body,Relation):
+            for term in body.terms:
+                if isinstance(term,FreeVar):
+                    normal_relations_free_vars.add(term.name)
+    
+    # get list of form [(ie_rel,{input_vars},{output_vars})]
+    free_vars_per_ie_relation = {}
+    for body in rule.body:
+        if isinstance(body,IERelation):
+            input_vars = set(term.name for term in body.in_terms if isinstance(term,FreeVar))
+            output_vars = set(term.name for term in body.out_terms if isinstance(term,FreeVar))
+            free_vars_per_ie_relation[body]=(input_vars,output_vars)
+        
+    # iteratively go over all previously unsafe ie relations and check if they are now safe
+
+    safe_vars = normal_relations_free_vars.copy()
+    safe_ie_relations = set()
+
+    while True:
+        if len(free_vars_per_ie_relation)==0:
+            break
+        
+        safe_ie_relations_in_this_iteration = set()
+        for ie_relation,(input_vars,output_vars) in free_vars_per_ie_relation.items():
+            if input_vars.issubset(safe_vars):
+                safe_ie_relations_in_this_iteration.add(ie_relation)
+        
+        if len(safe_ie_relations_in_this_iteration)== 0 :
+            raise ValueError(f"Rule \'{pretty(rule)}\' is not safe:\n"
+                            f"the following free vars where bound by normal relations: {normal_relations_free_vars}\n"
+                            f"the following ie relations where safe: {safe_ie_relations}\n"
+                            f"leading to the following free vars being bound: {safe_vars}\n"
+                            f"However the following ie relations could not be bound: {[pretty(ie) for ie in free_vars_per_ie_relation.keys()]}\n"
+                             )
+    
+        for ie_relation in safe_ie_relations_in_this_iteration:
+            input_vars,output_vars = free_vars_per_ie_relation[ie_relation]
+            safe_vars.update(output_vars)
+            safe_ie_relations.add(ie_relation)
+            del free_vars_per_ie_relation[ie_relation]
 
 
-# %% ../nbs/010_micro_passes.ipynb 51
+
+    return True
+
+# %% ../nbs/010_micro_passes.ipynb 56
+def add_to_symbol_table(var_name,value,symbol_table):
+    if var_name in symbol_table:
+        existing_type,existing_value = symbol_table[var_name]
+        if type(value) != existing_type:
+            raise ValueError(f"Variable {var_name} was previously defined with {existing_value}({pretty(existing_type)})"
+                             f" but is trying to be redefined to {value}({pretty(type(value))}) of a different type which might interfere with previous rule definitions")    
+    symbol_table[var_name] = type(value),value
+    return 
+
+
+def assign_vars_to_symbol_table(ast,sess):
+    for match in rewrite_iter(ast,lhs='''
+                                statement[type="assignment"]-[idx=0]->var_name_node[type="var_name_lhs",val];
+                                statement-[idx=1]->val_node[val]'''):
+        var_name = match['var_name_node']['val'].name
+        value = match['val_node']['val']
+        add_to_symbol_table(var_name,value,sess.symbol_table)
+
+    for match in rewrite_iter(ast,lhs='''
+                                statement[type="read_assignment"]-[idx=0]->var_name_node[type="var_name_lhs",val];
+                                statement-[idx=1]->val_node[val]'''):
+        var_name = match['var_name_node']['val'].name
+        path = match['val_node']['val']
+        value = Path(path).read_text()
+        add_to_symbol_table(var_name,value,sess.symbol_table)
+    return ast
+
+# %% ../nbs/010_micro_passes.ipynb 59
+def add_to_symbol_table(var_name,value,symbol_table):
+    if var_name in symbol_table:
+        existing_type,existing_value = symbol_table[var_name]
+        if type(value) != existing_type:
+            raise ValueError(f"Variable {var_name} was previously defined with {existing_value}({pretty(existing_type)})"
+                             f" but is trying to be redefined to {value}({pretty(type(value))}) of a different type which might interfere with previous rule definitions")    
+    symbol_table[var_name] = type(value),value
+    return 
+
+
+def assign_vars_to_symbol_table(ast,sess):
+    for match in rewrite_iter(ast,lhs='''
+                                statement[type="assignment"]-[idx=0]->var_name_node[type="var_name_lhs",val];
+                                statement-[idx=1]->val_node[val]'''):
+        var_name = match['var_name_node']['val'].name
+        value = match['val_node']['val']
+        add_to_symbol_table(var_name,value,sess.symbol_table)
+
+    for match in rewrite_iter(ast,lhs='''
+                                statement[type="read_assignment"]-[idx=0]->var_name_node[type="var_name_lhs",val];
+                                statement-[idx=1]->val_node[val]'''):
+        var_name = match['var_name_node']['val'].name
+        path = match['val_node']['val']
+        value = Path(path).read_text()
+        add_to_symbol_table(var_name,value,sess.symbol_table)
+    return ast
+
+# %% ../nbs/010_micro_passes.ipynb 67
 class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
     """
     A lark tree semantic check. <br>
@@ -234,7 +417,7 @@ class CheckReferencedRelationsExistenceAndArity(InterpreterPass):
                 self._assert_relation_exists_and_correct_arity(relation)
 
 
-# %% ../nbs/010_micro_passes.ipynb 52
+# %% ../nbs/010_micro_passes.ipynb 68
 class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
     """
     A lark tree semantic check. <br>
@@ -281,7 +464,7 @@ class CheckReferencedIERelationsExistenceAndArity(VisitorRecursivePass):
                                     f' {used_output_arity} (should be {correct_output_arity})')
 
 
-# %% ../nbs/010_micro_passes.ipynb 54
+# %% ../nbs/010_micro_passes.ipynb 70
 class CheckRuleSafety(VisitorRecursivePass):
     """
     Performs semantic checks on rules using a Lark tree to ensure their safety. <br>
@@ -418,7 +601,7 @@ class CheckRuleSafety(VisitorRecursivePass):
 
 
 
-# %% ../nbs/010_micro_passes.ipynb 56
+# %% ../nbs/010_micro_passes.ipynb 72
 class TypeCheckAssignments(InterpreterPass):
     """
     A lark semantic check <br>
@@ -446,7 +629,7 @@ class TypeCheckAssignments(InterpreterPass):
                             f'because the argument type for read() was {read_arg_type} (must be a string)')
 
 
-# %% ../nbs/010_micro_passes.ipynb 58
+# %% ../nbs/010_micro_passes.ipynb 74
 class TypeCheckRelations(InterpreterPass):
     """
     A Lark Tree Semantic Check
@@ -530,7 +713,7 @@ class TypeCheckRelations(InterpreterPass):
                             f'{conflicted_free_vars}')
 
 
-# %% ../nbs/010_micro_passes.ipynb 60
+# %% ../nbs/010_micro_passes.ipynb 76
 class SaveDeclaredRelationsSchemas(InterpreterPass):
     """
     This pass writes the relation schemas that it finds in relation declarations and rule heads* to the
@@ -563,7 +746,7 @@ class SaveDeclaredRelationsSchemas(InterpreterPass):
         self.symbol_table.add_relation_schema(head_relation.relation_name, rule_head_schema, True)
 
 
-# %% ../nbs/010_micro_passes.ipynb 63
+# %% ../nbs/010_micro_passes.ipynb 79
 class ResolveVariablesReferences(InterpreterPass):
     """
     A lark execution pass, <br>
@@ -645,7 +828,7 @@ class ResolveVariablesReferences(InterpreterPass):
                 raise Exception(f'unexpected relation type: {relation_type}')
 
 
-# %% ../nbs/010_micro_passes.ipynb 65
+# %% ../nbs/010_micro_passes.ipynb 81
 class ExecuteAssignments(InterpreterPass):
     """
     A lark execution pass, <br>
@@ -676,7 +859,7 @@ class ExecuteAssignments(InterpreterPass):
         self.symbol_table.set_var_value_and_type(assignment.var_name, assigned_value, DataTypes.string)
 
 
-# %% ../nbs/010_micro_passes.ipynb 68
+# %% ../nbs/010_micro_passes.ipynb 84
 #TODO agg - rewrite this to not exist? and if it exist use a naive netx graph
 class AddStatementsToNetxParseGraph(InterpreterPass):
     """
