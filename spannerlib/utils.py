@@ -4,11 +4,11 @@
 __all__ = ['logger', 'WINDOWS_OS', 'IS_POSIX', 'GOOGLE_DRIVE_URL', 'GOOGLE_DRIVE_CHUNK_SIZE', 'SPAN_GROUP1', 'SPAN_GROUP2',
            'SPAN_PATTERN', 'QUERY_RESULT_PREFIX', 'UniqueId', 'uniq_id', 'get_git_root', 'get_base_file_path',
            'get_lib_name', 'checkLogs', 'patch_method', 'kill_process_and_children', 'run_cli_command',
-           'download_file_from_google_drive', 'df_to_list', 'serialize_tree', 'strip_lines', 'fixed_point',
-           'get_free_var_names', 'position_freevar_pairs', 'get_input_free_var_names', 'get_output_free_var_names',
-           'get_free_var_to_relations_dict', 'check_properly_typed_term_list', 'check_properly_typed_relation',
-           'type_check_rule_free_vars_aux', 'type_check_rule_free_vars', 'rule_to_relation_name', 'string_to_span',
-           'extract_one_relation']
+           'download_file_from_google_drive', 'df_to_list', 'serialize_tree', 'serialize_graph', 'strip_lines',
+           'fixed_point', 'get_free_var_names', 'position_freevar_pairs', 'get_input_free_var_names',
+           'get_output_free_var_names', 'get_free_var_to_relations_dict', 'check_properly_typed_term_list',
+           'check_properly_typed_relation', 'type_check_rule_free_vars_aux', 'type_check_rule_free_vars',
+           'rule_to_relation_name', 'string_to_span', 'extract_one_relation']
 
 # %% ../nbs/000_utils.ipynb 2
 import shlex
@@ -26,6 +26,7 @@ from typing import no_type_check, get_type_hints, Iterable, Any, Optional, Calla
 from fastcore.basics import patch
 import itertools
 from singleton_decorator import singleton
+import networkx as nx
 
 # %% ../nbs/000_utils.ipynb 3
 @singleton
@@ -211,6 +212,10 @@ def df_to_list(df):
 def serialize_tree(g):
     root = next(nx.topological_sort(g))
     return nx.tree_data(g,root) 
+
+
+def serialize_graph(g):
+    return list(g.nodes(data=True)),list(g.edges(data=True))
 
 
 # %% ../nbs/000_utils.ipynb 17
