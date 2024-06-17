@@ -2,13 +2,14 @@
 
 # %% auto 0
 __all__ = ['logger', 'WINDOWS_OS', 'IS_POSIX', 'GOOGLE_DRIVE_URL', 'GOOGLE_DRIVE_CHUNK_SIZE', 'SPAN_GROUP1', 'SPAN_GROUP2',
-           'SPAN_PATTERN', 'QUERY_RESULT_PREFIX', 'UniqueId', 'uniq_id', 'get_git_root', 'get_base_file_path',
-           'get_lib_name', 'checkLogs', 'patch_method', 'kill_process_and_children', 'run_cli_command',
-           'download_file_from_google_drive', 'df_to_list', 'serialize_tree', 'serialize_graph', 'strip_lines',
-           'fixed_point', 'get_free_var_names', 'position_freevar_pairs', 'get_input_free_var_names',
-           'get_output_free_var_names', 'get_free_var_to_relations_dict', 'check_properly_typed_term_list',
-           'check_properly_typed_relation', 'type_check_rule_free_vars_aux', 'type_check_rule_free_vars',
-           'rule_to_relation_name', 'string_to_span', 'extract_one_relation']
+           'SPAN_PATTERN', 'QUERY_RESULT_PREFIX', 'serialize_df_values', 'UniqueId', 'uniq_id', 'is_node_in_graphs',
+           'get_new_node_name', 'get_git_root', 'get_base_file_path', 'get_lib_name', 'checkLogs', 'patch_method',
+           'kill_process_and_children', 'run_cli_command', 'download_file_from_google_drive', 'df_to_list',
+           'serialize_tree', 'serialize_graph', 'strip_lines', 'fixed_point', 'get_free_var_names',
+           'position_freevar_pairs', 'get_input_free_var_names', 'get_output_free_var_names',
+           'get_free_var_to_relations_dict', 'check_properly_typed_term_list', 'check_properly_typed_relation',
+           'type_check_rule_free_vars_aux', 'type_check_rule_free_vars', 'rule_to_relation_name', 'string_to_span',
+           'extract_one_relation']
 
 # %% ../nbs/000_utils.ipynb 2
 import shlex
@@ -17,6 +18,7 @@ import psutil
 import requests
 import os
 from pathlib import Path
+import pandas as pd
 import git
 from configparser import ConfigParser
 from subprocess import Popen, PIPE
@@ -29,6 +31,11 @@ from singleton_decorator import singleton
 import networkx as nx
 
 # %% ../nbs/000_utils.ipynb 3
+def serialize_df_values(df):
+    return set(df.itertuples(index=False,name=None))
+
+
+# %% ../nbs/000_utils.ipynb 5
 @singleton
 class UniqueId:
     def __init__(self):
@@ -42,7 +49,33 @@ class UniqueId:
 def uniq_id():
     return UniqueId()()
 
-# %% ../nbs/000_utils.ipynb 5
+# %% ../nbs/000_utils.ipynb 6
+def _biggest_int_node_name(g:nx.Graph):
+    return max([n for n in g.nodes if isinstance(n,int)],default=0)
+
+def is_node_in_graphs(name,gs):
+    return any(name in g.nodes for g in gs)
+
+def get_new_node_name(g,prefix=None,avoid_names_from=None):
+    if avoid_names_from is None:
+        avoid_names_from = []
+    graphs_to_avoid = [g]+avoid_names_from
+    # ints
+    if prefix is None:
+        max_int = _biggest_int_node_name(g)+1
+        while is_node_in_graphs(max_int,graphs_to_avoid):
+            max_int+=1
+        return max_int
+    # strings
+    else: 
+        if not is_node_in_graphs(prefix,graphs_to_avoid):
+            return prefix
+        for i in itertools.count():
+            name = f"{prefix}_{i}"
+            if not is_node_in_graphs(name,graphs_to_avoid):
+                return name
+
+# %% ../nbs/000_utils.ipynb 10
 logger = logging.getLogger(__name__)
 
 WINDOWS_OS = "win32"
@@ -52,14 +85,14 @@ IS_POSIX = (platform != WINDOWS_OS)
 GOOGLE_DRIVE_URL = "https://docs.google.com/uc?export=download"
 GOOGLE_DRIVE_CHUNK_SIZE = 32768
 
-# %% ../nbs/000_utils.ipynb 6
+# %% ../nbs/000_utils.ipynb 11
 def get_git_root(path='.'):
 
         git_repo = git.Repo(path, search_parent_directories=True)
         git_root = git_repo.git.rev_parse("--show-toplevel")
         return Path(git_root)
 
-# %% ../nbs/000_utils.ipynb 7
+# %% ../nbs/000_utils.ipynb 12
 def get_base_file_path() -> Path: # The absolute path of parent folder of nbs
     return get_git_root()
 
@@ -70,12 +103,12 @@ def get_lib_name() -> str:
     setting_ini = setting_ini['DEFAULT']
     return setting_ini['lib_name']
 
-# %% ../nbs/000_utils.ipynb 8
+# %% ../nbs/000_utils.ipynb 13
 from contextlib import contextmanager
 import logging
 
 @contextmanager
-def checkLogs(level: int=logging.DEBUG, name :str=None, toFile=None):
+def checkLogs(level: int=logging.DEBUG, name :str='__main__', toFile=None):
     """context manager for temporarily changing logging levels. used for debugging purposes
 
     Args:
@@ -108,7 +141,7 @@ def checkLogs(level: int=logging.DEBUG, name :str=None, toFile=None):
         if len(logger.handlers) == 1:
             logger.handlers= []
 
-# %% ../nbs/000_utils.ipynb 9
+# %% ../nbs/000_utils.ipynb 14
 def patch_method(func : Callable, *args, **kwargs) -> None:
     """
     Applies fastcore's `patch` decorator and removes `func` from `cls.__abstractsmethods__` in case <br>
@@ -125,7 +158,7 @@ def patch_method(func : Callable, *args, **kwargs) -> None:
         # Apply the original `patch` decorator
         patch(*args, **kwargs)(func)
 
-# %% ../nbs/000_utils.ipynb 10
+# %% ../nbs/000_utils.ipynb 15
 def kill_process_and_children(process: Popen) -> None:
     logger.info("~~~~ process timed out ~~~~")
     if process.poll() is not None:
@@ -134,7 +167,7 @@ def kill_process_and_children(process: Popen) -> None:
             child.kill()  # not recommended in real life
         process.kill()  # lastly, kill the process
 
-# %% ../nbs/000_utils.ipynb 11
+# %% ../nbs/000_utils.ipynb 16
 def run_cli_command(command: str, # a single command string
                     stderr: bool = False, # if true, suppress stderr output. default: `False`
                     # if true, spawn shell process (e.g. /bin/sh), which allows using system variables (e.g. $HOME),
@@ -170,7 +203,7 @@ def run_cli_command(command: str, # a single command string
     if stderr:
         logger.info(f"stderr from process {command_list[0]}: {process_stderr}")
 
-# %% ../nbs/000_utils.ipynb 12
+# %% ../nbs/000_utils.ipynb 17
 import os
 def download_file_from_google_drive(file_id: str, # the id of the file to download
                                      destination: Path # the path to which the file will be downloaded
@@ -204,11 +237,11 @@ def download_file_from_google_drive(file_id: str, # the id of the file to downlo
 
     save_response_content()
 
-# %% ../nbs/000_utils.ipynb 13
+# %% ../nbs/000_utils.ipynb 18
 def df_to_list(df):
     return df.to_dict(orient='records')
 
-# %% ../nbs/000_utils.ipynb 14
+# %% ../nbs/000_utils.ipynb 19
 def serialize_tree(g):
     root = next(nx.topological_sort(g))
     return nx.tree_data(g,root) 
@@ -218,7 +251,7 @@ def serialize_graph(g):
     return list(g.nodes(data=True)),list(g.edges(data=True))
 
 
-# %% ../nbs/000_utils.ipynb 17
+# %% ../nbs/000_utils.ipynb 22
 #| output: false
 import functools
 import re
@@ -228,7 +261,7 @@ from .ast_node_types import (Relation, IERelation, Rule)
 from .primitive_types import DataTypes, Span
 from .symbol_table import SymbolTableBase, SymbolTable
 
-# %% ../nbs/000_utils.ipynb 18
+# %% ../nbs/000_utils.ipynb 23
 SPAN_GROUP1 = "start"
 SPAN_GROUP2 = "end"
 
@@ -236,14 +269,14 @@ SPAN_GROUP2 = "end"
 SPAN_PATTERN = re.compile(r"^\[(?P<start>\d+), ?(?P<end>\d+)\)$")
 QUERY_RESULT_PREFIX = "printing results for query "
 
-# %% ../nbs/000_utils.ipynb 19
+# %% ../nbs/000_utils.ipynb 24
 def strip_lines(text: str) -> str:
     """
     removes leading and trailing whitespace from each line in the input text and excludes empty lines.
     """
     return "\n".join([line.strip() for line in text.splitlines() if line.strip()])
 
-# %% ../nbs/000_utils.ipynb 20
+# %% ../nbs/000_utils.ipynb 25
 def fixed_point(start: Any, # a starting value
                  step: Callable, # a step function
                    distance: Callable, # a function that measures distance between the input and the output of the step function
@@ -260,7 +293,7 @@ def fixed_point(start: Any, # a starting value
         y = step(x)
     return x
 
-# %% ../nbs/000_utils.ipynb 21
+# %% ../nbs/000_utils.ipynb 26
 def get_free_var_names(term_list: Sequence, # a list of terms
                        type_list: Sequence # a list of the term types
                        ) -> Set[str]: # a set of all the free variable names in term_list
@@ -274,7 +307,7 @@ def get_free_var_names(term_list: Sequence, # a list of terms
                          if term_type is DataTypes.free_var_name)
     return free_var_names
 
-# %% ../nbs/000_utils.ipynb 30
+# %% ../nbs/000_utils.ipynb 35
 @no_type_check
 def position_freevar_pairs(relation: Union[Relation, IERelation] # a relation (either a normal relation or an ie relation)
                            ) -> List[Tuple[int, str]]: # a list of all (index, free_var) pairs based on term_list
@@ -283,7 +316,7 @@ def position_freevar_pairs(relation: Union[Relation, IERelation] # a relation (e
                      if term_type is DataTypes.free_var_name]
     return pos_var_pairs
 
-# %% ../nbs/000_utils.ipynb 38
+# %% ../nbs/000_utils.ipynb 43
 def get_input_free_var_names(relation: Union[Relation, IERelation] # a relation (either a normal relation or an ie relation)
                              ) -> Set[Any]: # a set of the free variables used as input terms in the relation.
     if isinstance(relation, IERelation):
@@ -291,12 +324,12 @@ def get_input_free_var_names(relation: Union[Relation, IERelation] # a relation 
     else:
         return set()
 
-# %% ../nbs/000_utils.ipynb 46
+# %% ../nbs/000_utils.ipynb 51
 def get_output_free_var_names(relation: Union[Relation, IERelation] # a relation (either a normal relation or an ie relation)
                               ) -> Set[str]: # a set of the free variables used as output terms in the relation
     return get_free_var_names(relation.get_term_list(), relation.get_type_list())
 
-# %% ../nbs/000_utils.ipynb 48
+# %% ../nbs/000_utils.ipynb 53
 def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]] # a set of relations
                                    ) -> (Dict[str, List[Tuple[Union[Relation, IERelation], int]]]): # a mapping between each free var to the relations and corresponding columns in which it appears
     """
@@ -319,7 +352,7 @@ def get_free_var_to_relations_dict(relations: Set[Union[Relation, IERelation]] #
 
     return var_dict
 
-# %% ../nbs/000_utils.ipynb 52
+# %% ../nbs/000_utils.ipynb 57
 def check_properly_typed_term_list(term_list: Sequence, # the term list to be type checked
                                     type_list: Sequence, # the types of the terms in term_list
                                    correct_type_list: Sequence, # a list of the types that the terms must have to pass the type check
@@ -347,7 +380,7 @@ def check_properly_typed_term_list(term_list: Sequence, # the term list to be ty
     # all variables are properly typed, the type check succeeded
     return True
 
-# %% ../nbs/000_utils.ipynb 58
+# %% ../nbs/000_utils.ipynb 63
 @no_type_check
 def check_properly_typed_relation(relation: Union[Relation, IERelation] # the relation to be checked
                                   , symbol_table: SymbolTableBase # a symbol table (to check the types of regular variables)
@@ -386,7 +419,7 @@ def check_properly_typed_relation(relation: Union[Relation, IERelation] # the re
 
     return relation_is_properly_typed
 
-# %% ../nbs/000_utils.ipynb 66
+# %% ../nbs/000_utils.ipynb 71
 def type_check_rule_free_vars_aux(term_list: Sequence, # the term list of a rule body relation
                                    type_list: Sequence, # the types of the terms in term_list
                                      correct_type_list: Sequence, # a list of the types that the terms in the term list should have
@@ -417,7 +450,7 @@ def type_check_rule_free_vars_aux(term_list: Sequence, # the term list of a rule
                 # free var does not currently have a type, map it to the correct type
                 free_var_to_type[free_var] = correct_type
 
-# %% ../nbs/000_utils.ipynb 67
+# %% ../nbs/000_utils.ipynb 72
 def type_check_rule_free_vars(rule: Rule, # The rule to be checked
                                symbol_table: SymbolTableBase # a symbol table (used to get the schema of the relation)
                                 # a tuple (free_var_to_type, conflicted_free_vars) where
@@ -463,7 +496,7 @@ def type_check_rule_free_vars(rule: Rule, # The rule to be checked
 
     return free_var_to_type, conflicted_free_vars
 
-# %% ../nbs/000_utils.ipynb 74
+# %% ../nbs/000_utils.ipynb 79
 def rule_to_relation_name(rule: str # a string that represents a rule
                           ) -> str: # the name of the rule relation
     """
@@ -472,7 +505,7 @@ def rule_to_relation_name(rule: str # a string that represents a rule
 
     return rule.strip().split('(')[0]
 
-# %% ../nbs/000_utils.ipynb 76
+# %% ../nbs/000_utils.ipynb 81
 def string_to_span(string_of_span: str # str represenation of a `Span` object
                    ) -> Optional[Span]: # `Span` object initialized based on the `string_of_span` it received as input 
     span_match = re.match(SPAN_PATTERN, string_of_span)
@@ -481,7 +514,7 @@ def string_to_span(string_of_span: str # str represenation of a `Span` object
     start, end = int(span_match.group(SPAN_GROUP1)), int(span_match.group(SPAN_GROUP2))
     return Span(span_start=start, span_end=end)
 
-# %% ../nbs/000_utils.ipynb 78
+# %% ../nbs/000_utils.ipynb 83
 def extract_one_relation(func: Callable) -> Callable:
     """
     This decorator is used by engine operators that expect to get exactly one input relation but actually get a list of relations.
