@@ -56,9 +56,9 @@ class Relation(BaseModel):
 class IEFunction(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
+    func: Callable
     in_schema: List[type]
     out_schema: List[type]
-    func: Callable
 
 
 class IERelation(BaseModel):
