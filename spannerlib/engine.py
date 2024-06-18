@@ -41,7 +41,7 @@ class FreeVar(BaseModel):
         return hash(self.name)
 
 PrimitiveType=Union[str,int,Span]
-Type = Union[PrimitiveType,Var,FreeVar]
+Type = Union[str,int,Span,Var,FreeVar]
 
 class RelationDefinition(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -369,6 +369,7 @@ class DB(dict):
         return f'DB({key_str})'
 
 # %% ../nbs/010_engine.ipynb 37
+from copy import deepcopy
 class Engine():
     def __init__(self,rewrites=None):
         if rewrites is None:
@@ -452,7 +453,7 @@ class Engine():
         self.db[rel_name] = pd.concat([self.db[rel_name],facts])
 
     def del_fact(self,fact:Relation):
-        _pd_drop_row(df = self.db[fact.name],row_vals=fact.terms)
+        self.db[fact.name] = _pd_drop_row(df = self.db[fact.name],row_vals=fact.terms)
 
     def get_ie_function(self,name:str):
         return self.ie_functions.get(name,None)
@@ -463,10 +464,15 @@ class Engine():
     def del_ie_function(self,name:str):
         del self.ie_functions[name]
 
-    def add_rule(self,rule:Rule,schema:RelationDefinition):
+    def add_rule(self,rule:Rule,schema:RelationDefinition=None):
+        if not self.get_relation(rule.head.name) and schema is None:
+            raise ValueError(f"Relation {rule.head.name} not defined before adding the rule with it's head\n"
+                             f"And an relation schema was not supplied."
+                             f"existing relations are {self.Relation_defs.keys()}")
 
-        if not rule.head.name in self.Relation_defs:
-            self.Relation_defs[rule.head.name] = schema
+        if not schema is None:
+            self.set_relation(schema)
+
         rule_id = next(self.rule_counter)
 
         self.rules_to_ids[pretty(rule)] = rule_id
@@ -495,7 +501,7 @@ class Engine():
         return
 
     def _inline_db_and_ies_in_graph(self,g:nx.DiGraph):
-        g=g.copy()
+        g=deepcopy(g)
         for u in g.nodes:
             if g.out_degree(u)==0:
                 g.nodes[u]['op'] = 'get_rel'
@@ -507,29 +513,41 @@ class Engine():
         return g
 
 
-    def plan_query(self,q:Relation,rewrites=None):
+    def plan_query(self,q_rel:Relation,rewrites=None):
         if rewrites is None:
             rewrites = self.rewrites
         query_graph = self._inline_db_and_ies_in_graph(self.term_graph)
 
-        root_node = q.name
+        # get the sub term graph induced by the relation head
+        root_node = q_rel.name
         connected_nodes = list(nx.shortest_path(query_graph,root_node).keys())
-        query_graph = nx.subgraph(query_graph,connected_nodes)
-        project_name = get_new_node_name(query_graph)
-        root_node = _select_if_needed(query_graph,self.node_counter,root_node,q.terms)
+        query_graph = nx.DiGraph(nx.subgraph(query_graph,connected_nodes))
+        
+        # based on the asked relation, add:
+        # select node if there are constants
+        # project node to project to the remaining free variables
+        # rename node to rename the cols to the Free vars the query is asking for
+        select_node = _select_if_needed(query_graph,get_new_node_name(query_graph),root_node,q_rel.terms)
+        rename_node = get_new_node_name(query_graph)
+        query_graph.add_node(rename_node, op='rename',names=[(i,term.name) for i,term in enumerate(q_rel.terms) if isinstance(term,FreeVar)])
+        query_graph.add_edge(rename_node,select_node)
+        project_node = get_new_node_name(query_graph)
+        query_graph.add_node(project_node, op='project', on=[term.name for term in q_rel.terms if isinstance(term,FreeVar)])
+        query_graph.add_edge(project_node,rename_node)
+
         # TODO for all rewrites, run them
-        return query_graph,root_node
+        return query_graph,project_node
 
-    def run_query(self,q:Relation,rewrites=None):
-
-        query_graph,root_node = self.plan_query(q,rewrites)
-        
-        
+    def execute_plan(self,query_graph,root_node):
         results_dict = defaultdict(list)
         return compute_node(query_graph,root_node,results_dict)
 
+    def run_query(self,q:Relation,rewrites=None):
+        query_graph,root_node = self.plan_query(q,rewrites)
+        return self.execute_plan(query_graph,root_node)
 
-# %% ../nbs/010_engine.ipynb 58
+
+# %% ../nbs/010_engine.ipynb 57
 def select(df,theta,**kwargs):
     if df.empty:
         return df
@@ -557,8 +575,8 @@ def rename(df,names,**kwargs):
         names_mapper[current_col_names[i]] = name
     return df.rename(names_mapper,axis=1)
 
-def union(df1,df2,**kwargs):
-    return pd.concat([df1,df2]).drop_duplicates()
+def union(*dfs,**kwargs):
+    return pd.concat(dfs).drop_duplicates()
 
 def intersection(df1,df2,**kwargs):
     return pd.merge(df1,df2,how='inner',on=list(df1.columns))
@@ -604,7 +622,7 @@ def get_rel(rel,db,**kwargs):
     return db[rel]
 
 
-# %% ../nbs/010_engine.ipynb 59
+# %% ../nbs/010_engine.ipynb 58
 op_to_func = {
     'union':union,
     'intersection':intersection,
@@ -617,7 +635,7 @@ op_to_func = {
     'get_rel':get_rel
 }
 
-# %% ../nbs/010_engine.ipynb 83
+# %% ../nbs/010_engine.ipynb 82
 def compute_node(G,u,results_dict):
     """
     """
