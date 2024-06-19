@@ -173,10 +173,12 @@ def relations_to_dataclasses(ast,engine):
                                              )
       ast.remove_nodes_from(in_term_nodes+out_term_nodes)
 
-# %% ../nbs/020_micro_passes.ipynb 31
+# %% ../nbs/020_micro_passes.ipynb 32
 def verify_referenced_relations(ast,engine):
 
     def schema_match(types,vals):
+        if len(types) != len(vals):
+            return False
         for type_,val in zip(types,vals):
             if isinstance(val,FreeVar):
                 continue # free vars can be anything
@@ -188,6 +190,7 @@ def verify_referenced_relations(ast,engine):
                 return False
         return True
 
+    # regular relations
     for match in rewrite_iter(ast,
             lhs='''rel[type]''',
             condition=lambda match: match['rel']['type'] in ['add_fact','remove_fact','relation','query'],
@@ -195,15 +198,26 @@ def verify_referenced_relations(ast,engine):
         rel:Relation = match['rel']['val']
         if not engine.get_relation(rel.name):
             raise ValueError(f"Relation '{rel.name}' is not defined")
-        expected_len = len(engine.get_relation(rel.name).scheme)
-        if len(rel.terms) != expected_len:
-            raise ValueError(f"Relation '{pretty(rel)}' was called with {len(rel.terms)} terms but it was defined with {expected_len} terms")
         if not schema_match(engine.get_relation(rel.name).scheme,rel.terms):
             raise ValueError(f"Relation '{rel.name}' expected schema {pretty(engine.get_relation(rel.name))} but got called with {pretty(rel)}")
+
+    # ie relations
+    for match in rewrite_iter(ast,
+            lhs='''rel[type="ie_relation"]''',
+            ):
+        rel:IERelation = match['rel']['val']
+        if not engine.get_ie_function(rel.name):
+            raise ValueError(f"ie function '{rel.name}' was not registered, registered functions are {list(engine.ie_functions.keys())}")
+        in_schema = engine.get_ie_function(rel.name).in_schema
+        out_schema = engine.get_ie_function(rel.name).out_schema
+        if not schema_match(in_schema,rel.in_terms):
+            raise ValueError(f"IERelation '{rel.name}' input expected schema {pretty(in_schema)} but got called with {pretty(rel.in_terms)}")
+        if not schema_match(out_schema,rel.out_terms):
+            raise ValueError(f"IERelation '{rel.name}' output expected schema {pretty(out_schema)} but got called with {pretty(rel.out_terms)}")
       
 
 
-# %% ../nbs/020_micro_passes.ipynb 34
+# %% ../nbs/020_micro_passes.ipynb 35
 def rules_to_dataclasses(ast,engine):
    for match in rewrite_iter(ast,
       lhs='''
@@ -216,7 +230,7 @@ def rules_to_dataclasses(ast,engine):
       ast.remove_nodes_from(body_nodes)
    return ast
 
-# %% ../nbs/020_micro_passes.ipynb 37
+# %% ../nbs/020_micro_passes.ipynb 38
 def _check_rule_consistency(rule,engine):
     # for each free var we encounter, what is the type is is according to the relation schema
     free_var_to_type = {}
@@ -278,7 +292,7 @@ def consistent_free_var_types_in_rule(ast,engine):
         _check_rule_consistency(rule,engine)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 40
+# %% ../nbs/020_micro_passes.ipynb 41
 def is_rule_safe(rule:Rule):
     """
     Checks that the Spannerlog Rule is safe
@@ -353,14 +367,14 @@ def is_rule_safe(rule:Rule):
 
     return True
 
-# %% ../nbs/020_micro_passes.ipynb 41
+# %% ../nbs/020_micro_passes.ipynb 42
 def check_rule_safety(ast,engine):
     for match in rewrite_iter(ast,lhs='X[type="rule",val]'):
         rule = match['X']['val']
         is_rule_safe(rule)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 43
+# %% ../nbs/020_micro_passes.ipynb 44
 def assignments_to_name_val_tuple(ast,engine):
     for match in rewrite_iter(ast,lhs='''
                                 statement[type]-[idx=0]->var_name_node[val];
@@ -374,7 +388,7 @@ def assignments_to_name_val_tuple(ast,engine):
         )
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 46
+# %% ../nbs/020_micro_passes.ipynb 47
 def execute_statement(ast,engine):
     statement_node = list(ast.nodes)[0]
     node_data = ast.nodes[statement_node]
