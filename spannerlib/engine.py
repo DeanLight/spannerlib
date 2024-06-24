@@ -14,17 +14,45 @@ from typing import no_type_check, Set, Sequence, Any,Optional,List,Callable,Dict
 from pydantic import BaseModel
 import networkx as nx
 import itertools
-from graph_rewrite import draw, draw_match, rewrite, rewrite_iter
-from .utils import serialize_graph,serialize_df_values,checkLogs,get_new_node_name
-from .span import Span,SpanParser
-from spannerlib.data_types import (
-    Var, FreeVar, RelationDefinition, Relation, IEFunction,
-           IERelation, Rule, pretty
-)
-from .term_graph import graph_compose, merge_term_graphs_pair
-
 import logging
 logger = logging.getLogger(__name__)
+
+from graph_rewrite import draw, draw_match, rewrite, rewrite_iter
+from spannerlib.utils import (
+    serialize_graph,
+    serialize_df_values,
+    checkLogs,
+    get_new_node_name
+    )
+
+from .span import Span,SpanParser
+from spannerlib.data_types import (
+    Var, 
+    FreeVar, 
+    RelationDefinition, 
+    Relation, 
+    IEFunction,
+    IERelation, 
+    Rule, 
+    pretty
+)
+from spannerlib.ra import (
+    _col_names,
+    get_const,
+    select,
+    project,
+    rename,
+    union,
+    intersection,
+    difference,
+    join,
+    product,
+    ie_map,
+)
+
+from .term_graph import graph_compose, merge_term_graphs_pair,rule_to_graph,add_select_constants
+
+
 
 # %% ../nbs/010_engine.ipynb 5
 def _pd_drop_row(df,row_vals):
@@ -102,7 +130,7 @@ class Engine():
         else:
             self.Relation_defs[rel_def.name] = rel_def
             #TODO fix make sure that the empty df has the correct types based on the rel_def
-            empty_df = pd.DataFrame(columns=self._col_names(len(rel_def.scheme)))
+            empty_df = pd.DataFrame(columns=_col_names(len(rel_def.scheme)))
             self.db[rel_def.name] = empty_df
             self.term_graph.add_node(rel_def.name,rel=rel_def.name)
 
@@ -116,7 +144,7 @@ class Engine():
 
     def add_facts(self,rel_name,facts:pd.DataFrame):
         facts= facts.copy()
-        facts.columns = self._col_names(len(facts.columns))
+        facts.columns = _col_names(len(facts.columns))
         self.db[rel_name] = pd.concat([self.db[rel_name],facts])
 
     def del_fact(self,fact:Relation):
@@ -144,7 +172,7 @@ class Engine():
 
         self.rules_to_ids[pretty(rule)] = rule_id
 
-        g2 = _rule_to_term_graph(rule,rule_id)
+        g2 = rule_to_graph(rule,rule_id)
 
         merge_term_graph = merge_term_graphs_pair(self.term_graph,g2)
         self.term_graph = merge_term_graph
@@ -155,6 +183,7 @@ class Engine():
             raise ValueError(f"Rule {rule_str} does not exist\n"
                              f"existing rules are {self.rules_to_ids.keys()}")
         rule_id = self.rules_to_ids[rule_str]
+        self.rules_to_ids.pop(rule_str)
         g = self.term_graph
         nodes_to_delete=[]
         for u in g.nodes:
@@ -173,10 +202,12 @@ class Engine():
             if g.out_degree(u)==0:
                 g.nodes[u]['op'] = 'get_rel'
                 g.nodes[u]['db'] = self.db
-            elif g.nodes[u]['op'] == 'calc':
+            elif g.nodes[u]['op'] == 'ie_map':
                 ie_func_name = g.nodes[u]['func']
-                g.nodes[u]['func'] = self.ie_functions[ie_func_name].func
-                g.nodes[u]['out_schema'] = self.ie_functions[ie_func_name].out_schema
+                ie_definition = self.ie_functions[ie_func_name]
+                g.nodes[u]['func'] = ie_definition.func
+                g.nodes[u]['in_schema'] = ie_definition.in_schema
+                g.nodes[u]['out_schema'] = ie_definition.out_schema
         return g
 
 
@@ -194,7 +225,7 @@ class Engine():
         # select node if there are constants
         # project node to project to the remaining free variables
         # rename node to rename the cols to the Free vars the query is asking for
-        select_node = _select_if_needed(query_graph,get_new_node_name(query_graph),root_node,q_rel.terms)
+        select_node = add_select_constants(query_graph,root_node,q_rel.terms)
         rename_node = get_new_node_name(query_graph)
         query_graph.add_node(rename_node, op='rename',names=[(i,term.name) for i,term in enumerate(q_rel.terms) if isinstance(term,FreeVar)])
         query_graph.add_edge(rename_node,select_node)
@@ -231,7 +262,7 @@ op_to_func = {
     'project':project,
     'rename':rename,
     'join':join,
-    'calc':calc,
+    'ie_map':ie_map,
     'get_rel':get_rel
 }
 

@@ -51,7 +51,7 @@ def uniq_id():
 
 # %% ../nbs/000_utils.ipynb 6
 def _biggest_int_node_name(g:nx.Graph):
-    return max([n for n in g.nodes if isinstance(n,int)],default=0)
+    return max([n for n in g.nodes if isinstance(n,int)],default=-1)
 
 def is_node_in_graphs(name,gs):
     return any(name in g.nodes for g in gs)
