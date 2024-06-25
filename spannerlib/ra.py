@@ -2,7 +2,8 @@
 
 # %% auto 0
 __all__ = ['logger', 'equalConstTheta', 'equalColTheta', 'get_const', 'select', 'project', 'rename', 'union', 'intersection',
-           'difference', 'join', 'product', 'assert_ie_output_schema', 'map_iter', 'ie_map']
+           'difference', 'join', 'product', 'assert_tuple_like', 'assert_ie_schema', 'assert_iterable', 'map_iter',
+           'ie_map']
 
 # %% ../nbs/008_extended_RA_operations.ipynb 4
 import pytest
@@ -97,6 +98,8 @@ def rename(df,names,**kwargs):
 def union(*dfs,**kwargs):
     # use numpy arrays to ignore column names
     non_empty_dfs = [df for df in dfs if not df.empty]
+    if len(non_empty_dfs)==0:
+        return dfs[0]
     return pd.DataFrame(np.concatenate(non_empty_dfs,axis=0)).drop_duplicates()
 
 def intersection(df1,df2,**kwargs):
@@ -119,56 +122,55 @@ def join(df1,df2,**kwargs):
 def product(df1,df2,**kwargs):
     return pd.merge(df1,df2,how='cross')
 
-# %% ../nbs/008_extended_RA_operations.ipynb 38
-def assert_ie_output_schema(name,func,input,output,expected_schema):
-    """helper function for asserting the output schema of an ie function
-    expected schema is either a callable that takes input and output and 
-    raises error if the output is notvalid, or a fixed list of column names
-
-    Args:
-        input (_type_): input relation
-        output (_type_): output relation from ie function
-        expected_schema (_type_): output schema object
-
-    Raises:
-        ValueError: _description_
-        ValueError: _description_
-    """
+# %% ../nbs/008_extended_RA_operations.ipynb 39
+def assert_tuple_like(name,func,input,output):
     if not isinstance(output,(tuple,list)):
         raise ValueError(f"IEFunction {name} with underlying function {func}\n"
                          f"returned a value that is not a tuple/list\n"
                          f"for input output pair ({input},{output})"
                          f"did you remember to return the output as a tuple/list?")
-    if callable(expected_schema):# out schema is a callable
-        if not expected_schema(output,input):
-            raise ValueError(f"When validating output schema using {expected_schema} for input output pair ({input},{output}), the output was invalid")
-    else: # out schema is a fixed list
-        if _infer_relation_schema(output) != expected_schema:
-            raise ValueError(
-                f"IEFunction {name} with underlying function {func}\n"
-                f"returned a value of an unexpected schema {pretty(_infer_relation_schema(output))}\n"
-                f"for input output pair ({input},{output})"
-                f"expected {pretty(expected_schema)}")
 
+def assert_ie_schema(name,func,value,expected_schema,arity,input_or_output='input'):
+    if callable(expected_schema):
+        expected_schema = expected_schema(arity)
+    actual_schema = [type(v) for v in value]
+    if actual_schema != expected_schema:
+        raise ValueError(
+            f"IEFunction {name} with underlying function {func}\n"
+            f"received an {input_or_output} value {value}(schema={pretty(_infer_relation_schema(value))})\n"
+            f"but expected {pretty(expected_schema)}")
 
-def map_iter(df,name,func,in_schema,out_schema,**kwargs):
+def assert_iterable(name,func,input,output):
+    try:
+        out_iter = iter(output)
+    except TypeError:
+        raise ValueError(f"IEFunction {name} with underlying function {func}\n"
+                f"returned a value that is not an iterable\n"
+                f"for input {input} -> {output}")
+
+def map_iter(df,name,func,in_schema,out_schema,in_arity,out_arity,**kwargs):
     """helper function returns an iterator that applies a function to each row of a dataframe
     """
-    first_out_schema = None
     for _,in_row in df.iterrows():
         in_row = list(in_row)
-        for out_row in func(*in_row):
-            assert_ie_output_schema(name,func,in_row,out_row,out_schema)
-            yield in_row + list(out_row)
+        assert_ie_schema(name,func,in_row,in_schema,in_arity,input_or_output='input')
+        output = func(*in_row)
+        assert_iterable(name,func,in_row,output)
+        for out_row in output:
+            assert_tuple_like(name,func,in_row,out_row)
+            out_row = list(out_row)
+            assert_ie_schema(name,func,out_row,out_schema,out_arity,input_or_output='output')
+            yield in_row + out_row
 
-def ie_map(df,name,func,in_schema,out_schema,combined_term_len,**kwargs):
+def ie_map(df,name,func,in_schema,out_schema,in_arity,out_arity,**kwargs):
     """given an indexed dataframe, apply an ie function to each row and return the output 
     such that each output relation is indexed by the same index as the input relation that generated it
     """
     # if df.empty:
     #     return df
-    output_iter = map_iter(df,name,func,in_schema,out_schema)
-    return pd.DataFrame(output_iter,columns=_col_names(combined_term_len))
+    output_iter = map_iter(df,name,func,in_schema,out_schema,in_arity,out_arity)
+    total_arity = in_arity + out_arity
+    return pd.DataFrame(output_iter,columns=_col_names(total_arity))
 
 
 

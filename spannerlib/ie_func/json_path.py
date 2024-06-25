@@ -8,7 +8,7 @@ from typing import Iterable, Tuple, Any
 
 from jsonpath_ng import parse
 import json
-from ..primitive_types import DataTypes
+
 
 # %% ../../nbs/ie_func/04a_json_path.ipynb 4
 def parse_match(match: Any) -> str:
@@ -38,11 +38,10 @@ def json_path(json_document: str, path_expression: str) -> Iterable[Tuple]:
         yield parse_match(match),
 
 # %% ../../nbs/ie_func/04a_json_path.ipynb 6
-JsonPath = dict(ie_function=json_path,
-                ie_function_name='JsonPath',
-                in_rel=[DataTypes.string, DataTypes.string],
-                out_rel=[DataTypes.string],
-                )
+JsonPath = [
+    'JsonPath',json_path
+    [str,str],[str]
+]
 
 # %% ../../nbs/ie_func/04a_json_path.ipynb 7
 def json_path_full(json_document: str, path_expression: str) -> Iterable[Tuple]:
@@ -60,8 +59,7 @@ def json_path_full(json_document: str, path_expression: str) -> Iterable[Tuple]:
         yield *json_result.split("."), parse_match(match)
 
 # %% ../../nbs/ie_func/04a_json_path.ipynb 8
-JsonPathFull = dict(ie_function=json_path_full,
-                    ie_function_name='JsonPathFull',
-                    in_rel=[DataTypes.string, DataTypes.string],
-                    out_rel=lambda arity: [DataTypes.string] * arity,
-                    )
+JsonPathFull = [
+    'JsonPathFull',json_path_full
+    [str,str],lambda arity: [str] * (arity)
+]

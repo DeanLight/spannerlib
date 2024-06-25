@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['logger', 'convert_primitive_values_to_objects', 'remove_new_lines_from_strings', 'CheckReservedRelationNames',
-           'check_referenced_paths_exist', 'check_referenced_vars_exist', 'relations_to_dataclasses',
+           'check_referenced_paths_exist', 'dereference_vars', 'relations_to_dataclasses',
            'verify_referenced_relations', 'rules_to_dataclasses', 'consistent_free_var_types_in_rule', 'is_rule_safe',
            'check_rule_safety', 'assignments_to_name_val_tuple', 'execute_statement']
 
@@ -107,7 +107,7 @@ def check_referenced_paths_exist(ast,engine):
 
 
 # %% ../nbs/020_micro_passes.ipynb 23
-def check_referenced_vars_exist(ast,engine):
+def dereference_vars(ast,engine):
 
     # first rename all left hand sign variables 
     # as type "var_name_lhs"
@@ -118,11 +118,14 @@ def check_referenced_vars_exist(ast,engine):
                 ):
             match['LHS']['type'] = "var_name_lhs"
 
-    # now for each reference variable check if it is in the symbol table
+    # now for each reference variable check if it is in the symbol table and replace it with the value
     for match in rewrite_iter(ast,lhs=f"""X[type="var_name",val]"""):
         var_name = match['X']['val'].name
         if not engine.get_var(var_name):
             raise ValueError(f'Variable {var_name} is not defined')
+        var_type,var_value = engine.get_var(var_name)
+        match['X']['type'] = var_type
+        match['X']['val'] = var_value
 
 
 # %% ../nbs/020_micro_passes.ipynb 26
@@ -173,7 +176,7 @@ def relations_to_dataclasses(ast,engine):
                                              )
       ast.remove_nodes_from(in_term_nodes+out_term_nodes)
 
-# %% ../nbs/020_micro_passes.ipynb 32
+# %% ../nbs/020_micro_passes.ipynb 31
 def verify_referenced_relations(ast,engine):
 
     def schema_match(types,vals):
@@ -209,7 +212,11 @@ def verify_referenced_relations(ast,engine):
         if not engine.get_ie_function(rel.name):
             raise ValueError(f"ie function '{rel.name}' was not registered, registered functions are {list(engine.ie_functions.keys())}")
         in_schema = engine.get_ie_function(rel.name).in_schema
+        if callable(in_schema):
+            in_schema = in_schema(len(rel.in_terms))
         out_schema = engine.get_ie_function(rel.name).out_schema
+        if callable(out_schema):
+            out_schema = out_schema(len(rel.out_terms))
         if not schema_match(in_schema,rel.in_terms):
             raise ValueError(f"IERelation '{rel.name}' input expected schema {pretty(in_schema)} but got called with {pretty(rel.in_terms)}")
         if not schema_match(out_schema,rel.out_terms):
@@ -217,7 +224,7 @@ def verify_referenced_relations(ast,engine):
       
 
 
-# %% ../nbs/020_micro_passes.ipynb 35
+# %% ../nbs/020_micro_passes.ipynb 34
 def rules_to_dataclasses(ast,engine):
    for match in rewrite_iter(ast,
       lhs='''
@@ -230,7 +237,7 @@ def rules_to_dataclasses(ast,engine):
       ast.remove_nodes_from(body_nodes)
    return ast
 
-# %% ../nbs/020_micro_passes.ipynb 38
+# %% ../nbs/020_micro_passes.ipynb 37
 def _check_rule_consistency(rule,engine):
     # for each free var we encounter, what is the type is is according to the relation schema
     free_var_to_type = {}
@@ -245,12 +252,15 @@ def _check_rule_consistency(rule,engine):
         if isinstance(relation,Relation):
             rel_type_terms_and_schema_list.append(('relation',relation.terms,engine.get_relation(relation.name).scheme))
         elif isinstance(relation,IERelation):
+            #TODO here get schema based on arity
             rel_type_terms_and_schema_list.append(('ie input relation',relation.in_terms,engine.get_ie_function(relation.name).in_schema))
             rel_type_terms_and_schema_list.append(('ie output relation',relation.out_terms,engine.get_ie_function(relation.name).out_schema))
 
         # for each relation type in the body relation
         for rel_type_terms_and_schema in rel_type_terms_and_schema_list:
             rel_type,terms,expected_schema = rel_type_terms_and_schema
+            if callable(expected_schema):
+                expected_schema = expected_schema(len(terms))
             # for each term in the relation that is a free var
             for term_idx,(term,expected_type) in enumerate(zip(terms,expected_schema)):
                 if isinstance(term,FreeVar):
@@ -292,7 +302,7 @@ def consistent_free_var_types_in_rule(ast,engine):
         _check_rule_consistency(rule,engine)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 41
+# %% ../nbs/020_micro_passes.ipynb 40
 def is_rule_safe(rule:Rule):
     """
     Checks that the Spannerlog Rule is safe
@@ -367,14 +377,14 @@ def is_rule_safe(rule:Rule):
 
     return True
 
-# %% ../nbs/020_micro_passes.ipynb 42
+# %% ../nbs/020_micro_passes.ipynb 41
 def check_rule_safety(ast,engine):
     for match in rewrite_iter(ast,lhs='X[type="rule",val]'):
         rule = match['X']['val']
         is_rule_safe(rule)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 44
+# %% ../nbs/020_micro_passes.ipynb 43
 def assignments_to_name_val_tuple(ast,engine):
     for match in rewrite_iter(ast,lhs='''
                                 statement[type]-[idx=0]->var_name_node[val];
@@ -388,7 +398,7 @@ def assignments_to_name_val_tuple(ast,engine):
         )
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 47
+# %% ../nbs/020_micro_passes.ipynb 46
 def execute_statement(ast,engine):
     statement_node = list(ast.nodes)[0]
     node_data = ast.nodes[statement_node]

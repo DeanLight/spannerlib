@@ -150,7 +150,7 @@ def add_ie_relation(g,rel):
         project_input_vars = None
     product_node = add_product_constants(g,project_input_vars,rel.in_terms)
     ie_map_node = get_new_node_name(g)
-    g.add_node(ie_map_node, op='ie_map',func=rel.name,combined_term_len=len(rel.in_terms)+len(rel.out_terms))
+    g.add_node(ie_map_node, op='ie_map',func=rel.name,in_arity=len(rel.in_terms),out_arity=len(rel.out_terms))
     g.add_edge(ie_map_node,product_node)
 
     # we will get combined input+output relation from the ie map so now we reason based on it
@@ -192,7 +192,7 @@ def add_ie_relation(g,rel):
     return project_node,project_input_vars
 
 
-# %% ../nbs/009_term_graphs.ipynb 19
+# %% ../nbs/009_term_graphs.ipynb 21
 def get_bounding_order(rule:Rule):
     """Get an order of evaluation for the body of a rule
     this is a very naive ordering that can be heavily optimized"""
@@ -220,7 +220,7 @@ def get_bounding_order(rule:Rule):
 
     return order
 
-# %% ../nbs/009_term_graphs.ipynb 22
+# %% ../nbs/009_term_graphs.ipynb 24
 def rule_to_graph(rule:Rule,rule_id):
     """
     converts a rule to a graph
@@ -275,7 +275,7 @@ def rule_to_graph(rule:Rule,rule_id):
     return g
 
 
-# %% ../nbs/009_term_graphs.ipynb 30
+# %% ../nbs/009_term_graphs.ipynb 32
 def graph_compose(g1,g2,mapping_dict,debug=False):
     """compose two graphs with a mapping dict"""
     # if there is a node in g2 that is renamed but has a name collision with an existing node that is not renamed, we will rename the existing node to a uniq name
@@ -302,7 +302,7 @@ def graph_compose(g1,g2,mapping_dict,debug=False):
     return merged_graph
 
 
-# %% ../nbs/009_term_graphs.ipynb 36
+# %% ../nbs/009_term_graphs.ipynb 38
 def merge_term_graphs_pair(g1,g2,exclude_props = ['label'],debug=False):
     """merge two term graphs into one term graph
     when talking about term graphs, 2 nodes if their data is identical and all of their children are identical

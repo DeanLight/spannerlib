@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 from graph_rewrite import rewrite,rewrite_iter,draw
 
-from .utils import checkLogs, UniqueId
+from .utils import checkLogs
 
 
 # %% ../nbs/002_spannerlog_grammar.ipynb 6

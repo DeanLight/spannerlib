@@ -55,8 +55,9 @@ class IEFunction(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
     func: Callable
-    in_schema: List
-    out_schema: List
+    # either a fixed schema, or a callable that takes the expected arity and given us the schema
+    in_schema: Union[List,Callable] 
+    out_schema: Union[List,Callable]
 
 
 class IERelation(BaseModel):
