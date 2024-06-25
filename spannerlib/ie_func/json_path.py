@@ -39,7 +39,7 @@ def json_path(json_document: str, path_expression: str) -> Iterable[Tuple]:
 
 # %% ../../nbs/ie_func/04a_json_path.ipynb 6
 JsonPath = [
-    'JsonPath',json_path
+    'JsonPath',json_path,
     [str,str],[str]
 ]
 
@@ -60,6 +60,6 @@ def json_path_full(json_document: str, path_expression: str) -> Iterable[Tuple]:
 
 # %% ../../nbs/ie_func/04a_json_path.ipynb 8
 JsonPathFull = [
-    'JsonPathFull',json_path_full
+    'JsonPathFull',json_path_full,
     [str,str],lambda arity: [str] * (arity)
 ]

@@ -2,9 +2,9 @@
 
 # %% auto 0
 __all__ = ['logger', 'WINDOWS_OS', 'IS_POSIX', 'GOOGLE_DRIVE_URL', 'GOOGLE_DRIVE_CHUNK_SIZE', 'serialize_df_values', 'assert_df',
-           'is_node_in_graphs', 'get_new_node_name', 'get_git_root', 'get_base_file_path', 'get_lib_name', 'checkLogs',
-           'patch_method', 'kill_process_and_children', 'run_cli_command', 'download_file_from_google_drive',
-           'df_to_list', 'serialize_tree', 'serialize_graph']
+           'assert_df_equals', 'is_node_in_graphs', 'get_new_node_name', 'get_git_root', 'get_base_file_path',
+           'get_lib_name', 'checkLogs', 'patch_method', 'kill_process_and_children', 'run_cli_command',
+           'download_file_from_google_drive', 'df_to_list', 'serialize_tree', 'serialize_graph']
 
 # %% ../nbs/000_utils.ipynb 2
 import shlex
@@ -31,8 +31,12 @@ def serialize_df_values(df):
 
 def assert_df(df,values,columns=None):
     if columns is not None:
-        assert set(df.columns)==set(columns), f"columns: {df.columns} != {columns}"
+        assert list(df.columns)==columns, f"columns not equal: {list(df.columns)} != {columns}"
     assert serialize_df_values(df)==set(values) , f"values: {serialize_df_values(df)} != {values}"
+
+def assert_df_equals(df1,df2):
+    assert list(df1.columns)==list(df2.columns), f"columns not equal: {list(df1.columns)} != {list(df2.columns)}"
+    assert serialize_df_values(df1)==serialize_df_values(df2) , f"values: {serialize_df_values(df1)} != {serialize_df_values(df2)}"
 
 # %% ../nbs/000_utils.ipynb 5
 def _biggest_int_node_name(g:nx.Graph):
