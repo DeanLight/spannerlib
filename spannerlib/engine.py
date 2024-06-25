@@ -199,7 +199,7 @@ class Engine():
     def _inline_db_and_ies_in_graph(self,g:nx.DiGraph):
         g=deepcopy(g)
         for u in g.nodes:
-            if g.out_degree(u)==0:
+            if g.out_degree(u)==0 and 'rel' in g.nodes[u]:
                 g.nodes[u]['op'] = 'get_rel'
                 g.nodes[u]['db'] = self.db
             elif g.nodes[u]['op'] == 'ie_map':
@@ -264,7 +264,9 @@ op_to_func = {
     'rename':rename,
     'join':join,
     'ie_map':ie_map,
-    'get_rel':get_rel
+    'get_rel':get_rel,
+    'get_const':get_const,
+    'product':product,
 }
 
 # %% ../nbs/010_engine.ipynb 27

@@ -61,7 +61,7 @@ class equalColTheta():
         return self.col_pos_tuples == other.col_pos_tuples
 
 # %% ../nbs/008_extended_RA_operations.ipynb 13
-def get_const(const_dict):
+def get_const(const_dict,**kwargs):
     return pd.DataFrame([const_dict])
 
 # %% ../nbs/008_extended_RA_operations.ipynb 16

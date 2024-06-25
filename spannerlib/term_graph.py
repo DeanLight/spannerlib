@@ -67,11 +67,17 @@ def add_product_constants(g,source,terms):
     source                       <- product() <- project(on=[X,_C1,Y,_C2])
     get_const({'_C1':3,'_C2':4}) <- 
 
+    example 2 - F(3,4)->(Z):
+        get_const({'_C1':3,'_C2':4})
+
+
     """
-    need_product = any(not isinstance(term,FreeVar) for term in terms)
-    if not need_product:
+    has_consts = any(not isinstance(term,FreeVar) for term in terms)
+    has_vars = any(isinstance(term,FreeVar) for term in terms)
+    if has_vars and not has_consts:
         return source
     
+
     product_pos_val = list()
     for i,term in enumerate(terms):
         if not isinstance(term,FreeVar):
@@ -81,6 +87,10 @@ def add_product_constants(g,source,terms):
 
     const_node = get_new_node_name(g)
     g.add_node(const_node, op='get_const',const_dict = const_dict)
+
+    if has_consts and not has_vars:
+        return const_node
+
 
     product_node = get_new_node_name(g)
     g.add_node(product_node, op='product')
@@ -132,8 +142,12 @@ def add_ie_relation(g,rel):
     get_const({'_C2':c1}) <-
     returns (top most node, bottom most node)
     """
-    project_input_vars = get_new_node_name(g)
-    g.add_node(project_input_vars, op='project',on=[term.name for term in rel.in_terms if isinstance(term,FreeVar)])
+    ie_has_variable_inputs = any(isinstance(term,FreeVar) for term in rel.in_terms)
+    if ie_has_variable_inputs:
+        project_input_vars = get_new_node_name(g)
+        g.add_node(project_input_vars, op='project',on=[term.name for term in rel.in_terms if isinstance(term,FreeVar)])
+    else:
+        project_input_vars = None
     product_node = add_product_constants(g,project_input_vars,rel.in_terms)
     ie_map_node = get_new_node_name(g)
     g.add_node(ie_map_node, op='ie_map',func=rel.name,combined_term_len=len(rel.in_terms)+len(rel.out_terms))
@@ -178,7 +192,7 @@ def add_ie_relation(g,rel):
     return project_node,project_input_vars
 
 
-# %% ../nbs/009_term_graphs.ipynb 18
+# %% ../nbs/009_term_graphs.ipynb 19
 def get_bounding_order(rule:Rule):
     """Get an order of evaluation for the body of a rule
     this is a very naive ordering that can be heavily optimized"""
@@ -206,7 +220,7 @@ def get_bounding_order(rule:Rule):
 
     return order
 
-# %% ../nbs/009_term_graphs.ipynb 21
+# %% ../nbs/009_term_graphs.ipynb 22
 def rule_to_graph(rule:Rule,rule_id):
     """
     converts a rule to a graph
@@ -228,9 +242,11 @@ def rule_to_graph(rule:Rule,rule_id):
     # connect outputs of different rels via joins
     # and connect input of ie functons into the join
     for i,((top,bottom),rel) in enumerate(zip(top_bottom_nodes,body_rels)):
+        logger.debug(f'connecting bodies iteration {i}')
         if i == 0:
             prev_top = top
             continue
+        logger.debug(f'connecting {prev_top} to {top}')
 
         join_node_name = get_new_node_name(g)
         g.add_node(join_node_name, op='join')
@@ -238,7 +254,10 @@ def rule_to_graph(rule:Rule,rule_id):
         g.add_edge(join_node_name,top)
 
         if isinstance(rel,IERelation):
-            g.add_edge(bottom,prev_top)
+            ie_has_variable_inputs = any(isinstance(term,FreeVar) for term in rel.in_terms)
+            if ie_has_variable_inputs:
+                logger.debug(f'adding input of ie {bottom} to join {prev_top}')
+                g.add_edge(bottom,prev_top)
         prev_top = join_node_name
 
     # project all assignments into the head
@@ -256,7 +275,7 @@ def rule_to_graph(rule:Rule,rule_id):
     return g
 
 
-# %% ../nbs/009_term_graphs.ipynb 25
+# %% ../nbs/009_term_graphs.ipynb 30
 def graph_compose(g1,g2,mapping_dict,debug=False):
     """compose two graphs with a mapping dict"""
     # if there is a node in g2 that is renamed but has a name collision with an existing node that is not renamed, we will rename the existing node to a uniq name
@@ -283,7 +302,7 @@ def graph_compose(g1,g2,mapping_dict,debug=False):
     return merged_graph
 
 
-# %% ../nbs/009_term_graphs.ipynb 31
+# %% ../nbs/009_term_graphs.ipynb 36
 def merge_term_graphs_pair(g1,g2,exclude_props = ['label'],debug=False):
     """merge two term graphs into one term graph
     when talking about term graphs, 2 nodes if their data is identical and all of their children are identical
