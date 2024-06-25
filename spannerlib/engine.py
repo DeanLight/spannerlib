@@ -206,6 +206,7 @@ class Engine():
                 ie_func_name = g.nodes[u]['func']
                 ie_definition = self.ie_functions[ie_func_name]
                 g.nodes[u]['func'] = ie_definition.func
+                g.nodes[u]['name'] = ie_definition.name
                 g.nodes[u]['in_schema'] = ie_definition.in_schema
                 g.nodes[u]['out_schema'] = ie_definition.out_schema
         return g

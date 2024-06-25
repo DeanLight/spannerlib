@@ -7,6 +7,7 @@ __all__ = ['logger', 'equalConstTheta', 'equalColTheta', 'get_const', 'select', 
 # %% ../nbs/008_extended_RA_operations.ipynb 4
 import pytest
 import pandas as pd
+import numpy as np
 from typing import no_type_check, Set, Sequence, Any,Optional,List,Callable,Dict,Union
 import networkx as nx
 import itertools
@@ -74,7 +75,7 @@ def select(df,theta,**kwargs):
         raise ValueError(f"theta must be callable, got {theta}")
 
 def project(df,on=None,not_on=None,**kwargs):
-    if df.empty:
+    if df.empty and len(df.columns)==0:
         return df
     if on is None and not_on is None:
         raise Value("either on or not_on must be specified")
@@ -84,7 +85,7 @@ def project(df,on=None,not_on=None,**kwargs):
         return df.drop(columns=not_on)
 
 def rename(df,names,**kwargs):
-    if df.empty:
+    if df.empty and len(df.columns)==0:
         return df
     names_mapper = {
     }
@@ -94,7 +95,9 @@ def rename(df,names,**kwargs):
     return df.rename(names_mapper,axis=1)
 
 def union(*dfs,**kwargs):
-    return pd.concat(dfs).drop_duplicates()
+    # use numpy arrays to ignore column names
+    non_empty_dfs = [df for df in dfs if not df.empty]
+    return pd.DataFrame(np.concatenate(non_empty_dfs,axis=0)).drop_duplicates()
 
 def intersection(df1,df2,**kwargs):
     return pd.merge(df1,df2,how='inner',on=list(df1.columns))
@@ -116,8 +119,8 @@ def join(df1,df2,**kwargs):
 def product(df1,df2,**kwargs):
     return pd.merge(df1,df2,how='cross')
 
-# %% ../nbs/008_extended_RA_operations.ipynb 36
-def assert_ie_output_schema(input,output,expected_schema):
+# %% ../nbs/008_extended_RA_operations.ipynb 38
+def assert_ie_output_schema(name,func,input,output,expected_schema):
     """helper function for asserting the output schema of an ie function
     expected schema is either a callable that takes input and output and 
     raises error if the output is notvalid, or a fixed list of column names
@@ -131,40 +134,41 @@ def assert_ie_output_schema(input,output,expected_schema):
         ValueError: _description_
         ValueError: _description_
     """
+    if not isinstance(output,(tuple,list)):
+        raise ValueError(f"IEFunction {name} with underlying function {func}\n"
+                         f"returned a value that is not a tuple/list\n"
+                         f"for input output pair ({input},{output})"
+                         f"did you remember to return the output as a tuple/list?")
     if callable(expected_schema):# out schema is a callable
         if not expected_schema(output,input):
             raise ValueError(f"When validating output schema using {expected_schema} for input output pair ({input},{output}), the output was invalid")
     else: # out schema is a fixed list
         if _infer_relation_schema(output) != expected_schema:
             raise ValueError(
-                f"IEFunction returned a value of an unexpected schema {pretty(_infer_relation_schema(output))} "
+                f"IEFunction {name} with underlying function {func}\n"
+                f"returned a value of an unexpected schema {pretty(_infer_relation_schema(output))}\n"
                 f"for input output pair ({input},{output})"
                 f"expected {pretty(expected_schema)}")
 
 
-def map_iter(df,func,in_schema,out_schema,**kwargs):
-    """helper function returns schema of output, and then the output rows as an iterator
+def map_iter(df,name,func,in_schema,out_schema,**kwargs):
+    """helper function returns an iterator that applies a function to each row of a dataframe
     """
     first_out_schema = None
     for _,in_row in df.iterrows():
         in_row = list(in_row)
         for out_row in func(*in_row):
-            assert_ie_output_schema(in_row,out_row,out_schema)
-            if first_out_schema is None:
-                first_out_schema = _infer_relation_schema(out_row)
-                yield in_schema + first_out_schema
+            assert_ie_output_schema(name,func,in_row,out_row,out_schema)
             yield in_row + list(out_row)
 
-def ie_map(df,func,in_schema,out_schema,**kwargs):
+def ie_map(df,name,func,in_schema,out_schema,combined_term_len,**kwargs):
     """given an indexed dataframe, apply an ie function to each row and return the output 
     such that each output relation is indexed by the same index as the input relation that generated it
     """
-    if df.empty:
-        return df
-    output_iter = map_iter(df,func,in_schema,out_schema)
-    schema = next(output_iter)
-    num_cols = len(schema)
-    return pd.DataFrame(output_iter,columns=_col_names(num_cols))
+    # if df.empty:
+    #     return df
+    output_iter = map_iter(df,name,func,in_schema,out_schema)
+    return pd.DataFrame(output_iter,columns=_col_names(combined_term_len))
 
 
 

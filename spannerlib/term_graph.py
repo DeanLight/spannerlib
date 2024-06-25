@@ -136,7 +136,7 @@ def add_ie_relation(g,rel):
     g.add_node(project_input_vars, op='project',on=[term.name for term in rel.in_terms if isinstance(term,FreeVar)])
     product_node = add_product_constants(g,project_input_vars,rel.in_terms)
     ie_map_node = get_new_node_name(g)
-    g.add_node(ie_map_node, op='ie_map',func=rel.name)
+    g.add_node(ie_map_node, op='ie_map',func=rel.name,combined_term_len=len(rel.in_terms)+len(rel.out_terms))
     g.add_edge(ie_map_node,product_node)
 
     # we will get combined input+output relation from the ie map so now we reason based on it
