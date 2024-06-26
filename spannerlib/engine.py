@@ -50,7 +50,7 @@ from spannerlib.ra import (
     ie_map,
 )
 
-from .term_graph import graph_compose, merge_term_graphs_pair,rule_to_graph,add_select_constants
+from .term_graph import graph_compose, merge_term_graphs_pair,rule_to_graph,add_relation,add_project_uniq_free_vars
 
 
 
@@ -222,20 +222,11 @@ class Engine():
         connected_nodes = list(nx.shortest_path(query_graph,root_node).keys())
         query_graph = nx.DiGraph(nx.subgraph(query_graph,connected_nodes))
         
-        # based on the asked relation, add:
-        # select node if there are constants
-        # project node to project to the remaining free variables
-        # rename node to rename the cols to the Free vars the query is asking for
-        select_node = add_select_constants(query_graph,root_node,q_rel.terms)
-        rename_node = get_new_node_name(query_graph)
-        query_graph.add_node(rename_node, op='rename',names=[(i,term.name) for i,term in enumerate(q_rel.terms) if isinstance(term,FreeVar)])
-        query_graph.add_edge(rename_node,select_node)
-        project_node = get_new_node_name(query_graph)
-        query_graph.add_node(project_node, op='project', on=[term.name for term in q_rel.terms if isinstance(term,FreeVar)])
-        query_graph.add_edge(project_node,rename_node)
+        # add selects renames etc based on the query relation
+        root_node,_ = add_relation(query_graph,name='query',terms=q_rel.terms,source=root_node)
 
         # TODO for all rewrites, run them
-        return query_graph,project_node
+        return query_graph,root_node
 
     def execute_plan(self,query_graph,root_node,return_intermediate=False):
         results_dict = defaultdict(list)

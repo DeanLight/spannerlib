@@ -8,6 +8,7 @@ __all__ = ['logger', 'equalConstTheta', 'equalColTheta', 'get_const', 'select', 
 # %% ../nbs/008_extended_RA_operations.ipynb 4
 import pytest
 import pandas as pd
+pd.set_option("mode.copy_on_write", True)
 import numpy as np
 from typing import no_type_check, Set, Sequence, Any,Optional,List,Callable,Dict,Union
 import networkx as nx
@@ -88,12 +89,12 @@ def project(df,on=None,not_on=None,**kwargs):
 def rename(df,names,**kwargs):
     if df.empty and len(df.columns)==0:
         return df
-    names_mapper = {
-    }
-    current_col_names = list(df.columns)
+    df=df.copy()
+    new_names = list(df.columns)
     for i,name in names:
-        names_mapper[current_col_names[i]] = name
-    return df.rename(names_mapper,axis=1)
+        new_names[i]=name
+    df.columns = new_names
+    return df
 
 def union(*dfs,**kwargs):
     # use numpy arrays to ignore column names
@@ -122,7 +123,7 @@ def join(df1,df2,**kwargs):
 def product(df1,df2,**kwargs):
     return pd.merge(df1,df2,how='cross')
 
-# %% ../nbs/008_extended_RA_operations.ipynb 39
+# %% ../nbs/008_extended_RA_operations.ipynb 41
 def assert_tuple_like(name,func,input,output):
     if not isinstance(output,(tuple,list)):
         raise ValueError(f"IEFunction {name} with underlying function {func}\n"
