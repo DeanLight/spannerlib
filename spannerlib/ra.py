@@ -67,18 +67,18 @@ def get_const(const_dict,**kwargs):
     return pd.DataFrame([const_dict])
 
 # %% ../nbs/008_extended_RA_operations.ipynb 16
-def select(df,theta,**kwargs):
-    if df.empty:
-        return df
-
+def select(df,theta,schema,**kwargs):
+    if df.empty or df is None:
+        return pd.DataFrame(columns=schema)
     if callable(theta):
         return df[theta(df)]
     else:
         raise ValueError(f"theta must be callable, got {theta}")
 
 def project(df,on=None,not_on=None,**kwargs):
-    if df.empty and len(df.columns)==0:
-        return df
+    if df.empty or df is None:
+        return pd.DataFrame(columns=schema)
+
     if on is None and not_on is None:
         raise Value("either on or not_on must be specified")
     if on is not None:
@@ -86,9 +86,10 @@ def project(df,on=None,not_on=None,**kwargs):
     else:
         return df.drop(columns=not_on)
 
-def rename(df,names,**kwargs):
-    if df.empty and len(df.columns)==0:
-        return df
+def rename(df,schema,**kwargs):
+    if df.empty or df is None:
+        return pd.DataFrame(columns=schema)
+    
     df=df.copy()
     new_names = list(df.columns)
     for i,name in names:
@@ -96,20 +97,28 @@ def rename(df,names,**kwargs):
     df.columns = new_names
     return df
 
-def union(*dfs,**kwargs):
+def union(*dfs,schema,**kwargs):
     # use numpy arrays to ignore column names
-    non_empty_dfs = [df for df in dfs if not df.empty]
+    non_empty_dfs = [df for df in dfs if not df.empty or df is not None]
     if len(non_empty_dfs)==0:
-        return dfs[0]
-    return pd.DataFrame(np.concatenate(non_empty_dfs,axis=0)).drop_duplicates()
+        return pd.DataFrame(columns=schema)
+    else:
+        return pd.DataFrame(np.concatenate(non_empty_dfs,axis=0),columns=schema).drop_duplicates()
 
-def intersection(df1,df2,**kwargs):
+def intersection(df1,df2,schema,**kwargs):
+    if df1.empty or df2.empty or df1 is None or df2 is None:
+        return pd.DataFrame(columns=schema)
     return pd.merge(df1,df2,how='inner',on=list(df1.columns))
 
-def difference(df1,df2,**kwargs):
+def difference(df1,df2,schema,**kwargs):
+    if df1.empty or df1 is None:
+        return pd.DataFrame(columns=schema)
     return pd.concat([df1,df2]).drop_duplicates(keep=False)
 
-def join(df1,df2,**kwargs):
+def join(df1,df2,schema,**kwargs):
+    if df1.empty or df2.empty or df1 is None or df2 is None:
+        return pd.DataFrame(columns=schema)
+
     cols1 = set(df1.columns)
     cols2 = set(df2.columns)
     on = cols1 & cols2
@@ -120,10 +129,12 @@ def join(df1,df2,**kwargs):
     else:
         return pd.merge(df1,df2,how='inner',on=on)
 
-def product(df1,df2,**kwargs):
+def product(df1,df2,schea,**kwargs):
+    if df1.empty or df2.empty or df1 is None or df2 is None:
+        return pd.DataFrame(columns=schema)
     return pd.merge(df1,df2,how='cross')
 
-# %% ../nbs/008_extended_RA_operations.ipynb 41
+# %% ../nbs/008_extended_RA_operations.ipynb 43
 def assert_tuple_like(name,func,input,output):
     if not isinstance(output,(tuple,list)):
         raise ValueError(f"IEFunction {name} with underlying function {func}\n"

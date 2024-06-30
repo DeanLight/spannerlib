@@ -33,7 +33,30 @@ from spannerlib.data_types import (
     pretty,
 )
 
-# %% ../nbs/009_term_graphs.ipynb 8
+from .ra import _col_names
+
+
+# %% ../nbs/009_term_graphs.ipynb 6
+# utils for forming schema
+
+def _rename_schema(old_schema,pos_val_tuples):
+    try:
+        new_schema  = old_schema.copy()
+        for pos,val in pos_val_tuples:
+            new_schema[pos] = val
+    except KeyError as e:
+        logger.error(f"Error renaming schema {old_schema} with position values {pos_val_tuples}: {e}")
+    return new_schema
+
+def _join_schema(schema1,schema2):
+
+    new_schema = schema1.copy()
+    for s in schema2:
+        if s not in new_schema:
+            new_schema.append(s)
+    return new_schema
+
+# %% ../nbs/009_term_graphs.ipynb 7
 def add_select_constants(g,source,terms):
     """
     adds a select node as a father to source, with the constant terms defined in terms
@@ -54,7 +77,8 @@ def add_select_constants(g,source,terms):
             select_pos_val.append((i,term))
     
     select_name = get_new_node_name(g)
-    g.add_node(select_name, op='select',theta=equalConstTheta(*select_pos_val))
+    schema = g.nodes[source]['schema']
+    g.add_node(select_name, op='select',theta=equalConstTheta(*select_pos_val),schema=schema)
     g.add_edge(select_name,source)
     return select_name
 
@@ -93,7 +117,8 @@ def add_select_col_eq(g,source,terms):
 
     # override name so that select node remains the topmost node
     select_node = get_new_node_name(g)
-    g.add_node(select_node, op='select',theta=equalColTheta(*equality_constraints))
+    schema = g.nodes[source]['schema']
+    g.add_node(select_node, op='select',theta=equalColTheta(*equality_constraints),schema=schema)
     g.add_edge(select_node,source)
 
     return select_node
@@ -120,12 +145,16 @@ def add_project_uniq_free_vars(g,source,terms):
     top_node = source
     # rename  to have unique names
     rename_node = get_new_node_name(g)
-    g.add_node(rename_node, op='rename',names=list(enumerate(uniq_names)))
+    
+    source_schema = g.nodes[source]['schema'].copy()
+    schema = _rename_schema(source_schema,list(enumerate(uniq_names)))
+
+    g.add_node(rename_node, op='rename',schema=schema)
     g.add_edge(rename_node,top_node)
     top_node = rename_node
     # project to keep only the first appearance of each free var
     project_node = get_new_node_name(g)
-    g.add_node(project_node, op='project',on=list(seen_vars))
+    g.add_node(project_node, op='project',on=list(seen_vars),schema=list(seen_vars))
     g.add_edge(project_node,top_node)
 
     return project_node
@@ -159,14 +188,14 @@ def add_product_constants(g,source,terms):
     const_dict = {f'_C{i}':val for i,val in product_pos_val}
 
     const_node = get_new_node_name(g)
-    g.add_node(const_node, op='get_const',const_dict = const_dict)
+    g.add_node(const_node, op='get_const',const_dict = const_dict,schema=list(const_dict.keys()))
 
     if has_consts and not has_vars:
         return const_node
 
 
     product_node = get_new_node_name(g)
-    g.add_node(product_node, op='product')
+    g.add_node(product_node, op='product',schema=g.nodes[source]['schema'] + g.nodes[const_node]['schema'])
     g.add_edge(product_node,source)
     g.add_edge(product_node,const_node)
 
@@ -177,14 +206,14 @@ def add_product_constants(g,source,terms):
             project_order.append(term.name)
         else:
             project_order.append(f'_C{i}')
-    g.add_node(project_node, op='project',on=project_order)
+    g.add_node(project_node, op='project',on=project_order,schema=project_order)
     g.add_edge(project_node,product_node)
     
     return project_node
 
 
 
-# %% ../nbs/009_term_graphs.ipynb 12
+# %% ../nbs/009_term_graphs.ipynb 11
 def mask_terms(terms,mask):
     if mask is None:
         return terms
@@ -201,12 +230,15 @@ def add_relation(g,terms,name=None,source=None,mask_constant_select=None):
     returns (top most node, bottom most node) 
     """
     if source is None:
-        g.add_node(name,rel=name)
+        rel_schema = _col_names(len(terms))
+        g.add_node(name,rel=name,schema=rel_schema)
         source = name
         rename_node = get_new_node_name(g)
-        g.add_node(rename_node, op='rename',names=[(i,term.name) for i,term in enumerate(terms) if isinstance(term,FreeVar)])
-        g.add_edge(rename_node,source)
-        source = rename_node
+
+        # rename_schema = _rename_schema(rel_schema,[(i,term.name) for i,term in enumerate(terms) if isinstance(term,FreeVar)])
+        # g.add_node(rename_node, op='rename',schema=rename_schema)
+        # g.add_edge(rename_node,source)
+        # source = rename_node
 
     # select on constant terms
     select_constant_terms = mask_terms(terms,mask_constant_select)
@@ -218,7 +250,7 @@ def add_relation(g,terms,name=None,source=None,mask_constant_select=None):
     project_node = add_project_uniq_free_vars(g,select_node,terms)
     
     return (project_node,source)
-    
+
 
 def add_ie_relation(g,rel):
     """
@@ -232,19 +264,28 @@ def add_ie_relation(g,rel):
     ie_has_variable_inputs = any(isinstance(term,FreeVar) for term in rel.in_terms)
     if ie_has_variable_inputs:
         project_input_vars = get_new_node_name(g)
-        g.add_node(project_input_vars, op='project',on=[term.name for term in rel.in_terms if isinstance(term,FreeVar)])
+        schema = [term.name for term in rel.in_terms if isinstance(term,FreeVar)]
+        g.add_node(project_input_vars, op='project',on=schema,schema=schema)
     else:
         project_input_vars = None
     product_node = add_product_constants(g,project_input_vars,rel.in_terms)
     ie_map_node = get_new_node_name(g)
-    g.add_node(ie_map_node, op='ie_map',func=rel.name,in_arity=len(rel.in_terms),out_arity=len(rel.out_terms))
+
+    combined_schema = _col_names(len(rel.in_terms)+len(rel.out_terms))
+
+    g.add_node(ie_map_node, op='ie_map',func=rel.name,
+        in_arity=len(rel.in_terms),
+        out_arity=len(rel.out_terms),
+        schema=combined_schema)
     g.add_edge(ie_map_node,product_node)
     # we will get combined input+output relation from the ie map so now we reason based on it
 
     combined_terms = rel.in_terms+rel.out_terms
     # TODO add a naive rename node to rename the output variables so we can join input and output
     rename_node = get_new_node_name(g)
-    g.add_node(rename_node, op='rename',names=[(i,term.name) for i,term in enumerate(combined_terms) if isinstance(term,FreeVar)])
+
+    rename_schema = _rename_schema(combined_schema,[(i,term.name) for i,term in enumerate(combined_terms) if isinstance(term,FreeVar)])
+    g.add_node(rename_node, op='rename',schema=rename_schema)
     g.add_edge(rename_node,ie_map_node)
 
     
@@ -256,7 +297,7 @@ def add_ie_relation(g,rel):
     return top_node,project_input_vars
 
 
-# %% ../nbs/009_term_graphs.ipynb 18
+# %% ../nbs/009_term_graphs.ipynb 17
 def get_bounding_order(rule:Rule):
     """Get an order of evaluation for the body of a rule
     this is a very naive ordering that can be heavily optimized"""
@@ -284,7 +325,7 @@ def get_bounding_order(rule:Rule):
 
     return order
 
-# %% ../nbs/009_term_graphs.ipynb 21
+# %% ../nbs/009_term_graphs.ipynb 20
 def rule_to_graph(rule:Rule,rule_id):
     """
     converts a rule to a graph
@@ -313,7 +354,7 @@ def rule_to_graph(rule:Rule,rule_id):
         logger.debug(f'connecting {prev_top} to {top}')
 
         join_node_name = get_new_node_name(g)
-        g.add_node(join_node_name, op='join')
+        g.add_node(join_node_name, op='join',schema=_join_schema(g.nodes[prev_top]['schema'],g.nodes[top]['schema']))
         g.add_edge(join_node_name,prev_top)
         g.add_edge(join_node_name,top)
 
@@ -330,7 +371,7 @@ def rule_to_graph(rule:Rule,rule_id):
     g.add_edge(head_project_name,prev_top)
 
     # add a union for each rule for the given head
-    g.add_node(rule.head.name,op='union',rel=rule.head.name)
+    g.add_node(rule.head.name,op='union',rel=rule.head.name,schema = _col_names(len(rule.head.terms)))
     g.add_edge(rule.head.name,head_project_name)
 
     # add rule id for each node
@@ -339,7 +380,7 @@ def rule_to_graph(rule:Rule,rule_id):
     return g
 
 
-# %% ../nbs/009_term_graphs.ipynb 29
+# %% ../nbs/009_term_graphs.ipynb 28
 def graph_compose(g1,g2,mapping_dict,debug=False):
     """compose two graphs with a mapping dict"""
     # if there is a node in g2 that is renamed but has a name collision with an existing node that is not renamed, we will rename the existing node to a uniq name
@@ -366,7 +407,7 @@ def graph_compose(g1,g2,mapping_dict,debug=False):
     return merged_graph
 
 
-# %% ../nbs/009_term_graphs.ipynb 35
+# %% ../nbs/009_term_graphs.ipynb 34
 def merge_term_graphs_pair(g1,g2,exclude_props = ['label'],debug=False):
     """merge two term graphs into one term graph
     when talking about term graphs, 2 nodes if their data is identical and all of their children are identical

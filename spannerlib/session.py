@@ -185,7 +185,11 @@ class Session():
             results.append(result)
             if display_results:
                 self._display_result(result,statement_lark)
-        return results[-1]
+        
+        if len(results) == 0:
+            return None
+        else:
+            return results[-1]
 
     def import_rel(self,name:str,data:Union[str,Path,pd.DataFrame],delim:str = None):
         """Imports a relation into the current session, either from a dataframe or from a csv file."""
