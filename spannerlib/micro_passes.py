@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['logger', 'convert_primitive_values_to_objects', 'remove_new_lines_from_strings', 'CheckReservedRelationNames',
-           'check_referenced_paths_exist', 'dereference_vars', 'relations_to_dataclasses',
+           'dereference_vars', 'check_referenced_paths_exist', 'relations_to_dataclasses',
            'verify_referenced_relations', 'rules_to_dataclasses', 'consistent_free_var_types_in_rule', 'is_rule_safe',
            'check_rule_safety', 'assignments_to_name_val_tuple', 'execute_statement']
 
@@ -96,17 +96,6 @@ class CheckReservedRelationNames():
                 raise ValueError(f"Relation name '{relation_name}' starts with reserved prefix '{self.reserved_prefix}'")
 
 # %% ../nbs/020_micro_passes.ipynb 20
-def check_referenced_paths_exist(ast,engine):
-    for match in rewrite_iter(ast,
-    lhs='X[type="read_assignment"]-[idx=1]->PathNode[val]',
-    # display_matches=True
-    ):
-        path = Path(match['PathNode']['val'])
-        if not path.exists():
-            raise ValueError(f'path {path} was not found in {os.getcwd()}')
-
-
-# %% ../nbs/020_micro_passes.ipynb 23
 def dereference_vars(ast,engine):
 
     # first rename all left hand sign variables 
@@ -126,6 +115,17 @@ def dereference_vars(ast,engine):
         var_type,var_value = engine.get_var(var_name)
         match['X']['type'] = var_type
         match['X']['val'] = var_value
+
+
+# %% ../nbs/020_micro_passes.ipynb 23
+def check_referenced_paths_exist(ast,engine):
+    for match in rewrite_iter(ast,
+    lhs='X[type="read_assignment"]-[idx=1]->PathNode[val]',
+    # display_matches=True
+    ):
+        path = Path(match['PathNode']['val'])
+        if not path.exists():
+            raise ValueError(f'path {path} was not found in {os.getcwd()}')
 
 
 # %% ../nbs/020_micro_passes.ipynb 26

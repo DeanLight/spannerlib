@@ -40,8 +40,8 @@ from spannerlib.micro_passes import (
     convert_primitive_values_to_objects,
     remove_new_lines_from_strings,
     CheckReservedRelationNames,
-    check_referenced_paths_exist,
     dereference_vars,
+    check_referenced_paths_exist,
     relations_to_dataclasses,
     verify_referenced_relations,
     rules_to_dataclasses,
@@ -77,8 +77,8 @@ class Session():
             convert_primitive_values_to_objects,
             remove_new_lines_from_strings,
             CheckReservedRelationNames('spanner_'),
-            check_referenced_paths_exist,
             dereference_vars,
+            check_referenced_paths_exist,
             relations_to_dataclasses,
             verify_referenced_relations,
             rules_to_dataclasses,
@@ -219,6 +219,12 @@ class Session():
         return rules
     def remove_rule(self,rule:str):
         self.engine.del_rule(rule)
+
+    def remove_all_rules(self):
+        rules = list(self.engine.rules_to_ids.keys())
+        for rule in rules:
+            self.remove_rule(rule)
+
     def remove_relation(self,relation:str):
         self.engine.del_relation(relation)
 

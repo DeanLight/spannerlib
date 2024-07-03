@@ -20,6 +20,8 @@ class MagicSession():
     def set(self,sess):
         self.session = sess
 
+# TODO add getmagic and setmagic functions and make them the public interface
+
 # %% ../nbs/040_magic_system.ipynb 8
 @magics_class
 class spannerlogMagic(Magics):
