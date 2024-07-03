@@ -130,7 +130,7 @@ def add_project_uniq_free_vars(g,source,terms):
     returns the project node if it was added or the source node if not
 
     Example - R(X,Y,X,3):
-    source <- rename(names=[(1,X),(2,Y),(3,_F3),(4,_F4)]) <- project(on=[X,Y])
+    source <- rename(names=[(1,X),(2,Y),(3,_F3),(4,_F4)]) <- project([X,Y])
     return project
     """
     seen_vars = []
@@ -154,7 +154,7 @@ def add_project_uniq_free_vars(g,source,terms):
     top_node = rename_node
     # project to keep only the first appearance of each free var
     project_node = get_new_node_name(g)
-    g.add_node(project_node, op='project',on=list(seen_vars),schema=list(seen_vars))
+    g.add_node(project_node, op='project',schema=list(seen_vars))
     g.add_edge(project_node,top_node)
 
     return project_node
@@ -166,7 +166,7 @@ def add_product_constants(g,source,terms):
     returns the product node if it was added or the source not if not
 
     Example - F(X,3,Y,4)->(Z):
-    source                       <- product() <- project(on=[X,_C1,Y,_C2])
+    source                       <- product() <- project([X,_C1,Y,_C2])
     get_const({'_C1':3,'_C2':4}) <- 
 
     example 2 - F(3,4)->(Z):
@@ -206,7 +206,7 @@ def add_product_constants(g,source,terms):
             project_order.append(term.name)
         else:
             project_order.append(f'_C{i}')
-    g.add_node(project_node, op='project',on=project_order,schema=project_order)
+    g.add_node(project_node, op='project',schema=project_order)
     g.add_edge(project_node,product_node)
     
     return project_node
@@ -225,7 +225,7 @@ def add_relation(g,terms,name=None,source=None,mask_constant_select=None):
     """
     adds a relation to the graph
     WLOG a relation of the form R(X,Y,const)
-    should be of the abstract form get(R)<-rename(0:X,1:Y)<-select(2:const)<-project(on=[X,Y])
+    should be of the abstract form get(R)<-rename(0:X,1:Y)<-select(2:const)<-project([X,Y])
     if source is not None, source replaces get(R)
     returns (top most node, bottom most node) 
     """
@@ -257,7 +257,7 @@ def add_ie_relation(g,rel):
     adds an ie relation to the graph
     WLOG a relation of the form f(X,Y,c1)->(Z,X,c2)
     should be of the abstract form 
-    project(X,Y)          <- product()<-projecton=[X,Y,_C2]<-ie_map(f)<-select(col_5==c2)<-select(col_0==col_4)<-rename(0:X,1:Y,3:Z)<-project(on=[X,Y,Z])
+    project(X,Y)          <- product()<-project([X,Y,_C2])<-ie_map(f)<-select(col_5==c2)<-select(col_0==col_4)<-rename(0:X,1:Y,3:Z)<-project([X,Y,Z])
     get_const({'_C2':c1}) <-
     returns (top most node, bottom most node)
     """
@@ -265,7 +265,7 @@ def add_ie_relation(g,rel):
     if ie_has_variable_inputs:
         project_input_vars = get_new_node_name(g)
         schema = [term.name for term in rel.in_terms if isinstance(term,FreeVar)]
-        g.add_node(project_input_vars, op='project',on=schema,schema=schema)
+        g.add_node(project_input_vars, op='project',schema=schema)
     else:
         project_input_vars = None
     product_node = add_product_constants(g,project_input_vars,rel.in_terms)
@@ -367,7 +367,7 @@ def rule_to_graph(rule:Rule,rule_id):
 
     # project all assignments into the head
     head_project_name = get_new_node_name(g)
-    g.add_node(head_project_name, op='project', on=[term.name for term in rule.head.terms],rel=f'_{rule.head.name}_{rule_id}')
+    g.add_node(head_project_name, op='project', schema =[term.name for term in rule.head.terms],rel=f'_{rule.head.name}_{rule_id}')
     g.add_edge(head_project_name,prev_top)
 
     # add a union for each rule for the given head

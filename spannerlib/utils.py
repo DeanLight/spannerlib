@@ -50,7 +50,14 @@ def assert_df(df,values,columns=None):
 
 def assert_df_equals(df1,df2):
     assert list(df1.columns)==list(df2.columns), f"columns not equal: {list(df1.columns)} != {list(df2.columns)}"
-    assert serialize_df_values(df1)==serialize_df_values(df2) , f"values: {serialize_df_values(df1)} != {serialize_df_values(df2)}"
+    vals1 = serialize_df_values(df1)
+    vals2 = serialize_df_values(df2) 
+    assert vals1==vals2 , (
+        f"values: {vals1} != {vals2}\n"
+        f"values only in df1: {vals1-vals2}\n"
+        f"values only in df2: {vals2-vals1}"
+    )
+    return df1
 
 # %% ../nbs/000_utils.ipynb 10
 from contextlib import contextmanager

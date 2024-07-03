@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 from graph_rewrite import draw
 
-from .utils import checkLogs,serialize_df_values,get_base_file_path,assert_df_equals
+from .utils import checkLogs,get_base_file_path,assert_df_equals
 from .grammar import parse_spannerlog,reconstruct
 from .span import Span
 from spannerlib.data_types import (
