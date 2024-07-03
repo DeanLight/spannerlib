@@ -92,17 +92,17 @@ def download_and_install_rust_regex() -> None:
 
     logger.warning("installation completed")
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 21
-@no_type_check
-def rgx_span_out_type(output_arity: int) -> Tuple[DataTypes]:
-    return tuple([DataTypes.span] * output_arity)
-
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 22
 @no_type_check
-def rgx_string_out_type(output_arity: int) -> Tuple[DataTypes]:
-    return tuple([DataTypes.string] * output_arity)
+def rgx_span_out_type(output_arity: int):
+    return tuple([Span] * output_arity)
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 23
+@no_type_check
+def rgx_string_out_type(output_arity: int):
+    return tuple([str] * output_arity)
+
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 24
 def _format_spanner_string_output(output: Iterable[str]) -> List[List[str]]:
     output_lists = []
     for out in output:
@@ -116,7 +116,7 @@ def _format_spanner_string_output(output: Iterable[str]) -> List[List[str]]:
 
     return output_lists
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 24
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 25
 def _format_spanner_span_output(output: Iterable[str]) -> List[List[Span]]:
     output_lists = []
     for out in output:
@@ -129,7 +129,7 @@ def _format_spanner_span_output(output: Iterable[str]) -> List[List[Span]]:
 
     return output_lists
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 25
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 26
 def rgx(regex_pattern: str, # the pattern to run
         out_type: str, # string/span - decides which one will be returned
         text: Optional[str] = None, # the string on which regex is run
@@ -161,7 +161,7 @@ def rgx(regex_pattern: str, # the pattern to run
         for out in regex_output:
             yield out
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 26
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 27
 def rgx_span(text: str, # The input text for the regex operation
              regex_pattern: str # The pattern of the regex operation
              ) -> Iterable[Iterable[Union[str, Span]]]: # tuples of spans that represents the results
@@ -172,7 +172,7 @@ def rgx_span(text: str, # The input text for the regex operation
     """
     return rgx(regex_pattern, "span", text=text)
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 27
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 28
 RGX = [
     'rgx_span',
     rgx_span,
@@ -180,13 +180,13 @@ RGX = [
     lambda output_arity: [Span] * output_arity
 ]
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 28
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 29
 def rgx_string(text: str, # The input text for the regex operation
                regex_pattern: str # he pattern of the regex operation
                ) -> Iterable[Iterable[Union[str, Span]]]: # tuples of strings that represents the results
     return rgx(regex_pattern, "string", text=text)
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 29
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 30
 RGX_STRING = [
     'rgx_string',
     rgx_string,
@@ -194,13 +194,13 @@ RGX_STRING = [
     lambda output_arity: [str] * output_arity
 ]
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 30
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 31
 def rgx_span_from_file(text_file: str, # The input file for the regex operation
                        regex_pattern: str # The pattern of the regex operation
                        ) -> Iterable[Iterable[Union[str, Span]]]: # tuples of spans that represents the results
     return rgx(regex_pattern, "span", text_file=text_file)
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 31
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 32
 RGX_FROM_FILE = [
     'rgx_span_from_file',
     rgx_span_from_file,
@@ -209,13 +209,13 @@ RGX_FROM_FILE = [
 
 ]
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 32
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 33
 def rgx_string_from_file(text_file: str, # The input file for the regex operation
                          regex_pattern: str # The pattern of the regex operation
                          ) -> Iterable[Iterable[Union[str, Span]]]: # tuples of strings that represents the results
     return rgx(regex_pattern, "string", text_file=text_file)
 
-# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 33
+# %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 34
 RGX_STRING_FROM_FILE = [
     'rgx_string_from_file',
     rgx_string_from_file,

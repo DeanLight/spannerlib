@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['logger', 'equalConstTheta', 'equalColTheta', 'get_const', 'is_truthy', 'is_falsy', 'select', 'project', 'rename',
-           'union', 'intersection', 'difference', 'join', 'product', 'assert_tuple_like', 'assert_ie_schema',
+           'union', 'intersection', 'difference', 'join', 'product', 'coerce_tuple_like', 'assert_ie_schema',
            'assert_iterable', 'map_iter', 'ie_map']
 
 # %% ../nbs/008_extended_RA_operations.ipynb 3
@@ -143,12 +143,16 @@ def product(df1,df2,schema,**kwargs):
     return pd.merge(df1,df2,how='cross')
 
 # %% ../nbs/008_extended_RA_operations.ipynb 43
-def assert_tuple_like(name,func,input,output):
-    if not isinstance(output,(tuple,list)):
-        raise ValueError(f"IEFunction {name} with underlying function {func}\n"
-                         f"returned a value that is not a tuple/list\n"
-                         f"for input output pair ({input},{output})"
-                         f"did you remember to return the output as a tuple/list?")
+def coerce_tuple_like(name,func,input,output):
+    if isinstance(output,(tuple,list)):
+        return output
+    
+    if isinstance(output,(int,str,Span)):
+        return (output,)
+    
+    raise ValueError(f"IEFunction {name} with underlying function {func}\n"
+                        f"returned a value that is not a tuple/list or a primitive\n"
+                        f"for input output pair ({input},{output})")
 
 def assert_ie_schema(name,func,value,expected_schema,arity,input_or_output='input'):
     if callable(expected_schema):
@@ -177,7 +181,7 @@ def map_iter(df,name,func,in_schema,out_schema,in_arity,out_arity,**kwargs):
         output = func(*in_row)
         assert_iterable(name,func,in_row,output)
         for out_row in output:
-            assert_tuple_like(name,func,in_row,out_row)
+            out_row = coerce_tuple_like(name,func,in_row,out_row)
             out_row = list(out_row)
             assert_ie_schema(name,func,out_row,out_schema,out_arity,input_or_output='output')
             yield in_row + out_row

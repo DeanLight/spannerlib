@@ -48,9 +48,9 @@ def py_rgx(text: str, regex_pattern: str) -> Iterable[Sequence]:
     num_groups = compiled_rgx.groups
     for match in re.finditer(compiled_rgx, text):
         if num_groups == 0:
-            matched_spans = [match.span()]
+            matched_spans = (Span(*match.span()))
         else:
-            matched_spans = [match.span(i) for i in range(1, num_groups + 1)]
+            matched_spans = [Span(*match.span(i)) for i in range(1, num_groups + 1)]
         yield matched_spans
 
 # %% ../../nbs/ie_func/04c_python_regex.ipynb 7
