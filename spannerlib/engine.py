@@ -60,7 +60,7 @@ def _pd_drop_row(df,row_vals):
     return new_df
 
 def _pd_append_row(df,row_vals):
-    return pd.concat([df,pd.DataFrame([row_vals],columns=df.columns)])
+    return pd.concat([df,pd.DataFrame([row_vals],columns=df.columns)]).drop_duplicates()
 
 # %% ../nbs/010_engine.ipynb 7
 class DB(dict):
@@ -132,7 +132,7 @@ class Engine():
             #TODO fix make sure that the empty df has the correct types based on the rel_def
             empty_df = pd.DataFrame(columns=_col_names(len(rel_def.scheme)))
             self.db[rel_def.name] = empty_df
-            self.term_graph.add_node(rel_def.name,rel=rel_def.name)
+            self.term_graph.add_node(rel_def.name,rel=rel_def.name,rule_id={'fact'})
 
     def del_relation(self,rel_name:str):
         # TODO we need to think about what to do with all relations that used this rule
