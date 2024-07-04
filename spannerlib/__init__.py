@@ -3,6 +3,7 @@ __version__ = "0.0.1"
 from typing import Any
 from .session import Session
 from .magic import get_magic_session,load_ipython_extension
+from .span import Span
 from IPython import InteractiveShell, get_ipython
 
 try:
