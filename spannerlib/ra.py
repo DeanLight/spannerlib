@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['logger', 'equalConstTheta', 'equalColTheta', 'get_const', 'is_truthy', 'is_falsy', 'select', 'project', 'rename',
-           'union', 'intersection', 'difference', 'join', 'product', 'coerce_tuple_like', 'assert_ie_schema',
+           'union', 'intersection', 'difference', 'join', 'product', 'groupby', 'coerce_tuple_like', 'assert_ie_schema',
            'assert_iterable', 'map_iter', 'ie_map']
 
 # %% ../nbs/008_extended_RA_operations.ipynb 3
@@ -142,7 +142,16 @@ def product(df1,df2,schema,**kwargs):
         return pd.DataFrame(columns=schema)
     return pd.merge(df1,df2,how='cross')
 
-# %% ../nbs/008_extended_RA_operations.ipynb 43
+def groupby(df,schema,agg,**kwargs):
+    if df is None or df.empty:
+        return pd.DataFrame(columns=schema)
+    groupby_cols = [col for col in schema if not col in agg]
+    if len(groupby_cols)==0:
+        return df.agg(agg).to_frame().T
+    else:
+        return df.groupby(groupby_cols).agg(agg).reset_index()
+
+# %% ../nbs/008_extended_RA_operations.ipynb 47
 def coerce_tuple_like(name,func,input,output):
     if isinstance(output,(tuple,list)):
         return output

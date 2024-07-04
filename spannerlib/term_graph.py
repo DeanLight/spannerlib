@@ -248,10 +248,13 @@ def add_relation(g,terms,name=None,source=None,mask_constant_select=None):
     select_node = add_select_col_eq(g,select_node,terms)
 
     project_node = add_project_uniq_free_vars(g,select_node,terms)
+
     
     return (project_node,source)
 
 
+
+# %% ../nbs/009_term_graphs.ipynb 12
 def add_ie_relation(g,rel):
     """
     adds an ie relation to the graph
@@ -297,7 +300,7 @@ def add_ie_relation(g,rel):
     return top_node,project_input_vars
 
 
-# %% ../nbs/009_term_graphs.ipynb 17
+# %% ../nbs/009_term_graphs.ipynb 21
 def get_bounding_order(rule:Rule):
     """Get an order of evaluation for the body of a rule
     this is a very naive ordering that can be heavily optimized"""
@@ -325,7 +328,7 @@ def get_bounding_order(rule:Rule):
 
     return order
 
-# %% ../nbs/009_term_graphs.ipynb 20
+# %% ../nbs/009_term_graphs.ipynb 24
 def rule_to_graph(rule:Rule,rule_id):
     """
     converts a rule to a graph
@@ -365,14 +368,24 @@ def rule_to_graph(rule:Rule,rule_id):
                 g.add_edge(bottom,prev_top)
         prev_top = join_node_name
 
+    head = rule.head
     # project all assignments into the head
     head_project_name = get_new_node_name(g)
-    g.add_node(head_project_name, op='project', schema =[term.name for term in rule.head.terms],rel=f'_{rule.head.name}_{rule_id}')
+    g.add_node(head_project_name, op='project', schema =[term.name for term in head.terms],rel=f'_{head.name}_{rule_id}')
     g.add_edge(head_project_name,prev_top)
+    top_node = head_project_name
+
+    if head.agg is not None:
+        agg_node_name = get_new_node_name(g)
+        agg_mapping = {k.name:v for k,v in head.agg.items()}
+        g.add_node(agg_node_name, op='groupby',schema = g.nodes[head_project_name]['schema'],agg=agg_mapping)
+        g.add_edge(agg_node_name,top_node)
+        top_node = agg_node_name
+
 
     # add a union for each rule for the given head
-    g.add_node(rule.head.name,op='union',rel=rule.head.name,schema = _col_names(len(rule.head.terms)))
-    g.add_edge(rule.head.name,head_project_name)
+    g.add_node(head.name,op='union',rel=head.name,schema = _col_names(len(head.terms)))
+    g.add_edge(head.name,top_node)
 
     # add rule id for each node
     for u in g.nodes:
@@ -380,7 +393,7 @@ def rule_to_graph(rule:Rule,rule_id):
     return g
 
 
-# %% ../nbs/009_term_graphs.ipynb 28
+# %% ../nbs/009_term_graphs.ipynb 32
 def graph_compose(g1,g2,mapping_dict,debug=False):
     """compose two graphs with a mapping dict"""
     # if there is a node in g2 that is renamed but has a name collision with an existing node that is not renamed, we will rename the existing node to a uniq name
@@ -407,7 +420,7 @@ def graph_compose(g1,g2,mapping_dict,debug=False):
     return merged_graph
 
 
-# %% ../nbs/009_term_graphs.ipynb 34
+# %% ../nbs/009_term_graphs.ipynb 38
 def merge_term_graphs_pair(g1,g2,exclude_props = ['label'],debug=False):
     """merge two term graphs into one term graph
     when talking about term graphs, 2 nodes if their data is identical and all of their children are identical
