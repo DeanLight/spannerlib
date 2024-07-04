@@ -46,7 +46,9 @@ decl_term_list: decl_term ("," decl_term)*
 
 rule: rule_head "<-" rule_body_relation_list
 
-rule_head: relation_name "(" free_var_name_list ")"
+rule_head: relation_name "(" aggregated_free_vars_list ")"
+
+
 
 rule_body_relation_list: rule_body_relation ("," rule_body_relation)*
 
@@ -83,6 +85,9 @@ int: INT -> integer
 string: STRING
 
 free_var_name_list: free_var_name ("," free_var_name)*
+aggregated_free_vars_list: (free_var_name|aggregated_free_var) ("," (free_var_name|aggregated_free_var))*
+
+aggregated_free_var: (relation_name "(" free_var_name ")")
 
 relation_name: LOWER_CASE_NAME
              | UPPER_CASE_NAME
