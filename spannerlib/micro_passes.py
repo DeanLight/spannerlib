@@ -33,7 +33,7 @@ from spannerlib.engine import (
     pretty,
     )
 
-# %% ../nbs/020_micro_passes.ipynb 9
+# %% ../nbs/020_micro_passes.ipynb 10
 def convert_primitive_values_to_objects(ast,session):
 
     # primitive values
@@ -54,7 +54,7 @@ def convert_primitive_values_to_objects(ast,session):
         lhs='var[type]->val_node[val]',
         p='var[type]',
         rhs='var[type,val={{new_val}}]',
-        condition= lambda match: match['var']['type'] in ['string','integer','var_name','relation_name','free_var_name'],
+        condition= lambda match: match['var']['type'] in ['string','integer','var_name','relation_name','free_var_name','agg_name'],
         render_rhs={'new_val': cast_new_value},
         # display_matches=True
         )
@@ -77,7 +77,7 @@ def convert_primitive_values_to_objects(ast,session):
             match['x']['val']=decl_class
 
 
-# %% ../nbs/020_micro_passes.ipynb 13
+# %% ../nbs/020_micro_passes.ipynb 15
 def remove_new_lines_from_strings(ast,engine):
     for match in rewrite_iter(ast,
         lhs='v[type="string",val]'):
@@ -85,7 +85,7 @@ def remove_new_lines_from_strings(ast,engine):
         match['v']['val'] = match['v']['val'].replace('\\\n','')[1:-1]
 
 
-# %% ../nbs/020_micro_passes.ipynb 16
+# %% ../nbs/020_micro_passes.ipynb 18
 class CheckReservedRelationNames():
     def __init__(self,reserved_prefix):
         self.reserved_prefix = reserved_prefix
@@ -95,7 +95,7 @@ class CheckReservedRelationNames():
             if relation_name.startswith(self.reserved_prefix):
                 raise ValueError(f"Relation name '{relation_name}' starts with reserved prefix '{self.reserved_prefix}'")
 
-# %% ../nbs/020_micro_passes.ipynb 20
+# %% ../nbs/020_micro_passes.ipynb 22
 def dereference_vars(ast,engine):
 
     # first rename all left hand sign variables 
@@ -117,7 +117,7 @@ def dereference_vars(ast,engine):
         match['X']['val'] = var_value
 
 
-# %% ../nbs/020_micro_passes.ipynb 23
+# %% ../nbs/020_micro_passes.ipynb 25
 def check_referenced_paths_exist(ast,engine):
     for match in rewrite_iter(ast,
     lhs='X[type="read_assignment"]-[idx=1]->PathNode[val]',
@@ -128,7 +128,7 @@ def check_referenced_paths_exist(ast,engine):
             raise ValueError(f'path {path} was not found in {os.getcwd()}')
 
 
-# %% ../nbs/020_micro_passes.ipynb 26
+# %% ../nbs/020_micro_passes.ipynb 31
 def relations_to_dataclasses(ast,engine):
 
    # regular relations
@@ -141,13 +141,19 @@ def relations_to_dataclasses(ast,engine):
          #TODO i expect to be able to put an rhs here only, and if a p is not given, assume it is the identity over nodes in LHS
          p='statement[type]',
          condition=lambda match: (match['statement']['type'] in ['add_fact','remove_fact','relation','rule_head','query']
-                                   and match['terms']['type'] in ['const_term_list','term_list','free_var_name_list']),
+                                   and match['terms']['type'] in ['const_term_list','term_list','free_var_name_list','aggregated_free_vars_list']),
          # display_matches=True,
          ):
       term_nodes = list(ast.successors(match.mapping['terms']))
       #TODO check we iterate in order on the children
       logger.debug(f"casting relation to dataclasses - term_nodes: {term_nodes}")
-      match['statement']['val'] = Relation(name=match['name']['val'],terms=[ast.nodes[term_node]['val'] for term_node in term_nodes])
+      terms = [ast.nodes[term_node]['val'] for term_node in term_nodes]
+
+      agg_map = {ast.nodes[term_node]['val']:ast.nodes[term_node]['agg'] for term_node in term_nodes if 'agg' in ast.nodes[term_node]}
+      if len(agg_map)==0:
+         agg_map = None
+
+      match['statement']['val'] = Relation(name=match['name']['val'],terms=terms,agg=agg_map)
       ast.remove_nodes_from(term_nodes)
    # relation declerations
    for match in rewrite_iter(ast,
@@ -176,7 +182,7 @@ def relations_to_dataclasses(ast,engine):
                                              )
       ast.remove_nodes_from(in_term_nodes+out_term_nodes)
 
-# %% ../nbs/020_micro_passes.ipynb 31
+# %% ../nbs/020_micro_passes.ipynb 36
 def verify_referenced_relations(ast,engine):
 
     def schema_match(types,vals):
@@ -224,7 +230,7 @@ def verify_referenced_relations(ast,engine):
       
 
 
-# %% ../nbs/020_micro_passes.ipynb 34
+# %% ../nbs/020_micro_passes.ipynb 39
 def rules_to_dataclasses(ast,engine):
    for match in rewrite_iter(ast,
       lhs='''
@@ -237,7 +243,7 @@ def rules_to_dataclasses(ast,engine):
       ast.remove_nodes_from(body_nodes)
    return ast
 
-# %% ../nbs/020_micro_passes.ipynb 37
+# %% ../nbs/020_micro_passes.ipynb 42
 def _check_rule_consistency(rule,engine):
     # for each free var we encounter, what is the type is is according to the relation schema
     free_var_to_type = {}
@@ -302,7 +308,7 @@ def consistent_free_var_types_in_rule(ast,engine):
         _check_rule_consistency(rule,engine)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 40
+# %% ../nbs/020_micro_passes.ipynb 45
 def is_rule_safe(rule:Rule):
     """
     Checks that the Spannerlog Rule is safe
@@ -377,14 +383,14 @@ def is_rule_safe(rule:Rule):
 
     return True
 
-# %% ../nbs/020_micro_passes.ipynb 41
+# %% ../nbs/020_micro_passes.ipynb 46
 def check_rule_safety(ast,engine):
     for match in rewrite_iter(ast,lhs='X[type="rule",val]'):
         rule = match['X']['val']
         is_rule_safe(rule)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 43
+# %% ../nbs/020_micro_passes.ipynb 48
 def assignments_to_name_val_tuple(ast,engine):
     for match in rewrite_iter(ast,lhs='''
                                 statement[type]-[idx=0]->var_name_node[val];
@@ -398,7 +404,7 @@ def assignments_to_name_val_tuple(ast,engine):
         )
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 46
+# %% ../nbs/020_micro_passes.ipynb 51
 def execute_statement(ast,engine):
     statement_node = list(ast.nodes)[0]
     node_data = ast.nodes[statement_node]

@@ -32,6 +32,7 @@ from spannerlib.data_types import (
     RelationDefinition, 
     Relation, 
     IEFunction,
+    AGGFunction,
     IERelation, 
     Rule, 
     pretty
@@ -47,6 +48,7 @@ from spannerlib.ra import (
     difference,
     join,
     product,
+    groupby,
     ie_map,
 )
 
@@ -82,6 +84,9 @@ class Engine():
         }
         self.ie_functions={
             # name : IEFunction class
+        }
+
+        self.agg_functions={
         }
 
         self.term_graph = nx.DiGraph()
@@ -159,6 +164,15 @@ class Engine():
     def del_ie_function(self,name:str):
         del self.ie_functions[name]
 
+    def get_agg_function(self,name:str):
+        return self.agg_functions.get(name,None)
+    
+    def set_agg_function(self,agg_func:AGGFunction):
+        self.agg_functions[agg_func.name]=agg_func
+    
+    def del_agg_function(self,name:str):
+        del self.agg_functions[name]
+
     def add_rule(self,rule:Rule,schema:RelationDefinition=None):
         if not self.get_relation(rule.head.name) and schema is None:
             raise ValueError(f"Relation {rule.head.name} not defined before adding the rule with it's head\n"
@@ -210,6 +224,12 @@ class Engine():
                 g.nodes[u]['name'] = ie_definition.name
                 g.nodes[u]['in_schema'] = ie_definition.in_schema
                 g.nodes[u]['out_schema'] = ie_definition.out_schema
+            elif g.nodes[u]['op'] == 'groupby':
+                aggregate_dict_with_func_name = g.nodes[u]['agg']
+                aggregate_dict_with_actual_function = {
+                    k:self.agg_functions[v].func for k,v in aggregate_dict_with_func_name.items()
+                }
+                g.nodes[u]['agg'] = aggregate_dict_with_actual_function
         return g
 
 
@@ -259,6 +279,7 @@ op_to_func = {
     'get_rel':get_rel,
     'get_const':get_const,
     'product':product,
+    'groupby':groupby
 }
 
 # %% ../nbs/010_engine.ipynb 27

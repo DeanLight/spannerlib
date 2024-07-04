@@ -64,7 +64,7 @@ class IEFunction(BaseModel):
 class AGGFunction(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
-    func: Callable
+    func: Union[Callable,str]
     in_schema: List 
     out_schema: List
 
