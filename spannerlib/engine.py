@@ -225,11 +225,9 @@ class Engine():
                 g.nodes[u]['in_schema'] = ie_definition.in_schema
                 g.nodes[u]['out_schema'] = ie_definition.out_schema
             elif g.nodes[u]['op'] == 'groupby':
-                aggregate_dict_with_func_name = g.nodes[u]['agg']
-                aggregate_dict_with_actual_function = {
-                    k:self.agg_functions[v].func for k,v in aggregate_dict_with_func_name.items()
-                }
-                g.nodes[u]['agg'] = aggregate_dict_with_actual_function
+                aggregate_func_names = g.nodes[u]['agg']
+                aggregate_funcs = [self.agg_functions[name].func if name is not None else None for name in aggregate_func_names]
+                g.nodes[u]['agg'] = aggregate_funcs
         return g
 
 

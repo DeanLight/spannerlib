@@ -68,60 +68,65 @@ from pydantic import ConfigDict
 
 class Span():
     def __init__(self,doc,start=None,end=None,name=None):
-        if name is None:
-            name = small_hash(doc)
-        self.name=name
-        self.doc = doc
-        if start is None:
-            start = 0
-        if end is None:
-            end = len(doc)
-        self.start = start
-        self.end = end
+
+        if isinstance(doc,Span):
+            father = doc
+            sub_span = doc.slice(start,end)
+            self.doc = sub_span.doc
+            self.start = sub_span.start
+            self.end = sub_span.end
+            self.name = sub_span.name
+        
+        else:
+            self.doc = doc
+            if start is None:
+                start = 0
+            if end is None:
+                end = len(doc)
+            self.start = start
+            self.end = end
+
+            if name is None:
+                name = small_hash(doc)
+            self.name = name
+
+    
+    def slice(self, start,end):
+        if start < 0 or end < 0:
+            raise ValueError(f'Negative indices not supported, got start: {start}, end: {end}')
+        if start > end:
+            raise ValueError(f'Start index greater than end index, got start: {start}, end: {end}')
+        if end > len(self):
+            raise ValueError(f'End index greater than length of span, got end: {end}, length: {len(self)}')
+        return Span(self.doc,self.start+start,self.start+end,name=self.name)
 
     def __lt__(self, other) -> bool:
         return (self.doc, self.start, self.end) <= (other.doc, other.start, other.end)
     
     def __repr__(self):
         f_string,head_num = get_span_repr_format()
-        text = str(self)
+        text = self.doc[self.start:self.end]
         if len(text) > head_num:
             text = text[:head_num] + '...'
         return SPAN_REPR_FORMAT.format(doc=self.name,start=self.start,end=self.end,text=text)
-    
+
+    def __len__(self):
+        return self.end-self.start
 
     def __str__(self):
+        return repr(self)
+        # return self.doc[self.start:self.end]
+
+    def as_str(self):
         return self.doc[self.start:self.end]
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, Span):
             return self.start == value.start and self.end == value.end and self.doc == value.doc
         elif isinstance(value, str):
-            return str(self) == value
+            return self.as_str() == value
         else:
             return False
-
-    def __getitem__(self, key):
-        if not isinstance(key, slice):
-            raise ValueError('Can only access indices of Span with slice objects')
-        
-        if key.step is not None:
-            raise ValueError('Step not supported')
-        
-        start = key.start
-        stop = key.stop
-        if start is None:
-            start = 0
-        
-        if stop is None:
-            stop = self.end-self.start
-        
-        if stop > self.end-self.start:
-            raise ValueError('End of slice is greater than end of span')
-        if start < 0:
-            raise ValueError('Negative start index not supported')
-        return Span(self.doc,self.start+start, self.start+stop)
-    
 
     @classmethod
     def from_val(cls,val):

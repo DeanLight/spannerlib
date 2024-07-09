@@ -174,7 +174,7 @@ def rgx_span(text: str, # The input text for the regex operation
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 28
 RGX = [
-    'rgx_span',
+    'fast_rgx_span',
     rgx_span,
     [str,str],
     lambda output_arity: [Span] * output_arity
@@ -188,7 +188,7 @@ def rgx_string(text: str, # The input text for the regex operation
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 30
 RGX_STRING = [
-    'rgx_string',
+    'fast_rgx',
     rgx_string,
     [str,str],
     lambda output_arity: [str] * output_arity
@@ -202,7 +202,7 @@ def rgx_span_from_file(text_file: str, # The input file for the regex operation
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 32
 RGX_FROM_FILE = [
-    'rgx_span_from_file',
+    'fast_rgx_span_f',
     rgx_span_from_file,
     [str,str],
     lambda output_arity: [Span] * output_arity
@@ -217,7 +217,7 @@ def rgx_string_from_file(text_file: str, # The input file for the regex operatio
 
 # %% ../../nbs/ie_func/04d_rust_spanner_regex.ipynb 34
 RGX_STRING_FROM_FILE = [
-    'rgx_string_from_file',
+    'fast_rgx_f',
     rgx_string_from_file,
     [str,str],
     lambda output_arity: [str] * output_arity

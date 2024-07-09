@@ -325,10 +325,7 @@ def _check_rule_consistency(rule,engine):
         if not term.name in free_var_to_type:
             raise ValueError(f"In rule {pretty(rule)}, FreeVar {term.name} is used in the head but was not defined in the body")
     
-    #TODO here, for each term that gets aggregated, check its type is the same as the agg input type 
-    # and then set its type to the agg output type
 
-    print(f'head_agg: {head_agg}')
     # if no aggregations, the head schema is the same as the free var types
     if head_agg is None:
         head_scheme = [free_var_to_type[term.name] for term in head_terms]
@@ -341,7 +338,6 @@ def _check_rule_consistency(rule,engine):
                 agg_func = engine.get_agg_function(agg_name)
                 in_schema = agg_func.in_schema
                 out_schema = agg_func.out_schema
-                print(free_var_to_type[term.name],in_schema[0],out_schema[0])
                 if free_var_to_type[term.name] != in_schema[0]:
                     raise ValueError(f"In rule {pretty(rule)}, in head clause {head_name}, FreeVar {term.name} is aggregated with {agg_name} which expects input type {pretty(in_schema[0])} but got {pretty(free_var_to_type[term.name])}")
                 head_scheme.append(out_schema[0])
