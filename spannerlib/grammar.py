@@ -29,7 +29,7 @@ start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
           | assignment
 
 assignment: var_name "=" string
-          | var_name "=" span
+          //| var_name "=" span
           | var_name "=" int
           | var_name "=" var_name
           | var_name "=" "read" "(" string ")" -> read_assignment
@@ -41,7 +41,8 @@ relation_declaration: "new" relation_name "(" decl_term_list ")"
 decl_term_list: decl_term ("," decl_term)*
 
 ?decl_term: "str" -> decl_string
-          | "span" -> decl_span
+         // disabling span literals since we cant reference doc in spannerlog
+         //| "span" -> decl_span
           | "int" -> decl_int
 
 rule: rule_head "<-" rule_body_relation_list
@@ -73,12 +74,13 @@ remove_fact: relation_name "(" const_term_list ")" "<-" _FALSE
 
 const_term_list: const_term ("," const_term)*
 
-?const_term: span
-          | string
+?const_term: string
+        //| span
           | int
           | var_name
 
-span: "[" int "," int ")"
+// disabling span literals since we cant reference doc in spannerlog
+//span: "[" int "," int ")"
 
 int: INT -> integer
 

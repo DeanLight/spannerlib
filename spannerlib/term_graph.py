@@ -377,8 +377,7 @@ def rule_to_graph(rule:Rule,rule_id):
 
     if head.agg is not None:
         agg_node_name = get_new_node_name(g)
-        agg_mapping = {k.name:v for k,v in head.agg.items()}
-        g.add_node(agg_node_name, op='groupby',schema = g.nodes[head_project_name]['schema'],agg=agg_mapping)
+        g.add_node(agg_node_name, op='groupby',schema = g.nodes[head_project_name]['schema'],agg=head.agg)
         g.add_edge(agg_node_name,top_node)
         top_node = agg_node_name
 

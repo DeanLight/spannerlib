@@ -17,7 +17,7 @@ import networkx as nx
 import itertools
 from graph_rewrite import draw, draw_match, rewrite, rewrite_iter
 from .utils import serialize_graph,serialize_df_values,checkLogs,get_new_node_name
-from .span import Span,SpanParser
+from .span import Span
 
 import logging
 logger = logging.getLogger(__name__)
@@ -39,8 +39,6 @@ class FreeVar(BaseModel):
         return hash(self.name)
 
 
-
-
 class RelationDefinition(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
@@ -50,7 +48,7 @@ class Relation(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
     terms: List
-    agg: Optional[Dict[FreeVar,str]] = None
+    agg: Optional[List[Union[None,str]]] = None
 
 class IEFunction(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -88,14 +86,14 @@ def pretty(obj):
     making them look like spannerlog code instead of python code"""
     
     if isinstance(obj,Span):
-        return f"[{obj.start},{obj.end})"
+        return repr(obj)
     elif isinstance(obj,(Var,FreeVar)):
         return obj.name
     elif isinstance(obj,RelationDefinition):
         return f"{obj.name}({','.join(pretty(o) for o in obj.scheme)})"
     elif isinstance(obj,Relation):
         if obj.agg:
-            pretty_terms = [f"{obj.agg[term]}({pretty(term)})" if (term in obj.agg) else pretty(term) for term in obj.terms]
+            pretty_terms = [f"{agg}({pretty(term)})" if (agg is not None) else pretty(term) for term,agg in zip(obj.terms,obj.agg)]
         else:
             pretty_terms = [pretty(t) for t in obj.terms]
         return f"{obj.name}({','.join(pretty_terms)})"
@@ -128,7 +126,7 @@ def _infer_relation_schema(row) -> Sequence[type]: # Inferred type list of the g
             int(cell)  # check if the cell can be converted to integer
             relation_types.append(int)
         except (ValueError, TypeError):
-            if isinstance(cell, Span) or SpanParser.parse(cell):
+            if isinstance(cell, Span):
                 relation_types.append(Span)
             elif re.match(STRING_PATTERN, cell):
                 relation_types.append(str)

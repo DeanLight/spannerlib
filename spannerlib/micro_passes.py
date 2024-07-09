@@ -2,9 +2,9 @@
 
 # %% auto 0
 __all__ = ['logger', 'convert_primitive_values_to_objects', 'remove_new_lines_from_strings', 'CheckReservedRelationNames',
-           'dereference_vars', 'check_referenced_paths_exist', 'relations_to_dataclasses',
-           'verify_referenced_relations', 'rules_to_dataclasses', 'consistent_free_var_types_in_rule', 'is_rule_safe',
-           'check_rule_safety', 'assignments_to_name_val_tuple', 'execute_statement']
+           'dereference_vars', 'check_referenced_paths_exist', 'inline_aggregation', 'relations_to_dataclasses',
+           'verify_referenced_relations_and_functions', 'rules_to_dataclasses', 'consistent_free_var_types_in_rule',
+           'is_rule_safe', 'check_rule_safety', 'assignments_to_name_val_tuple', 'execute_statement']
 
 # %% ../nbs/020_micro_passes.ipynb 3
 import os
@@ -28,6 +28,7 @@ from spannerlib.engine import (
     RelationDefinition,
     Relation,
     IEFunction,
+    AGGFunction,
     IERelation,
     Rule,
     pretty,
@@ -59,6 +60,7 @@ def convert_primitive_values_to_objects(ast,session):
         # display_matches=True
         )
 
+    # TODO initializing spans as 2 ints is deprecated, delete this
     # span object from 2 integers
     for match in rewrite_iter(ast,
         lhs='u[type="span"]-[idx=0]->v;u-[idx=1]->w',
@@ -77,7 +79,7 @@ def convert_primitive_values_to_objects(ast,session):
             match['x']['val']=decl_class
 
 
-# %% ../nbs/020_micro_passes.ipynb 15
+# %% ../nbs/020_micro_passes.ipynb 14
 def remove_new_lines_from_strings(ast,engine):
     for match in rewrite_iter(ast,
         lhs='v[type="string",val]'):
@@ -85,7 +87,7 @@ def remove_new_lines_from_strings(ast,engine):
         match['v']['val'] = match['v']['val'].replace('\\\n','')[1:-1]
 
 
-# %% ../nbs/020_micro_passes.ipynb 18
+# %% ../nbs/020_micro_passes.ipynb 17
 class CheckReservedRelationNames():
     def __init__(self,reserved_prefix):
         self.reserved_prefix = reserved_prefix
@@ -95,7 +97,7 @@ class CheckReservedRelationNames():
             if relation_name.startswith(self.reserved_prefix):
                 raise ValueError(f"Relation name '{relation_name}' starts with reserved prefix '{self.reserved_prefix}'")
 
-# %% ../nbs/020_micro_passes.ipynb 22
+# %% ../nbs/020_micro_passes.ipynb 21
 def dereference_vars(ast,engine):
 
     # first rename all left hand sign variables 
@@ -117,7 +119,7 @@ def dereference_vars(ast,engine):
         match['X']['val'] = var_value
 
 
-# %% ../nbs/020_micro_passes.ipynb 25
+# %% ../nbs/020_micro_passes.ipynb 24
 def check_referenced_paths_exist(ast,engine):
     for match in rewrite_iter(ast,
     lhs='X[type="read_assignment"]-[idx=1]->PathNode[val]',
@@ -128,7 +130,24 @@ def check_referenced_paths_exist(ast,engine):
             raise ValueError(f'path {path} was not found in {os.getcwd()}')
 
 
-# %% ../nbs/020_micro_passes.ipynb 31
+# %% ../nbs/020_micro_passes.ipynb 27
+def inline_aggregation(ast,engine):
+    for match in rewrite_iter(ast,
+        lhs='''
+        agg_marker[type="aggregated_free_var"];
+        agg_marker->agg_func[type="agg_name",val];
+        agg_marker->agg_var[type="free_var_name",val]
+        ''',
+        #rhs='agg_marker[type="free_var_name",val=agg_var.val,agg=agg_func.val]',
+        p='agg_marker[type]',
+        # display_matches=True
+        ):
+        match['agg_marker']['type'] = 'free_var_name'
+        match['agg_marker']['val'] = match['agg_var']['val']
+        match['agg_marker']['agg'] = match['agg_func']['val']
+
+
+# %% ../nbs/020_micro_passes.ipynb 30
 def relations_to_dataclasses(ast,engine):
 
    # regular relations
@@ -148,12 +167,14 @@ def relations_to_dataclasses(ast,engine):
       #TODO check we iterate in order on the children
       logger.debug(f"casting relation to dataclasses - term_nodes: {term_nodes}")
       terms = [ast.nodes[term_node]['val'] for term_node in term_nodes]
+      
+      has_agg = any('agg' in ast.nodes[term_node] for term_node in term_nodes)
+      if has_agg:
+         agg_by_term = [ast.nodes[term_node].get('agg',None) for term_node in term_nodes]
+      else:
+         agg_by_term = None
 
-      agg_map = {ast.nodes[term_node]['val']:ast.nodes[term_node]['agg'] for term_node in term_nodes if 'agg' in ast.nodes[term_node]}
-      if len(agg_map)==0:
-         agg_map = None
-
-      match['statement']['val'] = Relation(name=match['name']['val'],terms=terms,agg=agg_map)
+      match['statement']['val'] = Relation(name=match['name']['val'],terms=terms,agg=agg_by_term)
       ast.remove_nodes_from(term_nodes)
    # relation declerations
    for match in rewrite_iter(ast,
@@ -182,8 +203,8 @@ def relations_to_dataclasses(ast,engine):
                                              )
       ast.remove_nodes_from(in_term_nodes+out_term_nodes)
 
-# %% ../nbs/020_micro_passes.ipynb 36
-def verify_referenced_relations(ast,engine):
+# %% ../nbs/020_micro_passes.ipynb 35
+def verify_referenced_relations_and_functions(ast,engine):
 
     def schema_match(types,vals):
         if len(types) != len(vals):
@@ -228,6 +249,18 @@ def verify_referenced_relations(ast,engine):
         if not schema_match(out_schema,rel.out_terms):
             raise ValueError(f"IERelation '{rel.name}' output expected schema {pretty(out_schema)} but got called with {pretty(rel.out_terms)}")
       
+    # aggregation functions
+    for match in rewrite_iter(ast,
+        lhs='''rel[type="rule_head"]''',
+        # display_matches=True
+        ):
+        rel = match['rel']['val']
+        if rel.agg is None:
+            continue
+        agg_funcs = [func for func in rel.agg if func is not None]
+        for agg_func in agg_funcs:
+            if not engine.get_agg_function(agg_func):
+                raise ValueError(f"agg function '{agg_func}' was not registered, registered functions are {list(engine.agg_functions.keys())}")
 
 
 # %% ../nbs/020_micro_passes.ipynb 39
@@ -285,15 +318,37 @@ def _check_rule_consistency(rule,engine):
     # for rule head, make sure all free vars are defined in the body
     # and if the rule head was used in another rule, make sure it has the same types
     head_name, head_terms = rule.head.name, rule.head.terms
-
-    current_head_schema = []
+    head_agg = rule.head.agg
     for term in head_terms:
         if not isinstance(term,FreeVar):
             raise ValueError(f"In rule {pretty(rule)}, in head clause {head_name}, only FreeVars are allowed")
         if not term.name in free_var_to_type:
             raise ValueError(f"In rule {pretty(rule)}, FreeVar {term.name} is used in the head but was not defined in the body")
+    
+    #TODO here, for each term that gets aggregated, check its type is the same as the agg input type 
+    # and then set its type to the agg output type
 
-    current_head_schema = RelationDefinition(name=head_name,scheme=[free_var_to_type[term.name] for term in head_terms])
+    print(f'head_agg: {head_agg}')
+    # if no aggregations, the head schema is the same as the free var types
+    if head_agg is None:
+        head_scheme = [free_var_to_type[term.name] for term in head_terms]
+    
+    # if we do have aggregation, than we need to change the type of the free var to the type of the aggregation's output
+    else:
+        head_scheme = []
+        for term,agg_name in zip(head_terms,head_agg):
+            if agg_name is not None:
+                agg_func = engine.get_agg_function(agg_name)
+                in_schema = agg_func.in_schema
+                out_schema = agg_func.out_schema
+                print(free_var_to_type[term.name],in_schema[0],out_schema[0])
+                if free_var_to_type[term.name] != in_schema[0]:
+                    raise ValueError(f"In rule {pretty(rule)}, in head clause {head_name}, FreeVar {term.name} is aggregated with {agg_name} which expects input type {pretty(in_schema[0])} but got {pretty(free_var_to_type[term.name])}")
+                head_scheme.append(out_schema[0])
+            else:
+                head_scheme.append(free_var_to_type[term.name])
+
+    current_head_schema = RelationDefinition(name=head_name,scheme=head_scheme)
 
     if engine.get_relation(head_name):
         expected_head_schema = engine.get_relation(head_name)

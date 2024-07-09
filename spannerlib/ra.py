@@ -142,16 +142,38 @@ def product(df1,df2,schema,**kwargs):
         return pd.DataFrame(columns=schema)
     return pd.merge(df1,df2,how='cross')
 
+
+# %% ../nbs/008_extended_RA_operations.ipynb 42
 def groupby(df,schema,agg,**kwargs):
     if df is None or df.empty:
         return pd.DataFrame(columns=schema)
-    groupby_cols = [col for col in schema if not col in agg]
-    if len(groupby_cols)==0:
-        return df.agg(agg).to_frame().T
-    else:
-        return df.groupby(groupby_cols).agg(agg).reset_index()
+    
+    # rename columns to numbers so that we can aggregate the same free var to multiple places
+    uniq_cols_df = rename(df,schema=[i for i in range(len(schema))])
 
-# %% ../nbs/008_extended_RA_operations.ipynb 47
+    groupby_cols = [i for i,agg_func in enumerate(agg) if agg_func is None]
+    agg_by_cols = {i:agg_func for i,agg_func in enumerate(agg) if agg_func is not None}
+    # a real groupby
+    if len(groupby_cols)>0:
+        return rename(
+            uniq_cols_df.groupby(groupby_cols).agg(agg_by_cols).reset_index(),
+            schema)
+    # no group by vars, so aggs contain all columns and schema simply orders them
+    else:
+
+        # this conversion magic is caused by an inconsistency between series and dataframes aggs,
+        # to enable using both function and str aliases we
+        # we take each column, convert to a frame
+        # aggregate it and then squeeze it to a series (which has a single value)
+        # then feed that to the dataframe constructor
+        return rename(
+            pd.DataFrame({
+                col:[uniq_cols_df[col].to_frame().agg(agg_by_cols[col]).squeeze()] for col in range(len(agg_by_cols))
+            }),
+            schema)
+
+
+# %% ../nbs/008_extended_RA_operations.ipynb 57
 def coerce_tuple_like(name,func,input,output):
     if isinstance(output,(tuple,list)):
         return output

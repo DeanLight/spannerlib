@@ -25,7 +25,7 @@ from spannerlib.utils import (
     get_new_node_name
     )
 
-from .span import Span,SpanParser
+from .span import Span
 from spannerlib.data_types import (
     Var, 
     FreeVar, 
