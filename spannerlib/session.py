@@ -123,7 +123,7 @@ class Session():
             pass
         elif isinstance(result,pd.DataFrame):
             display.display(reconstruct(statement_lark))
-            display.display(result)
+            display.display(result.map(repr))
         elif isinstance(result,bool):
             display.display(reconstruct(statement_lark))
             display.display(result)

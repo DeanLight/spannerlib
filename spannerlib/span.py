@@ -60,15 +60,18 @@ def get_span_repr_format() -> str:
 from enum import Enum
 from typing import Any
 from pydantic import ConfigDict
+from collections import UserString
+# TODO from here turn all code into having spanner act as a string with slicing, change the display option to use repr
+# and add a note on it in the tutorial and the tests here
 
 # we will have an ie function that casts a span to its string for viewing while developing - TODO
 
 # whether we get a document as a string or as a file, we assume that it remains immutable throughout the process - TODO explain
 # a user can access the original document through the span interface (currently we dont do disk caching etc so it will just be a string and not a document class) - TODO explain
 
-class Span():
-    def __init__(self,doc,start=None,end=None,name=None):
-
+class Span(str):
+    def __new__(cls,doc,start=None,end=None,name=None):
+        self = super().__new__(cls)
         if isinstance(doc,Span):
             father = doc
             sub_span = doc.slice(start,end)
@@ -89,9 +92,18 @@ class Span():
             if name is None:
                 name = small_hash(doc)
             self.name = name
+        return self
 
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            return self.slice(key.start,key.stop)
+        return self.doc[self.start+key]
     
-    def slice(self, start,end):
+    def slice(self, start=None,end=None):
+        if start is None:
+            start = 0
+        if end is None:
+            end = len(self)
         if start < 0 or end < 0:
             raise ValueError(f'Negative indices not supported, got start: {start}, end: {end}')
         if start > end:
@@ -114,7 +126,8 @@ class Span():
         return self.end-self.start
 
     def __str__(self):
-        return repr(self)
+        return self.as_str()
+        # return repr(self)
         # return self.doc[self.start:self.end]
 
     def as_str(self):
