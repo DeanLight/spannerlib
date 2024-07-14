@@ -14,7 +14,7 @@ from typing import no_type_check, Set, Sequence, Any,Optional,List,Callable,Dict
 import networkx as nx
 import itertools
 
-from .utils import assert_df_equals
+from .utils import assert_df_equals,is_of_schema,schema_match
 from .span import Span
 from .data_types import _infer_relation_schema,pretty
 
@@ -188,8 +188,7 @@ def coerce_tuple_like(name,func,input,output):
 def assert_ie_schema(name,func,value,expected_schema,arity,input_or_output='input'):
     if callable(expected_schema):
         expected_schema = expected_schema(arity)
-    actual_schema = [type(v) for v in value]
-    if actual_schema != expected_schema:
+    if not is_of_schema(value,expected_schema):
         raise ValueError(
             f"IEFunction {name} with underlying function {func}\n"
             f"received an {input_or_output} value {value}(schema={pretty(_infer_relation_schema(value))})\n"

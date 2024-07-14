@@ -58,12 +58,12 @@ from spannerlib.micro_passes import (
 def load_stdlib():
     from spannerlib.ie_func.json_path import JsonPath, JsonPathFull
     from spannerlib.ie_func.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase)
-    from spannerlib.ie_func.python_regex import PYRGX, PYRGX_STRING,AS_STRING
+    from spannerlib.ie_func.python_regex import PYRGX,AS_STRING
     from spannerlib.ie_func.rust_spanner_regex import RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE
 
 
     # # ordered by rgx, json, nlp, etc.
-    ies = [AS_STRING,PYRGX, PYRGX_STRING, RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE,
+    ies = [AS_STRING,PYRGX, RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE,
                             JsonPath, JsonPathFull,
                             Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment,
                             TrueCase]
@@ -248,7 +248,6 @@ def test_session(
     csvs=None,# List of [name,df]
     debug=False,
     display_results=True,
-    ret_sess=False,
     ):
 
     sess=Session()
@@ -292,6 +291,5 @@ def test_session(
             assert_df_equals(res,expected)
         else:
             assert res == expected, f"expected {expected}, got {res}"
-    if ret_sess:
-        return sess
+    return sess
         
