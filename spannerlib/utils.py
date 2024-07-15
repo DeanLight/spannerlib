@@ -2,9 +2,10 @@
 
 # %% auto 0
 __all__ = ['logger', 'WINDOWS_OS', 'IS_POSIX', 'GOOGLE_DRIVE_URL', 'GOOGLE_DRIVE_CHUNK_SIZE', 'schema_match', 'is_of_schema',
-           'df_to_list', 'serialize_tree', 'serialize_graph', 'serialize_df_values', 'assert_df', 'assert_df_equals',
-           'checkLogs', 'patch_method', 'kill_process_and_children', 'run_cli_command', 'is_node_in_graphs',
-           'get_new_node_name', 'get_git_root', 'get_base_file_path', 'get_lib_name', 'download_file_from_google_drive']
+           'type_merge', 'schema_merge', 'df_to_list', 'serialize_tree', 'serialize_graph', 'serialize_df_values',
+           'assert_df', 'assert_df_equals', 'checkLogs', 'patch_method', 'kill_process_and_children', 'run_cli_command',
+           'is_node_in_graphs', 'get_new_node_name', 'get_git_root', 'get_base_file_path', 'get_lib_name',
+           'download_file_from_google_drive']
 
 # %% ../nbs/001_utils.ipynb 4
 import shlex
@@ -29,18 +30,49 @@ import numbers
 from .span import Span
 
 # %% ../nbs/001_utils.ipynb 6
-def schema_match(schema,expected):
+def schema_match(schema,expected,ignore_types=None):
     """checks if"""
     if len(schema) != len(expected):
         return False
-    return all(issubclass(x,y) for x,y in zip(schema,expected))
+    if ignore_types is None:
+        ignore_types = []
+    for x,y in zip(schema,expected):
+        if x in ignore_types:
+            continue
+        if not issubclass(x,y):
+            return False
+    return True
 
 
-def is_of_schema(relation,schema):
+def is_of_schema(relation,schema,ignore_types=None):
     """checks if a relation is of a given schema"""
     if len(relation) != len(schema):
         return False
-    return all(isinstance(x,y) for x,y in zip(relation,schema))
+    if ignore_types is None:
+        ignore_types = []
+    for x,y in zip(relation,schema):
+        if type(x) in ignore_types:
+            continue
+        if not isinstance(x,y):
+            return False
+    return True
+
+
+def type_merge(type1,type2):
+    if issubclass(type1,type2):
+        return type1
+    elif issubclass(type2,type1):
+        return type2
+    else:
+        raise ValueError(f"Trying to merge types {type1},{type2}, types are incompatible")
+
+def schema_merge(schema1,schema2):
+    """merges two schemas, taking the stricter type between the two for each index"""
+    if len(schema1) != len(schema2):
+        raise ValueError(f"Trying to merge schemas {schema1},{schema2} schemas must be of the same length")
+    
+    new_schema = [type_merge(x,y) for x,y in zip(schema1,schema2)]
+    return new_schema
 
 
 # %% ../nbs/001_utils.ipynb 9

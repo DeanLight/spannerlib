@@ -105,6 +105,8 @@ def pretty(obj):
         return f"{pretty(obj.head)} <- {','.join(pretty(o) for o in obj.body)}"
     elif isinstance(obj,type):
         return obj.__name__
+    elif isinstance(obj,list):
+        return f"[{','.join(pretty(o) for o in obj)}]"
     else:
         return str(obj)
 

@@ -39,7 +39,6 @@ from .engine import Engine
 
 from spannerlib.micro_passes import (
     convert_primitive_values_to_objects,
-    remove_new_lines_from_strings,
     CheckReservedRelationNames,
     dereference_vars,
     check_referenced_paths_exist,
@@ -47,8 +46,8 @@ from spannerlib.micro_passes import (
     relations_to_dataclasses,
     verify_referenced_relations_and_functions,
     rules_to_dataclasses,
-    consistent_free_var_types_in_rule,
     check_rule_safety,
+    consistent_free_var_types_in_rule,
     assignments_to_name_val_tuple,
     execute_statement,
 )
@@ -84,7 +83,6 @@ class Session():
         
         self.pass_stack = [
             convert_primitive_values_to_objects,
-            remove_new_lines_from_strings,
             CheckReservedRelationNames('spanner_'),
             check_referenced_paths_exist,
             dereference_vars,
@@ -92,8 +90,8 @@ class Session():
             relations_to_dataclasses,
             verify_referenced_relations_and_functions,
             rules_to_dataclasses,
-            consistent_free_var_types_in_rule,
             check_rule_safety,
+            consistent_free_var_types_in_rule,
             assignments_to_name_val_tuple,
         ]
 

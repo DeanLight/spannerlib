@@ -1,1 +1,1 @@
-problem_list : like_num . associated_diagnosis like_num . COVID-19 like_num 
+Problem List: 1. Pneumonia 2. Novel Coronavirus 2019 

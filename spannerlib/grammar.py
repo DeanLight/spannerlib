@@ -19,7 +19,99 @@ from .utils import checkLogs
 
 # %% ../nbs/000_spannerlog_grammar.ipynb 6
 SpannerlogGrammar = r"""
-start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
+// basic text types
+%import common (INT,FLOAT,CNAME,WS,WS_INLINE,NEWLINE,SH_COMMENT,ESCAPED_STRING)
+%ignore WS_INLINE
+%ignore SH_COMMENT
+
+_LINE_OVERFLOW_ESCAPE: "\\" NEWLINE
+%ignore _LINE_OVERFLOW_ESCAPE
+
+_SEPARATOR: (WS_INLINE | _LINE_OVERFLOW_ESCAPE)+
+_STRING_INNER: /.+?/
+_STRING_ESC_INNER: _STRING_INNER /(?<!\\)(\\\\)+?/
+// string: "\"" (_STRING_ESC_INNER|_STRING_INNER (_LINE_OVERFLOW_ESCAPE)+)* _STRING_ESC_INNER|_STRING_INNER "\""
+//        | "\"" "\""
+string: ESCAPED_STRING
+
+_NEWLINE: NEWLINE
+
+TRUE: "True"
+FALSE: "False"
+
+// inline version of bools in cases we dont need to save the value
+_TRUE: "True"
+_FALSE: "False"
+
+bool: TRUE | FALSE
+int: INT
+   | "-" INT -> int_neg
+float: FLOAT
+   | "-" FLOAT -> float_neg
+
+// basic terms
+
+relation_name: CNAME
+agg_name: CNAME
+var_name: CNAME
+free_var_name : CNAME
+
+?const_term: string
+        | float
+        | int
+        | bool
+        | "$" var_name
+
+?term: const_term
+     | free_var_name
+     
+
+aggregated_free_var: (agg_name "(" free_var_name ")")
+
+?decl_term: "str" -> decl_string
+        | "float" -> decl_float
+        | "int" -> decl_int
+        | "bool" -> decl_bool
+
+
+// lists of terms and relations
+
+const_term_list: const_term ("," const_term)*
+free_var_name_list: free_var_name ("," free_var_name)*
+decl_term_list: decl_term ("," decl_term)*
+
+term_list: term ("," term)*
+aggregated_free_vars_list: (free_var_name|aggregated_free_var) ("," (free_var_name|aggregated_free_var))*
+
+relation: relation_name "(" term_list ")"
+ie_relation: relation_name "(" term_list ")" "->" "(" term_list ")"
+
+// rules
+
+
+?rule_body_relation: relation
+                   | ie_relation
+
+rule_head: relation_name "(" aggregated_free_vars_list ")"
+
+rule_body_relation_list: rule_body_relation ("," rule_body_relation)*
+
+rule: rule_head "<-" rule_body_relation_list
+
+// statements 
+
+relation_declaration: "new" relation_name "(" decl_term_list ")"
+add_fact: relation_name "(" const_term_list ")"
+        | relation_name "(" const_term_list ")" "<-" _TRUE
+
+remove_fact: relation_name "(" const_term_list ")" "<-" _FALSE
+
+query: "?" relation_name "(" term_list ")"
+
+assignment: var_name "=" const_term
+        | var_name "=" var_name
+        | var_name "=" "read" "(" string ")" -> read_assignment
+        | var_name "=" "read" "(" var_name ")" -> read_assignment
 
 ?statement: relation_declaration
           | add_fact
@@ -28,110 +120,10 @@ start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
           | query
           | assignment
 
-assignment: var_name "=" string
-          //| var_name "=" span
-          | var_name "=" int
-          | var_name "=" var_name
-          | var_name "=" "read" "(" string ")" -> read_assignment
-          | var_name "=" "read" "(" var_name ")" -> read_assignment
-
-// relation_declaration: "new" _SEPARATOR relation_name "(" decl_term_list ")"
-relation_declaration: "new" relation_name "(" decl_term_list ")"
-
-decl_term_list: decl_term ("," decl_term)*
-
-?decl_term: "str" -> decl_string
-         // disabling span literals since we cant reference doc in spannerlog
-         //| "span" -> decl_span
-          | "int" -> decl_int
-
-rule: rule_head "<-" rule_body_relation_list
-
-rule_head: relation_name "(" aggregated_free_vars_list ")"
-
-
-
-rule_body_relation_list: rule_body_relation ("," rule_body_relation)*
-
-?rule_body_relation: relation
-                   | ie_relation
-
-relation: relation_name "(" term_list ")"
-
-ie_relation: relation_name "(" term_list ")" "->" "(" term_list ")"
-
-query: "?" relation_name "(" term_list ")"
-
-term_list: term ("," term)*
-
-?term: const_term
-     | free_var_name
-
-add_fact: relation_name "(" const_term_list ")"
-        | relation_name "(" const_term_list ")" "<-" _TRUE
-
-remove_fact: relation_name "(" const_term_list ")" "<-" _FALSE
-
-const_term_list: const_term ("," const_term)*
-
-?const_term: string
-        //| span
-          | int
-          | var_name
-
-// disabling span literals since we cant reference doc in spannerlog
-//span: "[" int "," int ")"
-
-int: INT -> integer
-
-string: STRING
-
-free_var_name_list: free_var_name ("," free_var_name)*
-aggregated_free_vars_list: (free_var_name|aggregated_free_var) ("," (free_var_name|aggregated_free_var))*
-
-aggregated_free_var: (agg_name "(" free_var_name ")")
-
-relation_name: LOWER_CASE_NAME
-             | UPPER_CASE_NAME
-
-agg_name: LOWER_CASE_NAME
-        | UPPER_CASE_NAME
-
-var_name: LOWER_CASE_NAME
-
-free_var_name : UPPER_CASE_NAME
-
-_TRUE: "True"
-_FALSE: "False"
-
-LOWER_CASE_NAME: ("_"|LCASE_LETTER) ("_"|LETTER|DIGIT)*
-UPPER_CASE_NAME: UCASE_LETTER ("_"|LETTER|DIGIT)*
-
-_COMMENT: "#" /[^\n]*/
-
-_SEPARATOR: (_WS_INLINE | _LINE_OVERFLOW_ESCAPE)+
-
-STRING: "\"" (_STRING_INTERNAL (_LINE_OVERFLOW_ESCAPE)+)* _STRING_INTERNAL "\""
-
-_LINE_OVERFLOW_ESCAPE: "\\" _NEWLINE
-
-_NEWLINE: CR? LF
-CR : /\r/
-LF : /\n/
-
-LCASE_LETTER: "a".."z"
-UCASE_LETTER: "A".."Z"
-LETTER: UCASE_LETTER | LCASE_LETTER
-DIGIT: "0".."9"
-_WS_INLINE: (" "|/\t/)+
-%ignore _WS_INLINE
-_STRING_INTERNAL: /.*?/ /(?<!\\)(\\\\)*?/
-INT: DIGIT+
-%ignore _LINE_OVERFLOW_ESCAPE
-%ignore _COMMENT
+start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
 """
 
-# %% ../nbs/000_spannerlog_grammar.ipynb 11
+# %% ../nbs/000_spannerlog_grammar.ipynb 9
 import itertools
 def lark_to_nx_aux(tree,node_id,g,counter):
     if isinstance(tree, Token):
@@ -173,7 +165,7 @@ def lark_to_nx(t):
 
 
 
-# %% ../nbs/000_spannerlog_grammar.ipynb 12
+# %% ../nbs/000_spannerlog_grammar.ipynb 10
 def parse_spannerlog(spannerlog_code: str, # code to parse
     start='start', # start symbol to parse from 
     split_statements=False # whether to split the code into multiple statements, only makes sense if parsing from the start
@@ -189,7 +181,7 @@ def parse_spannerlog(spannerlog_code: str, # code to parse
         return lark_to_nx(tree),tree
     
 
-# %% ../nbs/000_spannerlog_grammar.ipynb 14
+# %% ../nbs/000_spannerlog_grammar.ipynb 12
 from lark.reconstruct import Reconstructor
 def reconstruct(tree):
     parser = Lark(SpannerlogGrammar, parser='lalr',start='start',maybe_placeholders=False)
