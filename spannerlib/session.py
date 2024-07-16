@@ -170,6 +170,10 @@ class Session():
         query_graph,root =  self.engine.plan_query(value)
         return query_graph,root
 
+    def draw_query(self,code):
+        query_graph,root = self.plan_query(code)
+        draw(query_graph)
+
     def execute_plan(self,query_graph,root,return_intermediate=False):
         res,inter = self.engine.execute_plan(query_graph,root,return_intermediate=True)
         res = self.handle_boolean_results(res)
@@ -179,7 +183,6 @@ class Session():
         
 
     def export(self,code,display_results=False):
-        #TODO reconstruct the code for each statement using lark,reconstruct so we can print the query string together with the result
         results = []
         for clean_ast,statement_lark in self.parse_and_check_semantics(code):
             try:
@@ -277,7 +280,8 @@ def test_session(
             print(query)
             q,root = sess.plan_query(query)
             draw(q)
-            res = sess.execute_plan(q,root)
+            res,inter = sess.execute_plan(q,root,return_intermediate=True)
+            return res,inter,sess
         else:
             res = sess.export(query,display_results=display_results)
         # used for debugging, we return the results of the first query without expected

@@ -50,6 +50,7 @@ from spannerlib.ra import (
     product,
     groupby,
     ie_map,
+    merge_rows
 )
 
 from .term_graph import graph_compose, merge_term_graphs_pair,rule_to_graph,add_relation,add_project_uniq_free_vars
@@ -61,8 +62,7 @@ def _pd_drop_row(df,row_vals):
     new_df = df[(df!=row_vals).all(axis=1)]
     return new_df
 
-def _pd_append_row(df,row_vals):
-    return pd.concat([df,pd.DataFrame([row_vals],columns=df.columns)]).drop_duplicates()
+
 
 # %% ../nbs/010_engine.ipynb 7
 class DB(dict):
@@ -145,12 +145,11 @@ class Engine():
         return
 
     def add_fact(self,fact:Relation):
-        self.db[fact.name] = _pd_append_row(self.db[fact.name],fact.terms)
+        facts = pd.DataFrame([fact.terms])
+        self.db[fact.name] = merge_rows(self.db[fact.name],facts)
 
     def add_facts(self,rel_name,facts:pd.DataFrame):
-        facts= facts.copy()
-        facts.columns = _col_names(len(facts.columns))
-        self.db[rel_name] = pd.concat([self.db[rel_name],facts])
+        self.db[rel_name] = merge_rows(self.db[rel_name],facts)
 
     def del_fact(self,fact:Relation):
         self.db[fact.name] = _pd_drop_row(df = self.db[fact.name],row_vals=fact.terms)
@@ -178,6 +177,9 @@ class Engine():
             raise ValueError(f"Relation {rule.head.name} not defined before adding the rule with it's head\n"
                              f"And an relation schema was not supplied."
                              f"existing relations are {self.Relation_defs.keys()}")
+        # if already defined, do nothing.
+        if pretty(rule) in self.rules_to_ids:
+            return
 
         if not schema is None:
             self.set_relation(schema)
@@ -193,6 +195,7 @@ class Engine():
         
 
     def del_rule(self,rule_str:str):
+        #TODO here we need to save rules by their head and when removing the last rule of a head, remove its definition from db as well
         if not rule_str in self.rules_to_ids:
             raise ValueError(f"Rule {rule_str} does not exist\n"
                              f"existing rules are {self.rules_to_ids.keys()}")
@@ -248,12 +251,8 @@ class Engine():
         return query_graph,root_node
 
     def execute_plan(self,query_graph,root_node,return_intermediate=False):
-        results_dict = defaultdict(list)
-        results = compute_node(query_graph,root_node,results_dict)
-        if return_intermediate:
-            return results,results_dict
-        else:
-            return results
+        results = compute_node(query_graph,root_node,ret_inter = return_intermediate)
+        return results
 
     def run_query(self,q:Relation,rewrites=None,return_intermediate=False):
         query_graph,root_node = self.plan_query(q,rewrites)

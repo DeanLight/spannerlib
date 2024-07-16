@@ -109,7 +109,7 @@ def assert_df_equals(df1,df2):
     )
     return df1
 
-# %% ../nbs/001_utils.ipynb 13
+# %% ../nbs/001_utils.ipynb 16
 from contextlib import contextmanager
 import logging
 
@@ -147,7 +147,7 @@ def checkLogs(level: int=logging.DEBUG, name :str='__main__', toFile=None):
         if len(logger.handlers) == 1:
             logger.handlers= []
 
-# %% ../nbs/001_utils.ipynb 14
+# %% ../nbs/001_utils.ipynb 18
 def patch_method(func : Callable, *args, **kwargs) -> None:
     """
     Applies fastcore's `patch` decorator and removes `func` from `cls.__abstractsmethods__` in case <br>
@@ -164,7 +164,7 @@ def patch_method(func : Callable, *args, **kwargs) -> None:
         # Apply the original `patch` decorator
         patch(*args, **kwargs)(func)
 
-# %% ../nbs/001_utils.ipynb 15
+# %% ../nbs/001_utils.ipynb 19
 def kill_process_and_children(process: Popen) -> None:
     logger.info("~~~~ process timed out ~~~~")
     if process.poll() is not None:
@@ -173,7 +173,7 @@ def kill_process_and_children(process: Popen) -> None:
             child.kill()  # not recommended in real life
         process.kill()  # lastly, kill the process
 
-# %% ../nbs/001_utils.ipynb 16
+# %% ../nbs/001_utils.ipynb 20
 def run_cli_command(command: str, # a single command string
                     stderr: bool = False, # if true, suppress stderr output. default: `False`
                     # if true, spawn shell process (e.g. /bin/sh), which allows using system variables (e.g. $HOME),
@@ -209,7 +209,7 @@ def run_cli_command(command: str, # a single command string
     if stderr:
         logger.info(f"stderr from process {command_list[0]}: {process_stderr}")
 
-# %% ../nbs/001_utils.ipynb 18
+# %% ../nbs/001_utils.ipynb 22
 def _biggest_int_node_name(g:nx.Graph):
     return max([n for n in g.nodes if isinstance(n,int)],default=-1)
 
@@ -235,7 +235,7 @@ def get_new_node_name(g,prefix=None,avoid_names_from=None):
             if not is_node_in_graphs(name,graphs_to_avoid):
                 return name
 
-# %% ../nbs/001_utils.ipynb 23
+# %% ../nbs/001_utils.ipynb 27
 logger = logging.getLogger(__name__)
 
 WINDOWS_OS = "win32"
@@ -245,14 +245,14 @@ IS_POSIX = (platform != WINDOWS_OS)
 GOOGLE_DRIVE_URL = "https://docs.google.com/uc?export=download"
 GOOGLE_DRIVE_CHUNK_SIZE = 32768
 
-# %% ../nbs/001_utils.ipynb 24
+# %% ../nbs/001_utils.ipynb 28
 def get_git_root(path='.'):
 
         git_repo = git.Repo(path, search_parent_directories=True)
         git_root = git_repo.git.rev_parse("--show-toplevel")
         return Path(git_root)
 
-# %% ../nbs/001_utils.ipynb 25
+# %% ../nbs/001_utils.ipynb 29
 def get_base_file_path() -> Path: # The absolute path of parent folder of nbs
     return get_git_root()
 
@@ -263,7 +263,7 @@ def get_lib_name() -> str:
     setting_ini = setting_ini['DEFAULT']
     return setting_ini['lib_name']
 
-# %% ../nbs/001_utils.ipynb 26
+# %% ../nbs/001_utils.ipynb 30
 import os
 def download_file_from_google_drive(file_id: str, # the id of the file to download
                                      destination: Path # the path to which the file will be downloaded

@@ -2,8 +2,8 @@
 
 # %% auto 0
 __all__ = ['logger', 'equalConstTheta', 'equalColTheta', 'get_const', 'is_truthy', 'is_falsy', 'select', 'project', 'rename',
-           'union', 'intersection', 'difference', 'join', 'product', 'groupby', 'coerce_tuple_like', 'assert_ie_schema',
-           'assert_iterable', 'map_iter', 'ie_map']
+           'intersection', 'difference', 'product', 'join', 'merge_rows', 'union', 'groupby', 'coerce_tuple_like',
+           'assert_ie_schema', 'assert_iterable', 'map_iter', 'ie_map']
 
 # %% ../nbs/008_extended_RA_operations.ipynb 3
 import pytest
@@ -95,17 +95,6 @@ def rename(df,schema,**kwargs):
     df.columns = schema
     return df
 
-def union(*dfs,schema,**kwargs):
-    # use numpy arrays to ignore column names
-    non_empty_dfs = []
-    for df in dfs:
-        if df is not None and not df.empty:
-            non_empty_dfs.append(df.values)
-    if len(non_empty_dfs)==0:
-        return pd.DataFrame(columns=schema)
-    else:
-        return pd.DataFrame(np.concatenate(non_empty_dfs,axis=0),columns=schema).drop_duplicates()
-
 def intersection(df1,df2,schema,**kwargs):
     if df1 is None or df2 is None or df1.empty or df2.empty:
         return pd.DataFrame(columns=schema)
@@ -116,6 +105,14 @@ def difference(df1,df2,schema,**kwargs):
         return pd.DataFrame(columns=schema)
     return pd.concat([df1,df2]).drop_duplicates(keep=False)
 
+
+def product(df1,df2,schema,**kwargs):
+    if df1 is None or df2 is None or df1.empty or df2.empty:
+        return pd.DataFrame(columns=schema)
+    return pd.merge(df1,df2,how='cross')
+
+
+# %% ../nbs/008_extended_RA_operations.ipynb 34
 def join(df1,df2,schema,**kwargs):
     if df1 is None or df2 is None or is_falsy(df1) or is_falsy(df2):
         return pd.DataFrame(columns=schema)
@@ -131,19 +128,34 @@ def join(df1,df2,schema,**kwargs):
     cols2 = set(df2.columns)
     on = cols1 & cols2
     # get only logical variables
-    on = [ col for col in on if isinstance(col,str) and col[0].isupper()]
+    # on = [ col for col in on if isinstance(col,str) and col[0].isupper()]
+    on = list(on)
     if len(on)==0:
         return pd.merge(df1,df2,how='cross')
     else:
         return pd.merge(df1,df2,how='inner',on=on)
 
-def product(df1,df2,schema,**kwargs):
-    if df1 is None or df2 is None or df1.empty or df2.empty:
+# %% ../nbs/008_extended_RA_operations.ipynb 46
+def merge_rows(*dfs):
+    return pd.DataFrame(
+        set.union(*[set(df.itertuples(index=False,name=None)) for df in dfs])
+    )
+
+
+def union(*dfs,schema,**kwargs):
+    # use numpy arrays to ignore column names
+    non_empty_dfs = []
+    for df in dfs:
+        if df is not None and not df.empty:
+            non_empty_dfs.append(df)
+    if len(non_empty_dfs)==0:
         return pd.DataFrame(columns=schema)
-    return pd.merge(df1,df2,how='cross')
+    else:
+        return rename(merge_rows(*non_empty_dfs),schema)
+        # This line didnt work since drop duplicates doesnt work correctly on non primitive classes such as Spans
+        # return pd.DataFrame(np.concatenate(non_empty_dfs,axis=0),columns=schema).drop_duplicates(ignore_index=True)
 
-
-# %% ../nbs/008_extended_RA_operations.ipynb 42
+# %% ../nbs/008_extended_RA_operations.ipynb 50
 def groupby(df,schema,agg,**kwargs):
     if df is None or df.empty:
         return pd.DataFrame(columns=schema)
@@ -173,7 +185,7 @@ def groupby(df,schema,agg,**kwargs):
             schema)
 
 
-# %% ../nbs/008_extended_RA_operations.ipynb 57
+# %% ../nbs/008_extended_RA_operations.ipynb 65
 def coerce_tuple_like(name,func,input,output):
     if isinstance(output,(tuple,list)):
         return output
