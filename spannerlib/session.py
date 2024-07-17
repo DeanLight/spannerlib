@@ -57,12 +57,13 @@ from spannerlib.micro_passes import (
 def load_stdlib():
     from spannerlib.ie_func.json_path import JsonPath, JsonPathFull
     from spannerlib.ie_func.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase)
-    from spannerlib.ie_func.python_regex import PYRGX,AS_STRING
+    from spannerlib.ie_func.python_regex import PYRGX,AS_STRING,PYRGX_SPLIT,EXPR_EVAL
     from spannerlib.ie_func.rust_spanner_regex import RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE
 
 
     # # ordered by rgx, json, nlp, etc.
-    ies = [AS_STRING,PYRGX, RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE,
+    ies = [AS_STRING,PYRGX,PYRGX_SPLIT, EXPR_EVAL,
+    RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE,
                             JsonPath, JsonPathFull,
                             Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment,
                             TrueCase]
@@ -217,6 +218,9 @@ class Session():
         rel_def = RelationDefinition(name=name,scheme=scheme)
         self.engine.set_relation(rel_def)
         self.engine.add_facts(name,data)
+
+    def import_var(self,name,value):
+        self.engine.set_var(name,value)
         
     def print_rules(self):
         rules = list(self.engine.rules_to_ids.keys())
