@@ -168,7 +168,7 @@ class Session():
 
     def execute_plan(self,query_graph,root,return_intermediate=False):
         res,inter = self.engine.execute_plan(query_graph,root,return_intermediate=True)
-        res = self.handle_boolean_results(res)
+        res = self.format_results(res)
         if return_intermediate:
             return res,inter
         return res
@@ -238,7 +238,7 @@ class Session():
             'agg':self.engine.agg_functions.copy()
         }
 
-# %% ../nbs/030_session.ipynb 11
+# %% ../nbs/030_session.ipynb 8
 def test_session(
     queries,
     expected_outputs=None,# list of expected dfs

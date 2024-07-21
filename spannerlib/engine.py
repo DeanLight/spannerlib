@@ -323,7 +323,12 @@ def _collect_children_and_run(G,u,results,stack,log=False):
         logger.debug(f"computing node {u} with children {children} and data {u_data} , stack = {stack}")
         logger.debug(f"children results are {children_results}")
         logger.debug(f"children_data is {[G.nodes[v] for v in children]}")
-    res = op_func(*children_results,**u_data)
+    try:
+        res = op_func(*children_results,**u_data)
+    except Exception as e:
+        raise Exception(f'During excution of node {u} with args {children_results} and kwargs {u_data}'
+                        f' got error {e}'
+        )
     if log:
         logger.debug(f"result of node {u} is {res}")
     results[u].append(res)

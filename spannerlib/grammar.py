@@ -64,11 +64,14 @@ free_var_name : CNAME
         | bool
         | "$" var_name
 
+aggregated_free_var: (agg_name "(" free_var_name ")")
+
+
 ?term: const_term
-     | free_var_name
+  | free_var_name
+  | aggregated_free_var
      
 
-aggregated_free_var: (agg_name "(" free_var_name ")")
 
 ?decl_term: "str" -> decl_string
         | "float" -> decl_float
@@ -78,12 +81,10 @@ aggregated_free_var: (agg_name "(" free_var_name ")")
 
 // lists of terms and relations
 
-const_term_list: const_term ("," const_term)*
 free_var_name_list: free_var_name ("," free_var_name)*
 decl_term_list: decl_term ("," decl_term)*
 
 term_list: term ("," term)*
-aggregated_free_vars_list: (free_var_name|aggregated_free_var) ("," (free_var_name|aggregated_free_var))*
 
 relation: relation_name "(" term_list ")"
 ie_relation: relation_name "(" term_list ")" "->" "(" term_list ")"
@@ -94,7 +95,7 @@ ie_relation: relation_name "(" term_list ")" "->" "(" term_list ")"
 ?rule_body_relation: relation
                    | ie_relation
 
-rule_head: relation_name "(" aggregated_free_vars_list ")"
+rule_head: relation_name "(" term_list ")"
 
 rule_body_relation_list: rule_body_relation ("," rule_body_relation)*
 
@@ -103,10 +104,10 @@ rule: rule_head "<-" rule_body_relation_list
 // statements 
 
 relation_declaration: "new" relation_name "(" decl_term_list ")"
-add_fact: relation_name "(" const_term_list ")"
-        | relation_name "(" const_term_list ")" "<-" _TRUE
+add_fact: relation_name "(" term_list ")"
+        | "+" relation_name "(" term_list ")"
 
-remove_fact: relation_name "(" const_term_list ")" "<-" _FALSE
+remove_fact: "-" relation_name "(" term_list ")" 
 
 query: "?" relation_name "(" term_list ")"
 

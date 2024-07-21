@@ -110,7 +110,7 @@ def pretty(obj):
     else:
         return str(obj)
 
-# %% ../nbs/006_primitive_data_types.ipynb 9
+# %% ../nbs/006_primitive_data_types.ipynb 10
 import re
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 

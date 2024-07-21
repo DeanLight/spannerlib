@@ -370,18 +370,31 @@ def rule_to_graph(rule:Rule,rule_id):
 
     head = rule.head
     # project all assignments into the head
-    head_project_name = get_new_node_name(g)
-    g.add_node(head_project_name, op='project', schema =[term.name for term in head.terms],rel=f'_{head.name}_{rule_id}')
-    g.add_edge(head_project_name,prev_top)
-    top_node = head_project_name
+    head_free_var_project_name = get_new_node_name(g)
+    head_free_vars = [term.name for term in head.terms if isinstance(term,FreeVar)]
 
     if head.agg is not None:
+        free_var_aggs = [agg for term,agg in zip(head.terms,head.agg) if isinstance(term,FreeVar)]
+    else:
+        free_var_aggs = None
+
+    g.add_node(head_free_var_project_name, op='project', schema =head_free_vars)
+    g.add_edge(head_free_var_project_name,prev_top)
+    top_node = head_free_var_project_name
+
+    # 
+    if free_var_aggs is not None:
         agg_node_name = get_new_node_name(g)
-        g.add_node(agg_node_name, op='groupby',schema = g.nodes[head_project_name]['schema'],agg=head.agg)
+        g.add_node(agg_node_name, op='groupby',schema = head_free_vars,agg=free_var_aggs)
         g.add_edge(agg_node_name,top_node)
         top_node = agg_node_name
 
+    # TODO here, if there are constants, create them and then join them to head and project head in the correct order
+    if any(not isinstance(term,FreeVar) for term in head.terms):
+        top_node = add_product_constants(g,top_node,head.terms)
 
+    g.nodes[top_node]['rel'] = f'_{head.name}_{rule_id}' 
+    
     # add a union for each rule for the given head
     g.add_node(head.name,op='union',rel=head.name,schema = _col_names(len(head.terms)))
     g.add_edge(head.name,top_node)
@@ -392,7 +405,7 @@ def rule_to_graph(rule:Rule,rule_id):
     return g
 
 
-# %% ../nbs/009_term_graphs.ipynb 32
+# %% ../nbs/009_term_graphs.ipynb 34
 def graph_compose(g1,g2,mapping_dict,debug=False):
     """compose two graphs with a mapping dict"""
     # if there is a node in g2 that is renamed but has a name collision with an existing node that is not renamed, we will rename the existing node to a uniq name
@@ -419,7 +432,7 @@ def graph_compose(g1,g2,mapping_dict,debug=False):
     return merged_graph
 
 
-# %% ../nbs/009_term_graphs.ipynb 38
+# %% ../nbs/009_term_graphs.ipynb 40
 def merge_term_graphs_pair(g1,g2,exclude_props = ['label'],debug=False):
     """merge two term graphs into one term graph
     when talking about term graphs, 2 nodes if their data is identical and all of their children are identical

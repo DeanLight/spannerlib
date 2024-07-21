@@ -7,6 +7,8 @@ __all__ = ['print_ie', 'rgx', 'rgx_split', 'expr_eval', 'as_str', 'span_containe
 import re
 from typing import Iterable, Sequence
 from numbers import Real
+from pathlib import Path
+
 from ..span import Span
 from ..utils import DefaultIEs,DefaultAGGs
 
@@ -157,7 +159,7 @@ def read(text_path):
     Returns:
         str: The content of the file.
     """
-    return Span(Path(text_path).read_text(),name=text_path)
+    yield Span(Path(text_path).read_text(),name=text_path)
 
 DefaultIEs().add(
     'read',

@@ -37,7 +37,7 @@ from spannerlib.engine import (
     pretty,
     )
 
-# %% ../nbs/020_micro_passes.ipynb 10
+# %% ../nbs/020_micro_passes.ipynb 11
 def convert_primitive_values_to_objects(ast,session):
 
     # primitive values
@@ -61,7 +61,7 @@ def convert_primitive_values_to_objects(ast,session):
             case 'float_neg':
                 value = -float(value)
             case 'bool':
-                value = bool(value)
+                value = True if value == 'True' else False
             case _:
                 return value
         return value
@@ -96,7 +96,7 @@ def convert_primitive_values_to_objects(ast,session):
             match['x']['val']=decl_class
 
 
-# %% ../nbs/020_micro_passes.ipynb 17
+# %% ../nbs/020_micro_passes.ipynb 15
 class CheckReservedRelationNames():
     def __init__(self,reserved_prefix):
         self.reserved_prefix = reserved_prefix
@@ -106,7 +106,7 @@ class CheckReservedRelationNames():
             if relation_name.startswith(self.reserved_prefix):
                 raise ValueError(f"Relation name '{relation_name}' starts with reserved prefix '{self.reserved_prefix}'")
 
-# %% ../nbs/020_micro_passes.ipynb 21
+# %% ../nbs/020_micro_passes.ipynb 19
 def dereference_vars(ast,engine):
 
     # first rename all left hand sign variables 
@@ -128,7 +128,7 @@ def dereference_vars(ast,engine):
         match['X']['val'] = var_value
 
 
-# %% ../nbs/020_micro_passes.ipynb 24
+# %% ../nbs/020_micro_passes.ipynb 22
 def check_referenced_paths_exist(ast,engine):
     for match in rewrite_iter(ast,
     lhs='X[type="read_assignment"]-[idx=1]->PathNode[val]',
@@ -140,7 +140,7 @@ def check_referenced_paths_exist(ast,engine):
             raise ValueError(f'path {path} was not found in {os.getcwd()}')
 
 
-# %% ../nbs/020_micro_passes.ipynb 27
+# %% ../nbs/020_micro_passes.ipynb 25
 def inline_aggregation(ast,engine):
     for match in rewrite_iter(ast,
         lhs='''
@@ -157,7 +157,7 @@ def inline_aggregation(ast,engine):
         match['agg_marker']['agg'] = match['agg_func']['val']
 
 
-# %% ../nbs/020_micro_passes.ipynb 30
+# %% ../nbs/020_micro_passes.ipynb 29
 def relations_to_dataclasses(ast,engine):
 
    # regular relations
@@ -170,7 +170,7 @@ def relations_to_dataclasses(ast,engine):
          #TODO i expect to be able to put an rhs here only, and if a p is not given, assume it is the identity over nodes in LHS
          p='statement[type]',
          condition=lambda match: (match['statement']['type'] in ['add_fact','remove_fact','relation','rule_head','query']
-                                   and match['terms']['type'] in ['const_term_list','term_list','free_var_name_list','aggregated_free_vars_list']),
+                                   and match['terms']['type'] in ['term_list','free_var_name_list',]),
          # display_matches=True,
          ):
       term_nodes = list(ast.successors(match.mapping['terms']))
@@ -184,7 +184,10 @@ def relations_to_dataclasses(ast,engine):
       else:
          agg_by_term = None
 
-      match['statement']['val'] = Relation(name=match['name']['val'],terms=terms,agg=agg_by_term)
+      rel_object = Relation(name=match['name']['val'],terms=terms,agg=agg_by_term)
+      if has_agg and match['statement']['type'] != 'rule_head':
+            raise ValueError(f'''Aggregations are only allowed in rule heads, not in {match['statement']['type']}, found in {pretty(rel_object)}''')
+      match['statement']['val'] = rel_object
       ast.remove_nodes_from(term_nodes)
    # relation declerations
    for match in rewrite_iter(ast,
@@ -207,10 +210,16 @@ def relations_to_dataclasses(ast,engine):
       in_term_nodes = list(ast.successors(match.mapping['in_terms']))
       out_term_nodes = list(ast.successors(match.mapping['out_terms']))
 
-      match['statement']['val'] = IERelation(name=match['name']['val'],
+
+
+      ie_obj = IERelation(name=match['name']['val'],
                                              in_terms=[ast.nodes[term_node]['val'] for term_node in in_term_nodes],
                                              out_terms=[ast.nodes[term_node]['val'] for term_node in out_term_nodes]
                                              )
+      for term_node in in_term_nodes+out_term_nodes:
+         if 'agg' in ast.nodes[term_node]:
+            raise ValueError(f'Aggregations are not allowed in IE relations, found in {pretty(ie_obj)}')
+      match['statement']['val'] = ie_obj
       ast.remove_nodes_from(in_term_nodes+out_term_nodes)
 
 # %% ../nbs/020_micro_passes.ipynb 35
@@ -218,6 +227,14 @@ def verify_referenced_relations_and_functions(ast,engine):
 
     def resolve_var_types(terms):
         return [engine.get_var(term.name)[0] if isinstance(term,Var) else term for term in terms]
+
+    # check no free vars in adding or removing facts
+    for match in rewrite_iter(ast,
+            lhs='''rel[type]''',
+            condition=lambda match: match['rel']['type'] in ['add_fact','remove_fact'],
+            ):
+        if any(isinstance(term,FreeVar) for term in match['rel']['val'].terms):
+            raise ValueError(f"Adding or removing facts cannot have free variables, found in {pretty(match['rel']['val'])}")
 
     # regular relations
     for match in rewrite_iter(ast,
@@ -410,20 +427,22 @@ def _check_rule_consistency(rule,engine):
     head_name, head_terms = rule.head.name, rule.head.terms
     head_agg = rule.head.agg
     for term in head_terms:
-        if not isinstance(term,FreeVar):
-            raise ValueError(f"In rule {pretty(rule)}, in head clause {head_name}, only FreeVars are allowed")
-        if not term.name in free_var_to_type:
+        if isinstance(term,FreeVar) and not term.name in free_var_to_type:
             raise ValueError(f"In rule {pretty(rule)}, FreeVar {term.name} is used in the head but was not defined in the body")
     
 
     # if no aggregations, the head schema is the same as the free var types
     if head_agg is None:
-        head_scheme = [free_var_to_type[term.name] for term in head_terms]
+        head_scheme = [free_var_to_type[term.name] if isinstance(term,FreeVar) else type(term) for term in head_terms]
     
     # if we do have aggregation, than we need to change the type of the free var to the type of the aggregation's output
     else:
         head_scheme = []
         for term,agg_name in zip(head_terms,head_agg):
+            if not isinstance(term,FreeVar):
+                head_scheme.append(type(term))
+                continue
+
             if agg_name is not None:
                 agg_func = engine.get_agg_function(agg_name)
                 in_schema = agg_func.in_schema
