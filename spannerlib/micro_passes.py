@@ -216,19 +216,6 @@ def relations_to_dataclasses(ast,engine):
 # %% ../nbs/020_micro_passes.ipynb 35
 def verify_referenced_relations_and_functions(ast,engine):
 
-    # def schema_match(types,vals):
-    #     if len(types) != len(vals):
-    #         return False
-    #     for type_,val in zip(types,vals):
-    #         if isinstance(val,FreeVar):
-    #             continue # free vars can be anything
-    #         elif isinstance(val,Var):
-    #             var_type = engine.get_var(val.name)[0]
-    #             if not type_ == var_type:
-    #                 return False
-    #         elif not isinstance(val,type_):
-    #             return False
-    #     return True
     def resolve_var_types(terms):
         return [engine.get_var(term.name)[0] if isinstance(term,Var) else term for term in terms]
 

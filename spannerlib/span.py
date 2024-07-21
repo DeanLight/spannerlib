@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import no_type_check, Set, Sequence, Any,Optional,List,Callable,Dict,Union
 from pydantic import BaseModel
 
+pd.options.future.infer_string = True
+
 
 # %% ../nbs/005_spans_and_pandas.ipynb 5
 import hashlib
@@ -69,9 +71,8 @@ from collections import UserString
 # whether we get a document as a string or as a file, we assume that it remains immutable throughout the process - TODO explain
 # a user can access the original document through the span interface (currently we dont do disk caching etc so it will just be a string and not a document class) - TODO explain
 
-class Span(str):
-    def __new__(cls,doc,start=None,end=None,name=None):
-        self = super().__new__(cls)
+class Span(UserString):
+    def __init__(self,doc,start=None,end=None,name=None):
         if isinstance(doc,Span):
             father = doc
             sub_span = doc.slice(start,end)
@@ -92,7 +93,8 @@ class Span(str):
             if name is None:
                 name = small_hash(doc)
             self.name = name
-        return self
+        super().__init__(self.as_str())
+
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -112,8 +114,9 @@ class Span(str):
             raise ValueError(f'End index greater than length of span, got end: {end}, length: {len(self)}')
         return Span(self.doc,self.start+start,self.start+end,name=self.name)
 
-    def __lt__(self, other) -> bool:
-        return (self.doc, self.start, self.end) <= (other.doc, other.start, other.end)
+    # @property
+    # def data(self):
+    #     return str(self)
     
     def __repr__(self):
         f_string,head_num = get_span_repr_format()
@@ -127,11 +130,16 @@ class Span(str):
 
     def __str__(self):
         return self.as_str()
-        # return repr(self)
-        # return self.doc[self.start:self.end]
 
     def as_str(self):
         return self.doc[self.start:self.end]
+    
+    # # used for sorting `Span`s in dataframes
+    def __hash__(self) -> int:
+        return hash((self.doc,self.start, self.end))
+
+    def __lt__(self, other) -> bool:
+        return (self.doc, self.start, self.end) < (other.doc, other.start, other.end)
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, Span):
@@ -141,17 +149,18 @@ class Span(str):
         else:
             return False
 
+    def as_tuple(self):
+        return (self.doc,self.start, self.end)
+
     @classmethod
     def from_val(cls,val):
         if isinstance(val,Span):
             return val
-        if isinstance(val, (list, tuple)) and len(val) == 2:
-            return Span(start=val[0], end=val[1])
+        if isinstance(val, (list, tuple)) and len(val) == 3:
+            return Span(doc=val[0],start=val[1], end=val[2])
         raise ValueError('Invalid value to create Vector from: {}'.format(val))
     
-    # # used for sorting `Span`s in dataframes
-    def __hash__(self) -> int:
-        return hash((self.doc,self.start, self.end))
+
 
 def ie(s:Span)->(int,int):
     return s.start,s.end

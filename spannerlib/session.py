@@ -11,7 +11,8 @@ import re
 from pathlib import Path
 from typing import Tuple, List, Union, Optional, Callable, Type, Iterable, no_type_check, Sequence
 from IPython import display
-
+from singleton_decorator import singleton
+from numbers import Real
 import pandas as pd
 import os
 
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 from graph_rewrite import draw
 
-from .utils import checkLogs,get_base_file_path,assert_df_equals
+from .utils import checkLogs,get_base_file_path,assert_df_equals,DefaultIEs,DefaultAGGs
 from .grammar import parse_spannerlog,reconstruct
 from .span import Span
 from spannerlib.data_types import (
@@ -55,32 +56,17 @@ from spannerlib.micro_passes import (
 
 # %% ../nbs/030_session.ipynb 4
 def load_stdlib():
-    from spannerlib.ie_func.json_path import JsonPath, JsonPathFull
-    from spannerlib.ie_func.nlp import (Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment, TrueCase)
-    from spannerlib.ie_func.python_regex import PYRGX,AS_STRING,PYRGX_SPLIT,EXPR_EVAL
-    from spannerlib.ie_func.rust_spanner_regex import RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE
+    # make sure we import the modules that register the stdlib
+    import spannerlib.ie_func.json_path
+    import spannerlib.ie_func.basic 
 
 
-    # # ordered by rgx, json, nlp, etc.
-    ies = [AS_STRING,PYRGX,PYRGX_SPLIT, EXPR_EVAL,
-    RGX, RGX_STRING, RGX_FROM_FILE, RGX_STRING_FROM_FILE,
-                            JsonPath, JsonPathFull,
-                            Tokenize, SSplit, POS, Lemma, NER, EntityMentions, CleanXML, Parse, DepParse, Coref, OpenIE, KBP, Quote, Sentiment,
-                            TrueCase]
 
-    aggs = [
-        ['count','count',[str],[int]],
-        ['sum','sum',[int],[int]],
-        ['avg','avg',[int],[int]],
-        ['max','max',[int],[int]],
-        ['min','min',[int],[int]],
-    ]
 
-    return ies, aggs
 
 # %% ../nbs/030_session.ipynb 6
 class Session():
-    def __init__(self,register_stdlib=True):
+    def __init__(self,register_stdlib=True,display_max_rows=10):
         
         self.pass_stack = [
             convert_primitive_values_to_objects,
@@ -97,15 +83,16 @@ class Session():
         ]
 
         self.clear(register_stdlib=register_stdlib)
+        self.display_max_rows = display_max_rows
 
     def clear(self,register_stdlib=True):
         self.engine = Engine()
         if not register_stdlib:
             return
-        ies, aggs = load_stdlib()
-        for ie_def in ies:
+        load_stdlib()
+        for ie_def in DefaultIEs().as_list():
             self.register(*ie_def)
-        for agg_def in aggs:
+        for agg_def in DefaultAGGs().as_list():
             self.register_agg(*agg_def)
     
     def register(self,name,func,in_schema,out_schema):
@@ -121,8 +108,12 @@ class Session():
         if result is None:
             pass
         elif isinstance(result,pd.DataFrame):
-            display.display(reconstruct(statement_lark))
-            display.display(result.map(repr))
+            with pd.option_context('display.max_rows', self.display_max_rows):
+                display.display(reconstruct(statement_lark))
+                display.display(
+                    result.sort_values(by=list(result.columns))
+                    .reset_index(drop=True)
+                    .map(repr))
         elif isinstance(result,bool):
             display.display(reconstruct(statement_lark))
             display.display(result)
@@ -146,7 +137,7 @@ class Session():
                         ).with_traceback(e.__traceback__)
             yield ast,statement_lark
 
-    def handle_boolean_results(self,res):
+    def format_results(self,res):
         if not isinstance(res,pd.DataFrame):
             return res
         if res.shape == (1,0):
@@ -154,7 +145,7 @@ class Session():
         elif res.shape == (0,0):
             return False
         else:
-            return res
+            return res.sort_values(by=list(res.columns)).reset_index(drop=True)
 
     def plan_query(self,code):
         statements = list(self.parse_and_check_semantics(code))
@@ -188,7 +179,7 @@ class Session():
         for clean_ast,statement_lark in self.parse_and_check_semantics(code):
             try:
                 result = execute_statement(clean_ast,self.engine)
-                result = self.handle_boolean_results(result)
+                result = self.format_results(result)
             except Exception as e:
                 raise Exception(
                     f"During execution of statement \n\"{reconstruct(statement_lark)}\n\""
@@ -230,6 +221,9 @@ class Session():
     def remove_rule(self,rule:str):
         self.engine.del_rule(rule)
 
+    def remove_head(self,head:str):
+        self.engine.del_head(head)
+
     def remove_all_rules(self):
         rules = list(self.engine.rules_to_ids.keys())
         for rule in rules:
@@ -244,7 +238,7 @@ class Session():
             'agg':self.engine.agg_functions.copy()
         }
 
-# %% ../nbs/030_session.ipynb 8
+# %% ../nbs/030_session.ipynb 11
 def test_session(
     queries,
     expected_outputs=None,# list of expected dfs

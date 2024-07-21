@@ -20,7 +20,7 @@ from .utils import checkLogs
 # %% ../nbs/000_spannerlog_grammar.ipynb 6
 SpannerlogGrammar = r"""
 // basic text types
-%import common (INT,FLOAT,CNAME,WS,WS_INLINE,NEWLINE,SH_COMMENT,ESCAPED_STRING)
+%import common (INT,FLOAT,CNAME,WS,WS_INLINE,NEWLINE,SH_COMMENT)
 %ignore WS_INLINE
 %ignore SH_COMMENT
 
@@ -29,9 +29,11 @@ _LINE_OVERFLOW_ESCAPE: "\\" NEWLINE
 
 _SEPARATOR: (WS_INLINE | _LINE_OVERFLOW_ESCAPE)+
 _STRING_INNER: /.+?/
-_STRING_ESC_INNER: _STRING_INNER /(?<!\\)(\\\\)+?/
-// string: "\"" (_STRING_ESC_INNER|_STRING_INNER (_LINE_OVERFLOW_ESCAPE)+)* _STRING_ESC_INNER|_STRING_INNER "\""
-//        | "\"" "\""
+_STRING_ESC_INNER: _STRING_INNER /(?<!\\)(\\\\)*?/
+
+ESCAPED_STRING : "\"" _STRING_ESC_INNER "\""
+                | "'" _STRING_ESC_INNER "'"
+
 string: ESCAPED_STRING
 
 _NEWLINE: NEWLINE

@@ -185,7 +185,7 @@ def groupby(df,schema,agg,**kwargs):
             schema)
 
 
-# %% ../nbs/008_extended_RA_operations.ipynb 65
+# %% ../nbs/008_extended_RA_operations.ipynb 71
 def coerce_tuple_like(name,func,input,output):
     if isinstance(output,(tuple,list)):
         return output

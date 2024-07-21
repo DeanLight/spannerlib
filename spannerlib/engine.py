@@ -100,8 +100,10 @@ class Engine():
 
         # lets skip this for now and keep it a an attribute in the node graph
         self.rules_to_ids = {
-            # rule pretty string, to node id in term_graph
+            # rule pretty string: ( node id in term_graph, head_name)
         }
+        self.head_to_rules = defaultdict(set)
+        # head relation name to rule pretty string
 
         # self.rels_to_nodes() = {
         #     # relation name to node that represents it
@@ -186,7 +188,8 @@ class Engine():
 
         rule_id = next(self.rule_counter)
 
-        self.rules_to_ids[pretty(rule)] = rule_id
+        self.rules_to_ids[pretty(rule)] = rule_id,rule.head.name
+        self.head_to_rules[rule.head.name].add(pretty(rule))
 
         g2 = rule_to_graph(rule,rule_id)
 
@@ -199,9 +202,17 @@ class Engine():
         if not rule_str in self.rules_to_ids:
             raise ValueError(f"Rule {rule_str} does not exist\n"
                              f"existing rules are {self.rules_to_ids.keys()}")
-        rule_id = self.rules_to_ids[rule_str]
+        rule_id,rule_head = self.rules_to_ids[rule_str]
         self.rules_to_ids.pop(rule_str)
+        self.head_to_rules[rule_head].remove(rule_str)
+
         g = self.term_graph
+
+        # if the head has no more rules, remove it from the relation defs and the term graph
+        if len(self.head_to_rules[rule_head])==0:
+            self.Relation_defs.pop(rule_head)
+            g.remove_node(rule_head)
+
         nodes_to_delete=[]
         for u in g.nodes:
             node_rule_ids = g.nodes[u].get('rule_id',set())
@@ -212,6 +223,13 @@ class Engine():
         g.remove_nodes_from(nodes_to_delete)
             
         return
+
+    def del_head(self,head_name:str):
+        """Deletes all rules whose head is head_name
+        """
+        rules_to_delete = self.head_to_rules[head_name].copy()
+        for rule_str in rules_to_delete:
+            self.del_rule(rule_str)
 
     def _inline_db_and_ies_in_graph(self,g:nx.DiGraph):
         g=deepcopy(g)
@@ -259,7 +277,7 @@ class Engine():
         return self.execute_plan(query_graph,root_node,return_intermediate=return_intermediate)
 
 
-# %% ../nbs/010_engine.ipynb 26
+# %% ../nbs/010_engine.ipynb 29
 def get_rel(rel,db,**kwargs):
     # helper function to get the relation from the db for external relations
     return db[rel]
@@ -279,7 +297,7 @@ op_to_func = {
     'groupby':groupby
 }
 
-# %% ../nbs/010_engine.ipynb 27
+# %% ../nbs/010_engine.ipynb 30
 def _in_cycle(g):
     return list(set(
         itertools.chain.from_iterable(nx.cycles.simple_cycles(g))
@@ -293,7 +311,7 @@ def _depends_on_cycle(g):
     }
     return depends_on_cycle
 
-# %% ../nbs/010_engine.ipynb 28
+# %% ../nbs/010_engine.ipynb 31
 def _collect_children_and_run(G,u,results,stack,log=False):
     children = list(G.successors(u))
     u_data = G.nodes[u]
@@ -312,7 +330,7 @@ def _collect_children_and_run(G,u,results,stack,log=False):
     return res
 
 
-# %% ../nbs/010_engine.ipynb 29
+# %% ../nbs/010_engine.ipynb 32
 def compute_acyclic_node(G,u,results,stack=None):
     res = _collect_children_and_run(G,u,results,[])
     logger.debug(f"setting {u} to final since it is acyclic\n")
