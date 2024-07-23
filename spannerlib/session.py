@@ -50,6 +50,7 @@ from spannerlib.micro_passes import (
     check_rule_safety,
     consistent_free_var_types_in_rule,
     assignments_to_name_val_tuple,
+    statement_type_and_value,
     execute_statement,
 )
 
@@ -174,8 +175,9 @@ class Session():
         return res
         
 
-    def export(self,code,display_results=False):
+    def export(self,code,display_results=False,return_statements_meta=False):
         results = []
+        statements = []
         for clean_ast,statement_lark in self.parse_and_check_semantics(code):
             try:
                 result = execute_statement(clean_ast,self.engine)
@@ -185,14 +187,22 @@ class Session():
                     f"During execution of statement \n\"{reconstruct(statement_lark)}\n\""
                     f"the following exception was raised:\n{e}\n"
                     ).with_traceback(e.__traceback__)
+            
+            s_type,s_dataclass = statement_type_and_value(clean_ast)
+            statements.append((s_type,s_dataclass,reconstruct(statement_lark)))
             results.append(result)
             if display_results:
                 self._display_result(result,statement_lark)
         
         if len(results) == 0:
-            return None
+            ret_val =  None
         else:
-            return results[-1]
+            ret_val =  results[-1]
+
+        if return_statements_meta:
+            return ret_val,statements
+        else:
+            return ret_val
 
     def import_rel(self,name:str,data:Union[str,Path,pd.DataFrame],delim:str = None):
         """Imports a relation into the current session, either from a dataframe or from a csv file."""

@@ -4,7 +4,8 @@
 __all__ = ['logger', 'convert_primitive_values_to_objects', 'CheckReservedRelationNames', 'dereference_vars',
            'check_referenced_paths_exist', 'inline_aggregation', 'relations_to_dataclasses',
            'verify_referenced_relations_and_functions', 'rules_to_dataclasses', 'is_rule_safe', 'check_rule_safety',
-           'consistent_free_var_types_in_rule', 'assignments_to_name_val_tuple', 'execute_statement']
+           'consistent_free_var_types_in_rule', 'assignments_to_name_val_tuple', 'statement_type_and_value',
+           'execute_statement']
 
 # %% ../nbs/020_micro_passes.ipynb 3
 import os
@@ -485,11 +486,16 @@ def assignments_to_name_val_tuple(ast,engine):
     return ast
 
 # %% ../nbs/020_micro_passes.ipynb 54
-def execute_statement(ast,engine):
+def statement_type_and_value(ast):
     statement_node = list(ast.nodes)[0]
     node_data = ast.nodes[statement_node]
     statement = node_data['type']
     value = node_data['val']
+    return statement,value
+
+
+def execute_statement(ast,engine):
+    statement,value = statement_type_and_value(ast)
     match statement:
         case 'assignment':
             engine.set_var(*value)
