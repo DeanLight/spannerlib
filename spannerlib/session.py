@@ -204,7 +204,7 @@ class Session():
         else:
             return ret_val
 
-    def import_rel(self,name:str,data:Union[str,Path,pd.DataFrame],delim:str = None):
+    def import_rel(self,name:str,data:Union[str,Path,pd.DataFrame],delim:str = None,header = None):
         """Imports a relation into the current session, either from a dataframe or from a csv file."""
         if isinstance(data, (Path,str)):
             csv_file_name = Path(data)
@@ -212,7 +212,7 @@ class Session():
                 raise IOError("csv file does not exist")
             if os.stat(csv_file_name).st_size == 0:
                 raise IOError("csv file is empty")
-            data = pd.read_csv(csv_file_name, delimiter=delim)
+            data = pd.read_csv(csv_file_name, delimiter=delim,header=header)
 
         first_row = list(data.iloc[0,:])
         scheme = _infer_relation_schema(first_row)

@@ -1,6 +1,3 @@
-
-RawDocs(P,D,'raw_text')<-Files(P),read(P)->(D)
-
 Lemmas(P,D,Word,Lem)<-Docs(P,D,"raw_text"),lemma(D)->(Word,Lem)
 
 LemmaConceptMatches(Path,Doc,Span,Label) <- \
@@ -10,7 +7,7 @@ LemmaConceptMatches(Path,Doc,Span,Label) <- \
 
 # here we get the spans of all POS
 Pos(P,D,Word,Lem)<-Docs(P,D,"lemma_concept"),pos(D)->(Word,Lem)
-# small debugging print helps in building new rules
+
 # here we look for concept rule matches where the matched word is also tagged via POS
 PosConceptMatches(Path,Doc,Span,Label) <- \
     Docs(Path,Doc,"lemma_concept"),\
@@ -22,6 +19,7 @@ TargetMatches(Path,Doc, Span, Label) <- \
     Docs(Path,Doc,"pos_concept"),\
     TargetTagRules(Pattern, Label), rgx(Pattern,Doc) -> (Span)
 
+# we get section spans and their content using our regex pattern and the rgx_split ie function
 Sections(P,D,Sec,Content)<-Docs(P,D,"target_concept"),\
     rgx_split($section_delimeter_pattern,D)->(SecSpan,Content),\
     as_str(SecSpan)->(Sec)
@@ -32,28 +30,35 @@ Sents(P,S)<-Docs(P,D,"target_concept"),split_sentence(D)->(S)
 
 SentPairs(P,S1,S2)<-Sents(P,S1),Sents(P,S2),expr_eval("{0}.end +1 == {1}.start",S1,S2)->(True)
 
+# first we get the covid mentions and their surrounding sentences, using the span_contained ie function
 CovidMentions(Path, Span) <- Docs(Path,D,"target_concept"), rgx("COVID-19",D) -> (Span)
 CovidMentionSents(P,Mention,Sent)<-CovidMentions(P,Mention),Sents(P,Sent),span_contained(Mention,Sent)->(True)
 
 
+# note that for ease of debugging, we extended our head to track which rule a fact was derived from
+
+# a tag is positive if it is contained in a positive section
 CovidTags(Path,Mention,'positive','section')<-\
     PositiveSections(Path,D,Title,Section),\
     CovidMentions(Path,Mention),\
     span_contained(Mention,Section)->(True)
 
-#covid_attributes: negated, other_experiencer, is_future, not_relevant, uncertain, positive
+# Context rules tags
 CovidTags(Path,Mention,Tag,'sentence context')<-\
     CovidMentionSents(Path,Mention,Sent),\
     SentenceContextRules(Pattern,Tag),\
     rgx(Pattern,Sent)->(ContextSpan),\
     span_contained(Mention,ContextSpan)->(True)
 
+# post processing based on pattern
 CovidTags(Path,Mention,Tag,'post pattern')<-\
     CovidMentionSents(Path,Mention,Sent),\
     PostprocessPatternRules(Pattern,Tag),\
     rgx(Pattern,Sent)->(ContextSpan),\
     span_contained(Mention,ContextSpan)->(True)
 
+# post processing based on pattern and existing attributes
+# notice the recursive call to CovidTags
 CovidTags(Path,Mention,Tag,"post attribute change")<-\
     CovidTags(Path,Mention,OldTag,Derivation),\
     PostprocessRulesWithAttributes(Pattern,OldTag,Tag),\
@@ -61,7 +66,7 @@ CovidTags(Path,Mention,Tag,"post attribute change")<-\
     rgx(Pattern,Sent)->(ContextSpan),\
     span_contained(Mention,ContextSpan)->(True)
 
-
+# post processing based on pattern in the next sentence
 CovidTags(Path,Mention,Tag,"next sentence")<-\
     CovidMentionSents(Path,Mention,Sent),\
     SentPairs(Path,Sent,NextSent),\
