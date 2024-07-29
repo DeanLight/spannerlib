@@ -66,6 +66,15 @@ def load_stdlib():
 
 
 # %% ../nbs/030_session.ipynb 6
+def _span_repr(x):
+    """returns the repr of x if x is a Span, else returns x
+    used to display spans in a more readable way in pandas 
+    """
+    if isinstance(x,Span):
+        return repr(x)
+    return x
+
+# %% ../nbs/030_session.ipynb 7
 class Session():
     def __init__(self,register_stdlib=True,display_max_rows=10):
         
@@ -109,12 +118,17 @@ class Session():
         if result is None:
             pass
         elif isinstance(result,pd.DataFrame):
-            with pd.option_context('display.max_rows', self.display_max_rows):
+            # {'overflow-wrap': 'break-word','max-width': '800px','text-align': 'left'}
+            with pd.option_context(
+                'display.max_rows', self.display_max_rows,
+                ):
                 display.display(reconstruct(statement_lark))
                 display.display(
                     result.sort_values(by=list(result.columns))
                     .reset_index(drop=True)
-                    .map(repr))
+                    .map(_span_repr).
+                    style.set_properties(**{'overflow-wrap': 'break-word','max-width': '800px','text-align': 'left'})
+                )
         elif isinstance(result,bool):
             display.display(reconstruct(statement_lark))
             display.display(result)
@@ -124,7 +138,11 @@ class Session():
 
 
     def parse_and_check_semantics(self,code):
-        statements = parse_spannerlog(code,split_statements=True)
+        try:
+            statements = parse_spannerlog(code,split_statements=True)
+        except Exception as e:
+            print(f"Syntax ERROR:\n{e}\n")
+            raise e
         asts = []
         for statement_nx,statement_lark in statements:
             ast = statement_nx
@@ -132,10 +150,12 @@ class Session():
                 try:
                     pass_(ast,self.engine)
                 except Exception as e:
-                    raise Exception(
+                    print(
+                        f"SEMANTIC ERROR:\n"
                         f"During semantic checks for statement \n\"{reconstruct(statement_lark)}\"\n"
                         f"in pass {pass_} the following exception was raised:\n{e}\n"
-                        ).with_traceback(e.__traceback__)
+                        )
+                    raise e
             yield ast,statement_lark
 
     def format_results(self,res):
@@ -183,10 +203,11 @@ class Session():
                 result = execute_statement(clean_ast,self.engine)
                 result = self.format_results(result)
             except Exception as e:
-                raise Exception(
-                    f"During execution of statement \n\"{reconstruct(statement_lark)}\n\""
-                    f"the following exception was raised:\n{e}\n"
-                    ).with_traceback(e.__traceback__)
+                print(f"RUNTIME ERROR:\n"
+                    f"During execution of statement \n\"{reconstruct(statement_lark)}\"\n"
+                    f"the following exception was raised:\n"
+                    )
+                raise e
             
             s_type,s_dataclass = statement_type_and_value(clean_ast)
             statements.append((s_type,s_dataclass,reconstruct(statement_lark)))
@@ -248,7 +269,7 @@ class Session():
             'agg':self.engine.agg_functions.copy()
         }
 
-# %% ../nbs/030_session.ipynb 8
+# %% ../nbs/030_session.ipynb 9
 def test_session(
     queries,
     expected_outputs=None,# list of expected dfs

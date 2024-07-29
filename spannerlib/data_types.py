@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['logger', 'STRING_PATTERN', 'Var', 'FreeVar', 'RelationDefinition', 'Relation', 'IEFunction', 'AGGFunction',
-           'IERelation', 'Rule', 'pretty']
+           'IERelation', 'Rule', 'pretty', 'isFloat', 'isInt']
 
 # %% ../nbs/006_primitive_data_types.ipynb 3
 from abc import ABC, abstractmethod
@@ -114,6 +114,13 @@ def pretty(obj):
 import re
 STRING_PATTERN = re.compile(r"^[^\r\n]+$")
 
+def isFloat(s):  
+   n = '0123456789.' 
+   return (all(x in n for x in s) and s.count('.') == 1)  
+ 
+def isInt(s):  
+   n = '0123456789'    
+   return all(x in n for x in s) 
 
 def _infer_relation_schema(row) -> Sequence[type]: # Inferred type list of the given relation
     """
@@ -124,15 +131,15 @@ def _infer_relation_schema(row) -> Sequence[type]: # Inferred type list of the g
     """
     relation_types = []
     for cell in row:
-        try:
-            int(cell)  # check if the cell can be converted to integer
+        if not isinstance(cell, str):
+            relation_types.append(type(cell))
+        elif isInt(cell):
             relation_types.append(int)
-        except (ValueError, TypeError):
-            if isinstance(cell, Span):
-                relation_types.append(Span)
-            elif re.match(STRING_PATTERN, cell):
-                relation_types.append(str)
-            else:
-                raise ValueError(f"value doesn't match any datatype: {cell}")
-
+        elif isFloat(cell):
+            relation_types.append(float)
+        elif cell in ['True', 'False']:
+            relation_types.append(bool)
+        else:
+            relation_types.append(str)
+        
     return relation_types

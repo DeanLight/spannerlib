@@ -1,10 +1,12 @@
 _docs/
 _proc/
-
+.env
+.env_dev
 # nlp
 **/stanford-corenlp-4.1.0
 spannerlib/spannerlog/stanford-corenlp-4.1.0.zip
 spannerlib/spannerlog/enum_spanner_regex/
+**/cachedir/**
 
 *.bak
 .gitattributes

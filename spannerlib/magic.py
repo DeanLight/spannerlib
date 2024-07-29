@@ -92,9 +92,12 @@ class spannerlogMagic(Magics):
         args = parse_options(line)
 
         code = cell if cell else line
-        _ = magic_session.export(code,display_results=True
-            # ,return_statements_meta=True
-            )
+        try:
+            _ = magic_session.export(code,display_results=True
+                # ,return_statements_meta=True
+                )
+        except Exception as e:
+            raise e from None
 
         if 'output' in args or 'append' in args:
             clean_code = clean_query_lines(code)
