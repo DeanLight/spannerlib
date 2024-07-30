@@ -392,8 +392,9 @@ def _check_rule_consistency(rule,engine):
                 new_type = type_merge(free_var_to_type[free_var.name],col_type)
                 free_var_to_type[free_var.name] = new_type
             except:
-                raise ValueError(f"FreeVar {free_var.name} is used with type {pretty(col_type)} but was "
-                        f"previously defined with type {pretty(free_var_to_type[free_var.name])} in relation {first_rel_to_define_free_var[free_var.name]}")
+                raise ValueError(f"FreeVar {free_var.name} is used with type {pretty(col_type)}\n"
+                        f"but was previously defined with type {pretty(free_var_to_type[free_var.name])}\n"
+                        f"in relation {first_rel_to_define_free_var[free_var.name]}")
         else:
             free_var_to_type[free_var.name] = col_type
             first_rel_to_define_free_var[free_var.name] = relation.name
@@ -411,7 +412,7 @@ def _check_rule_consistency(rule,engine):
                     logger.debug(f"verifying free var type for {term} with type {expected_type}")
                     verify_freevar_type(term,expected_type)
                 except ValueError as e:
-                    raise ValueError(f"In rule {pretty(rule)}, in {rel_type} {relation.name}, {e}")
+                    raise ValueError(f"In rule {pretty(rule)}\nin {rel_type} {relation.name}\n{e}")
                 
 
     for relation in get_bounding_order(rule):
@@ -429,7 +430,8 @@ def _check_rule_consistency(rule,engine):
     head_agg = rule.head.agg
     for term in head_terms:
         if isinstance(term,FreeVar) and not term.name in free_var_to_type:
-            raise ValueError(f"In rule {pretty(rule)}, FreeVar {term.name} is used in the head but was not defined in the body")
+            raise ValueError(f"In rule {pretty(rule)}\nFreeVar {term.name}\n"
+                f"is used in the head but was not defined in the body")
     
 
     # if no aggregations, the head schema is the same as the free var types
@@ -449,7 +451,11 @@ def _check_rule_consistency(rule,engine):
                 in_schema = agg_func.in_schema
                 out_schema = agg_func.out_schema
                 if not schema_match([free_var_to_type[term.name]],in_schema):
-                    raise ValueError(f"In rule {pretty(rule)}, in head clause {head_name}, FreeVar {term.name} is aggregated with {agg_name} which expects input type {pretty(in_schema[0])} but got {pretty(free_var_to_type[term.name])}")
+                    raise ValueError(f"In rule {pretty(rule)}\n"
+                        f"in head clause {head_name}\n"
+                        f"FreeVar {term.name} is aggregated with {agg_name}\n"
+                        f"which expects input type {pretty(in_schema[0])}\n"
+                        f"but got {pretty(free_var_to_type[term.name])}")
                 head_scheme.append(out_schema[0])
             else:
                 head_scheme.append(free_var_to_type[term.name])
@@ -459,7 +465,10 @@ def _check_rule_consistency(rule,engine):
     if engine.get_relation(head_name):
         expected_head_schema = engine.get_relation(head_name)
         if expected_head_schema != current_head_schema:
-            raise ValueError(f"In rule {pretty(rule)}, expected schema {pretty(expected_head_schema)} from a previously defined rule to {head_name} but got {pretty(current_head_schema)}")
+            raise ValueError(f"In rule {pretty(rule)}\n"
+                f"expected schema {pretty(expected_head_schema)}\n"
+                f"from a previously defined rule to {head_name}\n"
+                f"but got {pretty(current_head_schema)}")
     else:
         engine.set_relation(current_head_schema)
 

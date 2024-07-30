@@ -25,9 +25,9 @@ nlp = spacy.load("en_core_web_sm")
 
 # %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 28
 # configurations
-slog_file = 'covid_logic.pl'
-input_dir = Path('sample_inputs')
-data_dir = Path('data')
+slog_file = Path('covid_data/covid_logic.pl')
+input_dir = Path('covid_data/sample_inputs')
+data_dir = Path('covid_data/rules_data')
 
 # %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 34
 def split_sentence(text):
@@ -227,7 +227,7 @@ doc_tags = sess.export('?DocumentTags(P,T)')
 doc_tags
 
 # %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 109
-paths = pd.DataFrame(file_paths,columns=['P'])
+paths = pd.DataFrame([p.name for p in file_paths],columns=['P'])
 classification = paths.merge(doc_tags,on='P',how='outer')
 classification['T']=classification['T'].fillna('UNK')
 classification

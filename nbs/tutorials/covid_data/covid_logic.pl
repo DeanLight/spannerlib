@@ -73,7 +73,6 @@ CovidTags(Path,Mention,Tag,"next sentence")<-\
     PostprocessPatternRules(Pattern,Tag),\
     rgx(Pattern,NextSent)->(ContextSpan)
 
-# TODO why dont we see the docid in the span
 AggregatedCovidTags(Path,Mention,agg_mention(Tag))<-\
     CovidTags(Path,Mention,Tag,Derivation)
 

@@ -80,17 +80,22 @@ def schema_match(schema,expected,ignore_types=None):
 
 def is_of_schema(relation,schema,ignore_types=None):
     """checks if a relation is of a given schema"""
-    if len(relation) != len(schema):
-        return False
-    if ignore_types is None:
-        ignore_types = []
-    for x,y in zip(relation,schema):
-        if type(x) in ignore_types:
-            continue
-        if not isinstance(x,y):
+    try:
+        if len(relation) != len(schema):
             return False
-    return True
-
+        if ignore_types is None:
+            ignore_types = []
+        for x,y in zip(relation,schema):
+            if type(x) in ignore_types:
+                continue
+            if not isinstance(x,y):
+                return False
+        return True
+    except Exception as e:
+        logger.error(f"Got Error when computing:\n"
+                     f"is_of_scehma({relation},{schema})\n"
+                     f"Error: {e}")
+        raise e
 
 def type_merge(type1,type2):
     if issubclass(type1,type2):

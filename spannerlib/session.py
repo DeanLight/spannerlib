@@ -66,12 +66,12 @@ def load_stdlib():
 
 
 # %% ../nbs/030_session.ipynb 6
-def _span_repr(x):
+def _class_repr(x):
     """returns the repr of x if x is a Span, else returns x
     used to display spans in a more readable way in pandas 
     """
-    if isinstance(x,Span):
-        return repr(x)
+    if not isinstance(x,(str,float,int,bool)):
+        return f"{repr(x)}"
     return x
 
 # %% ../nbs/030_session.ipynb 7
@@ -113,6 +113,24 @@ class Session():
         agg_func_obj = AGGFunction(name=name,func=func,in_schema=in_schema,out_schema=out_schema)
         self.engine.set_agg_function(agg_func_obj)
 
+    def _sort_df(self,df):
+        """sort df, if possible by value of rows else sort by string representation of rows.        
+        """
+        try:
+            sorted_df = df.sort_values(by=list(df.columns))
+        except TypeError as e:
+            sorted_df = df.sort_values(by=list(df.columns),key=lambda x: tuple(str(i) for i in x) ) 
+        return sorted_df
+
+    def format_results(self,res):
+        if not isinstance(res,pd.DataFrame):
+            return res
+        if res.shape == (1,0):
+            return True
+        elif res.shape == (0,0):
+            return False
+        else:
+            return self._sort_df(res).reset_index(drop=True)
 
     def _display_result(self,result,statement_lark):
         if result is None:
@@ -124,10 +142,9 @@ class Session():
                 ):
                 display.display(reconstruct(statement_lark))
                 display.display(
-                    result.sort_values(by=list(result.columns))
-                    .reset_index(drop=True)
-                    .map(_span_repr).
-                    style.set_properties(**{'overflow-wrap': 'break-word','max-width': '800px','text-align': 'left'})
+                    self.format_results(result)
+                    .map(_class_repr)
+                    .style.set_properties(**{'overflow-wrap': 'break-word','max-width': '800px','text-align': 'left'})
                 )
         elif isinstance(result,bool):
             display.display(reconstruct(statement_lark))
@@ -135,8 +152,6 @@ class Session():
         else:
             pass
     
-
-
     def parse_and_check_semantics(self,code):
         try:
             statements = parse_spannerlog(code,split_statements=True)
@@ -158,15 +173,7 @@ class Session():
                     raise e
             yield ast,statement_lark
 
-    def format_results(self,res):
-        if not isinstance(res,pd.DataFrame):
-            return res
-        if res.shape == (1,0):
-            return True
-        elif res.shape == (0,0):
-            return False
-        else:
-            return res.sort_values(by=list(res.columns)).reset_index(drop=True)
+
 
     def plan_query(self,code):
         statements = list(self.parse_and_check_semantics(code))

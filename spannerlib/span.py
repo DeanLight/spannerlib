@@ -6,7 +6,7 @@ __all__ = ['SPAN_REPR_FORMAT', 'SPAN_TEXT_HEAD_NUM', 'small_hash', 'set_span_rep
 # %% ../nbs/005_spans_and_pandas.ipynb 3
 from abc import ABC, abstractmethod
 import pytest
-
+from pathlib import Path
 import pandas as pd
 from pathlib import Path
 from typing import no_type_check, Set, Sequence, Any,Optional,List,Callable,Dict,Union
@@ -82,17 +82,23 @@ class Span(UserString):
             self.name = sub_span.name
         
         else:
-            self.doc = doc
+            if isinstance(doc,Path):
+                self.doc = doc.read_text()
+                self.name = doc.name
+            else:
+                if name is None:
+                    name = small_hash(doc)
+                self.name = name
+                self.doc = doc
+                
             if start is None:
                 start = 0
             if end is None:
-                end = len(doc)
+                end = len(self.doc)
             self.start = start
             self.end = end
 
-            if name is None:
-                name = small_hash(doc)
-            self.name = name
+
         super().__init__(self.as_str())
 
 

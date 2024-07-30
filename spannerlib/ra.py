@@ -168,7 +168,10 @@ def groupby(df,schema,agg,**kwargs):
     # a real groupby
     if len(groupby_cols)>0:
         return rename(
-            uniq_cols_df.groupby(groupby_cols).agg(agg_by_cols).reset_index(),
+            project(
+                uniq_cols_df.groupby(groupby_cols).agg(agg_by_cols).reset_index(),
+                schema = uniq_cols_df.columns
+                ),
             schema)
     # no group by vars, so aggs contain all columns and schema simply orders them
     else:
@@ -185,17 +188,16 @@ def groupby(df,schema,agg,**kwargs):
             schema)
 
 
-# %% ../nbs/008_extended_RA_operations.ipynb 71
+# %% ../nbs/008_extended_RA_operations.ipynb 72
 def coerce_tuple_like(name,func,input,output):
     if isinstance(output,(tuple,list)):
         return output
-    
-    if isinstance(output,(int,str,Span)):
+    else:
+        logger.debug(f"IEFunction {name} with underlying function {func}\n"
+                        f"returned a value that is not a tuple/list\n"
+                        f"for input {input} -> {output}\n"
+                        f"coercing to tuple")
         return (output,)
-    
-    raise ValueError(f"IEFunction {name} with underlying function {func}\n"
-                        f"returned a value that is not a tuple/list or a primitive\n"
-                        f"for input output pair ({input},{output})")
 
 def assert_ie_schema(name,func,value,expected_schema,arity,input_or_output='input'):
     if callable(expected_schema):

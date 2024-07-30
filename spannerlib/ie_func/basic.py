@@ -30,6 +30,7 @@ DefaultAGGs().add('count','count',[object],[int])
 DefaultAGGs().add('sum','sum',[Real],[Real])
 DefaultAGGs().add('avg','avg',[Real],[Real])
 DefaultAGGs().add('max','max',[Real],[Real])
+DefaultAGGs().add('min','min',[Real],[Real])
 
 # %% ../../nbs/ie_func/001_basic_ies.ipynb 9
 def rgx(pattern: str, text: str) -> Iterable[Sequence]:
