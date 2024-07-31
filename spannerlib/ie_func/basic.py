@@ -51,7 +51,6 @@ def rgx(pattern: str, text: str) -> Iterable[Sequence]:
     else:
         for match in re.finditer(compiled_rgx, str(text)):
             indices = list((match.span(i) for i in range(1,num_groups+1)))
-            print(indices)
             yield tuple([text[i:j] for i,j in indices])
 
 DefaultIEs().add(
