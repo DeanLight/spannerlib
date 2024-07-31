@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['client', 'get_openai_embeddings', 'VecDB']
 
-# %% ../../nbs/tutorials/003_extending_code.ipynb 4
+# %% ../../nbs/tutorials/003_extending_code.ipynb 10
 # importing dependencies
 import re
 import pandas as pd
@@ -12,11 +12,11 @@ from pathlib import Path
 from .. import get_magic_session,Session,Span
 import ast
 
-# %% ../../nbs/tutorials/003_extending_code.ipynb 6
+# %% ../../nbs/tutorials/003_extending_code.ipynb 12
 from .basic import llm_ie,format_ie,string_schema
 from .copilot import ast_xpath,ast_to_span,lex_concat
 
-# %% ../../nbs/tutorials/003_extending_code.ipynb 13
+# %% ../../nbs/tutorials/003_extending_code.ipynb 20
 import faiss
 import numpy as np
 import openai
@@ -33,7 +33,7 @@ def get_openai_embeddings(texts):
     embeddings = [item.embedding for item in response.data]
     return np.array(embeddings)
 
-# %% ../../nbs/tutorials/003_extending_code.ipynb 14
+# %% ../../nbs/tutorials/003_extending_code.ipynb 21
 class VecDB():
     def __init__(self):
         self.index_map={}# namespace: index

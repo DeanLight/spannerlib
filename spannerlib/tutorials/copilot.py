@@ -13,10 +13,10 @@ from pathlib import Path
 from .. import get_magic_session,Session,Span
 
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 6
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 11
 from .basic import llm_ie,format_ie,string_schema
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 9
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 16
 # ! pip install pyastgrep
 import ast
 from functools import cache
@@ -25,7 +25,7 @@ from pyastgrep.asts import ast_to_xml
 from lxml import etree
 
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 10
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 17
 @cache
 def py_to_xml(py:str)->str:
     ast_tree = ast.parse(py)
@@ -58,7 +58,7 @@ def ast_xpath(py_str,xpath_query):
     ast_matches = [node_mappings[match] if match in node_mappings else match for match in xml_matches]
     return ast_matches
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 15
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 22
 @cache
 def _get_lines(path):
     if isinstance(path,Path):
@@ -92,6 +92,6 @@ def ast_to_span(string,node):
         end = start + len(ast.unparse(node))
     return [Span(text,start,end,name=name)]
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 27
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 25
 def lex_concat(strings):
     return '\n'.join(sorted([str(s) for s in strings]))

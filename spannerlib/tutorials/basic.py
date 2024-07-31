@@ -4,7 +4,7 @@
 __all__ = ['memory', 'client', 'string_schema', 'split', 'eq_content_spans', 'span_lt', 'str_to_messages', 'messages_to_string',
            'openai_chat', 'llm', 'llm_ie', 'format_ie']
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 5
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 4
 # importing dependencies
 import re
 import pandas as pd
@@ -12,7 +12,7 @@ from pandas import DataFrame
 from pathlib import Path
 from .. import get_magic_session,Session,Span
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 11
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 12
 # this implementation is naive
 # the standard library has a rgx_split ie function that does this in a more efficient way
 def split(text):
@@ -28,19 +28,19 @@ def eq_content_spans(span1, span2):
     # notice that we are yielding a boolean value
     yield span1 != span2 and str(span1).strip() == str(span2).strip()
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 21
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 24
 def span_lt(span1, span2):
     yield span1 < span2
 
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 26
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 38
 # load openAI api key for env file
 from dotenv import load_dotenv
 load_dotenv('.env_dev')
 import os
 assert os.getenv('OPENAI_API_KEY') is not None
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 27
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 39
 from ..ie_func.basic import rgx_split
 from functools import cache
 import openai
@@ -82,7 +82,7 @@ def llm_ie(model, question):
 
 
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 34
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 44
 def format_ie(f_string,*params):
     yield f_string.format(*params),
 
