@@ -5,7 +5,7 @@ __all__ = ['logger', 'add_select_constants', 'add_select_col_eq', 'add_project_u
            'mask_terms', 'add_relation', 'add_ie_relation', 'get_bounding_order', 'rule_to_graph', 'graph_compose',
            'merge_term_graphs_pair', 'merge_term_graphs']
 
-# %% ../nbs/009_term_graphs.ipynb 3
+# %% ../nbs/009_term_graphs.ipynb 4
 from IPython.display import display
 import pandas as pd
 import os
@@ -36,9 +36,8 @@ from spannerlib.data_types import (
 from .ra import _col_names
 
 
-# %% ../nbs/009_term_graphs.ipynb 6
+# %% ../nbs/009_term_graphs.ipynb 7
 # utils for forming schema
-
 def _rename_schema(old_schema,pos_val_tuples):
     try:
         new_schema  = old_schema.copy()
@@ -56,7 +55,7 @@ def _join_schema(schema1,schema2):
             new_schema.append(s)
     return new_schema
 
-# %% ../nbs/009_term_graphs.ipynb 7
+# %% ../nbs/009_term_graphs.ipynb 8
 def add_select_constants(g,source,terms):
     """
     adds a select node as a father to source, with the constant terms defined in terms
@@ -213,7 +212,7 @@ def add_product_constants(g,source,terms):
 
 
 
-# %% ../nbs/009_term_graphs.ipynb 11
+# %% ../nbs/009_term_graphs.ipynb 12
 def mask_terms(terms,mask):
     if mask is None:
         return terms
@@ -254,7 +253,7 @@ def add_relation(g,terms,name=None,source=None,mask_constant_select=None):
 
 
 
-# %% ../nbs/009_term_graphs.ipynb 12
+# %% ../nbs/009_term_graphs.ipynb 13
 def add_ie_relation(g,rel):
     """
     adds an ie relation to the graph
@@ -300,7 +299,7 @@ def add_ie_relation(g,rel):
     return top_node,project_input_vars
 
 
-# %% ../nbs/009_term_graphs.ipynb 21
+# %% ../nbs/009_term_graphs.ipynb 22
 def get_bounding_order(rule:Rule):
     """Get an order of evaluation for the body of a rule
     this is a very naive ordering that can be heavily optimized"""
@@ -328,7 +327,7 @@ def get_bounding_order(rule:Rule):
 
     return order
 
-# %% ../nbs/009_term_graphs.ipynb 24
+# %% ../nbs/009_term_graphs.ipynb 25
 def rule_to_graph(rule:Rule,rule_id):
     """
     converts a rule to a graph
@@ -405,7 +404,7 @@ def rule_to_graph(rule:Rule,rule_id):
     return g
 
 
-# %% ../nbs/009_term_graphs.ipynb 34
+# %% ../nbs/009_term_graphs.ipynb 35
 def graph_compose(g1,g2,mapping_dict,debug=False):
     """compose two graphs with a mapping dict"""
     # if there is a node in g2 that is renamed but has a name collision with an existing node that is not renamed, we will rename the existing node to a uniq name
@@ -432,7 +431,7 @@ def graph_compose(g1,g2,mapping_dict,debug=False):
     return merged_graph
 
 
-# %% ../nbs/009_term_graphs.ipynb 40
+# %% ../nbs/009_term_graphs.ipynb 41
 def merge_term_graphs_pair(g1,g2,exclude_props = ['label'],debug=False):
     """merge two term graphs into one term graph
     when talking about term graphs, 2 nodes if their data is identical and all of their children are identical
@@ -447,17 +446,7 @@ def merge_term_graphs_pair(g1,g2,exclude_props = ['label'],debug=False):
         if 'rel' in u1_data and 'rel' in u2_data:
             return u1_data['rel'] == u2_data['rel']
 
-
-        
-        return False
-        # TODO this old code tries to merge nodes, but then its hard to remember which belong to which rules so we only merge
-        # so we will do this merging per query
-        u1_clean_data = {k:v for k,v in u1_data.items() if k not in exclude_props}
-        u2_clean_data = {k:v for k,v in u2_data.items() if k not in exclude_props}
-
-        are_equal = u1_clean_data == u2_clean_data and all(v2 in node_mappings for v2 in g2.successors(u2))
-        return are_equal
-        
+        return False        
 
     # we will check for each node in g2 if it has a node in g1 which is it's equal.
     # and save that in a mapping
@@ -469,14 +458,10 @@ def merge_term_graphs_pair(g1,g2,exclude_props = ['label'],debug=False):
                 node_mappings[u2] = u1
                 break
 
-
-
     if debug:
         return node_mappings
     else:
         return graph_compose(g1,g2,node_mappings)
-
-
 
 def merge_term_graphs(gs,exclude_props = ['label'],debug=False):
     """merge a list of term graphs into one term graph

@@ -56,6 +56,11 @@ from spannerlib.micro_passes import (
 
 
 # %% ../nbs/030_session.ipynb 4
+from itables import init_notebook_mode,show
+init_notebook_mode(all_interactive=False)
+# TODO from here see if we can init notebook mode in only the session notebook
+
+# %% ../nbs/030_session.ipynb 5
 def load_stdlib():
     # make sure we import the modules that register the stdlib
     import spannerlib.ie_func.json_path
@@ -65,7 +70,7 @@ def load_stdlib():
 
 
 
-# %% ../nbs/030_session.ipynb 6
+# %% ../nbs/030_session.ipynb 7
 def _class_repr(x):
     """returns the repr of x if x is a Span, else returns x
     used to display spans in a more readable way in pandas 
@@ -74,7 +79,7 @@ def _class_repr(x):
         return f"{repr(x)}"
     return x
 
-# %% ../nbs/030_session.ipynb 7
+# %% ../nbs/030_session.ipynb 8
 class Session():
     def __init__(self,register_stdlib=True,display_max_rows=10):
         
@@ -146,6 +151,8 @@ class Session():
                     .map(_class_repr)
                     .style.set_properties(**{'overflow-wrap': 'break-word','max-width': '800px','text-align': 'left'})
                 )
+                show(result) # https://mwouts.github.io/itables/advanced_parameters.html#table-layout
+                # TODO from here figure out the layout
         elif isinstance(result,bool):
             display.display(reconstruct(statement_lark))
             display.display(result)
@@ -276,7 +283,7 @@ class Session():
             'agg':self.engine.agg_functions.copy()
         }
 
-# %% ../nbs/030_session.ipynb 9
+# %% ../nbs/030_session.ipynb 10
 def test_session(
     queries,
     expected_outputs=None,# list of expected dfs

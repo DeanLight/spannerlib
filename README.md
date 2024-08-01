@@ -18,7 +18,9 @@ The spannerlog repl, shown bellow is served using the [jupyter magic
 commands](https://opensarlab-docs.asf.alaska.edu/user-guides/jupyter_magic/)
 
 Bellow, we will show you how to install and use spannerlog through
-Spannerlib
+Spannerlib.
+
+For more comprehensive walkthroughs, see our tutorials section.
 
 ## Installation
 
@@ -85,8 +87,8 @@ introduction section of the tutorials.
 import spannerlib
 import pandas as pd
 # get dynamic access to the session running through the jupyter magic system
-from spannerlib import magic_session
-session = magic_session
+from spannerlib import get_magic_session
+session = get_magic_session()
 ```
 
 Get a dataframe
@@ -208,8 +210,8 @@ pd.read_csv('sample_data/example_students.csv',names=["name","course"])
 Import them to the session
 
 ``` python
-session.import_rel(lecturer_df, relation_name="lecturer")
-session.import_rel("sample_data/enrolled.csv", relation_name="enrolled", delimiter=",")
+session.import_rel("lecturer",lecturer_df)
+session.import_rel("enrolled","sample_data/enrolled.csv",delim=",")
 ```
 
 They can even be documents
@@ -219,7 +221,7 @@ documents = pd.DataFrame([
     ["abigail is happy, but walter did not approve"],
     ["howard is happy, gale is happy, but jordan is sad"]
 ])
-session.import_rel(documents, relation_name="documents")
+session.import_rel("documents",documents)
 ```
 
 ``` python
@@ -227,11 +229,33 @@ session.import_rel(documents, relation_name="documents")
 ?documents(X)
 ```
 
-    printing results for query 'documents(X)':
-                             X
-    ---------------------------------------------------
-       abigail is happy, but walter did not approve
-     howard is happy, gale is happy, but jordan is sad
+    '?documents(X)'
+
+<style type="text/css">
+#T_2c224_row0_col0, #T_2c224_row1_col0 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+<table id="T_2c224">
+  <thead>
+    <tr>
+      <th class="blank level0" >&nbsp;</th>
+      <th id="T_2c224_level0_col0" class="col_heading level0 col0" >X</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th id="T_2c224_level0_row0" class="row_heading level0 row0" >0</th>
+      <td id="T_2c224_row0_col0" class="data row0 col0" >abigail is happy, but walter did not approve</td>
+    </tr>
+    <tr>
+      <th id="T_2c224_level0_row1" class="row_heading level0 row1" >1</th>
+      <td id="T_2c224_row1_col0" class="data row1 col0" >howard is happy, gale is happy, but jordan is sad</td>
+    </tr>
+  </tbody>
+</table>
 
 Define your own IE functions to extract information from relations
 
@@ -253,11 +277,12 @@ def get_happy(text):
         yield matched_strings
 
 # register the ie function with the session
-from spannerlib.primitive_types import DataTypes
-session.register(ie_function=get_happy,
-                       ie_function_name = "get_happy",
-                       in_rel=[DataTypes.string],
-                       out_rel=[DataTypes.string])
+session.register(
+    "get_happy", # name of the function
+    get_happy, # the function itself
+    [str], # input types
+    [str] # output types
+)
 ```
 
 rgxlog supports relations over the following primitive types \* strings
@@ -265,6 +290,10 @@ rgxlog supports relations over the following primitive types \* strings
 
 Write a rgxlog program (like datalog but you can use your own ie
 functions)
+
+``` python
+session.remove_all_rules()
+```
 
 ``` python
 %%spannerlog
@@ -291,7 +320,8 @@ lecturer_of(X,Z) <- lecturer(X,Y), enrolled(Z,Y)
 # use ie functions in body clauses to extract structured data from unstructured data
 
 # standard ie functions like regex are already registered
-student_gpas(Student, Grade) <- py_rgx_string(gpa_doc, "(\w+).*?(\d+)")->(Student, Grade)
+student_gpas(Student, Grade) <- rgx("(\w+).*?(\d+)",$gpa_doc)->(StudentSpan, GradeSpan),\
+    as_str(StudentSpan)->(Student), as_str(GradeSpan)->(Grade)
 
 # and you can use your defined functions as well
 happy_students_with_sad_lecturers_and_their_gpas(Student, Grade, Lecturer) <- \
@@ -302,31 +332,57 @@ happy_students_with_sad_lecturers_and_their_gpas(Student, Grade, Lecturer) <- \
     student_gpas(Student, Grade)
 ```
 
-``` python
-# TODO
-# change lib name to spannerlib
-# check if you can inline the tests
-# start design for the aggregation functions
-# change functions to new_ie and new_agg (or register instaed of new)
-```
-
 And query it
 
 ``` python
-%spannerlog ?happy_students_with_sad_lecturers_and_their_gpas(Stu,Gpa,Lec)
+%%spannerlog
+?happy_students_with_sad_lecturers_and_their_gpas(Stu,Gpa,Lec)
 ```
 
-    printing results for query 'happy_students_with_sad_lecturers_and_their_gpas(Stu, Gpa, Lec)':
-       Stu   |   Gpa |  Lec
-    ---------+-------+--------
-     abigail |   100 | linus
-      gale   |    79 | linus
-     howard  |    60 | walter
+    '?happy_students_with_sad_lecturers_and_their_gpas(Stu,Gpa,Lec)'
+
+<style type="text/css">
+#T_613a9_row0_col0, #T_613a9_row0_col1, #T_613a9_row0_col2, #T_613a9_row1_col0, #T_613a9_row1_col1, #T_613a9_row1_col2, #T_613a9_row2_col0, #T_613a9_row2_col1, #T_613a9_row2_col2 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+<table id="T_613a9">
+  <thead>
+    <tr>
+      <th class="blank level0" >&nbsp;</th>
+      <th id="T_613a9_level0_col0" class="col_heading level0 col0" >Stu</th>
+      <th id="T_613a9_level0_col1" class="col_heading level0 col1" >Gpa</th>
+      <th id="T_613a9_level0_col2" class="col_heading level0 col2" >Lec</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th id="T_613a9_level0_row0" class="row_heading level0 row0" >0</th>
+      <td id="T_613a9_row0_col0" class="data row0 col0" >abigail</td>
+      <td id="T_613a9_row0_col1" class="data row0 col1" >100</td>
+      <td id="T_613a9_row0_col2" class="data row0 col2" >linus</td>
+    </tr>
+    <tr>
+      <th id="T_613a9_level0_row1" class="row_heading level0 row1" >1</th>
+      <td id="T_613a9_row1_col0" class="data row1 col0" >gale</td>
+      <td id="T_613a9_row1_col1" class="data row1 col1" >79</td>
+      <td id="T_613a9_row1_col2" class="data row1 col2" >linus</td>
+    </tr>
+    <tr>
+      <th id="T_613a9_level0_row2" class="row_heading level0 row2" >2</th>
+      <td id="T_613a9_row2_col0" class="data row2 col0" >howard</td>
+      <td id="T_613a9_row2_col1" class="data row2 col1" >60</td>
+      <td id="T_613a9_row2_col2" class="data row2 col2" >walter</td>
+    </tr>
+  </tbody>
+</table>
 
 You can also get query results as Dataframes for downstream processing
 
 ``` python
-df = magic_session.export(
+df = session.export(
     "?happy_students_with_sad_lecturers_and_their_gpas(Stu,Gpa,Lec)")
 df
 ```
@@ -378,17 +434,6 @@ df
 </div>
 
 ## Additional Resources
-
-### Sources of inspiration
-
-- [Logicblox
-  repl](https://developer.logicblox.com/content/docs4/tutorial/repl/section/split.html)
-
-- [Logicblox
-  manual](https://developer.logicblox.com/content/docs4/core-reference/html/index.html)
-
-- LogiQL is the language implemented in logicblox and is a Dialect of
-  [Datalog](https://en.wikipedia.org/wiki/Datalog)
 
 ### Relevant papers
 
