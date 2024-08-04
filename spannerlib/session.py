@@ -15,7 +15,7 @@ from singleton_decorator import singleton
 from numbers import Real
 import pandas as pd
 import os
-
+from itables import init_notebook_mode,show
 import logging
 logger = logging.getLogger(__name__)
 
@@ -56,21 +56,16 @@ from spannerlib.micro_passes import (
 
 
 # %% ../nbs/030_session.ipynb 4
-from itables import init_notebook_mode,show
-init_notebook_mode(all_interactive=False)
-# TODO from here see if we can init notebook mode in only the session notebook
-
-# %% ../nbs/030_session.ipynb 5
 def load_stdlib():
     # make sure we import the modules that register the stdlib
-    import spannerlib.ie_func.json_path
     import spannerlib.ie_func.basic 
+    import spannerlib.ie_func.json_path
 
 
 
 
 
-# %% ../nbs/030_session.ipynb 7
+# %% ../nbs/030_session.ipynb 6
 def _class_repr(x):
     """returns the repr of x if x is a Span, else returns x
     used to display spans in a more readable way in pandas 
@@ -79,7 +74,7 @@ def _class_repr(x):
         return f"{repr(x)}"
     return x
 
-# %% ../nbs/030_session.ipynb 8
+# %% ../nbs/030_session.ipynb 7
 class Session():
     def __init__(self,register_stdlib=True,display_max_rows=10):
         
@@ -145,14 +140,30 @@ class Session():
             with pd.option_context(
                 'display.max_rows', self.display_max_rows,
                 ):
+
+                # df_to_display = self.format_results(result).map(_class_repr)
+                # # df_to_display.style.set_properties(**{'overflow-wrap': 'break-word','max-width': '800px','text-align': 'left'})
+                # # df_to_display.style.set_caption(reconstruct(statement_lark))
+                # display.display(
+                #     df_to_display.style
+                #     .set_properties(**{'overflow-wrap': 'break-word','max-width': '800px','text-align': 'left'})
+                #     .set_caption(reconstruct(statement_lark))
+                # )
                 display.display(reconstruct(statement_lark))
-                display.display(
-                    self.format_results(result)
-                    .map(_class_repr)
-                    .style.set_properties(**{'overflow-wrap': 'break-word','max-width': '800px','text-align': 'left'})
-                )
-                show(result) # https://mwouts.github.io/itables/advanced_parameters.html#table-layout
-                # TODO from here figure out the layout
+                show(self.format_results(result).map(_class_repr)
+                    .style.set_properties(**{
+                        'overflow-wrap': 'break-word',
+                        'max-width': '800px',
+                        'text-align': 'left'}),
+                    columnDefs=[{
+                        "targets": list(result.columns),
+                        "render": """function(data, type, row) {
+                            return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                        }""",
+                        "width": "300px"
+                    }],
+                    eval_functions=True,
+                    escape=True)
         elif isinstance(result,bool):
             display.display(reconstruct(statement_lark))
             display.display(result)
@@ -283,7 +294,7 @@ class Session():
             'agg':self.engine.agg_functions.copy()
         }
 
-# %% ../nbs/030_session.ipynb 10
+# %% ../nbs/030_session.ipynb 9
 def test_session(
     queries,
     expected_outputs=None,# list of expected dfs

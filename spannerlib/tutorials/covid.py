@@ -16,9 +16,6 @@ from pandas import DataFrame
 from pathlib import Path
 from .. import get_magic_session,Session,Span
 sess = get_magic_session()
-
-# ! pip install spacy
-# ! python -m spacy download en_core_web_sm
 import spacy
 nlp = spacy.load("en_core_web_sm")
 
