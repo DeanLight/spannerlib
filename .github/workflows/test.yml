@@ -2,7 +2,7 @@ name: CI
 on: [workflow_dispatch, pull_request, push]
 
 env:
-  PYTHON_VERSION: 3.8
+  PYTHON_VERSION: 3.11
 
 jobs:
   test:

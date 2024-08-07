@@ -51,8 +51,6 @@ from spannerlib.micro_passes import (
     check_rule_safety,
     consistent_free_var_types_in_rule,
     assignments_to_name_val_tuple,
-    statement_type_and_value,
-    execute_statement,
 )
 
 
@@ -179,17 +177,23 @@ def import_var(self:Session,
 #TODO from here seperate parse and check semantics so we can know the number of statements
 # before we iterate on semantic checks that might depend on execution of previous statements
 @patch
-def _parse_and_check_semantics(self:Session,code):
-    pass
-
-@patch
-def _parse_and_check_semantics(self:Session,code):
+def _parse_code(self:Session,code):
+    """Parses a spannerlog code snippet and returns a list of statements."""
     try:
         statements = parse_spannerlog(code,split_statements=True)
     except Exception as e:
         print(f"Syntax ERROR:\n{e}\n")
         raise e
-    asts = []
+    return statements
+
+@patch
+def _check_semantics(self:Session,statements):
+    """An iterator for performing semantic checks on a list of statements.
+    Yields the AST and the Lark parse tree of each statement.
+
+    Each statement must be executed, between yields in order to check the semantics
+    of the next statement based on the side effects of the previous statement.
+    """
     for statement_nx,statement_lark in statements:
         ast = statement_nx
         for pass_ in self.pass_stack:
@@ -320,10 +324,10 @@ def export(self:Session,
     """
     results = []
     statements = []
-    parsed_code = self._parse_and_check_semantics(code)
-    num_statements = len(parsed_code)
+    parsed_statements = self._parse_code(code)
+    num_statements = len(parsed_statements)
     
-    for statement_index,(clean_ast,statement_lark) in enumerate(parsed_code):
+    for statement_index,(clean_ast,statement_lark) in enumerate(self._check_semantics(parsed_statements)):
         is_last_statement = statement_index == num_statements - 1
         plan_only = plan_query and is_last_statement
         try:
@@ -336,7 +340,7 @@ def export(self:Session,
                 )
             raise e
         
-        s_type,s_dataclass = statement_type_and_value(clean_ast)
+        s_type,s_dataclass = _statement_type_and_value(clean_ast)
         statements.append((s_type,s_dataclass,reconstruct(statement_lark)))
         results.append(result)
         if display_results:
@@ -450,14 +454,12 @@ def test_session(
         expected_outputs = [expected_outputs]
 
     
-    for query,expected in zip(queries,expected_outputs):
+    for code,expected in zip(code_strings,expected_outputs):
         try:
-            res,inter = sess.execute_plan(q,root,return_intermediate=True,draw_query=debug)
+            res = sess.export(code,display_results=True,draw_query=debug)
         except Exception as e:
-            print(f"Error in query {query}")
+            print(f"Error in code {code}")
             raise e
-        finally:
-            return sess
         
         if dont_assert:
             continue
