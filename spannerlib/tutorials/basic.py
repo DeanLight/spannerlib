@@ -12,7 +12,7 @@ from pathlib import Path
 from ..utils import load_env
 from .. import get_magic_session,Session,Span
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 13
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 16
 # this implementation is naive
 # the standard library has a rgx_split ie function that does this in a more efficient way
 def split(text):
@@ -23,24 +23,24 @@ def split(text):
             yield Span(text, start, pos)
             start = pos+1
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 14
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 17
 def eq_content_spans(span1, span2):
     # notice that we are yielding a boolean value
     yield span1 != span2 and str(span1).strip() == str(span2).strip()
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 26
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 29
 def span_lt(span1, span2):
     yield span1 < span2
 
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 40
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 50
 from ..ie_func.basic import rgx_split
 from functools import cache
 import openai
 from joblib import Memory
 memory = Memory("cachedir", verbose=0)
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 41
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 51
 @cache
 def _get_client():
     return openai.Client()
@@ -76,7 +76,7 @@ def llm(model, question):
     answer = answer.replace('```','')
     return [answer]
 
-# %% ../../nbs/tutorials/001_basic_tasks.ipynb 46
+# %% ../../nbs/tutorials/001_basic_tasks.ipynb 56
 def format_ie(f_string,*params):
     yield f_string.format(*params)
 

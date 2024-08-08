@@ -12,10 +12,10 @@ from pathlib import Path
 from ..utils import load_env
 from .. import get_magic_session,Session,Span
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 12
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 15
 from .basic import llm,format_ie,string_schema
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 17
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 20
 import ast
 from functools import cache
 from pyastgrep.search import search_python_files,Match
@@ -23,7 +23,7 @@ from pyastgrep.asts import ast_to_xml
 from lxml import etree
 
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 18
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 21
 @cache
 def _py_to_xml(py:str)->str:
     ast_tree = ast.parse(py)
@@ -56,7 +56,7 @@ def ast_xpath(py_str,xpath_query):
     ast_matches = [node_mappings[match] if match in node_mappings else match for match in xml_matches]
     return ast_matches
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 23
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 26
 @cache
 def _get_lines(path):
     if isinstance(path,Path):
@@ -90,6 +90,6 @@ def ast_to_span(string,node):
         end = start + len(ast.unparse(node))
     return [Span(text,start,end,name=name)]
 
-# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 26
+# %% ../../nbs/tutorials/002_llm_code_documentation_example copy.ipynb 29
 def lex_concat(strings):
     return '\n'.join(sorted([str(s) for s in strings]))

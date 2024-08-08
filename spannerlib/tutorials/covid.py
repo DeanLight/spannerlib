@@ -7,7 +7,7 @@ __all__ = ['sess', 'nlp', 'slog_file', 'input_dir', 'data_dir', 'lemma_list', 'l
            'doc_tags', 'paths', 'classification', 'split_sentence', 'LemmaFromList', 'PosFromList', 'rewrite',
            'rewrite_docs', 'agg_mention', 'AggDocumentTags']
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 29
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 34
 # importing dependencies
 import re
 import csv
@@ -20,13 +20,13 @@ import spacy
 nlp = spacy.load("en_core_web_sm")
 
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 30
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 35
 # configurations
 slog_file = Path('covid_data/covid_logic.pl')
 input_dir = Path('covid_data/sample_inputs')
 data_dir = Path('covid_data/rules_data')
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 36
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 41
 def split_sentence(text):
     """
     Splits a text into individual sentences. using spacy's sentence detection.
@@ -43,7 +43,7 @@ def split_sentence(text):
         yield Span(text,start,end)
         start = end + 1
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 40
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 45
 class LemmaFromList():
     def __init__(self,lemma_list):
         self.lemma_list = lemma_list
@@ -63,7 +63,7 @@ class LemmaFromList():
 lemma_list = (data_dir/'lemma_words.txt').read_text().split()
 lemmatizer = LemmaFromList(lemma_list)
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 42
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 47
 class PosFromList():
     def __init__(self,pos_list):
         self.pos_list = pos_list
@@ -77,12 +77,12 @@ class PosFromList():
 
 pos_annotator = PosFromList(["NOUN", "PROPN", "PRON", "ADJ"])
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 44
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 49
 sess.register('split_sentence',split_sentence,[(str,Span)],[Span])
 sess.register('pos',pos_annotator,[(Span,str)],[Span,str])
 sess.register('lemma',lemmatizer,[(Span,str)],[Span,str])
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 50
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 55
 def rewrite(text,span_label_pairs):
     """rewrites a string given a dataframe with spans and the string to rewrite them to
     assumes that the spans belong to the text
@@ -109,7 +109,7 @@ def rewrite(text,span_label_pairs):
     return rewritten_text
 
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 54
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 59
 def rewrite_docs(docs,span_label,new_version):
     """Given a dataframe of documents of the form (path,doc,version) and a dataframe of spans to rewrite
     of the form (path,word,from_span,to_tag), rewrites the documents and returns a new dataframe of the form
@@ -125,7 +125,7 @@ def rewrite_docs(docs,span_label,new_version):
     return pd.DataFrame(new_tuples,columns=['P','D','V'])
     
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 58
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 63
 sess.import_rel("ConceptTagRules",data_dir/"concept_tags_rules.csv" , delim=",")
 sess.import_rel("TargetTagRules",data_dir/"target_rules.csv",delim=",")
 sess.import_rel("SectionTags",data_dir/"section_tags.csv",delim=",")
@@ -136,7 +136,7 @@ sess.import_rel("PostprocessRulesWithAttributes",data_dir/'postprocess_attribute
 sess.import_rel("NextSentencePostprocessPatternRules",data_dir/'postprocess_pattern_next_sentence_rules.csv',delim=',')
 
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 62
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 67
 from glob import glob
 file_paths = [Path(p) for p in glob(str(input_dir/'*.txt'))]
 raw_docs = pd.DataFrame([
@@ -146,20 +146,20 @@ raw_docs = pd.DataFrame([
 sess.import_rel('Docs',raw_docs)
 raw_docs
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 66
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 71
 lemma_tags = sess.export('?Lemmas(P,D,W,L)')
 lemma_docs = rewrite_docs(raw_docs,lemma_tags,'lemma')
 sess.import_rel('Docs',lemma_docs)
 
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 69
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 74
 lemma_concept_matches = sess.export('?LemmaConceptMatches(Path,Doc,Span,Label)')
 display(lemma_concept_matches.map(repr).head())
 lemma_concepts = rewrite_docs(lemma_docs,lemma_concept_matches,'lemma_concept')
 sess.import_rel('Docs',lemma_concepts)
 lemma_concepts.head()
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 73
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 78
 pos_concept_matches = sess.export('?PosConceptMatches(P,D,W,L)')
 display(pos_concept_matches.map(repr).head())
 
@@ -167,23 +167,23 @@ pos_concept_docs = rewrite_docs(lemma_concepts,pos_concept_matches,'pos_concept'
 sess.import_rel('Docs',pos_concept_docs)
 sess.export('?Docs("sample8.txt",D,V)')
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 76
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 81
 target_matches = sess.export('?TargetMatches(P,D,W,L)')
 display(target_matches.map(repr))
 target_rule_docs = rewrite_docs(pos_concept_docs,target_matches,'target_concept')
 sess.import_rel('Docs',target_rule_docs)
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 82
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 87
 section_tags = pd.read_csv(data_dir/'section_tags.csv',names=['literal','tag'])
 section_tags.head()
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 83
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 88
 # we will programatically build a regex that matches all the section patterns
 section_delimeter_pattern = section_tags['literal'].str.cat(sep='|')
 sess.import_var('section_delimeter_pattern',section_delimeter_pattern)
 section_delimeter_pattern
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 107
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 112
 def agg_mention(group):
     """
     aggregates attribute groups of covid spans
@@ -219,11 +219,11 @@ def AggDocumentTags(group):
 sess.register_agg('agg_mention',agg_mention,[str],[str])
 sess.register_agg('agg_doc_tags',AggDocumentTags,[str],[str])
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 109
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 114
 doc_tags = sess.export('?DocumentTags(P,T)')
 doc_tags
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 111
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 116
 paths = pd.DataFrame([p.name for p in file_paths],columns=['P'])
 classification = paths.merge(doc_tags,on='P',how='outer')
 classification['T']=classification['T'].fillna('UNK')
