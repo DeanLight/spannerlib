@@ -15,7 +15,8 @@ website:
           - Callbacks/003_json_path.ipynb
           # - Callbacks/04d_rust_spanner_regex.ipynb
       - 030_session.ipynb
-      - reference.ipynb 
+      - reference.ipynb
+      - inspecting_query_plans.ipynb
       # - section: Reference
       #   contents:  
           # - 000_spannerlog_grammar.ipynb
