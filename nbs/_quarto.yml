@@ -15,6 +15,8 @@ website:
     background: primary
     search: true
   sidebar:
-    style: floating
+    search: true
+    style: docked
+    # collapse-level: 1
 
 metadata-files: [nbdev.yml, sidebar.yml]
