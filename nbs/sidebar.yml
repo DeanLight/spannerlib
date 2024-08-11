@@ -1,7 +1,6 @@
 website:
   sidebar:
     contents:
-      # - auto: "/*.ipynb"
       - index.ipynb
       - section: Tutorials
         contents:
