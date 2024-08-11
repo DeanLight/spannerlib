@@ -4,11 +4,16 @@ website:
       - index.ipynb
       - section: Tutorials
         contents:
-          - Tutorials/000_introduction.ipynb
-          - Tutorials/001_basic_tasks.ipynb
-          - Tutorials/002_llm_code_documentation_example copy.ipynb
-          - Tutorials/003_extending_code.ipynb
-          - Tutorials/004_rewriting_a_real_codebase.ipynb
+          - text: "Intro"
+            href: Tutorials/000_introduction.ipynb
+          - text: "Basic Examples"
+            href: Tutorials/001_basic_tasks.ipynb
+          - text: "Copilot Agent"
+            href: Tutorials/002_llm_code_documentation_example copy.ipynb
+          - text: "Extending Code"
+            href: Tutorials/003_extending_code.ipynb
+          - text: "Rewriting a real codebase"
+            href: Tutorials/004_rewriting_a_real_codebase.ipynb
       - section: Callbacks
         contents:
           - Callbacks/001_basic_ies.ipynb
