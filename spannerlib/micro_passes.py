@@ -315,9 +315,9 @@ def is_rule_safe(rule:Rule):
     each IE relation input variables is bound by the normal relations and the output relation of the previous IE relations.
 
     Examples:
-    * `rel2(X,Y) <- rel1(X,Z), ie1(X)->(Y)` is a safe rule as the only input free variable, `X`, exists in the output of the safe relation `rel1(X, Z)`.  
-    * `rel2(Y) <- ie1(Z)->(Y)` is not safe as the input free variable `Z` does not exist in the output of any safe relation.
-    * `rel2(Z,W) <- rel1(X,Y),ie1(Z,Y)->(W),ie2(W,Y)->Z` is not safe as both ie functions require each other's output as input, creating a circular dependency.
+    * `rel2(X,Y) <- rel1(X,Z), ie1(X)->(Y).` is a safe rule as the only input free variable, `X`, exists in the output of the safe relation `rel1(X, Z)`.  
+    * `rel2(Y) <- ie1(Z)->(Y).` is not safe as the input free variable `Z` does not exist in the output of any safe relation.
+    * `rel2(Z,W) <- rel1(X,Y),ie1(Z,Y)->(W),ie2(W,Y)->Z.` is not safe as both ie functions require each other's output as input, creating a circular dependency.
     ---
     """
 
@@ -376,7 +376,7 @@ def check_rule_safety(ast,engine):
         is_rule_safe(rule)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 47
+# %% ../nbs/020_micro_passes.ipynb 46
 from .term_graph import get_bounding_order
 
 def _check_rule_consistency(rule,engine):
@@ -473,14 +473,14 @@ def _check_rule_consistency(rule,engine):
         engine.set_relation(current_head_schema)
 
 
-# %% ../nbs/020_micro_passes.ipynb 48
+# %% ../nbs/020_micro_passes.ipynb 47
 def consistent_free_var_types_in_rule(ast,engine):
     for match in rewrite_iter(ast,lhs='X[type="rule",val]'):
         rule = match['X']['val']
         _check_rule_consistency(rule,engine)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 51
+# %% ../nbs/020_micro_passes.ipynb 50
 def assignments_to_name_val_tuple(ast,engine):
     for match in rewrite_iter(ast,lhs='''
                                 statement[type]-[idx=0]->var_name_node[val];
