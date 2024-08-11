@@ -173,17 +173,17 @@ display(target_matches.map(repr))
 target_rule_docs = rewrite_docs(pos_concept_docs,target_matches,'target_concept')
 sess.import_rel('Docs',target_rule_docs)
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 96
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 95
 section_tags = pd.read_csv(data_dir/'section_tags.csv',names=['literal','tag'])
 section_tags.head()
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 97
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 96
 # we will programatically build a regex that matches all the section patterns
 section_delimeter_pattern = section_tags['literal'].str.cat(sep='|')
 sess.import_var('section_delimeter_pattern',section_delimeter_pattern)
 section_delimeter_pattern
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 121
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 120
 def agg_mention(group):
     """
     aggregates attribute groups of covid spans
@@ -219,11 +219,11 @@ def AggDocumentTags(group):
 sess.register_agg('agg_mention',agg_mention,[str],[str])
 sess.register_agg('agg_doc_tags',AggDocumentTags,[str],[str])
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 123
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 122
 doc_tags = sess.export('?DocumentTags(P,T)')
 doc_tags
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 125
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 124
 paths = pd.DataFrame([p.name for p in file_paths],columns=['P'])
 classification = paths.merge(doc_tags,on='P',how='outer')
 classification['T']=classification['T'].fillna('UNK')
