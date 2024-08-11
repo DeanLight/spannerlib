@@ -15,18 +15,19 @@ website:
           - Callbacks/003_json_path.ipynb
           # - Callbacks/04d_rust_spanner_regex.ipynb
       - 030_session.ipynb
-      - section: Reference
-        contents:  
-          - 000_spannerlog_grammar.ipynb
-          - 001_utils.ipynb
-          - 005_spans_and_pandas.ipynb
-          - 006_primitive_data_types.ipynb
-          - 008_extended_RA_operations.ipynb
-          - 009_term_graphs.ipynb
-          - 010_engine.ipynb
-          - 020_micro_passes.ipynb
-          - 025_query_optimizations.ipynb
-          - 040_magic_system.ipynb
+      - reference.ipynb 
+      # - section: Reference
+      #   contents:  
+          # - 000_spannerlog_grammar.ipynb
+          # - 001_utils.ipynb
+          # - 005_spans_and_pandas.ipynb
+          # - 006_primitive_data_types.ipynb
+          # - 008_extended_RA_operations.ipynb
+          # - 009_term_graphs.ipynb
+          # - 010_engine.ipynb
+          # - 020_micro_passes.ipynb
+          # - 025_query_optimizations.ipynb
+          # - 040_magic_system.ipynb
           # - 050_stdlib.ipynb
           # - building_your_optimization.ipynb
           # - extended_version.ipynb
