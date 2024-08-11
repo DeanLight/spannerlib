@@ -1,7 +1,7 @@
 website:
   sidebar:
     contents:
-      - auto: "/*.ipynb"
+      # - auto: "/*.ipynb"
       - index.ipynb
       - section: Tutorials
         contents:
@@ -10,32 +10,15 @@ website:
           - text: "Basic Examples"
             href: tutorials/001_basic_tasks.ipynb
           - text: "Copilot Agent"
-            href: tutorials/002_llm_code_documentation_example copy.ipynb
+            href: tutorials/002_llm_code_documentation_example.ipynb
           - text: "Extending Code"
             href: tutorials/003_extending_code.ipynb
           - text: "Rewriting a real codebase"
             href: tutorials/004_rewriting_a_real_codebase.ipynb
       - section: Callbacks
         contents:
-          - Callbacks/001_basic_ies.ipynb
-          - Callbacks/003_json_path.ipynb
-          # - Callbacks/04d_rust_spanner_regex.ipynb
+          - callbacks/001_basic_ies.ipynb
+          - callbacks/003_json_path.ipynb
       - 030_session.ipynb
       - reference.ipynb
       - inspecting_query_plans.ipynb
-      # - section: Reference
-      #   contents:  
-          # - 000_spannerlog_grammar.ipynb
-          # - 001_utils.ipynb
-          # - 005_spans_and_pandas.ipynb
-          # - 006_primitive_data_types.ipynb
-          # - 008_extended_RA_operations.ipynb
-          # - 009_term_graphs.ipynb
-          # - 010_engine.ipynb
-          # - 020_micro_passes.ipynb
-          # - 025_query_optimizations.ipynb
-          # - 040_magic_system.ipynb
-          # - 050_stdlib.ipynb
-          # - building_your_optimization.ipynb
-          # - extended_version.ipynb
-          # - sample_question.ipynb
