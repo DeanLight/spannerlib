@@ -46,9 +46,10 @@ CovidTags(Path,Mention,'positive','section')<-\
 # Context rules tags
 CovidTags(Path,Mention,Tag,'sentence context')<-\
     CovidMentionSents(Path,Mention,Sent),\
-    SentenceContextRules(Pattern,Tag),\
+    SentenceContextRules(Pattern,Tag,DisambiguationPattern),\
     rgx(Pattern,Sent)->(ContextSpan),\
-    span_contained(Mention,ContextSpan)->(True)
+    span_contained(Mention,ContextSpan)->(True),\
+    rgx_is_match(DisambiguationPattern,Sent)->(False)
 
 # post processing based on pattern
 CovidTags(Path,Mention,Tag,'post pattern')<-\
