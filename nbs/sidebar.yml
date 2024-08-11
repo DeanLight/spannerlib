@@ -16,8 +16,10 @@ website:
             href: tutorials/004_rewriting_a_real_codebase.ipynb
       - section: Callbacks
         contents:
-          - callbacks/001_basic_ies.ipynb
-          - callbacks/003_json_path.ipynb
+          - text: "Basic Callbacks"
+            href: callbacks/001_basic_ies.ipynb
+          - text: "JsonPath"
+            href: callbacks/003_json_path.ipynb
       - 030_session.ipynb
       - reference.ipynb
       - inspecting_query_plans.ipynb
