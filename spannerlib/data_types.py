@@ -102,7 +102,7 @@ def pretty(obj):
     elif isinstance(obj,IEFunction):
         return f"{obj.name}({','.join(pretty(o) for o in obj.in_schema)}) -> ({','.join(pretty(o) for o in obj.out_schema)})"
     elif isinstance(obj,Rule):
-        return f"{pretty(obj.head)} <- {','.join(pretty(o) for o in obj.body)}"
+        return f"{pretty(obj.head)} <- {','.join(pretty(o) for o in obj.body)}."
     elif isinstance(obj,type):
         return obj.__name__
     elif isinstance(obj,list):

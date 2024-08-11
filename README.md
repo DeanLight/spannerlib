@@ -232,30 +232,46 @@ session.import_rel("documents",documents)
     '?documents(X)'
 
 <style type="text/css">
-#T_2c224_row0_col0, #T_2c224_row1_col0 {
+#T_dec8a_row0_col0, #T_dec8a_row1_col0 {
   overflow-wrap: break-word;
   max-width: 800px;
   text-align: left;
 }
 </style>
-<table id="T_2c224">
+<table id="T_dec8a" class="display nowrap"style="table-layout:auto;width:auto;margin:auto;caption-side:bottom">
   <thead>
     <tr>
-      <th class="blank level0" >&nbsp;</th>
-      <th id="T_2c224_level0_col0" class="col_heading level0 col0" >X</th>
+      <th id="T_dec8a_level0_col0" class="col_heading level0 col0" >X</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <th id="T_2c224_level0_row0" class="row_heading level0 row0" >0</th>
-      <td id="T_2c224_row0_col0" class="data row0 col0" >abigail is happy, but walter did not approve</td>
+      <td id="T_dec8a_row0_col0" class="data row0 col0" >abigail is happy, but walter did not approve</td>
     </tr>
     <tr>
-      <th id="T_2c224_level0_row1" class="row_heading level0 row1" >1</th>
-      <td id="T_2c224_row1_col0" class="data row1 col0" >howard is happy, gale is happy, but jordan is sad</td>
+      <td id="T_dec8a_row1_col0" class="data row1 col0" >howard is happy, gale is happy, but jordan is sad</td>
     </tr>
   </tbody>
 </table>
+
+<link href="https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css" rel="stylesheet">
+<script type="module">
+    import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
+
+    document.querySelectorAll("#T_dec8a:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["X"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
 
 Define your own IE functions to extract information from relations
 
@@ -306,8 +322,8 @@ sad_lecturers("linus")
 gpa_doc = "abigail 100 jordan 80 gale 79 howard 60"
 
 # define datalog rules
-enrolled_in_chemistry(X) <- enrolled(X, "chemistry")
-enrolled_in_physics_and_chemistry(X) <- enrolled_in_chemistry(X), enrolled(X, "physics")
+enrolled_in_chemistry(X) <- enrolled(X, "chemistry").
+enrolled_in_physics_and_chemistry(X) <- enrolled_in_chemistry(X), enrolled(X, "physics").
 
 # and query them inline (to print to screen)
 # ?enrolled_in_chemistry("jordan") # returns empty tuple ()
@@ -315,21 +331,22 @@ enrolled_in_physics_and_chemistry(X) <- enrolled_in_chemistry(X), enrolled(X, "p
 # ?enrolled_in_chemistry(X) # returns "abigail", "jordan" and "howard"
 # ?enrolled_in_physics_and_chemistry(X) # returns "howard"
 
-lecturer_of(X,Z) <- lecturer(X,Y), enrolled(Z,Y)
+lecturer_of(X,Z) <- lecturer(X,Y), enrolled(Z,Y).
 
 # use ie functions in body clauses to extract structured data from unstructured data
 
 # standard ie functions like regex are already registered
-student_gpas(Student, Grade) <- rgx("(\w+).*?(\d+)",$gpa_doc)->(StudentSpan, GradeSpan),\
-    as_str(StudentSpan)->(Student), as_str(GradeSpan)->(Grade)
+student_gpas(Student, Grade) <- 
+    rgx("(\w+).*?(\d+)",$gpa_doc)->(StudentSpan, GradeSpan),
+    as_str(StudentSpan)->(Student), as_str(GradeSpan)->(Grade).
 
 # and you can use your defined functions as well
-happy_students_with_sad_lecturers_and_their_gpas(Student, Grade, Lecturer) <- \
-    documents(Doc), \
-    get_happy(Doc)->(Student), \
-    sad_lecturers(Lecturer), \
-    lecturer_of(Lecturer,Student), \
-    student_gpas(Student, Grade)
+happy_students_with_sad_lecturers_and_their_gpas(Student, Grade, Lecturer) <-
+    documents(Doc),
+    get_happy(Doc)->(Student),
+    sad_lecturers(Lecturer),
+    lecturer_of(Lecturer,Student),
+    student_gpas(Student, Grade).
 ```
 
 And query it
@@ -342,42 +359,57 @@ And query it
     '?happy_students_with_sad_lecturers_and_their_gpas(Stu,Gpa,Lec)'
 
 <style type="text/css">
-#T_613a9_row0_col0, #T_613a9_row0_col1, #T_613a9_row0_col2, #T_613a9_row1_col0, #T_613a9_row1_col1, #T_613a9_row1_col2, #T_613a9_row2_col0, #T_613a9_row2_col1, #T_613a9_row2_col2 {
+#T_d313a_row0_col0, #T_d313a_row0_col1, #T_d313a_row0_col2, #T_d313a_row1_col0, #T_d313a_row1_col1, #T_d313a_row1_col2, #T_d313a_row2_col0, #T_d313a_row2_col1, #T_d313a_row2_col2 {
   overflow-wrap: break-word;
   max-width: 800px;
   text-align: left;
 }
 </style>
-<table id="T_613a9">
+<table id="T_d313a" class="display nowrap"style="table-layout:auto;width:auto;margin:auto;caption-side:bottom">
   <thead>
     <tr>
-      <th class="blank level0" >&nbsp;</th>
-      <th id="T_613a9_level0_col0" class="col_heading level0 col0" >Stu</th>
-      <th id="T_613a9_level0_col1" class="col_heading level0 col1" >Gpa</th>
-      <th id="T_613a9_level0_col2" class="col_heading level0 col2" >Lec</th>
+      <th id="T_d313a_level0_col0" class="col_heading level0 col0" >Stu</th>
+      <th id="T_d313a_level0_col1" class="col_heading level0 col1" >Gpa</th>
+      <th id="T_d313a_level0_col2" class="col_heading level0 col2" >Lec</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <th id="T_613a9_level0_row0" class="row_heading level0 row0" >0</th>
-      <td id="T_613a9_row0_col0" class="data row0 col0" >abigail</td>
-      <td id="T_613a9_row0_col1" class="data row0 col1" >100</td>
-      <td id="T_613a9_row0_col2" class="data row0 col2" >linus</td>
+      <td id="T_d313a_row0_col0" class="data row0 col0" >abigail</td>
+      <td id="T_d313a_row0_col1" class="data row0 col1" >100</td>
+      <td id="T_d313a_row0_col2" class="data row0 col2" >linus</td>
     </tr>
     <tr>
-      <th id="T_613a9_level0_row1" class="row_heading level0 row1" >1</th>
-      <td id="T_613a9_row1_col0" class="data row1 col0" >gale</td>
-      <td id="T_613a9_row1_col1" class="data row1 col1" >79</td>
-      <td id="T_613a9_row1_col2" class="data row1 col2" >linus</td>
+      <td id="T_d313a_row1_col0" class="data row1 col0" >gale</td>
+      <td id="T_d313a_row1_col1" class="data row1 col1" >79</td>
+      <td id="T_d313a_row1_col2" class="data row1 col2" >linus</td>
     </tr>
     <tr>
-      <th id="T_613a9_level0_row2" class="row_heading level0 row2" >2</th>
-      <td id="T_613a9_row2_col0" class="data row2 col0" >howard</td>
-      <td id="T_613a9_row2_col1" class="data row2 col1" >60</td>
-      <td id="T_613a9_row2_col2" class="data row2 col2" >walter</td>
+      <td id="T_d313a_row2_col0" class="data row2 col0" >howard</td>
+      <td id="T_d313a_row2_col1" class="data row2 col1" >60</td>
+      <td id="T_d313a_row2_col2" class="data row2 col2" >walter</td>
     </tr>
   </tbody>
 </table>
+
+<link href="https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.css" rel="stylesheet">
+<script type="module">
+    import {DataTable, jQuery as $} from 'https://www.unpkg.com/dt_for_itables@2.0.11/dt_bundle.js';
+
+    document.querySelectorAll("#T_d313a:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["Stu", "Gpa", "Lec"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
 
 You can also get query results as Dataframes for downstream processing
 

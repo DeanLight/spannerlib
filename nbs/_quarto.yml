@@ -17,6 +17,6 @@ website:
   sidebar:
     search: true
     style: docked
-    collapse-level: 1
+    # collapse-level: 1
 
 metadata-files: [nbdev.yml, sidebar.yml]

@@ -5,7 +5,7 @@ __all__ = ['json_path']
 
 # %% ../../nbs/Callbacks/003_json_path.ipynb 4
 from typing import Iterable, Tuple, Any
-
+from itables import show
 from jsonpath_ng import parse
 import json
 from ..utils import DefaultIEs,DefaultAGGs,visualize_callback_df

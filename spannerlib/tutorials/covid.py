@@ -183,7 +183,7 @@ section_delimeter_pattern = section_tags['literal'].str.cat(sep='|')
 sess.import_var('section_delimeter_pattern',section_delimeter_pattern)
 section_delimeter_pattern
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 114
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 112
 def agg_mention(group):
     """
     aggregates attribute groups of covid spans
@@ -219,11 +219,11 @@ def AggDocumentTags(group):
 sess.register_agg('agg_mention',agg_mention,[str],[str])
 sess.register_agg('agg_doc_tags',AggDocumentTags,[str],[str])
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 116
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 114
 doc_tags = sess.export('?DocumentTags(P,T)')
 doc_tags
 
-# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 118
+# %% ../../nbs/tutorials/004_rewriting_a_real_codebase.ipynb 116
 paths = pd.DataFrame([p.name for p in file_paths],columns=['P'])
 classification = paths.merge(doc_tags,on='P',how='outer')
 classification['T']=classification['T'].fillna('UNK')

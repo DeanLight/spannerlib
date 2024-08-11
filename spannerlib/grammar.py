@@ -26,6 +26,7 @@ SpannerlogGrammar = r"""
 
 _LINE_OVERFLOW_ESCAPE: "\\" NEWLINE
 %ignore _LINE_OVERFLOW_ESCAPE
+%ignore NEWLINE
 
 _SEPARATOR: (WS_INLINE | _LINE_OVERFLOW_ESCAPE)+
 _STRING_INNER: /.+?/
@@ -35,8 +36,6 @@ ESCAPED_STRING : "\"" _STRING_ESC_INNER "\""
                 | "'" _STRING_ESC_INNER "'"
 
 string: ESCAPED_STRING
-
-_NEWLINE: NEWLINE
 
 TRUE: "True"
 FALSE: "False"
@@ -97,7 +96,7 @@ ie_relation: relation_name "(" term_list ")" "->" "(" term_list ")"
 
 rule_head: relation_name "(" term_list ")"
 
-rule_body_relation_list: rule_body_relation ("," rule_body_relation)*
+rule_body_relation_list: rule_body_relation ("," rule_body_relation)* "."
 
 rule: rule_head "<-" rule_body_relation_list
 
@@ -123,7 +122,8 @@ assignment: var_name "=" const_term
           | query
           | assignment
 
-start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
+//start: (_NEWLINE)* (statement (_NEWLINE)+)* (statement)?
+start: statement*
 """
 
 # %% ../nbs/000_spannerlog_grammar.ipynb 9
