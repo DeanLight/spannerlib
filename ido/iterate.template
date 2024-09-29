@@ -1,0 +1,8 @@
+{{ anchor_code }}
+let node_{{ anchor }} = node_{{ anchor }}.iterate(|iter_{{anchor}}|{
+    {% for node in ingress_nodes %}
+    let {% if node == anchor %}mut {% endif %}node_{{node}} = node_{{node}}.enter(&iter_{{anchor}}.scope());{% endfor %}
+    {% for node in cycle_flow %}
+    {{flow_code[node]}}{% endfor %}
+    iter_{{anchor}}.distinct()
+});

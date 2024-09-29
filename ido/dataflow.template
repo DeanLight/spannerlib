@@ -1,0 +1,17 @@
+extern crate timely;
+extern crate differential_dataflow;
+
+use differential_dataflow::input::InputSession;
+use differential_dataflow::operators::*;
+
+fn main(){
+    timely::execute_from_args(std::env::args(), move |worker| {
+    {% for key,value in sources.items() %}
+        let mut input_{{value['name']}}: InputSession::<usize, {{ value['scheme'] }}, isize> = InputSession::new();
+    {% endfor %}
+        worker.dataflow(|scope| {
+        {% for node in top_sort %}
+            {{flow_code[node]}}{% endfor %}
+        });
+    });
+}
