@@ -1,0 +1,47 @@
+extern crate timely;
+extern crate differential_dataflow;
+
+use std::sync::{Arc, Mutex};
+
+use differential_dataflow::input::InputSession;
+use differential_dataflow::operators::*;
+
+macro_rules! tuple_to_vec_string {
+    // Base case: empty tuple
+    () => {
+        Vec::new()
+    };
+    
+    // Recursive case: extracts the first element and calls the macro recursively on the rest
+    ($first:expr $(, $rest:expr)*) => {
+        {
+            let mut vec = vec![$first.to_string()];
+            vec.extend(tuple_to_vec_string!($($rest),*));
+            vec
+        }
+    };
+}
+
+fn query_{{query_id}}() -> Vec<Vec<String>>{
+
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let result = Arc::clone(&output);
+
+    timely::execute_from_args(std::env::args(), move |worker| {
+    {% for key,value in sources.items() %}
+        let mut input_{{value['name']}}: InputSession::<usize, {{ value['scheme'] }}, isize> = InputSession::new();
+    {% endfor %}
+        worker.dataflow(|scope| {
+        {% for node in top_sort %}
+            {{flow_code[node]}}{% endfor %}
+            let result = Arc::clone(&result); 
+            node_{{output_node}}.inspect(move |x| {
+                let cloned_x = x.clone();
+                result.lock().unwrap().push(tuple_to_vec_string!({% for var in range(output_vars) %}
+                        cloned_x.0.{{ var }}{% if not loop.last %}, {% endif %}{% endfor %}
+                ));
+            });
+        });
+    });
+    return output.lock().unwrap().clone();
+}
