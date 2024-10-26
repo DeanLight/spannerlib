@@ -154,8 +154,7 @@ def import_rel(self:Session,
             raise IOError("csv file does not exist")
         if os.stat(csv_file_name).st_size == 0:
             raise IOError("csv file is empty")
-        data = pd.read_csv(csv_file_name, delimiter=delim,header=header)
-
+        self.engine.load_csv(name, csv_file_name)
     first_row = list(data.iloc[0,:])
     scheme = _infer_relation_schema(first_row)
     rel_def = RelationDefinition(name=name,scheme=scheme)
