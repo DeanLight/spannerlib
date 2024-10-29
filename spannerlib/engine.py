@@ -75,7 +75,6 @@ class DB(dict):
 
 # %% ../nbs/010_engine.ipynb 9
 from copy import deepcopy
-from time import sleep
 import os
 
 class Engine():
@@ -116,9 +115,6 @@ class Engine():
         #     # relation name to node that represents it
         # }
         self.spannerflow_engine = SpannerflowEngine()
-        self.spannerflow_engine.close()
-        self.spannerflow_engine.open()
-        sleep(1)
 
     def set_var(self,var_name,value,read_from_file=False):
         symbol_table = self.symbol_table
