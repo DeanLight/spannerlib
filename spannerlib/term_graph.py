@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 from graph_rewrite import draw
 
 from .utils import checkLogs,serialize_df_values,serialize_graph,get_new_node_name
-from .span import Span
+from spannerflow.span import Span
 from .ra import equalConstTheta,equalColTheta
 from spannerlib.data_types import (
     _infer_relation_schema,

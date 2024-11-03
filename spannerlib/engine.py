@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 import pytest
 from collections import defaultdict
 from spannerflow.engine import Engine as SpannerflowEngine
+from spannerflow.span import Span
 
 import pandas as pd
 from pathlib import Path
@@ -28,7 +29,7 @@ from spannerlib.utils import (
     get_new_node_name
     )
 
-from .span import Span
+
 from spannerlib.data_types import (
     Var, 
     FreeVar, 
@@ -75,6 +76,7 @@ class DB(dict):
 
 # %% ../nbs/010_engine.ipynb 9
 from copy import deepcopy
+from time import sleep
 import os
 
 class Engine():
@@ -115,6 +117,7 @@ class Engine():
         #     # relation name to node that represents it
         # }
         self.spannerflow_engine = SpannerflowEngine()
+        self.spannerflow_engine.close()
 
     def set_var(self,var_name,value,read_from_file=False):
         symbol_table = self.symbol_table
@@ -182,10 +185,10 @@ class Engine():
     def add_facts(self,rel_name,facts:pd.DataFrame):
         self.spannerflow_engine.add_rows(rel_name, facts.values.tolist())
         
-    def load_csv(self, rel_name, path):
+    def load_csv(self, rel_name:str , path: str|Path, delim: str = ',', has_header: bool = False):
         if not os.path.exists(path):
             raise ValueError(f"Path {path} does not exist")
-        self.spannerflow_engine.load_csv(rel_name, path)
+        self.spannerflow_engine.load_from_csv(rel_name, path, delim, has_header)
         
     def del_fact(self,fact:Relation):
         self.spannerflow_engine.delete_row(fact.name, fact.terms)

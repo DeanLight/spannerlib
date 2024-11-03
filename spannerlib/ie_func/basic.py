@@ -10,7 +10,7 @@ from typing import Iterable, Sequence,Union
 from numbers import Real
 from pathlib import Path
 
-from ..span import Span
+from spannerflow.span import Span
 from ..utils import DefaultIEs,DefaultAGGs,visualize_callback_df
 
 # %% ../../nbs/callbacks/001_basic_ies.ipynb 5
