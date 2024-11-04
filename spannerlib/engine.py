@@ -307,12 +307,13 @@ class Engine():
         # TODO for all rewrites, run them
         return query_graph,root_node
 
-    def execute_plan(self,query_graph,root_node,return_intermediate=False):
-        return self.spannerflow_engine.run_dataflow(nx.reverse(query_graph));
+    def execute_plan(self,query_graph,root_node,return_intermediate=False, save_to_csv: Path| str | None = None):
+        res =  self.spannerflow_engine.run_dataflow(nx.reverse(query_graph));
+        return pd.DataFrame(columns=query_graph.nodes[root_node]['schema'], data=res)
 
     def run_query(self,q:Relation,rewrites=None,return_intermediate=False):
-        query_graph,root_node = self.plan_query(q,rewrites)
-        return self.spannerflow_engine.run_dataflow(nx.reverse(query_graph))
+        query_graph, root_node = self.plan_query(q,rewrites)
+        return self.execute_plan(query_graph,root_node,return_intermediate)
 
 
 # %% ../nbs/010_engine.ipynb 29
