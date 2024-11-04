@@ -308,8 +308,7 @@ class Engine():
         return query_graph,root_node
 
     def execute_plan(self,query_graph,root_node,return_intermediate=False):
-        results = compute_node(query_graph,root_node,ret_inter = return_intermediate)
-        return results
+        return self.spannerflow_engine.run_dataflow(nx.reverse(query_graph));
 
     def run_query(self,q:Relation,rewrites=None,return_intermediate=False):
         query_graph,root_node = self.plan_query(q,rewrites)
