@@ -80,6 +80,8 @@ from time import sleep
 import atexit
 import os
 
+import numpy as np
+
 class Engine():
     def __init__(self, rewrites=None):
         if rewrites is None:
@@ -153,7 +155,8 @@ class Engine():
             float: "DATA_TYPE_FLOAT",
             bool: "DATA_TYPE_BOOL",
             Span: "DATA_TYPE_SPAN",
-            Real: "DATA_TYPE_FLOAT"
+            Real: "DATA_TYPE_FLOAT",
+            np.int64: "DATA_TYPE_INT64",
         }
 
         spannerflow_schema = []
