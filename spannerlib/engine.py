@@ -11,7 +11,7 @@ import pytest
 from collections import defaultdict
 from spannerflow.engine import Engine as SpannerflowEngine
 from spannerflow.span import Span
-
+from numbers import Real
 import pandas as pd
 from pathlib import Path
 from typing import no_type_check, Set, Sequence, Any,Optional,List,Callable,Dict,Union
@@ -77,6 +77,7 @@ class DB(dict):
 # %% ../nbs/010_engine.ipynb 9
 from copy import deepcopy
 from time import sleep
+import atexit
 import os
 
 class Engine():
@@ -117,7 +118,8 @@ class Engine():
         #     # relation name to node that represents it
         # }
         self.spannerflow_engine = SpannerflowEngine()
-        self.spannerflow_engine.close()
+        atexit.register(self.spannerflow_engine.close)
+
 
     def set_var(self,var_name,value,read_from_file=False):
         symbol_table = self.symbol_table
@@ -149,7 +151,9 @@ class Engine():
             str: "DATA_TYPE_STRING",
             int: "DATA_TYPE_INT",
             float: "DATA_TYPE_FLOAT",
-            bool: "DATA_TYPE_BOOL"
+            bool: "DATA_TYPE_BOOL",
+            Span: "DATA_TYPE_SPAN",
+            Real: "DATA_TYPE_FLOAT"
         }
 
         spannerflow_schema = []
