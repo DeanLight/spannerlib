@@ -216,6 +216,7 @@ class Engine():
     
     def set_agg_function(self,agg_func:AGGFunction):
         self.agg_functions[agg_func.name]=agg_func
+        self.spannerflow_engine.set_agg_function(agg_func.name, agg_func.func, agg_func.in_schema, agg_func.out_schema)
     
     def del_agg_function(self,name:str):
         del self.agg_functions[name]
