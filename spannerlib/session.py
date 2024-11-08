@@ -146,20 +146,22 @@ def import_csv(self:Session,
         csv_filepath:Union[str,Path], # path to the csv file
         delim:str = None, # the delimiter of the csv file
         has_header: bool = False, # does the first line is a header line
+        scheme: list[type] = None, # the schema of the relation
     ):
-    """Imports a csv file into the current session."""
+    """Imports a csv file into the current session. Will load to the rust engine"""
     csv_file_name = Path(csv_filepath)
     if not csv_file_name.is_file():
         raise IOError("csv file does not exist")
     if os.stat(csv_file_name).st_size == 0:
         raise IOError("csv file is empty")
-    
-    with open(csv_file_name) as csv_file:
-        reader = csv.reader(csv_file, delimiter=delim)
-        first_row = next(reader)
-        if has_header:
+    if not scheme:
+        with open(csv_file_name) as csv_file:
+            reader = csv.reader(csv_file, delimiter=delim)
             first_row = next(reader)
-    scheme = _infer_relation_schema(first_row)
+            if has_header:
+                first_row = next(reader)
+        scheme = _infer_relation_schema(first_row)
+    
     rel_def = RelationDefinition(name=name,scheme=scheme)
     
     if self.engine.get_relation(name):
@@ -178,16 +180,18 @@ def import_rel(self:Session,
     name:str, # name of the relation in spannerlog
     data:Union[str,Path,pd.DataFrame], # either a pandas dataframe or a path to a csv file
     delim:str = None, # the delimiter of the csv file
-    has_header: bool = None, # does the first line is a header line
+    has_header: bool = False, # does the first line is a header line
+    scheme: list[type] = None
     ):
     """Imports a relation into the current session, either from a dataframe or from a csv file."""
 
     if isinstance(data, (Path,str)):
-        self.import_csv(name,data,delim=delim,has_header=has_header)
+        self.import_csv(name,data,delim=delim,has_header=has_header, scheme=scheme)
         return
-        
-    first_row = list(data.iloc[0,:])
-    scheme = _infer_relation_schema(first_row)
+    if not scheme:
+        first_row = list(data.iloc[0,:])
+        scheme = _infer_relation_schema(first_row)
+    
     rel_def = RelationDefinition(name=name,scheme=scheme)
     
     if self.engine.get_relation(name):
@@ -261,6 +265,7 @@ def _execute_statement(
     engine, # the spannerlog engine to execute the statement on
     plan_only=False, # if True, plans queries returns the graph and root, but does not execute them
     draw_graph=False, # if True, draws the graph of the query plan
+    output_csv_path: str | Path | None = None, # if not None, saves the result of the query to a csv file
     ):
     """executes a single statement from the ast
     """
@@ -284,7 +289,7 @@ def _execute_statement(
                 draw(graph)
             if plan_only:
                 return graph,root
-            return engine.execute_plan(graph,root)
+            return engine.execute_plan(graph,root, output_csv_path=output_csv_path)
         case _:
             raise ValueError(f"Unknown statement type {statement}")
     return None
@@ -353,6 +358,7 @@ def export(self:Session,
     draw_query=False, # if True, draws the query graph of queries to screen
     plan_query=False, # if True, if last statement is a query, plans the query and returns the query graph and root node.
     return_statements_meta=False, # if True, returns both the return value and the statements meta data, used internally.
+    output_csv_path: str | Path | None = None, # if not None, saves the results of the last query to a csv file
     ):
     """Takes a string of spannerlog code, and executes it, returning the value of the last statement in the code string.
     All statements that are not queries, return None.
@@ -366,7 +372,7 @@ def export(self:Session,
         is_last_statement = statement_index == num_statements - 1
         plan_only = plan_query and is_last_statement
         try:
-            result = _execute_statement(clean_ast,self.engine,draw_graph=draw_query,plan_only=plan_only)
+            result = _execute_statement(clean_ast,self.engine,draw_graph=draw_query,plan_only=plan_only, output_csv_path=output_csv_path)
             result = _format_results(result)
         except Exception as e:
             print(f"RUNTIME ERROR:\n"
