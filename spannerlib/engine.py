@@ -296,6 +296,7 @@ class Engine():
             elif g.nodes[u]['op'] == 'groupby':
                 aggregate_func_names = g.nodes[u]['agg']
                 aggregate_funcs = [self.agg_functions[name].func if name is not None else None for name in aggregate_func_names]
+                g.nodes[u]['agg_names'] = aggregate_func_names
                 g.nodes[u]['agg'] = aggregate_funcs
         return g
 
