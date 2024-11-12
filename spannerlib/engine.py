@@ -157,6 +157,7 @@ class Engine():
             Span: "DATA_TYPE_SPAN",
             Real: "DATA_TYPE_FLOAT",
             np.int64: "DATA_TYPE_INT64",
+            object: "DATA_TYPE_CUSTOM",
         }
 
         spannerflow_schema = []
