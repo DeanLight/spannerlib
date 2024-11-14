@@ -6,67 +6,46 @@
 __all__ = ['logger', 'op_to_func', 'DB', 'Engine', 'get_rel', 'compute_acyclic_node', 'compute_recursive_node', 'compute_node']
 
 # %% ../nbs/010_engine.ipynb 3
-from abc import ABC, abstractmethod
-import pytest
-from collections import defaultdict
-from spannerflow.engine import Engine as SpannerflowEngine
-from spannerflow.span import Span
-from numbers import Real
-import pandas as pd
-from pathlib import Path
-from typing import no_type_check, Set, Sequence, Any,Optional,List,Callable,Dict,Union
-from pydantic import BaseModel
-import networkx as nx
+import atexit
 import itertools
 import logging
+import os
+from abc import ABC, abstractmethod
+from collections import defaultdict
+from copy import deepcopy
+from numbers import Real
+from pathlib import Path
+from typing import (Any, Callable, Dict, List, Optional, Sequence, Set, Union,
+                    no_type_check)
+
+import networkx as nx
+import numpy as np
+import pandas as pd
+import pytest
+from pydantic import BaseModel
+from spannerflow.engine import Engine as SpannerflowEngine
+from spannerflow.span import Span
+
 logger = logging.getLogger(__name__)
 
 from graph_rewrite import draw, draw_match, rewrite, rewrite_iter
-from spannerlib.utils import (
-    serialize_graph,
-    assert_df_equals,
-    checkLogs,
-    get_new_node_name
-    )
 
-
-from spannerlib.data_types import (
-    Var, 
-    FreeVar, 
-    RelationDefinition, 
-    Relation, 
-    IEFunction,
-    AGGFunction,
-    IERelation, 
-    Rule, 
-    pretty
-)
-from spannerlib.ra import (
-    _col_names,
-    get_const,
-    select,
-    project,
-    rename,
-    union,
-    intersection,
-    difference,
-    join,
-    product,
-    groupby,
-    ie_map,
-    merge_rows
-)
-
-from .term_graph import graph_compose, merge_term_graphs_pair,rule_to_graph,add_relation,add_project_uniq_free_vars
-
-
+from .data_types import (AGGFunction, FreeVar, IEFunction,
+                                   IERelation, Relation, RelationDefinition,
+                                   Rule, Var, pretty)
+from .ra import (_col_names, difference, get_const, groupby, ie_map,
+                           intersection, join, merge_rows, product, project,
+                           rename, select, union)
+from .term_graph import (add_project_uniq_free_vars, add_relation,
+                                   graph_compose, merge_term_graphs_pair,
+                                   rule_to_graph)
+from .utils import (assert_df_equals, checkLogs, get_new_node_name,
+                              serialize_graph)
 
 # %% ../nbs/010_engine.ipynb 5
 def _pd_drop_row(df,row_vals):
     new_df = df[(df!=row_vals).all(axis=1)]
     return new_df
-
-
 
 # %% ../nbs/010_engine.ipynb 7
 class DB(dict):
@@ -75,13 +54,6 @@ class DB(dict):
         return f'DB({key_str})'
 
 # %% ../nbs/010_engine.ipynb 9
-from copy import deepcopy
-from time import sleep
-import atexit
-import os
-
-import numpy as np
-
 class Engine():
     def __init__(self, rewrites=None):
         if rewrites is None:
@@ -122,7 +94,6 @@ class Engine():
         self.spannerflow_engine = SpannerflowEngine()
         atexit.register(self.spannerflow_engine.close)
 
-
     def set_var(self,var_name,value,read_from_file=False):
         symbol_table = self.symbol_table
         if var_name in symbol_table:
@@ -132,6 +103,7 @@ class Engine():
                                 f" but is trying to be redefined to {value}({pretty(type(value))}) of a different type which might interfere with previous rule definitions")    
         symbol_table[var_name] = type(value),value
         return
+
     def get_var(self,var_name):
         return self.symbol_table.get(var_name,None)
     
@@ -243,7 +215,6 @@ class Engine():
         merge_term_graph = merge_term_graphs_pair(self.term_graph,g2)
         self.term_graph = merge_term_graph
         
-
     def del_rule(self,rule_str:str):
         #TODO here we need to save rules by their head and when removing the last rule of a head, remove its definition from db as well
         if not rule_str in self.rules_to_ids:
@@ -299,7 +270,6 @@ class Engine():
                 g.nodes[u]['agg'] = aggregate_funcs
         return g
 
-
     def plan_query(self,q_rel:Relation,rewrites=None):
         if rewrites is None:
             rewrites = self.rewrites
@@ -326,11 +296,11 @@ class Engine():
         query_graph, root_node = self.plan_query(q,rewrites)
         return self.execute_plan(query_graph, root_node)
 
-
 # %% ../nbs/010_engine.ipynb 29
 def get_rel(rel,db,**kwargs):
     # helper function to get the relation from the db for external relations
     return db[rel]
+
 
 op_to_func = {
     'union':union,
@@ -352,6 +322,7 @@ def _in_cycle(g):
     return list(set(
         itertools.chain.from_iterable(nx.cycles.simple_cycles(g))
     ))
+
 
 def _depends_on_cycle(g):
     in_cycle_nodes = _in_cycle(g)
@@ -384,13 +355,13 @@ def _collect_children_and_run(G,u,results,stack,log=False):
     results[u].append(res)
     return res
 
-
 # %% ../nbs/010_engine.ipynb 32
 def compute_acyclic_node(G,u,results,stack=None):
     res = _collect_children_and_run(G,u,results,[])
     logger.debug(f"setting {u} to final since it is acyclic\n")
     G.nodes[u]['final'] = True
     return res
+
 
 def compute_recursive_node(G,u,results,stack=None):
 
@@ -404,9 +375,7 @@ def compute_recursive_node(G,u,results,stack=None):
     if u_data.get('final',False):
         return results[u][-1]    
 
-
     logger.debug(f"computing node {u} with stack {stack}")
-
 
     went_in_a_cycle = u in stack
     if went_in_a_cycle:
@@ -442,7 +411,6 @@ def compute_recursive_node(G,u,results,stack=None):
     return res
 
 
-
 def compute_node(G,root,ret_inter=False):
 
     # makes sure there is always a last value in the list for each key
@@ -472,4 +440,3 @@ def compute_node(G,root,ret_inter=False):
         return res,results_dict
     else:
         return res
-
