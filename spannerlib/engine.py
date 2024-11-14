@@ -147,8 +147,7 @@ class Engine():
             if existing_def != rel_def:
                 raise ValueError(f"Relation {rel_def.name} was previously defined with {existing_def}"
                                 f"but is trying to be redefined to {rel_def} which might interfere with previous rule definitions")
-            elif not rule:
-                raise ValueError(f"Relation {rel_def.name} was previously defined")     
+
         SPANNER_LIB_TO_SPANNER_FLOW_TYPES_DICT = {
             str: "DATA_TYPE_STRING",
             int: "DATA_TYPE_INT",
