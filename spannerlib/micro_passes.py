@@ -26,7 +26,6 @@ from spannerlib.utils import (
     schema_match,is_of_schema,type_merge,schema_merge
 )
 from .grammar import parse_spannerlog
-from spannerflow.span import Span
 from spannerlib.engine import (
     Engine,
     Var,
