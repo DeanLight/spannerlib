@@ -141,7 +141,7 @@ def register_agg(self:Session,
 
 # %% ../nbs/030_session.ipynb 11
 @patch
-def import_csv(self:Session,
+def _import_csv(self:Session,
         name:str, # name of the relation in spannerlog
         csv_filepath:Union[str,Path], # path to the csv file
         delim:str = None, # the delimiter of the csv file
@@ -186,7 +186,7 @@ def import_rel(self:Session,
     """Imports a relation into the current session, either from a dataframe or from a csv file."""
 
     if isinstance(data, (Path,str)):
-        self.import_csv(name,data,delim=delim,has_header=has_header, scheme=scheme)
+        self._import_csv(name,data,delim=delim,has_header=has_header, scheme=scheme)
         return
     if not scheme:
         first_row = list(data.iloc[0,:])

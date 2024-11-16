@@ -292,9 +292,9 @@ class Engine():
         res =  self.spannerflow_engine.run_dataflow(nx.reverse(query_graph), output_csv_path=output_csv_path)
         return pd.DataFrame(columns=query_graph.nodes[root_node]['schema'], data=res)
 
-    def run_query(self,q:Relation,rewrites=None):
+    def run_query(self,q:Relation,rewrites=None, output_csv_path: Path | str | None = None):
         query_graph, root_node = self.plan_query(q,rewrites)
-        return self.execute_plan(query_graph, root_node)
+        return self.execute_plan(query_graph, root_node, output_csv_path)
 
 # %% ../nbs/010_engine.ipynb 29
 def get_rel(rel,db,**kwargs):
