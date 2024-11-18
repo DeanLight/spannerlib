@@ -10,7 +10,8 @@ import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
 from ..utils import load_env
-from .. import get_magic_session,Session,Span
+from .. import get_magic_session,Session
+from spannerflow.span import Span
 
 # %% ../../nbs/tutorials/002_llm_code_documentation_example.ipynb 15
 from .basic import llm,format_ie,string_schema
