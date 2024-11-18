@@ -14,7 +14,8 @@ import csv
 import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
-from .. import get_magic_session,Session,Span
+from .. import get_magic_session,Session
+from spannerflow.span import Span
 sess = get_magic_session()
 import spacy
 nlp = spacy.load("en_core_web_sm")
