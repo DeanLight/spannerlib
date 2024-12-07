@@ -173,6 +173,9 @@ class Engine():
         self.spannerflow_engine.delete_row(fact.name, fact.terms)
         # self.db[fact.name] = _pd_drop_row(df = self.db[fact.name],row_vals=fact.terms)
 
+    def get_span(self, document_id: str, start: int, end: int):
+        return self.spannerflow_engine.get_span(document_id, start, end)
+    
     def get_ie_function(self,name:str):
         return self.ie_functions.get(name,None)
 
