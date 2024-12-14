@@ -145,8 +145,8 @@ def check_referenced_paths_exist(ast,engine):
 def inline_aggregation(ast,engine):
     for match in rewrite_iter(ast,
         lhs='''
-        agg_marker[type="aggregated_free_var"];
-        agg_marker->agg_func[type="agg_name",val];
+        agg_marker[type="aggregated_free_var"],
+        agg_marker->agg_func[type="agg_name",val],
         agg_marker->agg_var[type="free_var_name",val]
         ''',
         #rhs='agg_marker[type="free_var_name",val=agg_var.val,agg=agg_func.val]',
@@ -165,7 +165,7 @@ def relations_to_dataclasses(ast,engine):
    #TODO another example where i need to edit the graph imperatively because i dont have horizontal recursion in LHS
    for match in rewrite_iter(ast,
       lhs='''
-         statement[type]->name[type="relation_name",val];
+         statement[type]->name[type="relation_name",val],
          statement->terms[type]
          ''',
          #TODO i expect to be able to put an rhs here only, and if a p is not given, assume it is the identity over nodes in LHS
@@ -174,7 +174,7 @@ def relations_to_dataclasses(ast,engine):
                                    and match['terms']['type'] in ['term_list','free_var_name_list',]),
          # display_matches=True,
          ):
-      term_nodes = list(ast.successors(match.mapping['terms']))
+      term_nodes = list(ast.successors(next(iter(match.mapping['terms']))))
       #TODO check we iterate in order on the children
       logger.debug(f"casting relation to dataclasses - term_nodes: {term_nodes}")
       terms = [ast.nodes[term_node]['val'] for term_node in term_nodes]
@@ -193,23 +193,23 @@ def relations_to_dataclasses(ast,engine):
    # relation declerations
    for match in rewrite_iter(ast,
       lhs='''
-         statement[type="relation_declaration"]->name[type="relation_name",val];
+         statement[type="relation_declaration"]->name[type="relation_name",val],
          statement->terms[type="decl_term_list"]
          ''',
          p='statement[type]'):
-      term_nodes = list(ast.successors(match.mapping['terms']))
+      term_nodes = list(ast.successors(next(iter(match.mapping['terms']))))
       match['statement']['val'] = RelationDefinition(name=match['name']['val'],scheme=[ast.nodes[term_node]['val'] for term_node in term_nodes])
       ast.remove_nodes_from(term_nodes)
 
    # ie relations
    for match in rewrite_iter(ast,
       lhs='''
-         statement[type="ie_relation"]->name[type="relation_name",val];
-         statement-[idx=1]->in_terms[type="term_list"];
+         statement[type="ie_relation"]->name[type="relation_name",val],
+         statement-[idx=1]->in_terms[type="term_list"],
          statement-[idx=2]->out_terms[type="term_list"]
       ''',p='statement[type]'):
-      in_term_nodes = list(ast.successors(match.mapping['in_terms']))
-      out_term_nodes = list(ast.successors(match.mapping['out_terms']))
+      in_term_nodes = list(ast.successors(next(iter(match.mapping['in_terms']))))
+      out_term_nodes = list(ast.successors(next(iter(match.mapping['out_terms']))))
 
 
 
@@ -285,10 +285,10 @@ def verify_referenced_relations_and_functions(ast,engine):
 def rules_to_dataclasses(ast,engine):
    for match in rewrite_iter(ast,
       lhs='''
-         statement[type="rule"]->head[type="rule_head",val];
+         statement[type="rule"]->head[type="rule_head",val],
          statement->body[type="rule_body_relation_list"]
       ''',p='statement[type]'):
-      body_nodes = list(ast.successors(match.mapping['body']))
+      body_nodes = list(ast.successors(next(iter(match.mapping['body']))))
       head = match['head']['val']
       match['statement']['val'] = Rule(head=match['head']['val'],body=[ast.nodes[body_node]['val'] for body_node in body_nodes])
       ast.remove_nodes_from(body_nodes)
@@ -483,7 +483,7 @@ def consistent_free_var_types_in_rule(ast,engine):
 # %% ../nbs/020_micro_passes.ipynb 50
 def assignments_to_name_val_tuple(ast,engine):
     for match in rewrite_iter(ast,lhs='''
-                                statement[type]-[idx=0]->var_name_node[val];
+                                statement[type]-[idx=0]->var_name_node[val],
                                 statement-[idx=1]->val_node[val]''',p='statement[type]',
                                 condition=lambda match: match['statement']['type'] in ['assignment','read_assignment'],
                                 # display_matches=True
