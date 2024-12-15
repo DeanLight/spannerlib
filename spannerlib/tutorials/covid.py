@@ -189,15 +189,15 @@ def agg_mention(group):
     """
     aggregates attribute groups of covid spans
     """
-    if 'IGNORE' in group.values:
+    if 'IGNORE' in group:
         return 'IGNORE'
-    elif 'negated' in group.values and not 'no_negated' in group.values:
+    elif 'negated' in group and not 'no_negated' in group:
         return 'negated'
-    elif 'future' in group.values and not 'no_future' in group.values:
+    elif 'future' in group and not 'no_future' in group:
         return 'negated'
-    elif 'other experiencer' in group.values or 'not relevant' in group.values:
+    elif 'other experiencer' in group or 'not relevant' in group:
         return 'negated'
-    elif 'positive' in group.values and not 'uncertain' in group.values and not 'no_positive' in group.values:
+    elif 'positive' in group and not 'uncertain' in group and not 'no_positive' in group:
         return 'positive'
     else:
         return 'uncertain'
@@ -207,11 +207,11 @@ def AggDocumentTags(group):
     """
     Classifies a document as 'POS', 'UNK', or 'NEG' based on COVID-19 attributes.
     """
-    if 'positive' in group.values:
+    if 'positive' in group:
         return 'POS'
-    elif 'uncertain' in group.values:
+    elif 'uncertain' in group:
         return 'UNK'
-    elif 'negated' in group.values:
+    elif 'negated' in group:
         return 'NEG'
     else:
         return 'UNK'
