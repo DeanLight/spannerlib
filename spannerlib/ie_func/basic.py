@@ -93,7 +93,7 @@ def rgx_split(delim, # the delimeter pattern to split on
     try:
         first_span = next(delim_iter)
         if first_span.start != 0:
-            yield(initial_tag,text[:first_span.start])
+            yield(Span(initial_tag),text[:first_span.start])
     except StopIteration:
         return
     prev_span = first_span
