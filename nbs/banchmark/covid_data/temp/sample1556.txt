@@ -1,0 +1,1 @@
+CC : Contact with COVID-positive individual.
