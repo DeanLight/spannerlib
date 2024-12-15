@@ -190,7 +190,8 @@ DefaultIEs().add(
 # %% ../../nbs/callbacks/001_basic_ies.ipynb 30
 def span_contained(s1, s2):
     """yields True if s1 is contained in s2, otherwise yield False"""
-    if s1.doc == s2.doc and s1.start >= s2.start and s1.end <= s2.end:
+    print(s1, s2, s1.doc, s2.doc, s1.start, s2.start, s1.end, s2.end)
+    if s1.name == s2.name and s1.start >= s2.start and s1.end <= s2.end:
         yield True
     else:
         yield False
