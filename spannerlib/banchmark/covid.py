@@ -16,15 +16,25 @@ import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
 from .. import get_magic_session,Session
+from ..ie_func.basic import rgx, rgx_is_match, rgx_split, span_arity, span_contained
 
 VERSION = "OLD"
 # VERSION = "SPANNERFLOW"
-if VERSION == "SPANNERFLOW":
+# VERSION = "SPANNERFLOW_PYTHON_IE"
+if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     from spannerflow.span import Span
 else:
     from spannerlib import Span
-    
 sess = get_magic_session()
+
+
+sess.register('py_rgx', rgx, [str, (str,Span)], span_arity)
+sess.register('py_rgx_split', rgx_split, [str, (str,Span)], [Span,Span])
+sess.register('py_rgx_is_match', rgx_is_match, [str, (str,Span)], [bool])
+sess.register('py_span_contained', span_contained, [Span,Span], [bool])
+
+    
+
 import spacy
 nlp = spacy.load("en_core_web_sm")
 
@@ -87,7 +97,7 @@ class PosFromList():
 pos_annotator = PosFromList(["NOUN", "PROPN", "PRON", "ADJ"])
 
 # %% ../../nbs/banchmark/001_covid.ipynb 9
-if VERSION == "SPANNERFLOW":
+if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     sess.register('split_sentence',split_sentence,[Span],[Span])
     sess.register('pos',pos_annotator,[Span],[Span,str])
     sess.register('lemma',lemmatizer,[Span],[Span,str])
@@ -157,7 +167,7 @@ raw_docs = pd.DataFrame([
     [p.name,p.read_text(),'raw_text'] for p in file_paths
 ],columns=['Path','Doc','Version']
 )
-if VERSION == "SPANNERFLOW":
+if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     sess.import_rel('Docs',raw_docs, scheme=[str, Span, str])
 else:
     sess.import_rel('Docs',raw_docs)
@@ -166,7 +176,7 @@ raw_docs
 # %% ../../nbs/banchmark/001_covid.ipynb 15
 lemma_tags = sess.export('?Lemmas(P,D,W,L)')
 lemma_docs = rewrite_docs(raw_docs,lemma_tags,'lemma')
-if VERSION == "SPANNERFLOW":    
+if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     sess.import_rel('Docs',lemma_docs, scheme=[str, Span, str])
 else:
     sess.import_rel('Docs',lemma_docs)
@@ -175,7 +185,7 @@ else:
 # %% ../../nbs/banchmark/001_covid.ipynb 17
 lemma_concept_matches = sess.export('?LemmaConceptMatches(Path,Doc,Span,Label)')
 lemma_concepts = rewrite_docs(lemma_docs,lemma_concept_matches,'lemma_concept')
-if VERSION == "SPANNERFLOW":
+if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     sess.import_rel('Docs',lemma_concepts, scheme=[str, Span, str])
 else:
     sess.import_rel('Docs',lemma_concepts)
@@ -183,7 +193,7 @@ else:
 # %% ../../nbs/banchmark/001_covid.ipynb 20
 pos_concept_matches = sess.export('?PosConceptMatches(P,D,W,L)')
 pos_concept_docs = rewrite_docs(lemma_concepts,pos_concept_matches,'pos_concept')
-if VERSION == "SPANNERFLOW":
+if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     sess.import_rel('Docs',pos_concept_docs, scheme=[str, Span, str])
 else:
     sess.import_rel('Docs',pos_concept_docs)
@@ -191,7 +201,7 @@ else:
 # %% ../../nbs/banchmark/001_covid.ipynb 22
 target_matches = sess.export('?TargetMatches(P,D,W,L)')
 target_rule_docs = rewrite_docs(pos_concept_docs,target_matches,'target_concept')
-if VERSION == "SPANNERFLOW":
+if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     sess.import_rel('Docs',target_rule_docs, scheme=[str, Span, str])
 else:
     sess.import_rel('Docs',target_rule_docs)
