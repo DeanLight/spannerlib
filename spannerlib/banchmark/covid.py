@@ -217,6 +217,8 @@ def agg_mention(group):
     """
     aggregates attribute groups of covid spans
     """
+    if VERSION == "OLD":
+        group = group.values
     if 'IGNORE' in group:
         return 'IGNORE'
     elif 'negated' in group and not 'no_negated' in group:
@@ -235,6 +237,8 @@ def AggDocumentTags(group):
     """
     Classifies a document as 'POS', 'UNK', or 'NEG' based on COVID-19 attributes.
     """
+    if VERSION == "OLD":
+        group = group.values
     if 'positive' in group:
         return 'POS'
     elif 'uncertain' in group:
