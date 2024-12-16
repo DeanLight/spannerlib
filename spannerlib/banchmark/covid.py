@@ -28,10 +28,10 @@ else:
 sess = get_magic_session()
 
 
-sess.register('rgx', rgx, [str, Span], span_arity)
-sess.register('rgx_split', rgx_split, [str, Span], [Span,Span])
-sess.register('rgx_is_match', rgx_is_match, [str, Span], [bool])
-sess.register('span_contained', span_contained, [Span, Span], [bool])    
+sess.register('py_rgx', rgx, [str, Span], span_arity)
+sess.register('py_rgx_split', rgx_split, [str, Span], [Span,Span])
+sess.register('py_rgx_is_match', rgx_is_match, [str, Span], [bool])
+sess.register('py_span_contained', span_contained, [Span, Span], [bool])    
 
 import spacy
 nlp = spacy.load("en_core_web_sm")
@@ -168,7 +168,6 @@ if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     sess.import_rel('Docs',raw_docs, scheme=[str, Span, str])
 else:
     sess.import_rel('Docs',raw_docs)
-raw_docs
 
 # %% ../../nbs/benchmark/001_covid.ipynb 15
 lemma_tags = sess.export('?Lemmas(P,D,W,L)')
