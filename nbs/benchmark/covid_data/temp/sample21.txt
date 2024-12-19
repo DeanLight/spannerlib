@@ -1,0 +1,1 @@
+Hospital Course: Patient was admitted to the ICU for COVID-19 ARDS requiring mechanical ventilation.
