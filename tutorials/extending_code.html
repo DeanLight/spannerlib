@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.39">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Extending pipelines – Spannerlib</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-e26003cea8cd680ca0c55a263523d882.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-b6f35d3e5f7cf9e5d8c19bd4060a2618.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../styles.css">
+<meta property="og:title" content="Extending pipelines – Spannerlib">
+<meta property="og:description" content="work bench">
+<meta property="og:site_name" content="Spannerlib">
+<meta name="twitter:title" content="Extending pipelines – Spannerlib">
+<meta name="twitter:description" content="work bench">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-sidebar docked nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Spannerlib</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../tutorials/introduction.html">Tutorials</a></li><li class="breadcrumb-item"><a href="../tutorials/extending_code.html">Extending Code</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome to Spannerlib</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tutorials</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/introduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Intro</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/basic_tasks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basic Examples</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/llm_code_documentation_example.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Copilot Agent</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/extending_code.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Extending Code</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/rewriting_a_real_codebase.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Rewriting a real codebase</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Callbacks</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../callbacks/basic_ies.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basic Callbacks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../callbacks/json_path.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">JsonPath</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../session.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Session Object</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Reference</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../inspecting_query_plans.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">View Query Plan</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#motivation" id="toc-motivation" class="nav-link active" data-scroll-target="#motivation">Motivation</a></li>
+  <li><a href="#problem-definition" id="toc-problem-definition" class="nav-link" data-scroll-target="#problem-definition">Problem definition</a></li>
+  <li><a href="#tldr" id="toc-tldr" class="nav-link" data-scroll-target="#tldr">TLDR</a></li>
+  <li><a href="#importing-ie-functions-and-logic-from-previous-tutorials" id="toc-importing-ie-functions-and-logic-from-previous-tutorials" class="nav-link" data-scroll-target="#importing-ie-functions-and-logic-from-previous-tutorials">Importing IE functions and Logic from previous tutorials</a></li>
+  <li><a href="#ie-functions-and-logic-from-previous-implementations" id="toc-ie-functions-and-logic-from-previous-implementations" class="nav-link" data-scroll-target="#ie-functions-and-logic-from-previous-implementations">IE functions and logic from previous implementations</a></li>
+  <li><a href="#adding-rag" id="toc-adding-rag" class="nav-link" data-scroll-target="#adding-rag">Adding RAG</a>
+  <ul class="collapse">
+  <li><a href="#building-a-vecdb-ie-function" id="toc-building-a-vecdb-ie-function" class="nav-link" data-scroll-target="#building-a-vecdb-ie-function">building a vecdb IE function</a></li>
+  <li><a href="#adding-stack-overflow-posts-to-vector-db" id="toc-adding-stack-overflow-posts-to-vector-db" class="nav-link" data-scroll-target="#adding-stack-overflow-posts-to-vector-db">Adding stack overflow posts to vector DB</a></li>
+  <li><a href="#extending-our-pipeline" id="toc-extending-our-pipeline" class="nav-link" data-scroll-target="#extending-our-pipeline">Extending our pipeline</a></li>
+  </ul></li>
+  <li><a href="#adding-user-feedback" id="toc-adding-user-feedback" class="nav-link" data-scroll-target="#adding-user-feedback">Adding user feedback</a>
+  <ul class="collapse">
+  <li><a href="#getting-positive-user-feedback-data." id="toc-getting-positive-user-feedback-data." class="nav-link" data-scroll-target="#getting-positive-user-feedback-data.">Getting positive user feedback data.</a></li>
+  <li><a href="#building-a-few-shot-prompt-and-pipeline" id="toc-building-a-few-shot-prompt-and-pipeline" class="nav-link" data-scroll-target="#building-a-few-shot-prompt-and-pipeline">Building a few shot prompt and pipeline</a></li>
+  </ul></li>
+  <li><a href="#putting-it-all-together" id="toc-putting-it-all-together" class="nav-link" data-scroll-target="#putting-it-all-together">Putting it all together</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/DeanLight/spannerlib/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../tutorials/introduction.html">Tutorials</a></li><li class="breadcrumb-item"><a href="../tutorials/extending_code.html">Extending Code</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Extending pipelines</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<section id="motivation" class="level2">
+<h2 class="anchored" data-anchor-id="motivation">Motivation</h2>
+<p>In the previous tutorial, we showed how Spannerlib can be used to build sophisticated LLM agents by combining LLMs with structured IE functions. The agent was able to be elegantly described by a small number of logical statements using spannerlog with the use of very generic IE functions.</p>
+<p>However, an elegant codebase is not worth much if it is hard to extend. In this tutorial, we will show how easy it is to extend spannerlib code, demonstrating that the spannerlib framework can be used to create modular code that is easily modifiable.</p>
+<p>Our usecase will be to extend our previous code documentation agent with two of the most commonly used prompt augmentation techniques used when building LLM agents. Namely:</p>
+<ul>
+<li>Retrival Augmented Generation (RAG)</li>
+<li>Few-shot Prompting</li>
+</ul>
+<p>We will introduce both briefly here.</p>
+<p>RAG - is a technique that utilized a vector database to dynamically augment an LLM prompt with information that might be relevant and helpful for the LLM in answering the prompt well. RAG requires a vector database, in which documents are stored along side an embedded vector representation of themselves. In RAG, before calling an LLM with a given quetion/task, we:</p>
+<ul>
+<li>Embed the question as a vector.</li>
+<li>Look for similar document in our database, based on vector similarity measures.</li>
+<li>Add these documents to the prompt.</li>
+<li>Call the LLM function.</li>
+</ul>
+<p>In our use-case, we will demonstrate how to add RAG over stackoverflow posts to add better context to our code completion agent.</p>
+<p>Few-shot Prompting - is a technique for tweaking a prompt to elicit answers that use the type of semantics/style/reasoning that we would like the LLM to perform. To do so, for a given task, we augment the prompt by adding question answer pairs of similar tasks to the prompt. This will help condition the activation of the LLMs towards similar answer that are relevant for our question.</p>
+<p>In our use-case, we will demonstrate how to add Few-shot Prompting using a database that collected question answer pairs that were given a positive review by a given user, to implement a userfeed back system. This system will enable us to improve our system per user without requiring any fine tuning of the model’s weights.</p>
+</section>
+<section id="problem-definition" class="level2">
+<h2 class="anchored" data-anchor-id="problem-definition">Problem definition</h2>
+<p>Given:</p>
+<ul>
+<li>A collection of python files.</li>
+<li>A cursor position in a python file.</li>
+<li>A vector database populated with high quality answers from stack overflow</li>
+<li>A database that contains question answer pairs from previous tasks that got positive feedback from users</li>
+</ul>
+<p>Return:</p>
+<ul>
+<li>A doc string of the python function that wraps the position of our cursor.</li>
+</ul>
+<p>We will reuse all previously introduced IE functions and add a new one:</p>
+<ul>
+<li><code>vector_search(query_document,k,namespace)-&gt;(similar_document)</code> which uses an external vector database and given a query document and a number <span class="math inline">\(k\)</span> returns <span class="math inline">\(k\)</span> similar documents from a given namespace in the vector database.
+<ul>
+<li>Note that vector DBs include namespaces for their data to enable categorising vectors and querying per category.</li>
+</ul></li>
+</ul>
+</section>
+<section id="tldr" class="level2">
+<h2 class="anchored" data-anchor-id="tldr">TLDR</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">%%</span>spannerlog</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># get documents from a vector db based on a prompt</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>RagContext(cursor,lex_concat(context))<span class="op">&lt;-</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    DocumentFunctionPrompt(cursor,prompt),</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    vector_search(prompt,<span class="dv">4</span>,<span class="st">'stackoverflow'</span>)<span class="op">-&gt;</span>(context,similarity_score).</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># inject documents into a prompt as context</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>RagPrompt(cursor,prompt)<span class="op">&lt;-</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    RagContext(cursor,context),</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    DocumentFunctionPrompt(cursor,document_promps),</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($rag_prompt,context,document_promps)<span class="op">-&gt;</span>(prompt).</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co"># format all user approved completion into q,a pairs</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>FewShotExamples(user,lex_concat(qa_pair))<span class="op">&lt;-</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    PositiveFeedback(user,q,a),</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($single_example_template,q,a)<span class="op">-&gt;</span>(qa_pair).</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co"># build a few shot prompt from approved completions</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>FewShotPrompt(user,prompt)<span class="op">&lt;-</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    FewShotExamples(user,examples),</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($fewshot_template,examples)<span class="op">-&gt;</span>(prompt).</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co"># combine the few shot prompt with the rag prompt</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co"># and call the llm to get the answer</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>FewShotRagDocument(user,cursor,prompt)<span class="op">&lt;-</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    PerUserCompletion(user,cursor),</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    FewShotPrompt(user,few_shot_prompt),</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    RagPrompt(cursor,rag_prompt),</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>(<span class="st">"</span><span class="sc">{}</span><span class="st"> </span><span class="sc">{}</span><span class="st">"</span>,rag_prompt,few_shot_prompt)<span class="op">-&gt;</span>(prompt),</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    llm($model,prompt)<span class="op">-&gt;</span>(answer).</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="importing-ie-functions-and-logic-from-previous-tutorials" class="level2">
+<h2 class="anchored" data-anchor-id="importing-ie-functions-and-logic-from-previous-tutorials">Importing IE functions and Logic from previous tutorials</h2>
+<div id="cell-10" class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># importing dependencies</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pandas <span class="im">import</span> DataFrame</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> spannerlib.utils <span class="im">import</span> load_env</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> spannerlib <span class="im">import</span> get_magic_session,Session,Span</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ast</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-11" class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># load openAI api key from env file</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>load_env()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="ie-functions-and-logic-from-previous-implementations" class="level2">
+<h2 class="anchored" data-anchor-id="ie-functions-and-logic-from-previous-implementations">IE functions and logic from previous implementations</h2>
+<div id="cell-13" class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> spannerlib.tutorials.basic <span class="im">import</span> llm,format_ie,string_schema,_get_client</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> spannerlib.tutorials.copilot <span class="im">import</span> ast_xpath,ast_to_span,lex_concat</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-14" class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> get_magic_session()</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>sess.register(<span class="st">'llm'</span>,llm,[<span class="bu">str</span>,<span class="bu">str</span>],[<span class="bu">str</span>])</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>sess.register(<span class="st">'format'</span>, format_ie, string_schema,[<span class="bu">str</span>])</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>sess.register(<span class="st">'ast_xpath'</span>,ast_xpath,[(<span class="bu">str</span>,Path,Span),<span class="bu">str</span>],[ast.AST])</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>sess.register(<span class="st">'ast_to_span'</span>,ast_to_span,[(<span class="bu">str</span>,Span,Path),ast.AST],[Span])</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>sess.register_agg(<span class="st">'lex_concat'</span>,lex_concat,[(<span class="bu">str</span>,Span)],[<span class="bu">str</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-15" class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>code_file <span class="op">=</span> Path(<span class="st">'copilot_data/example_code.py'</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>example_files <span class="op">=</span> pd.DataFrame([(Span(code_file),)])</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>cursors <span class="op">=</span>pd.DataFrame([(Span(code_file,<span class="dv">16</span>,<span class="dv">17</span>),)])</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>sess.import_rel(<span class="st">'Files'</span>,example_files)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>sess.import_rel(<span class="st">'Cursors'</span>,cursors)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>func_document_template <span class="op">=</span> <span class="st">"""system: based on the following context:</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="sc">{}</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="st">Explain the following function:</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="sc">{}</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="st">In the format of a doc string.</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>sess.import_var(<span class="st">'func_document_template'</span>,func_document_template)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-16" class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>FuncDefSpan(span,name)<span class="op">&lt;-</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    Files(text),</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    ast_xpath(text, <span class="st">"//FunctionDef"</span>)<span class="op">-&gt;</span>(node),</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    ast_to_span(text,node)<span class="op">-&gt;</span>(span),</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    expr_eval(<span class="st">"</span><span class="sc">{0}</span><span class="st">.name"</span>,node)<span class="op">-&gt;</span>(name).</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>FuncCallSpan(span,name)<span class="op">&lt;-</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    Files(text),</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    ast_xpath(text, <span class="st">"//Call/func/Name"</span>)<span class="op">-&gt;</span>(node),</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    ast_to_span(text,node)<span class="op">-&gt;</span>(span),</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    as_str(span)<span class="op">-&gt;</span>(name).</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>CursorWrappingFunc(cursor,name)<span class="op">&lt;-</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    Cursors(cursor),</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    FuncDefSpan(span,name),</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    span_contained(cursor,span)<span class="op">-&gt;</span>(<span class="va">True</span>).</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>Mentions(lex_concat(caller_span),called_name)<span class="op">&lt;-</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>    FuncCallSpan(called_span,called_name),</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>    FuncDefSpan(caller_span,caller_name),</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>    span_contained(called_span,caller_span)<span class="op">-&gt;</span>(<span class="va">True</span>).</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> <span class="st">'gpt-3.5-turbo'</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>DocumentFunctionPrompt(cursor,prompt)<span class="op">&lt;-</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>    CursorWrappingFunc(cursor,name),</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    Mentions(mentions,name),</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>    FuncDefSpan(def_span,name),</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>    as_str(def_span)<span class="op">-&gt;</span>(def_string),</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($func_document_template,mentions,def_string)<span class="op">-&gt;</span>(prompt).</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>DocumentFunction(cursor,answer)<span class="op">&lt;-</span></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>    DocumentFunctionPrompt(cursor,prompt),</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>    llm($model,prompt)<span class="op">-&gt;</span>(answer).</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="adding-rag" class="level2">
+<h2 class="anchored" data-anchor-id="adding-rag">Adding RAG</h2>
+<section id="building-a-vecdb-ie-function" class="level3">
+<h3 class="anchored" data-anchor-id="building-a-vecdb-ie-function">building a vecdb IE function</h3>
+<p>If the implementation details are not of interest, feel free to move to the next section.</p>
+<div id="cell-20" class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> faiss</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> openai</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> collections <span class="im">import</span> defaultdict</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> openai <span class="im">import</span> OpenAI</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_openai_embeddings(texts):</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    client <span class="op">=</span> _get_client()</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    response <span class="op">=</span> client.embeddings.create(</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>        model<span class="op">=</span><span class="st">"text-embedding-ada-002"</span>,  <span class="co"># or another embedding model</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>        <span class="bu">input</span><span class="op">=</span>texts</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    embeddings <span class="op">=</span> [item.embedding <span class="cf">for</span> item <span class="kw">in</span> response.data]</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.array(embeddings)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-21" class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> VecDB():</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>):</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.index_map<span class="op">=</span>{}<span class="co"># namespace: index</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.doc_map<span class="op">=</span>defaultdict(<span class="bu">list</span>)<span class="co"># namespace: list of docs</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.dim <span class="op">=</span> <span class="dv">1536</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> add_index(<span class="va">self</span>,namespace):</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.index_map[namespace] <span class="op">=</span> faiss.IndexFlatL2(<span class="va">self</span>.dim)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> add_docs(<span class="va">self</span>,documents,namespace<span class="op">=</span><span class="st">'default'</span>):</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">not</span> namespace <span class="kw">in</span> <span class="va">self</span>.index_map:</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>.add_index(namespace)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>        documents <span class="op">=</span> [<span class="bu">str</span>(doc) <span class="cf">for</span> doc <span class="kw">in</span> documents]</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>        embeddings <span class="op">=</span> get_openai_embeddings(documents)</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.index_map[namespace].add(embeddings.astype(<span class="st">'float32'</span>))</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.doc_map[namespace].extend(documents)</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> search(<span class="va">self</span>, query, k<span class="op">=</span><span class="dv">1</span>,namespace<span class="op">=</span><span class="st">'default'</span>):</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>        query_embedding <span class="op">=</span> get_openai_embeddings([query])[<span class="dv">0</span>]</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>        index <span class="op">=</span> <span class="va">self</span>.index_map[namespace]</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>        documents <span class="op">=</span> <span class="va">self</span>.doc_map[namespace]</span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>        D, I <span class="op">=</span> index.search(np.array([query_embedding]).astype(<span class="st">'float32'</span>), k)</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> [(documents[i], <span class="bu">float</span>(D[<span class="dv">0</span>][j])) <span class="cf">for</span> j, i <span class="kw">in</span> <span class="bu">enumerate</span>(I[<span class="dv">0</span>])]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-22" class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>documents <span class="op">=</span> [</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"FAISS is a library for efficient similarity search."</span>,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Vector databases are crucial for RAG pipelines."</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"FAISS was developed by Facebook AI Research."</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"RAG combines retrieval and generation for better results."</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-23" class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>db<span class="op">=</span>VecDB()</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>db.add_docs(documents)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>db.search(<span class="st">"RAG?"</span>,<span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>[('RAG combines retrieval and generation for better results.',
+  0.22323353588581085),
+ ('Vector databases are crucial for RAG pipelines.', 0.3760342001914978),
+ ('FAISS was developed by Facebook AI Research.', 0.5168014168739319),
+ ('FAISS is a library for efficient similarity search.', 0.5336617231369019)]</code></pre>
+</div>
+</div>
+<div id="cell-24" class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>sess.register(<span class="st">'vector_search'</span>,db.search,[(<span class="bu">str</span>,Span),<span class="bu">int</span>,<span class="bu">str</span>],[<span class="bu">str</span>,<span class="bu">float</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="adding-stack-overflow-posts-to-vector-db" class="level3">
+<h3 class="anchored" data-anchor-id="adding-stack-overflow-posts-to-vector-db">Adding stack overflow posts to vector DB</h3>
+<div id="cell-26" class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>docs <span class="op">=</span> Path(<span class="st">'copilot_data/stackoverflow_posts.txt'</span>).read_text().split(<span class="st">'DELIM'</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>docs <span class="op">=</span> [doc.strip() <span class="cf">for</span> doc <span class="kw">in</span> docs]</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>docs</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>['1. **Use clear and concise language**\n   Always strive for clarity in your documentation. Use simple, straightforward language and provide examples:\n\n   ```python\n   def calculate_area(length, width):\n       """\n       Calculate the area of a rectangle.\n\n       :param length: The length of the rectangle\n       :param width: The width of the rectangle\n       :return: The area of the rectangle\n       """\n       return length * width\n   ```',
+ '2. **Include code examples with comments**\n   Provide relevant code snippets with inline comments to explain each step:\n\n   ```javascript\n   // Function to calculate factorial\n   function factorial(n) {\n       if (n === 0 || n === 1) {\n           return 1; // Base case: 0! and 1! are 1\n       } else {\n           return n * factorial(n - 1); // Recursive case\n       }\n   }\n   ```',
+ "3. **Structure your documentation with markdown**\n   Use markdown to structure your documentation for better readability:\n\n   ```markdown\n   # My Project\n\n   ## Installation\n   ```bash\n   npm install my-project\n   ```\n\n   ## Usage\n   ```javascript\n   const myProject = require('my-project');\n   myProject.doSomething();\n   ```\n   ```",
+ '4. **Write for your audience with examples**\n   Adjust your language and examples based on your audience:\n\n   ```python\n   # For beginners\n   name = input("What\'s your name? ")\n   print(f"Hello, {name}!")\n\n   # For advanced users\n   def greet(name: str) -&gt; str:\n       return f"Hello, {name}!"\n   ```',
+ '5. **Keep it up-to-date with version information**\n   Include version information and update logs:\n\n   ```python\n   """\n   MyModule - A helpful utility\n\n   Version: 1.2.3\n   Last Updated: 2024-07-30\n\n   Changelog:\n   - 1.2.3: Fixed bug in process_data function\n   - 1.2.2: Added new feature X\n   """\n\n   def process_data(data):\n       # Implementation here\n       pass\n   ```',
+ '6. **Use diagrams and visuals with code**\n   Include ASCII diagrams or links to visual aids in your code comments:\n\n   ```python\n   def binary_search(arr, target):\n       """\n       Performs binary search.\n\n       ASCII Diagram:\n       [1, 3, 5, 7, 9]\n        ^     ^     ^\n       low   mid   high\n\n       :param arr: Sorted array\n       :param target: Target value\n       :return: Index of target or -1 if not found\n       """\n       # Implementation here\n       pass\n   ```',
+ '7. **Provide a table of contents with code sections**\n   For longer documents, include a table of contents with links to code sections:\n\n   ```markdown\n   # Table of Contents\n   1. [Installation](#installation)\n   2. [Usage](#usage)\n   3. [API Reference](#api-reference)\n\n   ## Installation\n   ```bash\n   pip install mypackage\n   ```\n\n   ## Usage\n   ```python\n   import mypackage\n   mypackage.function()\n   ```\n\n   ## API Reference\n   ```python\n   def function(param1, param2):\n       """Detailed function description"""\n       pass\n   ```\n   ```',
+ '8. **Use consistent formatting**\n   Maintain consistent formatting throughout your documentation:\n\n   ```python\n   def function_one(param1: int, param2: str) -&gt; bool:\n       """Does something."""\n       pass\n\n   def function_two(param1: float, param2: list) -&gt; dict:\n       """Does something else."""\n       pass\n   ```',
+ '9. **Include a "Getting Started" section with code**\n   Provide a quick start guide with simple code examples:\n\n   ```python\n   # Getting Started with MyLibrary\n\n   # 1. Import the library\n   import mylibrary\n\n   # 2. Create an instance\n   my_instance = mylibrary.MyClass()\n\n   # 3. Use a basic function\n   result = my_instance.do_something()\n\n   # 4. Print the result\n   print(result)\n   ```',
+ '10. **Document error messages and troubleshooting steps**\n    Include common error messages and their solutions:\n\n    ```python\n    try:\n        result = 10 / 0\n    except ZeroDivisionError as e:\n        print(f"Error: {e}")\n        print("Solution: Ensure the divisor is not zero.")\n    ```',
+ '11. **Use version control for documentation**\n    Show how to include documentation in version control:\n\n    ```bash\n    # Add documentation to git\n    git add docs/\n\n    # Commit changes\n    git commit -m "Updated API documentation for v2.0"\n\n    # Push to remote repository\n    git push origin main\n    ```',
+ '12. **Provide examples of input and output**\n    When documenting functions or APIs, include examples of expected inputs and outputs:\n\n    ```python\n    def square(n):\n        """\n        Return the square of a number.\n\n        :param n: The number to square\n        :return: The square of the input number\n\n        Example:\n        &gt;&gt;&gt; square(4)\n        16\n        &gt;&gt;&gt; square(-3)\n        9\n        """\n        return n ** 2\n    ```',
+ '13. **Use docstrings for inline documentation**\n    Use docstrings to provide inline documentation:\n\n    ```python\n    class MyClass:\n        """\n        A class that represents MyClass.\n\n        Attributes:\n            attr1 (int): Description of attr1\n            attr2 (str): Description of attr2\n        """\n\n        def __init__(self, attr1, attr2):\n            self.attr1 = attr1\n            self.attr2 = attr2\n\n        def my_method(self, param1):\n            """\n            Description of my_method.\n\n            :param param1: Description of param1\n            :return: Description of return value\n            """\n            pass\n    ```',
+ '14. **Include a changelog in your code**\n    Maintain a changelog to track major changes:\n\n    ```python\n    """\n    Changelog:\n\n    v1.1.0 (2024-07-30):\n    - Added new feature X\n    - Fixed bug in function Y\n\n    v1.0.1 (2024-07-15):\n    - Updated documentation\n    - Performance improvements\n\n    v1.0.0 (2024-07-01):\n    - Initial release\n    """\n\n    # Your code here\n    ```',
+ "15. **Provide context and explanations in comments**\n    Don't just describe what something does, explain why it's important:\n\n    ```python\n    # We use a cache to store expensive computation results\n    # This significantly improves performance for repeated calls\n    cache = {}\n\n    def expensive_function(n):\n        if n in cache:\n            return cache[n]\n        result = # ... some expensive computation\n        cache[n] = result\n        return result\n    ```",
+ '16. **Use links effectively in documentation**\n    Link to related sections or external resources:\n\n    ```python\n    """\n    For more information on this module, see:\n    - [API Documentation](https://example.com/api-docs)\n    - [Usage Examples](https://example.com/examples)\n    - Related function: `other_function()`\n    """\n\n    def my_function():\n        pass\n\n    def other_function():\n        pass\n    ```',
+ "17. **Include a search function (for online docs)**\n    For online documentation, implement a search feature. Here's a simple JavaScript example:\n\n    ```javascript\n    function searchDocs() {\n        var input = document.getElementById('searchInput').value.toLowerCase();\n        var elements = document.getElementsByClassName('searchable');\n        \n        for (var i = 0; i &lt; elements.length; i++) {\n            var content = elements[i].textContent.toLowerCase();\n            if (content.includes(input)) {\n                elements[i].style.display = 'block';\n            } else {\n                elements[i].style.display = 'none';\n            }\n        }\n    }\n    ```",
+ '18. **Write clear method and function signatures**\n    Clearly document the parameters, return values, and any exceptions:\n\n    ```python\n    def process_data(data: List[Dict[str, Any]],\n                     options: Optional[Dict[str, Any]] = None) -&gt; Tuple[List[Any], int]:\n        """\n        Process the input data according to specified options.\n\n        :param data: A list of dictionaries containing the input data\n        :param options: Optional dictionary of processing options\n        :return: A tuple containing the processed data and a status code\n        :raises ValueError: If the input data is empty or invalid\n        """\n        if not data:\n            raise ValueError("Input data cannot be empty")\n        \n        # Processing logic here\n        \n        return processed_data, status_code\n    ```',
+ '19. **Use meaningful variable and function names**\n    Choose descriptive names that convey the purpose or functionality:\n\n    ```python\n    def calculate_total_price(item_prices: List[float], tax_rate: float) -&gt; float:\n        """\n        Calculate the total price including tax.\n\n        :param item_prices: List of individual item prices\n        :param tax_rate: The tax rate as a decimal (e.g., 0.08 for 8%)\n        :return: The total price including tax\n        """\n        subtotal = sum(item_prices)\n        tax_amount = subtotal * tax_rate\n        total_price = subtotal + tax_amount\n        return total_price\n    ```',
+ '20. **Include a license and contribution guidelines**\n    For open-source projects, clearly state the license and provide contribution guidelines:\n\n    ```python\n    """\n    MyProject - A helpful Python utility\n\n    Copyright (c) 2024 Your Name\n\n    Licensed under the MIT License.\n    See LICENSE file for details.\n\n    Contribution Guidelines:\n    1. Fork the repository\n    2. Create a new branch for your feature\n    3. Write tests for your changes\n    4. Ensure all tests pass\n    5. Submit a pull request\n\n    For more details, see CONTRIBUTING.md\n    """\n\n    # Your code here\n    ```']</code></pre>
+</div>
+</div>
+<div id="cell-27" class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>db.add_docs(docs,namespace<span class="op">=</span><span class="st">'stackoverflow'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-28" class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>VecDBQueryExample(relevant_docs,similarity_score)<span class="op">&lt;-</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    vector_search(<span class="st">'python'</span>,<span class="dv">4</span>,<span class="st">'stackoverflow'</span>)<span class="op">-&gt;</span>(relevant_docs,similarity_score).</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>?VecDBQueryExample(relevant_docs,similarity_score)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?VecDBQueryExample(relevant_docs,similarity_score)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_b9ea1_row0_col0, #T_b9ea1_row0_col1, #T_b9ea1_row1_col0, #T_b9ea1_row1_col1, #T_b9ea1_row2_col0, #T_b9ea1_row2_col1, #T_b9ea1_row3_col0, #T_b9ea1_row3_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_b9ea1" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_b9ea1_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">relevant_docs</th>
+<th id="T_b9ea1_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">similarity_score</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_b9ea1_row0_col0" class="data row0 col0">16. **Use links effectively in documentation** Link to related sections or external resources: ```python """ For more information on this module, see: - [API Documentation](https://example.com/api-docs) - [Usage Examples](https://example.com/examples) - Related function: `other_function()` """ def my_function(): pass def other_function(): pass ```</td>
+<td id="T_b9ea1_row0_col1" class="data row0 col1">0.463158</td>
+</tr>
+<tr class="even">
+<td id="T_b9ea1_row1_col0" class="data row1 col0">20. **Include a license and contribution guidelines** For open-source projects, clearly state the license and provide contribution guidelines: ```python """ MyProject - A helpful Python utility Copyright (c) 2024 Your Name Licensed under the MIT License. See LICENSE file for details. Contribution Guidelines: 1. Fork the repository 2. Create a new branch for your feature 3. Write tests for your changes 4. Ensure all tests pass 5. Submit a pull request For more details, see CONTRIBUTING.md """ # Your code here ```</td>
+<td id="T_b9ea1_row1_col1" class="data row1 col1">0.474433</td>
+</tr>
+<tr class="odd">
+<td id="T_b9ea1_row2_col0" class="data row2 col0">4. **Write for your audience with examples** Adjust your language and examples based on your audience: ```python # For beginners name = input("What's your name? ") print(f"Hello, {name}!") # For advanced users def greet(name: str) -&gt; str: return f"Hello, {name}!" ```</td>
+<td id="T_b9ea1_row2_col1" class="data row2 col1">0.479981</td>
+</tr>
+<tr class="even">
+<td id="T_b9ea1_row3_col0" class="data row3 col0">9. **Include a "Getting Started" section with code** Provide a quick start guide with simple code examples: ```python # Getting Started with MyLibrary # 1. Import the library import mylibrary # 2. Create an instance my_instance = mylibrary.MyClass() # 3. Use a basic function result = my_instance.do_something() # 4. Print the result print(result) ```</td>
+<td id="T_b9ea1_row3_col1" class="data row3 col1">0.455388</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_b9ea1:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["relevant_docs", "similarity_score"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+</section>
+<section id="extending-our-pipeline" class="level3">
+<h3 class="anchored" data-anchor-id="extending-our-pipeline">Extending our pipeline</h3>
+<div id="cell-30" class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># let us recall the prompt we get from the original implementation</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-31" class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>?DocumentFunctionPrompt(C,P)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?DocumentFunctionPrompt(C,P)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_fbbdb_row0_col0, #T_fbbdb_row0_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_fbbdb" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_fbbdb_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">C</th>
+<th id="T_fbbdb_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">P</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_fbbdb_row0_col0" class="data row0 col0">[@example_code.py,16,17) "x"</td>
+<td id="T_fbbdb_row0_col1" class="data row0 col1">system: based on the following context: def g(x,y): return f(x,y)**2 def method(self, y): return f(self.x, y) Explain the following function: def f(x,y): x+y In the format of a doc string.</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_fbbdb:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["C", "P"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+<p>We use our previous prompt to query our stackoverflow database for relevant posts. We concat our relevant documents to one string so we can format them in a new prompt.</p>
+<div id="cell-33" class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>RagContext(cursor,lex_concat(context))<span class="op">&lt;-</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    DocumentFunctionPrompt(cursor,prompt),</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    vector_search(prompt,<span class="dv">4</span>,<span class="st">'stackoverflow'</span>)<span class="op">-&gt;</span>(context,similarity_score).</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>?RagContext(cursor,context)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?RagContext(cursor,context)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_a99cd_row0_col0, #T_a99cd_row0_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_a99cd" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_a99cd_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">cursor</th>
+<th id="T_a99cd_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">context</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_a99cd_row0_col0" class="data row0 col0">[@example_code.py,16,17) "x"</td>
+<td id="T_a99cd_row0_col1" class="data row0 col1">1. **Use clear and concise language** Always strive for clarity in your documentation. Use simple, straightforward language and provide examples: ```python def calculate_area(length, width): """ Calculate the area of a rectangle. :param length: The length of the rectangle :param width: The width of the rectangle :return: The area of the rectangle """ return length * width ``` 12. **Provide examples of input and output** When documenting functions or APIs, include examples of expected inputs and outputs: ```python def square(n): """ Return the square of a number. :param n: The number to square :return: The square of the input number Example: &gt;&gt;&gt; square(4) 16 &gt;&gt;&gt; square(-3) 9 """ return n ** 2 ``` 13. **Use docstrings for inline documentation** Use docstrings to provide inline documentation: ```python class MyClass: """ A class that represents MyClass. Attributes: attr1 (int): Description of attr1 attr2 (str): Description of attr2 """ def __init__(self, attr1, attr2): self.attr1 = attr1 self.attr2 = attr2 def my_method(self, param1): """ Description of my_method. :param param1: Description of param1 :return: Description of return value """ pass ``` 15. **Provide context and explanations in comments** Don't just describe what something does, explain why it's important: ```python # We use a cache to store expensive computation results # This significantly improves performance for repeated calls cache = {} def expensive_function(n): if n in cache: return cache[n] result = # ... some expensive computation cache[n] = result return result ```</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_a99cd:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["cursor", "context"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+<p>Now we will build a rag template</p>
+<div id="cell-35" class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>rag_prompt <span class="op">=</span> <span class="st">"""system: Based on the following context</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="sc">{}</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="st">answer the following question</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="sc">{}</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>sess.import_var(<span class="st">'rag_prompt'</span>,rag_prompt)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>And compose our old prompt with the context we got, ultimately sending it to our llm.</p>
+<div id="cell-37" class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>RagPrompt(cursor,prompt)<span class="op">&lt;-</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    RagContext(cursor,context),</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    DocumentFunctionPrompt(cursor,document_promps),</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($rag_prompt,context,document_promps)<span class="op">-&gt;</span>(prompt).</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>RagCompletion(cursor,answer)<span class="op">&lt;-</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>    RagPrompt(cursor,prompt),</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>    llm($model,prompt)<span class="op">-&gt;</span>(answer).</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>?RagCompletion(cursor,answer)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?RagCompletion(cursor,answer)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_888cb_row0_col0, #T_888cb_row0_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_888cb" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_888cb_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">cursor</th>
+<th id="T_888cb_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">answer</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_888cb_row0_col0" class="data row0 col0">[@example_code.py,16,17) "x"</td>
+<td id="T_888cb_row0_col1" class="data row0 col1">python def f(x, y): """ Calculate the sum of two numbers. :param x: The first number to be added :param y: The second number to be added :return: The sum of x and y Example: &gt;&gt;&gt; f(2, 3) 5 &gt;&gt;&gt; f(-2, 5) 3 """ return x + y</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_888cb:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["cursor", "answer"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+</section>
+</section>
+<section id="adding-user-feedback" class="level2">
+<h2 class="anchored" data-anchor-id="adding-user-feedback">Adding user feedback</h2>
+<section id="getting-positive-user-feedback-data." class="level3">
+<h3 class="anchored" data-anchor-id="getting-positive-user-feedback-data.">Getting positive user feedback data.</h3>
+<p>Here is some example feedback data. Showing a completion that was liked by bob and joe respectively.</p>
+<div id="cell-41" class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>positive_feedback <span class="op">=</span>pd.DataFrame([</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    [<span class="st">'bob'</span>,<span class="st">"""</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="st">def calculate_area(length, width):</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="st">    return length * width</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>,</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a><span class="st">"""Calculate the area of a rectangle.</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a><span class="st">Args:</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a><span class="st">    length (float): The length of the rectangle.</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="st">    width (float): The width of the rectangle.</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a><span class="st">Returns:</span></span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a><span class="st">    float: The area of the rectangle.</span></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a><span class="st">Example:</span></span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a><span class="st">    &gt;&gt;&gt; calculate_area(5, 3)</span></span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a><span class="st">    15.0</span></span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>],</span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>[<span class="st">'joe'</span>,<span class="st">"""</span></span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a><span class="st">def factorial(n):</span></span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true" tabindex="-1"></a><span class="st">    if n &lt; 0:</span></span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true" tabindex="-1"></a><span class="st">        raise ValueError("Factorial is not defined for negative numbers")</span></span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true" tabindex="-1"></a><span class="st">    if n == 0 or n == 1:</span></span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a><span class="st">        return 1</span></span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a><span class="st">    return n * factorial(n - 1)</span></span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>,</span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb27-29"><a href="#cb27-29" aria-hidden="true" tabindex="-1"></a><span class="st">    Calculate the factorial of a non-negative integer.</span></span>
+<span id="cb27-30"><a href="#cb27-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-31"><a href="#cb27-31" aria-hidden="true" tabindex="-1"></a><span class="st">    This function computes the factorial of a given non-negative integer using</span></span>
+<span id="cb27-32"><a href="#cb27-32" aria-hidden="true" tabindex="-1"></a><span class="st">    a recursive approach.</span></span>
+<span id="cb27-33"><a href="#cb27-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-34"><a href="#cb27-34" aria-hidden="true" tabindex="-1"></a><span class="st">    :param n: The non-negative integer to calculate the factorial for.</span></span>
+<span id="cb27-35"><a href="#cb27-35" aria-hidden="true" tabindex="-1"></a><span class="st">    :type n: int</span></span>
+<span id="cb27-36"><a href="#cb27-36" aria-hidden="true" tabindex="-1"></a><span class="st">    :returns: The factorial of the input number.</span></span>
+<span id="cb27-37"><a href="#cb27-37" aria-hidden="true" tabindex="-1"></a><span class="st">    :rtype: int</span></span>
+<span id="cb27-38"><a href="#cb27-38" aria-hidden="true" tabindex="-1"></a><span class="st">    :raises ValueError: If the input is negative.</span></span>
+<span id="cb27-39"><a href="#cb27-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-40"><a href="#cb27-40" aria-hidden="true" tabindex="-1"></a><span class="st">    :Example:</span></span>
+<span id="cb27-41"><a href="#cb27-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-42"><a href="#cb27-42" aria-hidden="true" tabindex="-1"></a><span class="st">    &gt;&gt;&gt; factorial(5)</span></span>
+<span id="cb27-43"><a href="#cb27-43" aria-hidden="true" tabindex="-1"></a><span class="st">    120</span></span>
+<span id="cb27-44"><a href="#cb27-44" aria-hidden="true" tabindex="-1"></a><span class="st">    &gt;&gt;&gt; factorial(0)</span></span>
+<span id="cb27-45"><a href="#cb27-45" aria-hidden="true" tabindex="-1"></a><span class="st">    1</span></span>
+<span id="cb27-46"><a href="#cb27-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-47"><a href="#cb27-47" aria-hidden="true" tabindex="-1"></a><span class="st">    .. note::</span></span>
+<span id="cb27-48"><a href="#cb27-48" aria-hidden="true" tabindex="-1"></a><span class="st">       The factorial of 0 is defined to be 1.</span></span>
+<span id="cb27-49"><a href="#cb27-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-50"><a href="#cb27-50" aria-hidden="true" tabindex="-1"></a><span class="st">    .. warning::</span></span>
+<span id="cb27-51"><a href="#cb27-51" aria-hidden="true" tabindex="-1"></a><span class="st">       This function may cause a stack overflow for very large inputs due to its recursive nature.</span></span>
+<span id="cb27-52"><a href="#cb27-52" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>]</span>
+<span id="cb27-53"><a href="#cb27-53" aria-hidden="true" tabindex="-1"></a>],columns<span class="op">=</span>[<span class="st">'user'</span>,<span class="st">'q'</span>,<span class="st">'a'</span>])</span>
+<span id="cb27-54"><a href="#cb27-54" aria-hidden="true" tabindex="-1"></a>positive_feedback</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">user</th>
+<th data-quarto-table-cell-role="th">q</th>
+<th data-quarto-table-cell-role="th">a</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>bob</td>
+<td>def calculate_area(length, width): return...</td>
+<td>Calculate the area of a rectangle. Args: ...</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>joe</td>
+<td>def factorial(n): if n &lt; 0: raise...</td>
+<td>Calculate the factorial of a non-negative...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="cell-42" class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>sess.import_rel(<span class="st">'PositiveFeedback'</span>,positive_feedback)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="building-a-few-shot-prompt-and-pipeline" class="level3">
+<h3 class="anchored" data-anchor-id="building-a-few-shot-prompt-and-pipeline">Building a few shot prompt and pipeline</h3>
+<div id="cell-44" class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>fewshot_prompt_template <span class="op">=</span> <span class="st">"""system: answer similar to the following:</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="sc">{}</span><span class="st">"""</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>few_shot_single_example_prompt_template <span class="op">=</span> <span class="st">"""</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="st">user: </span><span class="sc">{}</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="st">assistant: </span><span class="sc">{}</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>sess.import_var(<span class="st">'fewshot_template'</span>,fewshot_prompt_template)</span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>sess.import_var(<span class="st">'single_example_template'</span>,few_shot_single_example_prompt_template)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-45" class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>sess.remove_head(<span class="st">'FewShotRagDocumentPrompt'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we simply get the feedback of the relevant user and compose it into a prompt</p>
+<div id="cell-47" class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>FewShotExamples(user,lex_concat(qa_pair))<span class="op">&lt;-</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>    PositiveFeedback(user,q,a),</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($single_example_template,q,a)<span class="op">-&gt;</span>(qa_pair).</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>?FewShotExamples(<span class="st">'bob'</span>,Q)</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>FewShotPrompt(user,prompt)<span class="op">&lt;-</span></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>    FewShotExamples(user,examples),</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($fewshot_template,examples)<span class="op">-&gt;</span>(prompt).</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>?FewShotPrompt(<span class="st">'bob'</span>,prompt)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>"?FewShotExamples('bob',Q)"</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_9e4ce_row0_col0 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_9e4ce" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_9e4ce_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">Q</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_9e4ce_row0_col0" class="data row0 col0">user: def calculate_area(length, width): return length * width assistant: Calculate the area of a rectangle. Args: length (float): The length of the rectangle. width (float): The width of the rectangle. Returns: float: The area of the rectangle. Example: &gt;&gt;&gt; calculate_area(5, 3) 15.0</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_9e4ce:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["Q"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>"?FewShotPrompt('bob',prompt)"</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_9e6b9_row0_col0 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_9e6b9" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_9e6b9_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">prompt</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_9e6b9_row0_col0" class="data row0 col0">system: answer similar to the following: user: def calculate_area(length, width): return length * width assistant: Calculate the area of a rectangle. Args: length (float): The length of the rectangle. width (float): The width of the rectangle. Returns: float: The area of the rectangle. Example: &gt;&gt;&gt; calculate_area(5, 3) 15.0</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_9e6b9:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["prompt"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+<p>Finally we compose our RAG and Few-shot prompt to get one single prompt.</p>
+<div id="cell-49" class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>FewShotRagDocumentPrompt(user,cursor,prompt)<span class="op">&lt;-</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>    FewShotPrompt(user,few_shot_prompt),</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>    RagPrompt(cursor,rag_prompt),</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>(<span class="st">"</span><span class="sc">{}</span><span class="st"> </span><span class="sc">{}</span><span class="st">"</span>,rag_prompt,few_shot_prompt)<span class="op">-&gt;</span>(prompt).</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-50" class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>display(sess.export(<span class="st">'?FewShotRagDocumentPrompt("bob",C,P)'</span>)[<span class="st">'P'</span>][<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'system: Based on the following context\n1. **Use clear and concise language**\n   Always strive for clarity in your documentation. Use simple, straightforward language and provide examples:\n\n   ```python\n   def calculate_area(length, width):\n       """\n       Calculate the area of a rectangle.\n\n       :param length: The length of the rectangle\n       :param width: The width of the rectangle\n       :return: The area of the rectangle\n       """\n       return length * width\n   ```\n12. **Provide examples of input and output**\n    When documenting functions or APIs, include examples of expected inputs and outputs:\n\n    ```python\n    def square(n):\n        """\n        Return the square of a number.\n\n        :param n: The number to square\n        :return: The square of the input number\n\n        Example:\n        &gt;&gt;&gt; square(4)\n        16\n        &gt;&gt;&gt; square(-3)\n        9\n        """\n        return n ** 2\n    ```\n13. **Use docstrings for inline documentation**\n    Use docstrings to provide inline documentation:\n\n    ```python\n    class MyClass:\n        """\n        A class that represents MyClass.\n\n        Attributes:\n            attr1 (int): Description of attr1\n            attr2 (str): Description of attr2\n        """\n\n        def __init__(self, attr1, attr2):\n            self.attr1 = attr1\n            self.attr2 = attr2\n\n        def my_method(self, param1):\n            """\n            Description of my_method.\n\n            :param param1: Description of param1\n            :return: Description of return value\n            """\n            pass\n    ```\n15. **Provide context and explanations in comments**\n    Don\'t just describe what something does, explain why it\'s important:\n\n    ```python\n    # We use a cache to store expensive computation results\n    # This significantly improves performance for repeated calls\n    cache = {}\n\n    def expensive_function(n):\n        if n in cache:\n            return cache[n]\n        result = # ... some expensive computation\n        cache[n] = result\n        return result\n    ```\nanswer the following question\nsystem: based on the following context:\ndef g(x,y):\n    return f(x,y)**2\ndef method(self, y):\n        return f(self.x, y)\nExplain the following function:\ndef f(x,y):\n    x+y\nIn the format of a doc string.\n\n system: answer similar to the following:\n\nuser: \ndef calculate_area(length, width):\n    return length * width\n\nassistant: Calculate the area of a rectangle.\n\nArgs:\n    length (float): The length of the rectangle.\n    width (float): The width of the rectangle.\n\nReturns:\n    float: The area of the rectangle.\n\nExample:\n    &gt;&gt;&gt; calculate_area(5, 3)\n    15.0\n\n'</code></pre>
+</div>
+</div>
+<p>Now lets assume we have completion requests reaching our agents from multiple users.</p>
+<div id="cell-52" class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>per_user_completion <span class="op">=</span> pd.DataFrame(</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>    [[<span class="st">'bob'</span>,Span(code_file,<span class="dv">16</span>,<span class="dv">17</span>)]]</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>sess.import_rel(<span class="st">'PerUserCompletion'</span>,per_user_completion)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We Generate the prompt based on the user and their cursor position and call the llm.</p>
+<div id="cell-54" class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>FewShotCompletion(user,cursor,answer)<span class="op">&lt;-</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>    PerUserCompletion(user,cursor),</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>    FewShotRagDocumentPrompt(user,cursor,prompt),</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>    llm($model,prompt)<span class="op">-&gt;</span>(answer).</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-55" class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(sess.export(<span class="st">"?FewShotCompletion('bob',C,A)"</span>)[<span class="st">'A'</span>][<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Calculate the sum of two numbers.
+
+Args:
+    x (float): The first number.
+    y (float): The second number.
+
+Returns:
+    float: The sum of x and y.
+
+Example:
+    &gt;&gt;&gt; f(3, 5)
+    8</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="putting-it-all-together" class="level2">
+<h2 class="anchored" data-anchor-id="putting-it-all-together">Putting it all together</h2>
+<p>So with the addition of a single simple IE function, we extended our pipeline’s logic:</p>
+<div id="cell-58" class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>FuncDefSpan(span,name)<span class="op">&lt;-</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>    Files(text),</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>    ast_xpath(text, <span class="st">"//FunctionDef"</span>)<span class="op">-&gt;</span>(node),</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>    ast_to_span(text,node)<span class="op">-&gt;</span>(span),</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>    expr_eval(<span class="st">"</span><span class="sc">{0}</span><span class="st">.name"</span>,node)<span class="op">-&gt;</span>(name).</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>FuncCallSpan(span,name)<span class="op">&lt;-</span></span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>    Files(text),</span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a>    ast_xpath(text, <span class="st">"//Call/func/Name"</span>)<span class="op">-&gt;</span>(node),</span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a>    ast_to_span(text,node)<span class="op">-&gt;</span>(span),</span>
+<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a>    as_str(span)<span class="op">-&gt;</span>(name).</span>
+<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a>CursorWrappingFunc(cursor,name)<span class="op">&lt;-</span></span>
+<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a>    Cursors(cursor),</span>
+<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a>    FuncDefSpan(span,name),</span>
+<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a>    span_contained(cursor,span)<span class="op">-&gt;</span>(<span class="va">True</span>).</span>
+<span id="cb41-17"><a href="#cb41-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-18"><a href="#cb41-18" aria-hidden="true" tabindex="-1"></a>Mentions(lex_concat(caller_span),called_name)<span class="op">&lt;-</span></span>
+<span id="cb41-19"><a href="#cb41-19" aria-hidden="true" tabindex="-1"></a>    FuncCallSpan(called_span,called_name),</span>
+<span id="cb41-20"><a href="#cb41-20" aria-hidden="true" tabindex="-1"></a>    FuncDefSpan(caller_span,caller_name),</span>
+<span id="cb41-21"><a href="#cb41-21" aria-hidden="true" tabindex="-1"></a>    span_contained(called_span,caller_span)<span class="op">-&gt;</span>(<span class="va">True</span>).</span>
+<span id="cb41-22"><a href="#cb41-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-23"><a href="#cb41-23" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> <span class="st">'gpt-3.5-turbo'</span></span>
+<span id="cb41-24"><a href="#cb41-24" aria-hidden="true" tabindex="-1"></a>DocumentFunctionPrompt(cursor,prompt)<span class="op">&lt;-</span></span>
+<span id="cb41-25"><a href="#cb41-25" aria-hidden="true" tabindex="-1"></a>    CursorWrappingFunc(cursor,name),</span>
+<span id="cb41-26"><a href="#cb41-26" aria-hidden="true" tabindex="-1"></a>    Mentions(mentions,name),</span>
+<span id="cb41-27"><a href="#cb41-27" aria-hidden="true" tabindex="-1"></a>    FuncDefSpan(def_span,name),</span>
+<span id="cb41-28"><a href="#cb41-28" aria-hidden="true" tabindex="-1"></a>    as_str(def_span)<span class="op">-&gt;</span>(def_string),</span>
+<span id="cb41-29"><a href="#cb41-29" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($func_document_template,mentions,def_string)<span class="op">-&gt;</span>(prompt).</span>
+<span id="cb41-30"><a href="#cb41-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-31"><a href="#cb41-31" aria-hidden="true" tabindex="-1"></a>DocumentFunction(cursor,answer)<span class="op">&lt;-</span></span>
+<span id="cb41-32"><a href="#cb41-32" aria-hidden="true" tabindex="-1"></a>    DocumentFunctionPrompt(cursor,prompt),</span>
+<span id="cb41-33"><a href="#cb41-33" aria-hidden="true" tabindex="-1"></a>    llm($model,prompt)<span class="op">-&gt;</span>(answer).</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>By adding the following rules</p>
+<div id="cell-60" class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>RagContext(cursor,lex_concat(context))<span class="op">&lt;-</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>    DocumentFunctionPrompt(cursor,prompt),</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>    vector_search(prompt,<span class="dv">4</span>,<span class="st">'stackoverflow'</span>)<span class="op">-&gt;</span>(context,similarity_score).</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>RagPrompt(cursor,prompt)<span class="op">&lt;-</span></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>    RagContext(cursor,context),</span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>    DocumentFunctionPrompt(cursor,document_promps),</span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($rag_prompt,context,document_promps)<span class="op">-&gt;</span>(prompt).</span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a>RagCompletion(cursor,answer)<span class="op">&lt;-</span></span>
+<span id="cb42-11"><a href="#cb42-11" aria-hidden="true" tabindex="-1"></a>    RagPrompt(cursor,prompt),</span>
+<span id="cb42-12"><a href="#cb42-12" aria-hidden="true" tabindex="-1"></a>    llm($model,prompt)<span class="op">-&gt;</span>(answer).</span>
+<span id="cb42-13"><a href="#cb42-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-14"><a href="#cb42-14" aria-hidden="true" tabindex="-1"></a>FewShotExamples(user,lex_concat(qa_pair))<span class="op">&lt;-\</span></span>
+<span id="cb42-15"><a href="#cb42-15" aria-hidden="true" tabindex="-1"></a>    PositiveFeedback(user,q,a),</span>
+<span id="cb42-16"><a href="#cb42-16" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($single_example_template,q,a)<span class="op">-&gt;</span>(qa_pair).</span>
+<span id="cb42-17"><a href="#cb42-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-18"><a href="#cb42-18" aria-hidden="true" tabindex="-1"></a>FewShotPrompt(user,prompt)<span class="op">&lt;-</span></span>
+<span id="cb42-19"><a href="#cb42-19" aria-hidden="true" tabindex="-1"></a>    FewShotExamples(user,examples),</span>
+<span id="cb42-20"><a href="#cb42-20" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>($fewshot_template,examples)<span class="op">-&gt;</span>(prompt).</span>
+<span id="cb42-21"><a href="#cb42-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-22"><a href="#cb42-22" aria-hidden="true" tabindex="-1"></a>FewShotRagDocumentPrompt(user,cursor,prompt)<span class="op">&lt;-</span></span>
+<span id="cb42-23"><a href="#cb42-23" aria-hidden="true" tabindex="-1"></a>    FewShotPrompt(user,few_shot_prompt),</span>
+<span id="cb42-24"><a href="#cb42-24" aria-hidden="true" tabindex="-1"></a>    RagPrompt(cursor,rag_prompt),</span>
+<span id="cb42-25"><a href="#cb42-25" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>(<span class="st">"</span><span class="sc">{}</span><span class="st"> </span><span class="sc">{}</span><span class="st">"</span>,rag_prompt,few_shot_prompt)<span class="op">-&gt;</span>(prompt).</span>
+<span id="cb42-26"><a href="#cb42-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-27"><a href="#cb42-27" aria-hidden="true" tabindex="-1"></a>FewShotCompletion(user,cursor,answer)<span class="op">&lt;-</span></span>
+<span id="cb42-28"><a href="#cb42-28" aria-hidden="true" tabindex="-1"></a>    PerUserCompletion(user,cursor),</span>
+<span id="cb42-29"><a href="#cb42-29" aria-hidden="true" tabindex="-1"></a>    FewShotRagDocumentPrompt(user,cursor,prompt),</span>
+<span id="cb42-30"><a href="#cb42-30" aria-hidden="true" tabindex="-1"></a>    llm($model,prompt)<span class="op">-&gt;</span>(answer).</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>And that was all it took to add RAG and FewShot prompting to our pipeline.</p>
+<p>Note that since we kept our different completion rules, we can also compare them easily. We went from smart addition of context from our code base.</p>
+<div id="cell-63" class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> cursor,answer <span class="kw">in</span> sess.export(<span class="st">'?DocumentFunction(cursor,answer)'</span>).itertuples(index<span class="op">=</span><span class="va">False</span>,name<span class="op">=</span><span class="va">None</span>):</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(answer)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>"""
+This function calculates the sum of two inputs x and y.
+"""
+</code></pre>
+</div>
+</div>
+<p>To adding context to stack overflow, resulting in a docstring the follows best practice:</p>
+<div id="cell-65" class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> cursor,answer <span class="kw">in</span> sess.export(<span class="st">'?RagCompletion(cursor,answer)'</span>).itertuples(index<span class="op">=</span><span class="va">False</span>,name<span class="op">=</span><span class="va">None</span>):</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f'</span><span class="sc">{</span>answer<span class="sc">}</span><span class="ss">'</span>.replace(<span class="st">'```'</span>,<span class="st">''</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>python
+def f(x, y):
+    """
+    Calculate the sum of two numbers.
+
+    :param x: The first number to be added
+    :param y: The second number to be added
+    :return: The sum of x and y
+
+    Example:
+    &gt;&gt;&gt; f(2, 3)
+    5
+    &gt;&gt;&gt; f(-2, 5)
+    3
+    """
+    return x + y
+</code></pre>
+</div>
+</div>
+<p>To adding user feedback, resulting in a docstring for bob that follows his preffered doc string formatting style:</p>
+<div id="cell-67" class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> cursor,answer <span class="kw">in</span> sess.export(<span class="st">'?FewShotCompletion("bob",cursor,answer)'</span>).itertuples(index<span class="op">=</span><span class="va">False</span>,name<span class="op">=</span><span class="va">None</span>):</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(answer)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Calculate the sum of two numbers.
+
+Args:
+    x (float): The first number.
+    y (float): The second number.
+
+Returns:
+    float: The sum of x and y.
+
+Example:
+    &gt;&gt;&gt; f(3, 5)
+    8</code></pre>
+</div>
+</div>
+<p>This is by no means a production ready agent, but it does demonstrate that complex agents can be programmed and modified easily using few generic IE functions and small elegnat chunks of declerative logic.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp("https:\/\/DeanLight\.github\.io\/spannerlib");
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/DeanLight/spannerlib/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>

@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.39">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Introduction – Spannerlib</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-e26003cea8cd680ca0c55a263523d882.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-b6f35d3e5f7cf9e5d8c19bd4060a2618.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+<link rel="stylesheet" href="../styles.css">
+<meta property="og:title" content="Introduction – Spannerlib">
+<meta property="og:description" content="work bench">
+<meta property="og:site_name" content="Spannerlib">
+<meta name="twitter:title" content="Introduction – Spannerlib">
+<meta name="twitter:description" content="work bench">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-sidebar docked nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Spannerlib</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../tutorials/introduction.html">Tutorials</a></li><li class="breadcrumb-item"><a href="../tutorials/introduction.html">Intro</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome to Spannerlib</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tutorials</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/introduction.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Intro</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/basic_tasks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basic Examples</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/llm_code_documentation_example.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Copilot Agent</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/extending_code.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Extending Code</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/rewriting_a_real_codebase.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Rewriting a real codebase</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Callbacks</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../callbacks/basic_ies.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basic Callbacks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../callbacks/json_path.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">JsonPath</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../session.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Session Object</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Reference</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../inspecting_query_plans.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">View Query Plan</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#installation" id="toc-installation" class="nav-link active" data-scroll-target="#installation">Installation</a></li>
+  <li><a href="#the-spannerlog-language" id="toc-the-spannerlog-language" class="nav-link" data-scroll-target="#the-spannerlog-language">The Spannerlog Language</a>
+  <ul class="collapse">
+  <li><a href="#type-safe-datalog" id="toc-type-safe-datalog" class="nav-link" data-scroll-target="#type-safe-datalog">Type safe Datalog</a></li>
+  <li><a href="#aggregation" id="toc-aggregation" class="nav-link" data-scroll-target="#aggregation">Aggregation</a></li>
+  <li><a href="#ie-functions" id="toc-ie-functions" class="nav-link" data-scroll-target="#ie-functions">IE functions</a></li>
+  <li><a href="#dry-with-variables." id="toc-dry-with-variables." class="nav-link" data-scroll-target="#dry-with-variables.">DRY with variables.</a></li>
+  <li><a href="#spans" id="toc-spans" class="nav-link" data-scroll-target="#spans">Spans</a></li>
+  </ul></li>
+  <li><a href="#python-spannerlog-interactions" id="toc-python-spannerlog-interactions" class="nav-link" data-scroll-target="#python-spannerlog-interactions">Python Spannerlog Interactions</a>
+  <ul class="collapse">
+  <li><a href="#exporting-query-results-and-changing-sessions." id="toc-exporting-query-results-and-changing-sessions." class="nav-link" data-scroll-target="#exporting-query-results-and-changing-sessions.">Exporting query results and changing sessions.</a></li>
+  <li><a href="#importing-data-to-spannerlog" id="toc-importing-data-to-spannerlog" class="nav-link" data-scroll-target="#importing-data-to-spannerlog">Importing data to spannerlog</a></li>
+  <li><a href="#defining-and-registering-ie-and-aggregation-functions" id="toc-defining-and-registering-ie-and-aggregation-functions" class="nav-link" data-scroll-target="#defining-and-registering-ie-and-aggregation-functions">Defining and registering IE and Aggregation functions</a></li>
+  </ul></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/DeanLight/spannerlib/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../tutorials/introduction.html">Tutorials</a></li><li class="breadcrumb-item"><a href="../tutorials/introduction.html">Intro</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Introduction</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>this project is built with nbdev, which is a full literate programming environment built on Jupyter Notebooks. That means that every piece of documentation, including the page you’re reading now, can be accessed as interactive Jupyter notebook. <br> <a href="https://colab.research.google.com/github/DeanLight/spannerlib/blob/master/nbs/introduction.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" class="img-fluid" alt="Open In Colab"></a></p>
+</div>
+</div>
+<p>This tutorial will teach you the basics of the spannerlog language and the spannerlib framework.</p>
+<p>Spannerlog is: * Similar to Datalog, but has type safety features * Has support for aggregation functions * Enables using stateless user defined functions called IE functions to derive new relations from existing relations * has some DRY features to help you write spannerlog code effectively * comes with support for Document Spanners using the <a href="https://DeanLight.github.io/spannerlib/spans_and_pandas.html#span"><code>Span</code></a> class.</p>
+<p>Spannerlib, via its <a href="https://DeanLight.github.io/spannerlib/session.html#session"><code>Session</code></a> object, enables: * registering IE functions, and aggregations functions to be used as callbacks in spannerlog. * executing spannerlog code programmatically</p>
+<section id="installation" class="level2">
+<h2 class="anchored" data-anchor-id="installation">Installation</h2>
+<p>prerequisites:</p>
+<ul>
+<li>Have <a href="https://www.python.org/downloads/">Python</a> version 3.8 or above installed</li>
+</ul>
+<p>To download and install spannerlog run the following commands in your terminal:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/DeanLight/spannerlib</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> spannerlib</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install . </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Make sure you are calling the pip version of your current python environment. To install with another python interpreter, run</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span>path_to_python_interpreter<span class="op">&gt;</span> -m <span class="ex">pip</span> install .</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>You can also install spannerlib in the current Jupyter kernel: <!-- #endregion --></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">!</span>git clone https:<span class="op">//</span>github.com<span class="op">/</span>DeanLight<span class="op">/</span>spannerlib</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="op">!</span>pip install spannerlib</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>In order to use spannerlib in jupyter notebooks, you must first load it:</p>
+<div id="cell-11" class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> spannerlib</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Importing the spannerlog library automatically loads the <code>%%spannerlog</code> cell magic which accepts spannerlog queries as shown below.</p>
+<div id="cell-13" class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>new uncle(<span class="bu">str</span>, <span class="bu">str</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>uncle(<span class="st">"bob"</span>, <span class="st">"greg"</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>?uncle(X,Y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?uncle(X,Y)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_93ec9_row0_col0, #T_93ec9_row0_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_93ec9" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_93ec9_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">X</th>
+<th id="T_93ec9_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">Y</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_93ec9_row0_col0" class="data row0 col0">bob</td>
+<td id="T_93ec9_row0_col1" class="data row0 col1">greg</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_93ec9:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["X", "Y"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+</section>
+<section id="the-spannerlog-language" class="level2">
+<h2 class="anchored" data-anchor-id="the-spannerlog-language">The Spannerlog Language</h2>
+<section id="type-safe-datalog" class="level3">
+<h3 class="anchored" data-anchor-id="type-safe-datalog">Type safe Datalog</h3>
+<p>Spannerlog syntax is very similar to datalog, but relations and their types must be declared using the <code>new</code> keyword.</p>
+<div id="cell-17" class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># defining relations</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>new parent(<span class="bu">str</span>,<span class="bu">str</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># defining initial facts</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>parent(<span class="st">'xerces'</span>, <span class="st">'brooke'</span>)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>parent(<span class="st">'brooke'</span>, <span class="st">'damocles'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Rules can be defined that describe how to derive new facts from existing facts. * We call the part to the left of the <code>&lt;-</code> the rule’s head (or head clause). * We call the part to the right of the <code>&lt;-</code> the rule’s body (made up of body clauses).</p>
+<div id="cell-19" class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># you can define relations recursively</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co"># and use line escapes for long rules to make them more readable</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>ancestor(X, Y) <span class="op">&lt;-</span> parent(X, Y).</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>ancestor(X, Y) <span class="op">&lt;-</span> parent(X, Z),</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>     ancestor(Z, Y).</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>derived and existing facts can be queried using the <code>?</code> operator, with either Logical Variables such as <code>X</code> or constants.</p>
+<div id="cell-21" class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>?parent(X,Y)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>?ancestor(<span class="st">'xerces'</span>,Y)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>?ancestor(<span class="st">'xerces'</span>,<span class="st">'brooke'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?parent(X,Y)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_b6ee1_row0_col0, #T_b6ee1_row0_col1, #T_b6ee1_row1_col0, #T_b6ee1_row1_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_b6ee1" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_b6ee1_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">X</th>
+<th id="T_b6ee1_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">Y</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_b6ee1_row0_col0" class="data row0 col0">brooke</td>
+<td id="T_b6ee1_row0_col1" class="data row0 col1">damocles</td>
+</tr>
+<tr class="even">
+<td id="T_b6ee1_row1_col0" class="data row1 col0">xerces</td>
+<td id="T_b6ee1_row1_col1" class="data row1 col1">brooke</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_b6ee1:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["X", "Y"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>"?ancestor('xerces',Y)"</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_be6c8_row0_col0, #T_be6c8_row1_col0 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_be6c8" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_be6c8_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">Y</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_be6c8_row0_col0" class="data row0 col0">brooke</td>
+</tr>
+<tr class="even">
+<td id="T_be6c8_row1_col0" class="data row1 col0">damocles</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_be6c8:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["Y"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>"?ancestor('xerces','brooke')"</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>True</code></pre>
+</div>
+</div>
+<p>Spannerlog has built in support for declaring relations for primitive types: * <code>int</code> * <code>str</code> * <code>float</code> * <code>bool</code></p>
+<p>But programatically, you can define relations and add facts of any pythonic data type.</p>
+</section>
+<section id="aggregation" class="level3">
+<h3 class="anchored" data-anchor-id="aggregation">Aggregation</h3>
+<p>You can use aggregation functions in a rule’s head to express group-by-and-aggregate logic. Grouping happens on the non-aggregated variables; the other variables are aggregated by their respective functions.</p>
+<div id="cell-25" class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>numDescendants(X,count(Y)) <span class="op">&lt;-</span> ancestor(X,Y).</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>?numDescendants(X,N)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?numDescendants(X,N)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_06eda_row0_col0, #T_06eda_row0_col1, #T_06eda_row1_col0, #T_06eda_row1_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_06eda" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_06eda_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">X</th>
+<th id="T_06eda_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">N</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_06eda_row0_col0" class="data row0 col0">brooke</td>
+<td id="T_06eda_row0_col1" class="data row0 col1">1</td>
+</tr>
+<tr class="even">
+<td id="T_06eda_row1_col0" class="data row1 col0">xerces</td>
+<td id="T_06eda_row1_col1" class="data row1 col1">2</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_06eda:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["X", "N"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+<p>Built-in aggregations include: * min * max * sum * avg * count</p>
+<p>But you will see in later sections that external aggregation functions can be defined.</p>
+</section>
+<section id="ie-functions" class="level3">
+<h3 class="anchored" data-anchor-id="ie-functions">IE functions</h3>
+<p>Given a pure (stateless) function <code>f(X,Y)-&gt;(Z)</code> we can think of <code>f</code> as deriving information from <code>(x,y)</code> values to generate <code>(z)</code> values. In the relational settings, IE functions are pure functions that take tuples over some input schema and derive a number of new tuples from them over some output schema. We can use IE functions as body clauses to derive new facts.</p>
+<p>IE functions are invoked using the <code>func_name(InputVars...)-&gt;(OutputVars...)</code> syntax.</p>
+<div id="cell-29" class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>new Texts(<span class="bu">str</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>Texts(<span class="st">"Hello darkness my old friend"</span>)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>Texts(<span class="st">"I've come to talk with you again"</span>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>Words(Word) <span class="op">&lt;-</span> Texts(X), rgx(<span class="st">"(\w+)"</span>,X)<span class="op">-&gt;</span>(Word).</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>?Words(W)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?Words(W)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_ca603_row0_col0, #T_ca603_row1_col0, #T_ca603_row2_col0, #T_ca603_row3_col0, #T_ca603_row4_col0, #T_ca603_row5_col0, #T_ca603_row6_col0, #T_ca603_row7_col0, #T_ca603_row8_col0, #T_ca603_row9_col0, #T_ca603_row10_col0, #T_ca603_row11_col0, #T_ca603_row12_col0 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_ca603" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_ca603_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">W</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_ca603_row0_col0" class="data row0 col0">[@9a1d0f,0,5) "Hello"</td>
+</tr>
+<tr class="even">
+<td id="T_ca603_row1_col0" class="data row1 col0">[@9a1d0f,6,14) "darkness"</td>
+</tr>
+<tr class="odd">
+<td id="T_ca603_row2_col0" class="data row2 col0">[@9a1d0f,15,17) "my"</td>
+</tr>
+<tr class="even">
+<td id="T_ca603_row3_col0" class="data row3 col0">[@9a1d0f,18,21) "old"</td>
+</tr>
+<tr class="odd">
+<td id="T_ca603_row4_col0" class="data row4 col0">[@9a1d0f,22,28) "friend"</td>
+</tr>
+<tr class="even">
+<td id="T_ca603_row5_col0" class="data row5 col0">[@c7e66d,0,1) "I"</td>
+</tr>
+<tr class="odd">
+<td id="T_ca603_row6_col0" class="data row6 col0">[@c7e66d,2,4) "ve"</td>
+</tr>
+<tr class="even">
+<td id="T_ca603_row7_col0" class="data row7 col0">[@c7e66d,5,9) "come"</td>
+</tr>
+<tr class="odd">
+<td id="T_ca603_row8_col0" class="data row8 col0">[@c7e66d,10,12) "to"</td>
+</tr>
+<tr class="even">
+<td id="T_ca603_row9_col0" class="data row9 col0">[@c7e66d,13,17) "talk"</td>
+</tr>
+<tr class="odd">
+<td id="T_ca603_row10_col0" class="data row10 col0">[@c7e66d,18,22) "with"</td>
+</tr>
+<tr class="even">
+<td id="T_ca603_row11_col0" class="data row11 col0">[@c7e66d,23,26) "you"</td>
+</tr>
+<tr class="odd">
+<td id="T_ca603_row12_col0" class="data row12 col0">[@c7e66d,27,32) "again"</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_ca603:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["W"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": "pageLength", "topEnd": "search", "bottomStart": "info", "bottomEnd": "paging"}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+<p><a href="https://DeanLight.github.io/spannerlib/callbacks/rust_spanner_regex.html#rgx"><code>rgx</code></a> is part of the built-in IE functions. It returns Spans over the original text. We will learn more Spans later.</p>
+</section>
+<section id="dry-with-variables." class="level3">
+<h3 class="anchored" data-anchor-id="dry-with-variables.">DRY with variables.</h3>
+<p>Variable that appear in rule’s and queries are called logical variables. To help make our code more DRY and easier to read we can also include normal variables and dereference them in rules and in facts using the <code>$</code> operator. As follows:</p>
+<div id="cell-33" class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>darkness_sentence <span class="op">=</span> <span class="st">"hello darkness my old friend"</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>sunshine_sentence <span class="op">=</span> <span class="st">"Im walking on sunshine"</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>new SentenceSentiment(<span class="bu">str</span>,<span class="bu">bool</span>)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>SentenceSentiment($darkness_sentence, <span class="va">False</span>)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>SentenceSentiment($sunshine_sentence, <span class="va">True</span>)</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>?SentenceSentiment($darkness_sentence,Y)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>word_pattern <span class="op">=</span> <span class="st">"(\w+)"</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>BadWords(Word) <span class="op">&lt;-</span> SentenceSentiment(Sentence, <span class="va">False</span>), rgx($word_pattern, Sentence)<span class="op">-&gt;</span>(Word).</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>?BadWords(W)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?SentenceSentiment($darkness_sentence,Y)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_c7d70_row0_col0 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_c7d70" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_c7d70_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">Y</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_c7d70_row0_col0" class="data row0 col0">False</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_c7d70:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["Y"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>'?BadWords(W)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_89d4f_row0_col0, #T_89d4f_row1_col0, #T_89d4f_row2_col0, #T_89d4f_row3_col0, #T_89d4f_row4_col0 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_89d4f" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_89d4f_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">W</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_89d4f_row0_col0" class="data row0 col0">[@42bf20,0,5) "hello"</td>
+</tr>
+<tr class="even">
+<td id="T_89d4f_row1_col0" class="data row1 col0">[@42bf20,6,14) "darkness"</td>
+</tr>
+<tr class="odd">
+<td id="T_89d4f_row2_col0" class="data row2 col0">[@42bf20,15,17) "my"</td>
+</tr>
+<tr class="even">
+<td id="T_89d4f_row3_col0" class="data row3 col0">[@42bf20,18,21) "old"</td>
+</tr>
+<tr class="odd">
+<td id="T_89d4f_row4_col0" class="data row4 col0">[@42bf20,22,28) "friend"</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_89d4f:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["W"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+</section>
+<section id="spans" class="level3">
+<h3 class="anchored" data-anchor-id="spans">Spans</h3>
+<p>Spans, or document spanners, are objects that describe an interval of a string. They are available as part of the library and can be used as such:</p>
+<div id="cell-36" class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> spannerlib <span class="im">import</span> Span</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-37" class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>some_text <span class="op">=</span> <span class="st">"hello darkness my old friend"</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>full_span <span class="op">=</span> Span(some_text)</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>full_span,<span class="bu">str</span>(full_span)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>([@42bf20,0,28) "hello dark...", 'hello darkness my old friend')</code></pre>
+</div>
+</div>
+<p>Note that Spans are represented by a triple of <code>[doc_id,i,j)</code>. They encode the string <code>doc_id[i:j]</code>.</p>
+<p>You can control the <code>doc_id</code> with the <code>name</code> parameter, it is also initialized automatically as a file’s name when a Path object is fed to a span.</p>
+<div id="cell-39" class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>Span(some_text,name<span class="op">=</span><span class="st">"greeting"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>[@greeting,0,28) "hello dark..."</code></pre>
+</div>
+</div>
+<div id="cell-40" class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>file_path <span class="op">=</span> Path(<span class="st">"copilot_data/example_code.py"</span>)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>file_span <span class="op">=</span> Span(file_path)</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>file_span</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>[@example_code.py,0,178) "def f(x,y)..."</code></pre>
+</div>
+</div>
+<p>Spans can be initialized with specific indices:</p>
+<div id="cell-42" class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>first_2_words <span class="op">=</span> Span(some_text, start<span class="op">=</span><span class="dv">0</span>, end<span class="op">=</span><span class="dv">14</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>first_2_words,<span class="bu">str</span>(first_2_words)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>([@42bf20,0,14) "hello dark...", 'hello darkness')</code></pre>
+</div>
+</div>
+<p>And can be sliced like a string to produce new spans with matching indices.</p>
+<div id="cell-44" class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>darkness <span class="op">=</span> first_2_words[<span class="dv">6</span>:<span class="dv">14</span>]</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>darkness</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>[@42bf20,6,14) "darkness"</code></pre>
+</div>
+</div>
+<div id="cell-45" class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>dark <span class="op">=</span> darkness[:<span class="dv">4</span>]</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>dark</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>[@42bf20,6,10) "dark"</code></pre>
+</div>
+</div>
+<p>Due to an open <a href="https://github.com/pandas-dev/pandas/issues/46744">issue</a> in <code>pandas</code>, Spans and other classes are not printed properly in dataframes.</p>
+<div id="cell-47" class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.DataFrame([</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>    [full_span, <span class="bu">str</span>(full_span)],</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>    [file_span, <span class="bu">str</span>(file_span)],</span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>    [first_2_words, <span class="bu">str</span>(first_2_words)],</span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>    [darkness, <span class="bu">str</span>(darkness)],</span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>    [dark, <span class="bu">str</span>(dark)]</span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>])</span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>df</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">0</th>
+<th data-quarto-table-cell-role="th">1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>(h, e, l, l, o, , d, a, r, k, n, e, s, s, , ...</td>
+<td>hello darkness my old friend</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>(d, e, f, , f, (, x, ,, y, ), :, \n, , , ,...</td>
+<td>def f(x,y): x+y def g(x,y): return f...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>(h, e, l, l, o, , d, a, r, k, n, e, s, s)</td>
+<td>hello darkness</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>(d, a, r, k, n, e, s, s)</td>
+<td>darkness</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>(d, a, r, k)</td>
+<td>dark</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Which is why we need to use the <code>map(repr)</code> workaround to see them clearly. This is also done behind the scenes by spannerlog.</p>
+<div id="cell-49" class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>df.<span class="bu">map</span>(<span class="bu">repr</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">0</th>
+<th data-quarto-table-cell-role="th">1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>[@42bf20,0,28) "hello dark..."</td>
+<td>'hello darkness my old friend'</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>[@example_code.py,0,178) "def f(x,y)..."</td>
+<td>'def f(x,y):\n x+y \n\ndef g(x,y):\n ret...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>[@42bf20,0,14) "hello dark..."</td>
+<td>'hello darkness'</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>[@42bf20,6,14) "darkness"</td>
+<td>'darkness'</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>[@42bf20,6,10) "dark"</td>
+<td>'dark'</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Many default IE functions use Spans as their return types. To convert a Span (or anything else) to a string, we can use the <a href="https://DeanLight.github.io/spannerlib/callbacks/basic_ies.html#as_str"><code>as_str</code></a> IE function.</p>
+<div id="cell-51" class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>BadWordStrings(Word) <span class="op">&lt;-</span> BadWords(WordSpan),as_str(WordSpan)<span class="op">-&gt;</span>(Word).</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>?BadWordStrings(W)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?BadWordStrings(W)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_7e847_row0_col0, #T_7e847_row1_col0, #T_7e847_row2_col0, #T_7e847_row3_col0, #T_7e847_row4_col0 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_7e847" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_7e847_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">W</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_7e847_row0_col0" class="data row0 col0">darkness</td>
+</tr>
+<tr class="even">
+<td id="T_7e847_row1_col0" class="data row1 col0">friend</td>
+</tr>
+<tr class="odd">
+<td id="T_7e847_row2_col0" class="data row2 col0">hello</td>
+</tr>
+<tr class="even">
+<td id="T_7e847_row3_col0" class="data row3 col0">my</td>
+</tr>
+<tr class="odd">
+<td id="T_7e847_row4_col0" class="data row4 col0">old</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_7e847:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["W"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+</section>
+</section>
+<section id="python-spannerlog-interactions" class="level2">
+<h2 class="anchored" data-anchor-id="python-spannerlog-interactions">Python Spannerlog Interactions</h2>
+<section id="exporting-query-results-and-changing-sessions." class="level3">
+<h3 class="anchored" data-anchor-id="exporting-query-results-and-changing-sessions.">Exporting query results and changing sessions.</h3>
+<p>All interactions between the spannerlog and python, is mediated through a <a href="https://DeanLight.github.io/spannerlib/session.html#session"><code>Session</code></a> object. For example, calling the <code>export</code> method with a string with spannerlog code will execute it.</p>
+<div id="cell-55" class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> spannerlib <span class="im">import</span> Session</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>sess<span class="op">=</span>Session()</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a><span class="co"># exports returns the value of the last statement in our code, which is the query in this case.</span></span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>uncle_df <span class="op">=</span> sess.export(<span class="st">"""</span></span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a><span class="st">new uncle(str, str)</span></span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a><span class="st">uncle("bob", "greg")</span></span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a><span class="st">?uncle(X,Y)</span></span>
+<span id="cb38-9"><a href="#cb38-9" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>)</span>
+<span id="cb38-10"><a href="#cb38-10" aria-hidden="true" tabindex="-1"></a>uncle_df</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">X</th>
+<th data-quarto-table-cell-role="th">Y</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>bob</td>
+<td>greg</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>In fact, the magic system that allows us to use <code>%%spannerlog</code> cells, simply sends initializes a session object and runs the code we put in <code>%%spannerlog</code> cells through it. The magic system also prints the results of queries to the string for ease of debugging.</p>
+<p>To get or change the session that the magic system uses, do the following:</p>
+<div id="cell-57" class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> spannerlib <span class="im">import</span> get_magic_session,set_magic_session</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>magic_sess <span class="op">=</span> get_magic_session()</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>magic_sess.export(<span class="st">"?BadWordStrings(W)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">W</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>darkness</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>friend</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>hello</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>my</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>old</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>As you can see, rules run in the magic cells where executed inside the <code>magic_sess</code> object we now have access to. Now lets set the magic system to use the <a href="https://DeanLight.github.io/spannerlib/session.html#session"><code>Session</code></a> bound to the <code>sess</code> variable.</p>
+<div id="cell-59" class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>set_magic_session(sess)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we can query <code>uncle</code> from the magic system.</p>
+<div id="cell-61" class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>?uncle(X,Y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?uncle(X,Y)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_682d0_row0_col0, #T_682d0_row0_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_682d0" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_682d0_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">X</th>
+<th id="T_682d0_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">Y</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_682d0_row0_col0" class="data row0 col0">bob</td>
+<td id="T_682d0_row0_col1" class="data row0 col1">greg</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_682d0:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["X", "Y"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+<p>Using sessions programatically, we can not only get results into python, allowing us to post process them, we can also run spannerlog code outside of a jupyter notebook.</p>
+</section>
+<section id="importing-data-to-spannerlog" class="level3">
+<h3 class="anchored" data-anchor-id="importing-data-to-spannerlog">Importing data to spannerlog</h3>
+<p>Usually, our data doesnt come as spannerlog facts, but rather from other relational sources. We can import our data into a session as follows:</p>
+<div id="cell-65" class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co"># either a path to a csv file, or a dataframe</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>aunts_data <span class="op">=</span> pd.DataFrame([</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"susan"</span>, <span class="st">"greg"</span>],</span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"susan"</span>, <span class="st">"jerry"</span>]</span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a>], columns<span class="op">=</span>[<span class="st">"Aunt"</span>, <span class="st">"Of"</span>])</span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>sess.import_rel(name<span class="op">=</span><span class="st">"Aunts"</span>, data<span class="op">=</span>aunts_data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-66" class="cell">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>?Aunts(X,Y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?Aunts(X,Y)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_f4097_row0_col0, #T_f4097_row0_col1, #T_f4097_row1_col0, #T_f4097_row1_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_f4097" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_f4097_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">X</th>
+<th id="T_f4097_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">Y</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_f4097_row0_col0" class="data row0 col0">susan</td>
+<td id="T_f4097_row0_col1" class="data row0 col1">greg</td>
+</tr>
+<tr class="even">
+<td id="T_f4097_row1_col0" class="data row1 col0">susan</td>
+<td id="T_f4097_row1_col1" class="data row1 col1">jerry</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_f4097:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["X", "Y"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+<p>We can also import variables from python into spannerlog.</p>
+<div id="cell-68" class="cell">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>sess.import_var(name<span class="op">=</span><span class="st">'fox_sent'</span>, value<span class="op">=</span><span class="st">'what does the fox say?'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-69" class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>FoxyWords(Word) <span class="op">&lt;-</span> rgx(<span class="st">"(\w+)"</span>,$fox_sent)<span class="op">-&gt;</span>(Word).</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>?FoxyWords(W)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?FoxyWords(W)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_1fc39_row0_col0, #T_1fc39_row1_col0, #T_1fc39_row2_col0, #T_1fc39_row3_col0, #T_1fc39_row4_col0 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_1fc39" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_1fc39_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">W</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_1fc39_row0_col0" class="data row0 col0">[@0ffcc6,0,4) "what"</td>
+</tr>
+<tr class="even">
+<td id="T_1fc39_row1_col0" class="data row1 col0">[@0ffcc6,5,9) "does"</td>
+</tr>
+<tr class="odd">
+<td id="T_1fc39_row2_col0" class="data row2 col0">[@0ffcc6,10,13) "the"</td>
+</tr>
+<tr class="even">
+<td id="T_1fc39_row3_col0" class="data row3 col0">[@0ffcc6,14,17) "fox"</td>
+</tr>
+<tr class="odd">
+<td id="T_1fc39_row4_col0" class="data row4 col0">[@0ffcc6,18,21) "say"</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_1fc39:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["W"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+<p>There are also auxilary methods that help deleting rules if you made an error when defining a rule and do not want to restart the session, such as: * <code>remove_all_rules</code> * <code>remove_rule</code> * <code>remode_head</code></p>
+<p>For a full list of methods and options, see the Session class in the reference guide.</p>
+</section>
+<section id="defining-and-registering-ie-and-aggregation-functions" class="level3">
+<h3 class="anchored" data-anchor-id="defining-and-registering-ie-and-aggregation-functions">Defining and registering IE and Aggregation functions</h3>
+<p>Part of what makes spannerlib powerful, is that you can define your own callbacks as python functions and register them for use right away. * An IE function is a stateless function that takes a tuple over an input schema and returns as <code>Iterable</code> over an output schema. * An Aggregation function (Agg function for short) is a stateless function that takes a set/list of values and returns a single value. To register our functions we need to tell the session what input/output schema to expect.</p>
+<div id="cell-73" class="cell">
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="co">"hello $ world $#"</span>.count(<span class="st">"$"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>2</code></pre>
+</div>
+</div>
+<div id="cell-74" class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> char_positions(text,char):</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># here we return a list of tuples</span></span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> [(i,) <span class="cf">for</span> i,letter <span class="kw">in</span> <span class="bu">enumerate</span>(text) <span class="cf">if</span> char<span class="op">==</span>letter]</span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> char_positions_iter(text,char):</span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># we can also return a lazy iterable using python generators</span></span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i,letter <span class="kw">in</span> <span class="bu">enumerate</span>(text):</span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> letter<span class="op">==</span>char:</span>
+<span id="cb51-9"><a href="#cb51-9" aria-hidden="true" tabindex="-1"></a>            <span class="co"># spannerlib knows to wrap single values in a tuple</span></span>
+<span id="cb51-10"><a href="#cb51-10" aria-hidden="true" tabindex="-1"></a>            <span class="cf">yield</span> i </span>
+<span id="cb51-11"><a href="#cb51-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-12"><a href="#cb51-12" aria-hidden="true" tabindex="-1"></a><span class="co"># We register our function's input/output schema as a list of pythonic types</span></span>
+<span id="cb51-13"><a href="#cb51-13" aria-hidden="true" tabindex="-1"></a>sess.register(<span class="st">'char_pos'</span>,char_positions_iter,[<span class="bu">str</span>,<span class="bu">str</span>],[<span class="bu">int</span>])</span>
+<span id="cb51-14"><a href="#cb51-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-15"><a href="#cb51-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-16"><a href="#cb51-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> count_twice(positions):</span>
+<span id="cb51-17"><a href="#cb51-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">2</span><span class="op">*</span><span class="bu">len</span>(positions)</span>
+<span id="cb51-18"><a href="#cb51-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-19"><a href="#cb51-19" aria-hidden="true" tabindex="-1"></a>sess.register_agg(<span class="st">'count_twice'</span>,count_twice,[<span class="bu">int</span>],[<span class="bu">int</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-75" class="cell">
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>new Texts(<span class="bu">str</span>)</span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>Texts(<span class="st">"hello darkness my old friend$"</span>)</span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>Texts(<span class="st">"I need a $ $ $ is what i need"</span>)</span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a>DollarPos(Text,Pos) <span class="op">&lt;-</span> Texts(Text),char_pos(Text,<span class="st">"$"</span>)<span class="op">-&gt;</span>(Pos).</span>
+<span id="cb52-6"><a href="#cb52-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-7"><a href="#cb52-7" aria-hidden="true" tabindex="-1"></a>?DollarPos(T,P)</span>
+<span id="cb52-8"><a href="#cb52-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-9"><a href="#cb52-9" aria-hidden="true" tabindex="-1"></a>TwiceTotalDollars(Text,count_twice(Pos)) <span class="op">&lt;-</span> DollarPos(Text,Pos).</span>
+<span id="cb52-10"><a href="#cb52-10" aria-hidden="true" tabindex="-1"></a>?TwiceTotalDollars(T,N)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>'?DollarPos(T,P)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_df42f_row0_col0, #T_df42f_row0_col1, #T_df42f_row1_col0, #T_df42f_row1_col1, #T_df42f_row2_col0, #T_df42f_row2_col1, #T_df42f_row3_col0, #T_df42f_row3_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_df42f" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_df42f_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">T</th>
+<th id="T_df42f_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">P</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_df42f_row0_col0" class="data row0 col0">I need a $ $ $ is what i need</td>
+<td id="T_df42f_row0_col1" class="data row0 col1">9</td>
+</tr>
+<tr class="even">
+<td id="T_df42f_row1_col0" class="data row1 col0">I need a $ $ $ is what i need</td>
+<td id="T_df42f_row1_col1" class="data row1 col1">11</td>
+</tr>
+<tr class="odd">
+<td id="T_df42f_row2_col0" class="data row2 col0">I need a $ $ $ is what i need</td>
+<td id="T_df42f_row2_col1" class="data row2 col1">13</td>
+</tr>
+<tr class="even">
+<td id="T_df42f_row3_col0" class="data row3 col0">hello darkness my old friend$</td>
+<td id="T_df42f_row3_col1" class="data row3 col1">28</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_df42f:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["T", "P"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>'?TwiceTotalDollars(T,N)'</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+#T_a365c_row0_col0, #T_a365c_row0_col1, #T_a365c_row1_col0, #T_a365c_row1_col1 {
+  overflow-wrap: break-word;
+  max-width: 800px;
+  text-align: left;
+}
+</style>
+
+<table id="T_a365c" class="display nowrap caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th id="T_a365c_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">T</th>
+<th id="T_a365c_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">N</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td id="T_a365c_row0_col0" class="data row0 col0">I need a $ $ $ is what i need</td>
+<td id="T_a365c_row0_col1" class="data row0 col1">6</td>
+</tr>
+<tr class="even">
+<td id="T_a365c_row1_col0" class="data row1 col0">hello darkness my old friend$</td>
+<td id="T_a365c_row1_col1" class="data row1 col1">2</td>
+</tr>
+</tbody>
+</table>
+
+
+<script type="module">
+    const { DataTable, jQuery: $ } = await import(window._datatables_src_for_itables_2_1_4);
+
+    document.querySelectorAll("#T_a365c:not(.dataTable)").forEach(table => {
+        // Define the table data
+        
+
+        // Define the dt_args
+        let dt_args = {"columnDefs": [{"targets": ["T", "N"], "render": function(data, type, row) {
+                    return '<div style="white-space: normal; word-wrap: break-word;">' + data + '</div>';
+                }, "width": "300px"}], "escape": true, "layout": {"topStart": null, "topEnd": null, "bottomStart": null, "bottomEnd": null}, "display_logo_when_loading": true, "order": []};
+        
+
+        
+        new DataTable(table, dt_args);
+    });
+</script>
+</div>
+</div>
+<p>If we want a callback function to work with multiple types, we can either register it with a common super type, or put a tuple of types. For example:</p>
+<div id="cell-77" class="cell">
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="co"># object is a super type of all python objects, so count will work on anything</span></span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>sess.register_agg(<span class="st">'count_twice'</span>,count_twice,[<span class="bu">object</span>],[<span class="bu">int</span>])</span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a><span class="co"># now we support Paths as well</span></span>
+<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> char_positions_iter(text,char):</span>
+<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="bu">isinstance</span>(text,Path):</span>
+<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a>        text <span class="op">=</span> text.read_text()</span>
+<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i,letter <span class="kw">in</span> <span class="bu">enumerate</span>(text):</span>
+<span id="cb55-9"><a href="#cb55-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> letter<span class="op">==</span>char:</span>
+<span id="cb55-10"><a href="#cb55-10" aria-hidden="true" tabindex="-1"></a>            <span class="cf">yield</span> i</span>
+<span id="cb55-11"><a href="#cb55-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-12"><a href="#cb55-12" aria-hidden="true" tabindex="-1"></a>sess.register(<span class="st">'char_pos'</span>,char_positions_iter,[(Path,<span class="bu">str</span>),<span class="bu">str</span>],[<span class="bu">int</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>To inspect which callback functions are available in a sess, we can do:</p>
+<div id="cell-79" class="cell">
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>sess.get_all_functions()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>{'ie': {'print': IEFunction(name='print', func=&lt;function print_ie&gt;, in_schema=&lt;function object_arity&gt;, out_schema=[&lt;class 'object'&gt;]),
+  'rgx': IEFunction(name='rgx', func=&lt;function rgx&gt;, in_schema=[&lt;class 'str'&gt;, (&lt;class 'str'&gt;, &lt;class 'spannerlib.span.Span'&gt;)], out_schema=&lt;function span_arity&gt;),
+  'rgx_split': IEFunction(name='rgx_split', func=&lt;function rgx_split&gt;, in_schema=[&lt;class 'str'&gt;, (&lt;class 'str'&gt;, &lt;class 'spannerlib.span.Span'&gt;)], out_schema=[&lt;class 'spannerlib.span.Span'&gt;, &lt;class 'spannerlib.span.Span'&gt;]),
+  'rgx_is_match': IEFunction(name='rgx_is_match', func=&lt;function rgx_is_match&gt;, in_schema=[&lt;class 'str'&gt;, (&lt;class 'str'&gt;, &lt;class 'spannerlib.span.Span'&gt;)], out_schema=[&lt;class 'bool'&gt;]),
+  'expr_eval': IEFunction(name='expr_eval', func=&lt;function expr_eval&gt;, in_schema=&lt;function object_arity&gt;, out_schema=[&lt;class 'object'&gt;]),
+  'not': IEFunction(name='not', func=&lt;function not_ie&gt;, in_schema=[&lt;class 'bool'&gt;], out_schema=[&lt;class 'bool'&gt;]),
+  'as_str': IEFunction(name='as_str', func=&lt;function as_str&gt;, in_schema=[&lt;class 'object'&gt;], out_schema=[&lt;class 'str'&gt;]),
+  'span_contained': IEFunction(name='span_contained', func=&lt;function span_contained&gt;, in_schema=[&lt;class 'spannerlib.span.Span'&gt;, &lt;class 'spannerlib.span.Span'&gt;], out_schema=[&lt;class 'bool'&gt;]),
+  'deconstruct_span': IEFunction(name='deconstruct_span', func=&lt;function deconstruct_span&gt;, in_schema=[&lt;class 'spannerlib.span.Span'&gt;], out_schema=[&lt;class 'str'&gt;, &lt;class 'int'&gt;, &lt;class 'int'&gt;]),
+  'read': IEFunction(name='read', func=&lt;function read&gt;, in_schema=[&lt;class 'str'&gt;], out_schema=[&lt;class 'str'&gt;]),
+  'read_span': IEFunction(name='read_span', func=&lt;function read_span&gt;, in_schema=[&lt;class 'str'&gt;], out_schema=[&lt;class 'spannerlib.span.Span'&gt;]),
+  'json_path': IEFunction(name='json_path', func=&lt;function json_path&gt;, in_schema=[&lt;class 'str'&gt;, &lt;class 'str'&gt;], out_schema=[&lt;class 'str'&gt;, &lt;class 'str'&gt;]),
+  'char_pos': IEFunction(name='char_pos', func=&lt;function char_positions_iter&gt;, in_schema=[(&lt;class 'pathlib.Path'&gt;, &lt;class 'str'&gt;), &lt;class 'str'&gt;], out_schema=[&lt;class 'int'&gt;])},
+ 'agg': {'count': AGGFunction(name='count', func='count', in_schema=[&lt;class 'object'&gt;], out_schema=[&lt;class 'int'&gt;]),
+  'sum': AGGFunction(name='sum', func='sum', in_schema=[&lt;class 'numbers.Real'&gt;], out_schema=[&lt;class 'numbers.Real'&gt;]),
+  'avg': AGGFunction(name='avg', func='avg', in_schema=[&lt;class 'numbers.Real'&gt;], out_schema=[&lt;class 'numbers.Real'&gt;]),
+  'max': AGGFunction(name='max', func='max', in_schema=[&lt;class 'numbers.Real'&gt;], out_schema=[&lt;class 'numbers.Real'&gt;]),
+  'min': AGGFunction(name='min', func='min', in_schema=[&lt;class 'numbers.Real'&gt;], out_schema=[&lt;class 'numbers.Real'&gt;]),
+  'count_twice': AGGFunction(name='count_twice', func=&lt;function count_twice&gt;, in_schema=[&lt;class 'object'&gt;], out_schema=[&lt;class 'int'&gt;])}}</code></pre>
+</div>
+</div>
+<p>To get a nested dict with all callbacks. To see the list of default IE function and their documentation, go to the standard ie function section in the documentation.</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp("https:\/\/DeanLight\.github\.io\/spannerlib");
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/DeanLight/spannerlib/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>

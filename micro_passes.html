@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.39">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="description" content="passes over the AST of a statement to do semantic checks and register state in the session object">
+
+<title>Micro Passes – Spannerlib</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-e26003cea8cd680ca0c55a263523d882.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-b6f35d3e5f7cf9e5d8c19bd4060a2618.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+<link rel="stylesheet" href="styles.css">
+<meta property="og:title" content="Micro Passes – Spannerlib">
+<meta property="og:description" content="passes over the AST of a statement to do semantic checks and register state in the session object">
+<meta property="og:site_name" content="Spannerlib">
+<meta name="twitter:title" content="Micro Passes – Spannerlib">
+<meta name="twitter:description" content="passes over the AST of a statement to do semantic checks and register state in the session object">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-sidebar docked nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Spannerlib</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Micro Passes</li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome to Spannerlib</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tutorials</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorials/introduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Intro</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorials/basic_tasks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basic Examples</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorials/llm_code_documentation_example.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Copilot Agent</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorials/extending_code.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Extending Code</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tutorials/rewriting_a_real_codebase.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Rewriting a real codebase</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Callbacks</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./callbacks/basic_ies.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basic Callbacks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./callbacks/json_path.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">JsonPath</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./session.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Session Object</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Reference</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./inspecting_query_plans.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">View Query Plan</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#scaffolding" id="toc-scaffolding" class="nav-link active" data-scroll-target="#scaffolding">Scaffolding</a></li>
+  <li><a href="#semantic-checks" id="toc-semantic-checks" class="nav-link" data-scroll-target="#semantic-checks">Semantic Checks</a>
+  <ul class="collapse">
+  <li><a href="#convert_primitive_values_to_objects" id="toc-convert_primitive_values_to_objects" class="nav-link" data-scroll-target="#convert_primitive_values_to_objects">convert_primitive_values_to_objects</a>
+  <ul class="collapse">
+  <li><a href="#convert_primitive_values_to_objects-1" id="toc-convert_primitive_values_to_objects-1" class="nav-link" data-scroll-target="#convert_primitive_values_to_objects-1">convert_primitive_values_to_objects</a></li>
+  </ul></li>
+  <li><a href="#check-reserved-relation-names" id="toc-check-reserved-relation-names" class="nav-link" data-scroll-target="#check-reserved-relation-names">Check reserved relation names</a>
+  <ul class="collapse">
+  <li><a href="#checkreservedrelationnames" id="toc-checkreservedrelationnames" class="nav-link" data-scroll-target="#checkreservedrelationnames">CheckReservedRelationNames</a></li>
+  </ul></li>
+  <li><a href="#derefrence-vars" id="toc-derefrence-vars" class="nav-link" data-scroll-target="#derefrence-vars">derefrence vars</a>
+  <ul class="collapse">
+  <li><a href="#dereference_vars" id="toc-dereference_vars" class="nav-link" data-scroll-target="#dereference_vars">dereference_vars</a></li>
+  </ul></li>
+  <li><a href="#check-read-assignments-got-existing-path" id="toc-check-read-assignments-got-existing-path" class="nav-link" data-scroll-target="#check-read-assignments-got-existing-path">Check read assignments got existing path</a>
+  <ul class="collapse">
+  <li><a href="#check_referenced_paths_exist" id="toc-check_referenced_paths_exist" class="nav-link" data-scroll-target="#check_referenced_paths_exist">check_referenced_paths_exist</a></li>
+  </ul></li>
+  <li><a href="#inline-aggregation-func-names-on-free-var-nodes" id="toc-inline-aggregation-func-names-on-free-var-nodes" class="nav-link" data-scroll-target="#inline-aggregation-func-names-on-free-var-nodes">Inline aggregation func names on free var nodes</a>
+  <ul class="collapse">
+  <li><a href="#inline_aggregation" id="toc-inline_aggregation" class="nav-link" data-scroll-target="#inline_aggregation">inline_aggregation</a></li>
+  </ul></li>
+  <li><a href="#cast-relations-to-dataclasses" id="toc-cast-relations-to-dataclasses" class="nav-link" data-scroll-target="#cast-relations-to-dataclasses">Cast relations to dataclasses</a>
+  <ul class="collapse">
+  <li><a href="#relations_to_dataclasses" id="toc-relations_to_dataclasses" class="nav-link" data-scroll-target="#relations_to_dataclasses">relations_to_dataclasses</a></li>
+  </ul></li>
+  <li><a href="#verify-referenced-relations-and-functions" id="toc-verify-referenced-relations-and-functions" class="nav-link" data-scroll-target="#verify-referenced-relations-and-functions">verify referenced relations and functions</a>
+  <ul class="collapse">
+  <li><a href="#verify_referenced_relations_and_functions" id="toc-verify_referenced_relations_and_functions" class="nav-link" data-scroll-target="#verify_referenced_relations_and_functions">verify_referenced_relations_and_functions</a></li>
+  </ul></li>
+  <li><a href="#cast-rules-to-data-classes" id="toc-cast-rules-to-data-classes" class="nav-link" data-scroll-target="#cast-rules-to-data-classes">cast rules to data classes</a>
+  <ul class="collapse">
+  <li><a href="#rules_to_dataclasses" id="toc-rules_to_dataclasses" class="nav-link" data-scroll-target="#rules_to_dataclasses">rules_to_dataclasses</a></li>
+  </ul></li>
+  <li><a href="#rule-safety" id="toc-rule-safety" class="nav-link" data-scroll-target="#rule-safety">Rule safety</a>
+  <ul class="collapse">
+  <li><a href="#is_rule_safe" id="toc-is_rule_safe" class="nav-link" data-scroll-target="#is_rule_safe">is_rule_safe</a></li>
+  </ul></li>
+  <li><a href="#checks-that-the-spannerlog-rule-is-safe" id="toc-checks-that-the-spannerlog-rule-is-safe" class="nav-link" data-scroll-target="#checks-that-the-spannerlog-rule-is-safe">*Checks that the Spannerlog Rule is safe</a>
+  <ul class="collapse">
+  <li><a href="#check_rule_safety" id="toc-check_rule_safety" class="nav-link" data-scroll-target="#check_rule_safety">check_rule_safety</a></li>
+  </ul></li>
+  <li><a href="#consistent-free-var-types" id="toc-consistent-free-var-types" class="nav-link" data-scroll-target="#consistent-free-var-types">Consistent Free Var types</a>
+  <ul class="collapse">
+  <li><a href="#consistent_free_var_types_in_rule" id="toc-consistent_free_var_types_in_rule" class="nav-link" data-scroll-target="#consistent_free_var_types_in_rule">consistent_free_var_types_in_rule</a></li>
+  </ul></li>
+  <li><a href="#preprocess-assignments" id="toc-preprocess-assignments" class="nav-link" data-scroll-target="#preprocess-assignments">Preprocess assignments</a>
+  <ul class="collapse">
+  <li><a href="#assignments_to_name_val_tuple" id="toc-assignments_to_name_val_tuple" class="nav-link" data-scroll-target="#assignments_to_name_val_tuple">assignments_to_name_val_tuple</a></li>
+  </ul></li>
+  </ul></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/DeanLight/spannerlib/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Micro Passes</h1>
+</div>
+
+<div>
+  <div class="description">
+    passes over the AST of a statement to do semantic checks and register state in the session object
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<section id="scaffolding" class="level2">
+<h2 class="anchored" data-anchor-id="scaffolding">Scaffolding</h2>
+<div id="cell-3" class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> DummySession():</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>,passes<span class="op">=</span><span class="va">None</span>,execution_function<span class="op">=</span><span class="va">None</span>):</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> passes <span class="kw">is</span> <span class="va">None</span>:</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>            passes <span class="op">=</span> []</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.passes <span class="op">=</span> passes</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.engine<span class="op">=</span>Engine()</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.should_execute <span class="op">=</span> execution_function <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.execution_function <span class="op">=</span> execution_function</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> run_query(<span class="va">self</span>,query):</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        statements <span class="op">=</span> parse_spannerlog(query,split_statements<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        clean_asts <span class="op">=</span> []</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        results <span class="op">=</span> []</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> statement_nx,statement_lark <span class="kw">in</span> statements:</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>            ast <span class="op">=</span> statement_nx</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> pass_ <span class="kw">in</span> <span class="va">self</span>.passes:</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>                pass_(ast,<span class="va">self</span>.engine)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>            clean_asts.append(ast)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="va">self</span>.should_execute:</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>                results.append(<span class="va">self</span>.execution_function(ast,<span class="va">self</span>.engine))</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="va">self</span>.should_execute:</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> results</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> clean_asts</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-4" class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> assert_asts(asts,expected<span class="op">=</span><span class="va">None</span>):</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> expected <span class="kw">is</span> <span class="va">None</span>:</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> [serialize_tree(ast) <span class="cf">for</span> ast <span class="kw">in</span> asts]</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i,(ast,expected_ast) <span class="kw">in</span> <span class="bu">enumerate</span>(<span class="bu">zip</span>(asts,expected)):</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        serialized <span class="op">=</span> serialize_tree(ast)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">assert</span> serialized <span class="op">==</span> expected_ast,(<span class="ss">f"AST </span><span class="sc">{</span>i<span class="sc">}</span><span class="ss"> does not match expected"</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"</span><span class="ch">\n</span><span class="ss">AST:</span><span class="ch">\n</span><span class="sc">{</span>serialized<span class="sc">}</span><span class="ch">\n</span><span class="ss">Expected:</span><span class="ch">\n</span><span class="sc">{</span>expected_ast<span class="sc">}</span><span class="ch">\n</span><span class="ss">"</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"Diff is:</span><span class="sc">{</span>DeepDiff(serialized,expected_ast)<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-5" class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession()</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="st">            new string(str)</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="st">            string("a")</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="st">            string_length(Str, Len) &lt;- string(Str), Length(Str) -&gt; (Len).</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="st">            """</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cmVsYXRpb25fZGVjbGFyYXRpb24jcXVvdDsiXQoxWyIxCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OyJdCjJbIjIKdmFsPSNxdW90O3N0cmluZyNxdW90OyJdCjNbIjMKdHlwZT0jcXVvdDtkZWNsX3Rlcm1fbGlzdCNxdW90OyJdCjRbIjQKdmFsPSNxdW90O2RlY2xfc3RyaW5nI3F1b3Q7Il0KMCAtLT58ImlkeD0wInwgMQowIC0tPnwiaWR4PTEifCAzCjEgLS0+fCJpZHg9MCJ8IDIKMyAtLT58ImlkeD0wInwgNAo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YWRkX2ZhY3QjcXVvdDsiXQoxWyIxCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OyJdCjJbIjIKdmFsPSNxdW90O3N0cmluZyNxdW90OyJdCjNbIjMKdHlwZT0jcXVvdDt0ZXJtX2xpc3QjcXVvdDsiXQo0WyI0CnR5cGU9I3F1b3Q7c3RyaW5nI3F1b3Q7Il0KNVsiNQp2YWw9I3F1b3Q7I3F1b3Q7YSNxdW90OyNxdW90OyJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMwoxIC0tPnwiaWR4PTAifCAyCjMgLS0+fCJpZHg9MCJ8IDQKNCAtLT58ImlkeD0wInwgNQo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDsiXQoyWyIyCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OyJdCjNbIjMKdmFsPSNxdW90O3N0cmluZ19sZW5ndGgjcXVvdDsiXQo0WyI0CnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KNVsiNQp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDsiXQo2WyI2CnZhbD0jcXVvdDtTdHIjcXVvdDsiXQo3WyI3CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OyJdCjhbIjgKdmFsPSNxdW90O0xlbiNxdW90OyJdCjlbIjkKdHlwZT0jcXVvdDtydWxlX2JvZHlfcmVsYXRpb25fbGlzdCNxdW90OyJdCjEwWyIxMAp0eXBlPSNxdW90O3JlbGF0aW9uI3F1b3Q7Il0KMTFbIjExCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OyJdCjEyWyIxMgp2YWw9I3F1b3Q7c3RyaW5nI3F1b3Q7Il0KMTNbIjEzCnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KMTRbIjE0CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OyJdCjE1WyIxNQp2YWw9I3F1b3Q7U3RyI3F1b3Q7Il0KMTZbIjE2CnR5cGU9I3F1b3Q7aWVfcmVsYXRpb24jcXVvdDsiXQoxN1siMTcKdHlwZT0jcXVvdDtyZWxhdGlvbl9uYW1lI3F1b3Q7Il0KMThbIjE4CnZhbD0jcXVvdDtMZW5ndGgjcXVvdDsiXQoxOVsiMTkKdHlwZT0jcXVvdDt0ZXJtX2xpc3QjcXVvdDsiXQoyMFsiMjAKdHlwZT0jcXVvdDtmcmVlX3Zhcl9uYW1lI3F1b3Q7Il0KMjFbIjIxCnZhbD0jcXVvdDtTdHIjcXVvdDsiXQoyMlsiMjIKdHlwZT0jcXVvdDt0ZXJtX2xpc3QjcXVvdDsiXQoyM1siMjMKdHlwZT0jcXVvdDtmcmVlX3Zhcl9uYW1lI3F1b3Q7Il0KMjRbIjI0CnZhbD0jcXVvdDtMZW4jcXVvdDsiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDkKMSAtLT58ImlkeD0wInwgMgoxIC0tPnwiaWR4PTEifCA0CjIgLS0+fCJpZHg9MCJ8IDMKNCAtLT58ImlkeD0wInwgNQo0IC0tPnwiaWR4PTEifCA3CjUgLS0+fCJpZHg9MCJ8IDYKNyAtLT58ImlkeD0wInwgOAo5IC0tPnwiaWR4PTAifCAxMAo5IC0tPnwiaWR4PTEifCAxNgoxMCAtLT58ImlkeD0wInwgMTEKMTAgLS0+fCJpZHg9MSJ8IDEzCjExIC0tPnwiaWR4PTAifCAxMgoxMyAtLT58ImlkeD0wInwgMTQKMTQgLS0+fCJpZHg9MCJ8IDE1CjE2IC0tPnwiaWR4PTAifCAxNwoxNiAtLT58ImlkeD0xInwgMTkKMTYgLS0+fCJpZHg9MiJ8IDIyCjE3IC0tPnwiaWR4PTAifCAxOAoxOSAtLT58ImlkeD0wInwgMjAKMjAgLS0+fCJpZHg9MCJ8IDIxCjIyIC0tPnwiaWR4PTAifCAyMwoyMyAtLT58ImlkeD0wInwgMjQK">
+</div>
+</div>
+</section>
+<section id="semantic-checks" class="level1">
+<h1>Semantic Checks</h1>
+<section id="convert_primitive_values_to_objects" class="level2">
+<h2 class="anchored" data-anchor-id="convert_primitive_values_to_objects">convert_primitive_values_to_objects</h2>
+<div id="cell-8" class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">bool</span>(<span class="st">'False'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<pre><code>True</code></pre>
+</div>
+</div>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L44" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="convert_primitive_values_to_objects-1" class="level3">
+<h3 class="anchored" data-anchor-id="convert_primitive_values_to_objects-1">convert_primitive_values_to_objects</h3>
+<blockquote class="blockquote">
+<pre><code> convert_primitive_values_to_objects (ast, session)</code></pre>
+</blockquote>
+<div id="cell-10" class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  convert_primitive_values_to_objects</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  ])</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="st">x="a"</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="st">x=True</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="st">x=False</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="st">x=1.3</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="st">x=-3.5</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="st">x=1</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="st">x=-2</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="st">x=y</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="st">x= "hello </span><span class="ch">\</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="st">world"</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="st">            """</span>)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O3N0cmluZyNxdW90OywgdmFsPSNxdW90O2EjcXVvdDsiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDMK">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O2Jvb2wjcXVvdDssIHZhbD1UcnVlIl0KMCAtLT58ImlkeD0wInwgMQowIC0tPnwiaWR4PTEifCAzCg==">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O2Jvb2wjcXVvdDssIHZhbD1GYWxzZSJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMwo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O2Zsb2F0I3F1b3Q7LCB2YWw9MS4zIl0KMCAtLT58ImlkeD0wInwgMQowIC0tPnwiaWR4PTEifCAzCg==">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O2Zsb2F0X25lZyNxdW90OywgdmFsPS0zLjUiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDMK">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O2ludCNxdW90OywgdmFsPTEiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDMK">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O2ludF9uZWcjcXVvdDssIHZhbD0tMiJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMwo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O3Zhcl9uYW1lI3F1b3Q7LCB2YWw9VmFyKG5hbWU9I3F1b3Q7eSNxdW90OykiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDMK">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O3N0cmluZyNxdW90OywgdmFsPSNxdW90O2hlbGxvIHdvcmxkI3F1b3Q7Il0KMCAtLT58ImlkeD0wInwgMQowIC0tPnwiaWR4PTEifCAzCg==">
+</div>
+</div>
+<div id="cell-11" class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[convert_primitive_values_to_objects])</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="st">            x=1</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="st">            S("a",1,2)</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="st">            new R(int,str)</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="st">            ?R($x,X)</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="st">            R(X,sum(Y))&lt;-S(X,Y).</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="st">            """</span>)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>assert_asts(asts,[{<span class="st">'type'</span>: <span class="st">'assignment'</span>,</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'var_name'</span>, <span class="st">'val'</span>: Var(name<span class="op">=</span><span class="st">'x'</span>), <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'int'</span>, <span class="st">'val'</span>: <span class="dv">1</span>, <span class="st">'id'</span>: <span class="dv">3</span>}]},</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'add_fact'</span>,</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation_name'</span>, <span class="st">'val'</span>: <span class="st">'S'</span>, <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'term_list'</span>,</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">3</span>,</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'string'</span>, <span class="st">'val'</span>: <span class="st">'a'</span>, <span class="st">'id'</span>: <span class="dv">4</span>},</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>     {<span class="st">'type'</span>: <span class="st">'int'</span>, <span class="st">'val'</span>: <span class="dv">1</span>, <span class="st">'id'</span>: <span class="dv">6</span>},</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>     {<span class="st">'type'</span>: <span class="st">'int'</span>, <span class="st">'val'</span>: <span class="dv">2</span>, <span class="st">'id'</span>: <span class="dv">8</span>}]}]},</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'relation_declaration'</span>,</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation_name'</span>, <span class="st">'val'</span>: <span class="st">'R'</span>, <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'decl_term_list'</span>,</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">3</span>,</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'val'</span>: <span class="bu">int</span>, <span class="st">'id'</span>: <span class="dv">4</span>}, {<span class="st">'val'</span>: <span class="bu">str</span>, <span class="st">'id'</span>: <span class="dv">5</span>}]}]},</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'query'</span>,</span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation_name'</span>, <span class="st">'val'</span>: <span class="st">'R'</span>, <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'term_list'</span>,</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">3</span>,</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'var_name'</span>, <span class="st">'val'</span>: Var(name<span class="op">=</span><span class="st">'x'</span>), <span class="st">'id'</span>: <span class="dv">4</span>},</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>     {<span class="st">'type'</span>: <span class="st">'free_var_name'</span>, <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'X'</span>), <span class="st">'id'</span>: <span class="dv">6</span>}]}]},</span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'rule'</span>,</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'rule_head'</span>,</span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">1</span>,</span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation_name'</span>, <span class="st">'val'</span>: <span class="st">'R'</span>, <span class="st">'id'</span>: <span class="dv">2</span>},</span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>     {<span class="st">'type'</span>: <span class="st">'term_list'</span>,</span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>      <span class="st">'id'</span>: <span class="dv">4</span>,</span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>      <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'free_var_name'</span>,</span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>        <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'X'</span>),</span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a>        <span class="st">'id'</span>: <span class="dv">5</span>},</span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a>       {<span class="st">'type'</span>: <span class="st">'aggregated_free_var'</span>,</span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a>        <span class="st">'id'</span>: <span class="dv">7</span>,</span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a>        <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'agg_name'</span>, <span class="st">'val'</span>: <span class="st">'sum'</span>, <span class="st">'id'</span>: <span class="dv">8</span>},</span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>         {<span class="st">'type'</span>: <span class="st">'free_var_name'</span>, <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'Y'</span>), <span class="st">'id'</span>: <span class="dv">10</span>}]}]}]},</span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'rule_body_relation_list'</span>,</span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">12</span>,</span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation'</span>,</span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a>      <span class="st">'id'</span>: <span class="dv">13</span>,</span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a>      <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation_name'</span>, <span class="st">'val'</span>: <span class="st">'S'</span>, <span class="st">'id'</span>: <span class="dv">14</span>},</span>
+<span id="cb8-56"><a href="#cb8-56" aria-hidden="true" tabindex="-1"></a>       {<span class="st">'type'</span>: <span class="st">'term_list'</span>,</span>
+<span id="cb8-57"><a href="#cb8-57" aria-hidden="true" tabindex="-1"></a>        <span class="st">'id'</span>: <span class="dv">16</span>,</span>
+<span id="cb8-58"><a href="#cb8-58" aria-hidden="true" tabindex="-1"></a>        <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'free_var_name'</span>,</span>
+<span id="cb8-59"><a href="#cb8-59" aria-hidden="true" tabindex="-1"></a>          <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'X'</span>),</span>
+<span id="cb8-60"><a href="#cb8-60" aria-hidden="true" tabindex="-1"></a>          <span class="st">'id'</span>: <span class="dv">17</span>},</span>
+<span id="cb8-61"><a href="#cb8-61" aria-hidden="true" tabindex="-1"></a>         {<span class="st">'type'</span>: <span class="st">'free_var_name'</span>, <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'Y'</span>), <span class="st">'id'</span>: <span class="dv">19</span>}]}]}]}]}])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZSNxdW90OywgdmFsPVZhcihuYW1lPSNxdW90O3gjcXVvdDspIl0KM1siMwp0eXBlPSNxdW90O2ludCNxdW90OywgdmFsPTEiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDMK">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YWRkX2ZhY3QjcXVvdDsiXQoxWyIxCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1MjcXVvdDsiXQozWyIzCnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KNFsiNAp0eXBlPSNxdW90O3N0cmluZyNxdW90OywgdmFsPSNxdW90O2EjcXVvdDsiXQo2WyI2CnR5cGU9I3F1b3Q7aW50I3F1b3Q7LCB2YWw9MSJdCjhbIjgKdHlwZT0jcXVvdDtpbnQjcXVvdDssIHZhbD0yIl0KMCAtLT58ImlkeD0wInwgMQowIC0tPnwiaWR4PTEifCAzCjMgLS0+fCJpZHg9MCJ8IDQKMyAtLT58ImlkeD0xInwgNgozIC0tPnwiaWR4PTIifCA4Cg==">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cmVsYXRpb25fZGVjbGFyYXRpb24jcXVvdDsiXQoxWyIxCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1IjcXVvdDsiXQozWyIzCnR5cGU9I3F1b3Q7ZGVjbF90ZXJtX2xpc3QjcXVvdDsiXQo0WyI0CnZhbD0jbHQ7Y2xhc3MgI3F1b3Q7aW50I3F1b3Q7I2d0OyJdCjVbIjUKdmFsPSNsdDtjbGFzcyAjcXVvdDtzdHIjcXVvdDsjZ3Q7Il0KMCAtLT58ImlkeD0wInwgMQowIC0tPnwiaWR4PTEifCAzCjMgLS0+fCJpZHg9MCJ8IDQKMyAtLT58ImlkeD0xInwgNQo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cXVlcnkjcXVvdDsiXQoxWyIxCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1IjcXVvdDsiXQozWyIzCnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KNFsiNAp0eXBlPSNxdW90O3Zhcl9uYW1lI3F1b3Q7LCB2YWw9VmFyKG5hbWU9I3F1b3Q7eCNxdW90OykiXQo2WyI2CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OywgdmFsPUZyZWVWYXIobmFtZT0jcXVvdDtYI3F1b3Q7KSJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMwozIC0tPnwiaWR4PTAifCA0CjMgLS0+fCJpZHg9MSJ8IDYK">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDsiXQoyWyIyCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1IjcXVvdDsiXQo0WyI0CnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KNVsiNQp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OykiXQo3WyI3CnR5cGU9I3F1b3Q7YWdncmVnYXRlZF9mcmVlX3ZhciNxdW90OyJdCjhbIjgKdHlwZT0jcXVvdDthZ2dfbmFtZSNxdW90OywgdmFsPSNxdW90O3N1bSNxdW90OyJdCjEwWyIxMAp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WSNxdW90OykiXQoxMlsiMTIKdHlwZT0jcXVvdDtydWxlX2JvZHlfcmVsYXRpb25fbGlzdCNxdW90OyJdCjEzWyIxMwp0eXBlPSNxdW90O3JlbGF0aW9uI3F1b3Q7Il0KMTRbIjE0CnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1MjcXVvdDsiXQoxNlsiMTYKdHlwZT0jcXVvdDt0ZXJtX2xpc3QjcXVvdDsiXQoxN1siMTcKdHlwZT0jcXVvdDtmcmVlX3Zhcl9uYW1lI3F1b3Q7LCB2YWw9RnJlZVZhcihuYW1lPSNxdW90O1gjcXVvdDspIl0KMTlbIjE5CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OywgdmFsPUZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMTIKMSAtLT58ImlkeD0wInwgMgoxIC0tPnwiaWR4PTEifCA0CjQgLS0+fCJpZHg9MCJ8IDUKNCAtLT58ImlkeD0xInwgNwo3IC0tPnwiaWR4PTAifCA4CjcgLS0+fCJpZHg9MSJ8IDEwCjEyIC0tPnwiaWR4PTAifCAxMwoxMyAtLT58ImlkeD0wInwgMTQKMTMgLS0+fCJpZHg9MSJ8IDE2CjE2IC0tPnwiaWR4PTAifCAxNwoxNiAtLT58ImlkeD0xInwgMTkK">
+</div>
+</div>
+</section>
+</section>
+<section id="check-reserved-relation-names" class="level2">
+<h2 class="anchored" data-anchor-id="check-reserved-relation-names">Check reserved relation names</h2>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L103" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="checkreservedrelationnames" class="level3">
+<h3 class="anchored" data-anchor-id="checkreservedrelationnames">CheckReservedRelationNames</h3>
+<blockquote class="blockquote">
+<pre><code> CheckReservedRelationNames (reserved_prefix)</code></pre>
+</blockquote>
+<p><em>Initialize self. See help(type(self)) for accurate signature.</em></p>
+<div id="cell-14" class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># remove_new_lines_from_strings,</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="st">            S("a",1)</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="st">            R(X,Y)&lt;-S(X,Y),T(X,Y).</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="st">            """</span>)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="st">            spanner_S("a",1)</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="st">            """</span>)</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Relation name 'spanner_S' starts with reserved prefix 'spanner_'</code></pre>
+</div>
+</div>
+<div id="cell-15" class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>draw(asts[<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YWRkX2ZhY3QjcXVvdDsiXQoxWyIxCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1MjcXVvdDsiXQozWyIzCnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KNFsiNAp0eXBlPSNxdW90O3N0cmluZyNxdW90OywgdmFsPSNxdW90O2EjcXVvdDsiXQo2WyI2CnR5cGU9I3F1b3Q7aW50I3F1b3Q7LCB2YWw9MSJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMwozIC0tPnwiaWR4PTAifCA0CjMgLS0+fCJpZHg9MSJ8IDYK">
+</div>
+</div>
+</section>
+</section>
+<section id="derefrence-vars" class="level2">
+<h2 class="anchored" data-anchor-id="derefrence-vars">derefrence vars</h2>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L113" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="dereference_vars" class="level3">
+<h3 class="anchored" data-anchor-id="dereference_vars">dereference_vars</h3>
+<blockquote class="blockquote">
+<pre><code> dereference_vars (ast, engine)</code></pre>
+</blockquote>
+<div id="cell-18" class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># remove_new_lines_from_strings,</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    dereference_vars,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>sess.engine.set_var(<span class="st">'y'</span>,<span class="dv">1</span>)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>sess.engine.set_var(<span class="st">'x'</span>,<span class="st">"hello"</span>)</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="ss">            z=1</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a><span class="ss">            x=$y</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="ss">            R($x,$y)</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="ss">            """</span>)</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>assert_asts(asts,[{<span class="st">'type'</span>: <span class="st">'assignment'</span>,</span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'var_name_lhs'</span>, <span class="st">'val'</span>: Var(name<span class="op">=</span><span class="st">'z'</span>), <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'int'</span>, <span class="st">'val'</span>: <span class="dv">1</span>, <span class="st">'id'</span>: <span class="dv">3</span>}]},</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'assignment'</span>,</span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'var_name_lhs'</span>, <span class="st">'val'</span>: Var(name<span class="op">=</span><span class="st">'x'</span>), <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="bu">int</span>, <span class="st">'val'</span>: <span class="dv">1</span>, <span class="st">'id'</span>: <span class="dv">3</span>}]},</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'add_fact'</span>,</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation_name'</span>, <span class="st">'val'</span>: <span class="st">'R'</span>, <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'term_list'</span>,</span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">3</span>,</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="bu">str</span>, <span class="st">'val'</span>: <span class="st">'hello'</span>, <span class="st">'id'</span>: <span class="dv">4</span>},</span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>     {<span class="st">'type'</span>: <span class="bu">int</span>, <span class="st">'val'</span>: <span class="dv">1</span>, <span class="st">'id'</span>: <span class="dv">6</span>}]}]}])</span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a><span class="ss">                R($x,$z)</span></span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">'Variable z is not defined'</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZV9saHMjcXVvdDssIHZhbD1WYXIobmFtZT0jcXVvdDt6I3F1b3Q7KSJdCjNbIjMKdHlwZT0jcXVvdDtpbnQjcXVvdDssIHZhbD0xIl0KMCAtLT58ImlkeD0wInwgMQowIC0tPnwiaWR4PTEifCAzCg==">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDt2YXJfbmFtZV9saHMjcXVvdDssIHZhbD1WYXIobmFtZT0jcXVvdDt4I3F1b3Q7KSJdCjNbIjMKdHlwZT0jbHQ7Y2xhc3MgI3F1b3Q7aW50I3F1b3Q7I2d0OywgdmFsPTEiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDMK">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YWRkX2ZhY3QjcXVvdDsiXQoxWyIxCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1IjcXVvdDsiXQozWyIzCnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KNFsiNAp0eXBlPSNsdDtjbGFzcyAjcXVvdDtzdHIjcXVvdDsjZ3Q7LCB2YWw9I3F1b3Q7aGVsbG8jcXVvdDsiXQo2WyI2CnR5cGU9I2x0O2NsYXNzICNxdW90O2ludCNxdW90OyNndDssIHZhbD0xIl0KMCAtLT58ImlkeD0wInwgMQowIC0tPnwiaWR4PTEifCAzCjMgLS0+fCJpZHg9MCJ8IDQKMyAtLT58ImlkeD0xInwgNgo=">
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Variable z is not defined</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="check-read-assignments-got-existing-path" class="level2">
+<h2 class="anchored" data-anchor-id="check-read-assignments-got-existing-path">Check read assignments got existing path</h2>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L135" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="check_referenced_paths_exist" class="level3">
+<h3 class="anchored" data-anchor-id="check_referenced_paths_exist">check_referenced_paths_exist</h3>
+<blockquote class="blockquote">
+<pre><code> check_referenced_paths_exist (ast, engine)</code></pre>
+</blockquote>
+<div id="cell-21" class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># check that read assignments got a string which is an existing path</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># remove_new_lines_from_strings,</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    dereference_vars,</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    check_referenced_paths_exist,</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>sess.engine.set_var(<span class="st">'y'</span>,<span class="st">'file.txt'</span>)</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span> <span class="op">=</span> Path(<span class="st">"file.txt"</span>)</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span>.touch()</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">TODO</span><span class="co"> figure out why this doesnt work</span></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a><span class="ss">            x=read("file.txt")</span></span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a><span class="ss">            z=read(y)</span></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a><span class="ss">            """</span>)</span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a><span class="st">            x=read("not_existing_file.txt")</span></span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a><span class="st">            """</span>)</span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb17-28"><a href="#cb17-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-29"><a href="#cb17-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-30"><a href="#cb17-30" aria-hidden="true" tabindex="-1"></a>sess.engine.set_var(<span class="st">'w'</span>,<span class="st">'not_existing_file.txt'</span>)</span>
+<span id="cb17-31"><a href="#cb17-31" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb17-32"><a href="#cb17-32" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb17-33"><a href="#cb17-33" aria-hidden="true" tabindex="-1"></a><span class="st">            x=read(w)</span></span>
+<span id="cb17-34"><a href="#cb17-34" aria-hidden="true" tabindex="-1"></a><span class="st">            """</span>)</span>
+<span id="cb17-35"><a href="#cb17-35" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb17-36"><a href="#cb17-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-37"><a href="#cb17-37" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span>.unlink()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Path('file.txt')
+Path('file.txt')
+Path('not_existing_file.txt')
+path not_existing_file.txt was not found in /Users/dean/tdk/spannerlib/nbs
+Path('not_existing_file.txt')
+path not_existing_file.txt was not found in /Users/dean/tdk/spannerlib/nbs</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="inline-aggregation-func-names-on-free-var-nodes" class="level2">
+<h2 class="anchored" data-anchor-id="inline-aggregation-func-names-on-free-var-nodes">Inline aggregation func names on free var nodes</h2>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L147" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="inline_aggregation" class="level3">
+<h3 class="anchored" data-anchor-id="inline_aggregation">inline_aggregation</h3>
+<blockquote class="blockquote">
+<pre><code> inline_aggregation (ast, engine)</code></pre>
+</blockquote>
+<div id="cell-24" class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    check_referenced_paths_exist,</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    dereference_vars,</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    inline_aggregation,</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> checkLogs():</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a><span class="st">    R(X,sum(Y),count(Z))&lt;-S(X,Y,Z).</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>assert_asts(asts,[{<span class="st">'type'</span>: <span class="st">'rule'</span>,</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'rule_head'</span>,</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">1</span>,</span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation_name'</span>, <span class="st">'val'</span>: <span class="st">'R'</span>, <span class="st">'id'</span>: <span class="dv">2</span>},</span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>     {<span class="st">'type'</span>: <span class="st">'term_list'</span>,</span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>      <span class="st">'id'</span>: <span class="dv">4</span>,</span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>      <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'free_var_name'</span>,</span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>        <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'X'</span>),</span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>        <span class="st">'id'</span>: <span class="dv">5</span>},</span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>       {<span class="st">'type'</span>: <span class="st">'free_var_name'</span>,</span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>        <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'Y'</span>),</span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a>        <span class="st">'agg'</span>: <span class="st">'sum'</span>,</span>
+<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>        <span class="st">'id'</span>: <span class="dv">7</span>},</span>
+<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a>       {<span class="st">'type'</span>: <span class="st">'free_var_name'</span>,</span>
+<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a>        <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'Z'</span>),</span>
+<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a>        <span class="st">'agg'</span>: <span class="st">'count'</span>,</span>
+<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a>        <span class="st">'id'</span>: <span class="dv">12</span>}]}]},</span>
+<span id="cb20-34"><a href="#cb20-34" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'rule_body_relation_list'</span>,</span>
+<span id="cb20-35"><a href="#cb20-35" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">17</span>,</span>
+<span id="cb20-36"><a href="#cb20-36" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation'</span>,</span>
+<span id="cb20-37"><a href="#cb20-37" aria-hidden="true" tabindex="-1"></a>      <span class="st">'id'</span>: <span class="dv">18</span>,</span>
+<span id="cb20-38"><a href="#cb20-38" aria-hidden="true" tabindex="-1"></a>      <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation_name'</span>, <span class="st">'val'</span>: <span class="st">'S'</span>, <span class="st">'id'</span>: <span class="dv">19</span>},</span>
+<span id="cb20-39"><a href="#cb20-39" aria-hidden="true" tabindex="-1"></a>       {<span class="st">'type'</span>: <span class="st">'term_list'</span>,</span>
+<span id="cb20-40"><a href="#cb20-40" aria-hidden="true" tabindex="-1"></a>        <span class="st">'id'</span>: <span class="dv">21</span>,</span>
+<span id="cb20-41"><a href="#cb20-41" aria-hidden="true" tabindex="-1"></a>        <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'free_var_name'</span>,</span>
+<span id="cb20-42"><a href="#cb20-42" aria-hidden="true" tabindex="-1"></a>          <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'X'</span>),</span>
+<span id="cb20-43"><a href="#cb20-43" aria-hidden="true" tabindex="-1"></a>          <span class="st">'id'</span>: <span class="dv">22</span>},</span>
+<span id="cb20-44"><a href="#cb20-44" aria-hidden="true" tabindex="-1"></a>         {<span class="st">'type'</span>: <span class="st">'free_var_name'</span>, <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'Y'</span>), <span class="st">'id'</span>: <span class="dv">24</span>},</span>
+<span id="cb20-45"><a href="#cb20-45" aria-hidden="true" tabindex="-1"></a>         {<span class="st">'type'</span>: <span class="st">'free_var_name'</span>, <span class="st">'val'</span>: FreeVar(name<span class="op">=</span><span class="st">'Z'</span>), <span class="st">'id'</span>: <span class="dv">26</span>}]}]}]}]}])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDsiXQoyWyIyCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1IjcXVvdDsiXQo0WyI0CnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KNVsiNQp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OykiXQo3WyI3CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OywgdmFsPUZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSwgYWdnPSNxdW90O3N1bSNxdW90OyJdCjEyWyIxMgp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WiNxdW90OyksIGFnZz0jcXVvdDtjb3VudCNxdW90OyJdCjE3WyIxNwp0eXBlPSNxdW90O3J1bGVfYm9keV9yZWxhdGlvbl9saXN0I3F1b3Q7Il0KMThbIjE4CnR5cGU9I3F1b3Q7cmVsYXRpb24jcXVvdDsiXQoxOVsiMTkKdHlwZT0jcXVvdDtyZWxhdGlvbl9uYW1lI3F1b3Q7LCB2YWw9I3F1b3Q7UyNxdW90OyJdCjIxWyIyMQp0eXBlPSNxdW90O3Rlcm1fbGlzdCNxdW90OyJdCjIyWyIyMgp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OykiXQoyNFsiMjQKdHlwZT0jcXVvdDtmcmVlX3Zhcl9uYW1lI3F1b3Q7LCB2YWw9RnJlZVZhcihuYW1lPSNxdW90O1kjcXVvdDspIl0KMjZbIjI2CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OywgdmFsPUZyZWVWYXIobmFtZT0jcXVvdDtaI3F1b3Q7KSJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMTcKMSAtLT58ImlkeD0wInwgMgoxIC0tPnwiaWR4PTEifCA0CjQgLS0+fCJpZHg9MCJ8IDUKNCAtLT58ImlkeD0xInwgNwo0IC0tPnwiaWR4PTIifCAxMgoxNyAtLT58ImlkeD0wInwgMTgKMTggLS0+fCJpZHg9MCJ8IDE5CjE4IC0tPnwiaWR4PTEifCAyMQoyMSAtLT58ImlkeD0wInwgMjIKMjEgLS0+fCJpZHg9MSJ8IDI0CjIxIC0tPnwiaWR4PTIifCAyNgo=">
+</div>
+</div>
+<div id="cell-25" class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    check_referenced_paths_exist,</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>    dereference_vars,</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>    inline_aggregation,</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> checkLogs():</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a><span class="st">    R(X,sum(Y),count(Z))&lt;-S(X,Y),T(X,Y)-&gt;(Z).</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a><span class="st">    R(X,sum(Y),count(Z),"yes")&lt;-S(X,Y,Z).</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDsiXQoyWyIyCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1IjcXVvdDsiXQo0WyI0CnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KNVsiNQp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OykiXQo3WyI3CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OywgdmFsPUZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSwgYWdnPSNxdW90O3N1bSNxdW90OyJdCjEyWyIxMgp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WiNxdW90OyksIGFnZz0jcXVvdDtjb3VudCNxdW90OyJdCjE3WyIxNwp0eXBlPSNxdW90O3J1bGVfYm9keV9yZWxhdGlvbl9saXN0I3F1b3Q7Il0KMThbIjE4CnR5cGU9I3F1b3Q7cmVsYXRpb24jcXVvdDsiXQoxOVsiMTkKdHlwZT0jcXVvdDtyZWxhdGlvbl9uYW1lI3F1b3Q7LCB2YWw9I3F1b3Q7UyNxdW90OyJdCjIxWyIyMQp0eXBlPSNxdW90O3Rlcm1fbGlzdCNxdW90OyJdCjIyWyIyMgp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OykiXQoyNFsiMjQKdHlwZT0jcXVvdDtmcmVlX3Zhcl9uYW1lI3F1b3Q7LCB2YWw9RnJlZVZhcihuYW1lPSNxdW90O1kjcXVvdDspIl0KMjZbIjI2CnR5cGU9I3F1b3Q7aWVfcmVsYXRpb24jcXVvdDsiXQoyN1siMjcKdHlwZT0jcXVvdDtyZWxhdGlvbl9uYW1lI3F1b3Q7LCB2YWw9I3F1b3Q7VCNxdW90OyJdCjI5WyIyOQp0eXBlPSNxdW90O3Rlcm1fbGlzdCNxdW90OyJdCjMwWyIzMAp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OykiXQozMlsiMzIKdHlwZT0jcXVvdDtmcmVlX3Zhcl9uYW1lI3F1b3Q7LCB2YWw9RnJlZVZhcihuYW1lPSNxdW90O1kjcXVvdDspIl0KMzRbIjM0CnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KMzVbIjM1CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OywgdmFsPUZyZWVWYXIobmFtZT0jcXVvdDtaI3F1b3Q7KSJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMTcKMSAtLT58ImlkeD0wInwgMgoxIC0tPnwiaWR4PTEifCA0CjQgLS0+fCJpZHg9MCJ8IDUKNCAtLT58ImlkeD0xInwgNwo0IC0tPnwiaWR4PTIifCAxMgoxNyAtLT58ImlkeD0wInwgMTgKMTcgLS0+fCJpZHg9MSJ8IDI2CjE4IC0tPnwiaWR4PTAifCAxOQoxOCAtLT58ImlkeD0xInwgMjEKMjEgLS0+fCJpZHg9MCJ8IDIyCjIxIC0tPnwiaWR4PTEifCAyNAoyNiAtLT58ImlkeD0wInwgMjcKMjYgLS0+fCJpZHg9MSJ8IDI5CjI2IC0tPnwiaWR4PTIifCAzNAoyOSAtLT58ImlkeD0wInwgMzAKMjkgLS0+fCJpZHg9MSJ8IDMyCjM0IC0tPnwiaWR4PTAifCAzNQo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDsiXQoyWyIyCnR5cGU9I3F1b3Q7cmVsYXRpb25fbmFtZSNxdW90OywgdmFsPSNxdW90O1IjcXVvdDsiXQo0WyI0CnR5cGU9I3F1b3Q7dGVybV9saXN0I3F1b3Q7Il0KNVsiNQp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OykiXQo3WyI3CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OywgdmFsPUZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSwgYWdnPSNxdW90O3N1bSNxdW90OyJdCjEyWyIxMgp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WiNxdW90OyksIGFnZz0jcXVvdDtjb3VudCNxdW90OyJdCjE3WyIxNwp0eXBlPSNxdW90O3N0cmluZyNxdW90OywgdmFsPSNxdW90O3llcyNxdW90OyJdCjE5WyIxOQp0eXBlPSNxdW90O3J1bGVfYm9keV9yZWxhdGlvbl9saXN0I3F1b3Q7Il0KMjBbIjIwCnR5cGU9I3F1b3Q7cmVsYXRpb24jcXVvdDsiXQoyMVsiMjEKdHlwZT0jcXVvdDtyZWxhdGlvbl9uYW1lI3F1b3Q7LCB2YWw9I3F1b3Q7UyNxdW90OyJdCjIzWyIyMwp0eXBlPSNxdW90O3Rlcm1fbGlzdCNxdW90OyJdCjI0WyIyNAp0eXBlPSNxdW90O2ZyZWVfdmFyX25hbWUjcXVvdDssIHZhbD1GcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OykiXQoyNlsiMjYKdHlwZT0jcXVvdDtmcmVlX3Zhcl9uYW1lI3F1b3Q7LCB2YWw9RnJlZVZhcihuYW1lPSNxdW90O1kjcXVvdDspIl0KMjhbIjI4CnR5cGU9I3F1b3Q7ZnJlZV92YXJfbmFtZSNxdW90OywgdmFsPUZyZWVWYXIobmFtZT0jcXVvdDtaI3F1b3Q7KSJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMTkKMSAtLT58ImlkeD0wInwgMgoxIC0tPnwiaWR4PTEifCA0CjQgLS0+fCJpZHg9MCJ8IDUKNCAtLT58ImlkeD0xInwgNwo0IC0tPnwiaWR4PTIifCAxMgo0IC0tPnwiaWR4PTMifCAxNwoxOSAtLT58ImlkeD0wInwgMjAKMjAgLS0+fCJpZHg9MCJ8IDIxCjIwIC0tPnwiaWR4PTEifCAyMwoyMyAtLT58ImlkeD0wInwgMjQKMjMgLS0+fCJpZHg9MSJ8IDI2CjIzIC0tPnwiaWR4PTIifCAyOAo=">
+</div>
+</div>
+</section>
+</section>
+<section id="cast-relations-to-dataclasses" class="level2">
+<h2 class="anchored" data-anchor-id="cast-relations-to-dataclasses">Cast relations to dataclasses</h2>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L164" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="relations_to_dataclasses" class="level3">
+<h3 class="anchored" data-anchor-id="relations_to_dataclasses">relations_to_dataclasses</h3>
+<blockquote class="blockquote">
+<pre><code> relations_to_dataclasses (ast, engine)</code></pre>
+</blockquote>
+<div id="cell-28" class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    check_referenced_paths_exist,</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    dereference_vars,</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    inline_aggregation,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    relations_to_dataclasses</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a><span class="co"># with checkLogs():</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a><span class="st"># R("hello",6)</span></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a><span class="st"># R("hello",[4,5))&lt;-True.</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a><span class="st"># R("hello",[4,5))&lt;-False.</span></span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a><span class="st"># new R(str,span,int,int)</span></span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a><span class="st"># ?R("hello",Y)</span></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a><span class="st">R(X,Y)&lt;-S(X,Y),T(X,Y)-&gt;(Y,Z).</span></span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a><span class="st">R(X,sum(Y))&lt;-S(X,Y).</span></span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a><span class="st">R(X,sum(Y),"yes")&lt;-S(X,Y).</span></span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>)</span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KV0sIGFnZz1Ob25lKSJdCjlbIjkKdHlwZT0jcXVvdDtydWxlX2JvZHlfcmVsYXRpb25fbGlzdCNxdW90OyJdCjEwWyIxMAp0eXBlPSNxdW90O3JlbGF0aW9uI3F1b3Q7LCB2YWw9UmVsYXRpb24obmFtZT0jcXVvdDtTI3F1b3Q7LCB0ZXJtcz1bRnJlZVZhcihuYW1lPSNxdW90O1gjcXVvdDspLCBGcmVlVmFyKG5hbWU9I3F1b3Q7WSNxdW90OyldLCBhZ2c9Tm9uZSkiXQoxOFsiMTgKdHlwZT0jcXVvdDtpZV9yZWxhdGlvbiNxdW90OywgdmFsPUlFUmVsYXRpb24obmFtZT0jcXVvdDtUI3F1b3Q7LCBpbl90ZXJtcz1bRnJlZVZhcihuYW1lPSNxdW90O1gjcXVvdDspLCBGcmVlVmFyKG5hbWU9I3F1b3Q7WSNxdW90OyldLCBvdXRfdGVybXM9W0ZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSwgRnJlZVZhcihuYW1lPSNxdW90O1ojcXVvdDspXSkiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDkKOSAtLT58ImlkeD0wInwgMTAKOSAtLT58ImlkeD0xInwgMTgK">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KV0sIGFnZz1bTm9uZSwgI3F1b3Q7c3VtI3F1b3Q7XSkiXQoxMlsiMTIKdHlwZT0jcXVvdDtydWxlX2JvZHlfcmVsYXRpb25fbGlzdCNxdW90OyJdCjEzWyIxMwp0eXBlPSNxdW90O3JlbGF0aW9uI3F1b3Q7LCB2YWw9UmVsYXRpb24obmFtZT0jcXVvdDtTI3F1b3Q7LCB0ZXJtcz1bRnJlZVZhcihuYW1lPSNxdW90O1gjcXVvdDspLCBGcmVlVmFyKG5hbWU9I3F1b3Q7WSNxdW90OyldLCBhZ2c9Tm9uZSkiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDEyCjEyIC0tPnwiaWR4PTAifCAxMwo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSwgI3F1b3Q7eWVzI3F1b3Q7XSwgYWdnPVtOb25lLCAjcXVvdDtzdW0jcXVvdDssIE5vbmVdKSJdCjE0WyIxNAp0eXBlPSNxdW90O3J1bGVfYm9keV9yZWxhdGlvbl9saXN0I3F1b3Q7Il0KMTVbIjE1CnR5cGU9I3F1b3Q7cmVsYXRpb24jcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1MjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KV0sIGFnZz1Ob25lKSJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMTQKMTQgLS0+fCJpZHg9MCJ8IDE1Cg==">
+</div>
+</div>
+<div id="cell-29" class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="st">        R(X,Y)&lt;-S(X,sum(Y)),T(X,Y)-&gt;(Y,Z).</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="st">            """</span>)</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"Aggregations are only allowed in rule heads, not in relation"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="st">        R(X,Y)&lt;-S(X,Y),T(X,sum(Y))-&gt;(Y,Z).</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a><span class="st">            """</span>)</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"Aggregations are not allowed in IE relations, found in T(X,Y) -&gt; (Y,Z)"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Aggregations are only allowed in rule heads, not in relation, found in S(X,sum(Y))
+Aggregations are not allowed in IE relations, found in T(X,Y) -&gt; (Y,Z)</code></pre>
+</div>
+</div>
+<div id="cell-30" class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    check_referenced_paths_exist,</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    dereference_vars,</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>    inline_aggregation,</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>    relations_to_dataclasses</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="st">R("hello",6)</span></span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a><span class="st">+R("hello",6)</span></span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a><span class="st">-R("hello",6)</span></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a><span class="st">new R(str,str,int,int)</span></span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a><span class="st">?R("hello",Y)</span></span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a><span class="st">R(X,Y)&lt;-S(X,Y),T(X,Y)-&gt;(Y,Z).</span></span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a><span class="st">R(X,sum(Y))&lt;-S(X,Y).</span></span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a><span class="st">R(X,sum(Y),"yes")&lt;-S(X,Y).</span></span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>)</span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span>
+<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a>assert_asts(asts,[{<span class="st">'type'</span>: <span class="st">'add_fact'</span>,</span>
+<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a>  <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'R'</span>, terms<span class="op">=</span>[<span class="st">'hello'</span>, <span class="dv">6</span>], agg<span class="op">=</span><span class="va">None</span>),</span>
+<span id="cb26-25"><a href="#cb26-25" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb26-26"><a href="#cb26-26" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: []},</span>
+<span id="cb26-27"><a href="#cb26-27" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'add_fact'</span>,</span>
+<span id="cb26-28"><a href="#cb26-28" aria-hidden="true" tabindex="-1"></a>  <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'R'</span>, terms<span class="op">=</span>[<span class="st">'hello'</span>, <span class="dv">6</span>], agg<span class="op">=</span><span class="va">None</span>),</span>
+<span id="cb26-29"><a href="#cb26-29" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb26-30"><a href="#cb26-30" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: []},</span>
+<span id="cb26-31"><a href="#cb26-31" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'remove_fact'</span>,</span>
+<span id="cb26-32"><a href="#cb26-32" aria-hidden="true" tabindex="-1"></a>  <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'R'</span>, terms<span class="op">=</span>[<span class="st">'hello'</span>, <span class="dv">6</span>], agg<span class="op">=</span><span class="va">None</span>),</span>
+<span id="cb26-33"><a href="#cb26-33" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb26-34"><a href="#cb26-34" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: []},</span>
+<span id="cb26-35"><a href="#cb26-35" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'relation_declaration'</span>,</span>
+<span id="cb26-36"><a href="#cb26-36" aria-hidden="true" tabindex="-1"></a>  <span class="st">'val'</span>: RelationDefinition(name<span class="op">=</span><span class="st">'R'</span>, scheme<span class="op">=</span>[<span class="bu">str</span>,<span class="bu">str</span>,<span class="bu">int</span>,<span class="bu">int</span>]),</span>
+<span id="cb26-37"><a href="#cb26-37" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb26-38"><a href="#cb26-38" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: []},</span>
+<span id="cb26-39"><a href="#cb26-39" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'query'</span>,</span>
+<span id="cb26-40"><a href="#cb26-40" aria-hidden="true" tabindex="-1"></a>  <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'R'</span>, terms<span class="op">=</span>[<span class="st">'hello'</span>, FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)], agg<span class="op">=</span><span class="va">None</span>),</span>
+<span id="cb26-41"><a href="#cb26-41" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb26-42"><a href="#cb26-42" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: []},</span>
+<span id="cb26-43"><a href="#cb26-43" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'rule'</span>,</span>
+<span id="cb26-44"><a href="#cb26-44" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb26-45"><a href="#cb26-45" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'rule_head'</span>,</span>
+<span id="cb26-46"><a href="#cb26-46" aria-hidden="true" tabindex="-1"></a>    <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'R'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)], agg<span class="op">=</span><span class="va">None</span>),</span>
+<span id="cb26-47"><a href="#cb26-47" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb26-48"><a href="#cb26-48" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'rule_body_relation_list'</span>,</span>
+<span id="cb26-49"><a href="#cb26-49" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">9</span>,</span>
+<span id="cb26-50"><a href="#cb26-50" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation'</span>,</span>
+<span id="cb26-51"><a href="#cb26-51" aria-hidden="true" tabindex="-1"></a>      <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'S'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)], agg<span class="op">=</span><span class="va">None</span>),</span>
+<span id="cb26-52"><a href="#cb26-52" aria-hidden="true" tabindex="-1"></a>      <span class="st">'id'</span>: <span class="dv">10</span>},</span>
+<span id="cb26-53"><a href="#cb26-53" aria-hidden="true" tabindex="-1"></a>     {<span class="st">'type'</span>: <span class="st">'ie_relation'</span>,</span>
+<span id="cb26-54"><a href="#cb26-54" aria-hidden="true" tabindex="-1"></a>      <span class="st">'val'</span>: IERelation(name<span class="op">=</span><span class="st">'T'</span>, in_terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)], out_terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'Y'</span>), FreeVar(name<span class="op">=</span><span class="st">'Z'</span>)]),</span>
+<span id="cb26-55"><a href="#cb26-55" aria-hidden="true" tabindex="-1"></a>      <span class="st">'id'</span>: <span class="dv">18</span>}]}]},</span>
+<span id="cb26-56"><a href="#cb26-56" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'rule'</span>,</span>
+<span id="cb26-57"><a href="#cb26-57" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb26-58"><a href="#cb26-58" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'rule_head'</span>,</span>
+<span id="cb26-59"><a href="#cb26-59" aria-hidden="true" tabindex="-1"></a>    <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'R'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)], agg<span class="op">=</span>[<span class="va">None</span>, <span class="st">'sum'</span>]),</span>
+<span id="cb26-60"><a href="#cb26-60" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb26-61"><a href="#cb26-61" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'rule_body_relation_list'</span>,</span>
+<span id="cb26-62"><a href="#cb26-62" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">12</span>,</span>
+<span id="cb26-63"><a href="#cb26-63" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation'</span>,</span>
+<span id="cb26-64"><a href="#cb26-64" aria-hidden="true" tabindex="-1"></a>      <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'S'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)], agg<span class="op">=</span><span class="va">None</span>),</span>
+<span id="cb26-65"><a href="#cb26-65" aria-hidden="true" tabindex="-1"></a>      <span class="st">'id'</span>: <span class="dv">13</span>}]}]},</span>
+<span id="cb26-66"><a href="#cb26-66" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'rule'</span>,</span>
+<span id="cb26-67"><a href="#cb26-67" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb26-68"><a href="#cb26-68" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'rule_head'</span>,</span>
+<span id="cb26-69"><a href="#cb26-69" aria-hidden="true" tabindex="-1"></a>    <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'R'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>), <span class="st">'yes'</span>], agg<span class="op">=</span>[<span class="va">None</span>, <span class="st">'sum'</span>, <span class="va">None</span>]),</span>
+<span id="cb26-70"><a href="#cb26-70" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">1</span>},</span>
+<span id="cb26-71"><a href="#cb26-71" aria-hidden="true" tabindex="-1"></a>   {<span class="st">'type'</span>: <span class="st">'rule_body_relation_list'</span>,</span>
+<span id="cb26-72"><a href="#cb26-72" aria-hidden="true" tabindex="-1"></a>    <span class="st">'id'</span>: <span class="dv">14</span>,</span>
+<span id="cb26-73"><a href="#cb26-73" aria-hidden="true" tabindex="-1"></a>    <span class="st">'children'</span>: [{<span class="st">'type'</span>: <span class="st">'relation'</span>,</span>
+<span id="cb26-74"><a href="#cb26-74" aria-hidden="true" tabindex="-1"></a>      <span class="st">'val'</span>: Relation(name<span class="op">=</span><span class="st">'S'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)], agg<span class="op">=</span><span class="va">None</span>),</span>
+<span id="cb26-75"><a href="#cb26-75" aria-hidden="true" tabindex="-1"></a>      <span class="st">'id'</span>: <span class="dv">15</span>}]}]}]</span>
+<span id="cb26-76"><a href="#cb26-76" aria-hidden="true" tabindex="-1"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YWRkX2ZhY3QjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVsjcXVvdDtoZWxsbyNxdW90OywgNl0sIGFnZz1Ob25lKSJdCg==">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YWRkX2ZhY3QjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVsjcXVvdDtoZWxsbyNxdW90OywgNl0sIGFnZz1Ob25lKSJdCg==">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cmVtb3ZlX2ZhY3QjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVsjcXVvdDtoZWxsbyNxdW90OywgNl0sIGFnZz1Ob25lKSJdCg==">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cmVsYXRpb25fZGVjbGFyYXRpb24jcXVvdDssIHZhbD1SZWxhdGlvbkRlZmluaXRpb24obmFtZT0jcXVvdDtSI3F1b3Q7LCBzY2hlbWU9WyNsdDtjbGFzcyAjcXVvdDtzdHIjcXVvdDsjZ3Q7LCAjbHQ7Y2xhc3MgI3F1b3Q7c3RyI3F1b3Q7I2d0OywgI2x0O2NsYXNzICNxdW90O2ludCNxdW90OyNndDssICNsdDtjbGFzcyAjcXVvdDtpbnQjcXVvdDsjZ3Q7XSkiXQo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cXVlcnkjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVsjcXVvdDtoZWxsbyNxdW90OywgRnJlZVZhcihuYW1lPSNxdW90O1kjcXVvdDspXSwgYWdnPU5vbmUpIl0K">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KV0sIGFnZz1Ob25lKSJdCjlbIjkKdHlwZT0jcXVvdDtydWxlX2JvZHlfcmVsYXRpb25fbGlzdCNxdW90OyJdCjEwWyIxMAp0eXBlPSNxdW90O3JlbGF0aW9uI3F1b3Q7LCB2YWw9UmVsYXRpb24obmFtZT0jcXVvdDtTI3F1b3Q7LCB0ZXJtcz1bRnJlZVZhcihuYW1lPSNxdW90O1gjcXVvdDspLCBGcmVlVmFyKG5hbWU9I3F1b3Q7WSNxdW90OyldLCBhZ2c9Tm9uZSkiXQoxOFsiMTgKdHlwZT0jcXVvdDtpZV9yZWxhdGlvbiNxdW90OywgdmFsPUlFUmVsYXRpb24obmFtZT0jcXVvdDtUI3F1b3Q7LCBpbl90ZXJtcz1bRnJlZVZhcihuYW1lPSNxdW90O1gjcXVvdDspLCBGcmVlVmFyKG5hbWU9I3F1b3Q7WSNxdW90OyldLCBvdXRfdGVybXM9W0ZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSwgRnJlZVZhcihuYW1lPSNxdW90O1ojcXVvdDspXSkiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDkKOSAtLT58ImlkeD0wInwgMTAKOSAtLT58ImlkeD0xInwgMTgK">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KV0sIGFnZz1bTm9uZSwgI3F1b3Q7c3VtI3F1b3Q7XSkiXQoxMlsiMTIKdHlwZT0jcXVvdDtydWxlX2JvZHlfcmVsYXRpb25fbGlzdCNxdW90OyJdCjEzWyIxMwp0eXBlPSNxdW90O3JlbGF0aW9uI3F1b3Q7LCB2YWw9UmVsYXRpb24obmFtZT0jcXVvdDtTI3F1b3Q7LCB0ZXJtcz1bRnJlZVZhcihuYW1lPSNxdW90O1gjcXVvdDspLCBGcmVlVmFyKG5hbWU9I3F1b3Q7WSNxdW90OyldLCBhZ2c9Tm9uZSkiXQowIC0tPnwiaWR4PTAifCAxCjAgLS0+fCJpZHg9MSJ8IDEyCjEyIC0tPnwiaWR4PTAifCAxMwo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OyJdCjFbIjEKdHlwZT0jcXVvdDtydWxlX2hlYWQjcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSwgI3F1b3Q7eWVzI3F1b3Q7XSwgYWdnPVtOb25lLCAjcXVvdDtzdW0jcXVvdDssIE5vbmVdKSJdCjE0WyIxNAp0eXBlPSNxdW90O3J1bGVfYm9keV9yZWxhdGlvbl9saXN0I3F1b3Q7Il0KMTVbIjE1CnR5cGU9I3F1b3Q7cmVsYXRpb24jcXVvdDssIHZhbD1SZWxhdGlvbihuYW1lPSNxdW90O1MjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KV0sIGFnZz1Ob25lKSJdCjAgLS0+fCJpZHg9MCJ8IDEKMCAtLT58ImlkeD0xInwgMTQKMTQgLS0+fCJpZHg9MCJ8IDE1Cg==">
+</div>
+</div>
+</section>
+</section>
+<section id="verify-referenced-relations-and-functions" class="level2">
+<h2 class="anchored" data-anchor-id="verify-referenced-relations-and-functions">verify referenced relations and functions</h2>
+<ul>
+<li>check that referenced relations and ie relations:
+<ul>
+<li>exist in the symbol table</li>
+<li>are called with the correct arity</li>
+<li>are called with correct constants or vars types</li>
+</ul></li>
+</ul>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L229" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="verify_referenced_relations_and_functions" class="level3">
+<h3 class="anchored" data-anchor-id="verify_referenced_relations_and_functions">verify_referenced_relations_and_functions</h3>
+<blockquote class="blockquote">
+<pre><code> verify_referenced_relations_and_functions (ast, engine)</code></pre>
+</blockquote>
+<div id="cell-34" class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>sess.engine.get_agg_function(<span class="st">'sums'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-35" class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    check_referenced_paths_exist,</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    dereference_vars,</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>    inline_aggregation,</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>    relations_to_dataclasses,</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>    verify_referenced_relations_and_functions</span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> string_schema(n):</span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> [<span class="bu">str</span>]<span class="op">*</span>n</span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>sess.engine.set_var(<span class="st">'a'</span>,<span class="dv">1</span>)</span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>sess.engine.set_var(<span class="st">'b'</span>,<span class="st">'hello'</span>)</span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a>sess.engine.set_relation(RelationDefinition(name<span class="op">=</span><span class="st">'R'</span>,scheme<span class="op">=</span>[<span class="bu">str</span>,<span class="bu">int</span>]))</span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a>sess.engine.set_relation(RelationDefinition(name<span class="op">=</span><span class="st">'F'</span>,scheme<span class="op">=</span>[<span class="bu">float</span>,Real]))</span>
+<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a>sess.engine.set_relation(RelationDefinition(name<span class="op">=</span><span class="st">'S'</span>,scheme<span class="op">=</span>[<span class="bu">str</span>,<span class="bu">int</span>,<span class="bu">int</span>]))</span>
+<span id="cb29-20"><a href="#cb29-20" aria-hidden="true" tabindex="-1"></a>sess.engine.add_fact(Relation(name<span class="op">=</span><span class="st">'R'</span>,terms<span class="op">=</span>[Span(<span class="st">"hello"</span>),<span class="dv">5</span>]))</span>
+<span id="cb29-21"><a href="#cb29-21" aria-hidden="true" tabindex="-1"></a>sess.engine.set_ie_function(IEFunction(name<span class="op">=</span><span class="st">'T'</span>,in_schema<span class="op">=</span>[<span class="bu">str</span>,Real],out_schema<span class="op">=</span>[Real,<span class="bu">str</span>],func<span class="op">=</span><span class="kw">lambda</span> x,y:(y,x)))</span>
+<span id="cb29-22"><a href="#cb29-22" aria-hidden="true" tabindex="-1"></a>sess.engine.set_ie_function(IEFunction(name<span class="op">=</span><span class="st">'T2'</span>,in_schema<span class="op">=</span>string_schema,out_schema<span class="op">=</span>string_schema,func<span class="op">=</span><span class="kw">lambda</span> x,y:(y,x)))</span>
+<span id="cb29-23"><a href="#cb29-23" aria-hidden="true" tabindex="-1"></a>sess.engine.set_agg_function(AGGFunction(name<span class="op">=</span><span class="st">'sum'</span>,func<span class="op">=</span><span class="st">'sum'</span>,in_schema<span class="op">=</span>[<span class="bu">int</span>],out_schema<span class="op">=</span>[<span class="bu">int</span>]))</span>
+<span id="cb29-24"><a href="#cb29-24" aria-hidden="true" tabindex="-1"></a>sess.engine.set_agg_function(AGGFunction(name<span class="op">=</span><span class="st">'count'</span>,func<span class="op">=</span><span class="st">'count'</span>,in_schema<span class="op">=</span>[<span class="bu">object</span>],out_schema<span class="op">=</span>[<span class="bu">int</span>]))</span>
+<span id="cb29-25"><a href="#cb29-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-26"><a href="#cb29-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-27"><a href="#cb29-27" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb29-28"><a href="#cb29-28" aria-hidden="true" tabindex="-1"></a><span class="st">R("hello",6)</span></span>
+<span id="cb29-29"><a href="#cb29-29" aria-hidden="true" tabindex="-1"></a><span class="st">R("hello",$a)</span></span>
+<span id="cb29-30"><a href="#cb29-30" aria-hidden="true" tabindex="-1"></a><span class="st">?R("hello",Y)</span></span>
+<span id="cb29-31"><a href="#cb29-31" aria-hidden="true" tabindex="-1"></a><span class="st">F(1.3,5)</span></span>
+<span id="cb29-32"><a href="#cb29-32" aria-hidden="true" tabindex="-1"></a><span class="st">F(1.3,5.5)</span></span>
+<span id="cb29-33"><a href="#cb29-33" aria-hidden="true" tabindex="-1"></a><span class="st">NewRel(X,Y)&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Z).</span></span>
+<span id="cb29-34"><a href="#cb29-34" aria-hidden="true" tabindex="-1"></a><span class="st">NewRel2(X,Y)&lt;-S(X,Y,3),T2(X,Y)-&gt;(Y,Z).</span></span>
+<span id="cb29-35"><a href="#cb29-35" aria-hidden="true" tabindex="-1"></a><span class="st">NewRel3(X,sum(Y))&lt;-R(X,Y).</span></span>
+<span id="cb29-36"><a href="#cb29-36" aria-hidden="true" tabindex="-1"></a><span class="st">NewRel4(X,count(Y))&lt;-R(X,Y).</span></span>
+<span id="cb29-37"><a href="#cb29-37" aria-hidden="true" tabindex="-1"></a><span class="st">NewRel5(count(X),Y)&lt;-R(X,Y).</span></span>
+<span id="cb29-38"><a href="#cb29-38" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>)</span>
+<span id="cb29-39"><a href="#cb29-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-40"><a href="#cb29-40" aria-hidden="true" tabindex="-1"></a><span class="co"># for ast in asts:</span></span>
+<span id="cb29-41"><a href="#cb29-41" aria-hidden="true" tabindex="-1"></a><span class="co">#     draw(ast)</span></span>
+<span id="cb29-42"><a href="#cb29-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-43"><a href="#cb29-43" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-44"><a href="#cb29-44" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-45"><a href="#cb29-45" aria-hidden="true" tabindex="-1"></a><span class="ss">                x=3</span></span>
+<span id="cb29-46"><a href="#cb29-46" aria-hidden="true" tabindex="-1"></a><span class="ss">                Z("hello",x)</span></span>
+<span id="cb29-47"><a href="#cb29-47" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb29-48"><a href="#cb29-48" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-49"><a href="#cb29-49" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"Adding or removing facts cannot have free variables"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-50"><a href="#cb29-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-51"><a href="#cb29-51" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-52"><a href="#cb29-52" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-53"><a href="#cb29-53" aria-hidden="true" tabindex="-1"></a><span class="ss">                Z("hello",4)</span></span>
+<span id="cb29-54"><a href="#cb29-54" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb29-55"><a href="#cb29-55" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-56"><a href="#cb29-56" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"Relation 'Z' is not defined"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-57"><a href="#cb29-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-58"><a href="#cb29-58" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-59"><a href="#cb29-59" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-60"><a href="#cb29-60" aria-hidden="true" tabindex="-1"></a><span class="ss">                R("hello",4,3)</span></span>
+<span id="cb29-61"><a href="#cb29-61" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb29-62"><a href="#cb29-62" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-63"><a href="#cb29-63" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"Relation 'R' expected schema R(str,int) but got called with R(hello,4,3)"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-64"><a href="#cb29-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-65"><a href="#cb29-65" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-66"><a href="#cb29-66" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-67"><a href="#cb29-67" aria-hidden="true" tabindex="-1"></a><span class="ss">                R(4,4)</span></span>
+<span id="cb29-68"><a href="#cb29-68" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb29-69"><a href="#cb29-69" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-70"><a href="#cb29-70" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"Relation 'R' expected schema R(str,int) but got called with R(4,4)"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-71"><a href="#cb29-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-72"><a href="#cb29-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-73"><a href="#cb29-73" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-74"><a href="#cb29-74" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-75"><a href="#cb29-75" aria-hidden="true" tabindex="-1"></a><span class="ss">                R("hello",$b)</span></span>
+<span id="cb29-76"><a href="#cb29-76" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb29-77"><a href="#cb29-77" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-78"><a href="#cb29-78" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"Relation 'R' expected schema R(str,int) but got called with R(hello,hello)"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-79"><a href="#cb29-79" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-80"><a href="#cb29-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-81"><a href="#cb29-81" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-82"><a href="#cb29-82" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-83"><a href="#cb29-83" aria-hidden="true" tabindex="-1"></a><span class="ss">                ?R(4,Y)</span></span>
+<span id="cb29-84"><a href="#cb29-84" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb29-85"><a href="#cb29-85" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-86"><a href="#cb29-86" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"Relation 'R' expected schema R(str,int) but got called with R(4,Y)"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-87"><a href="#cb29-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-88"><a href="#cb29-88" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-89"><a href="#cb29-89" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-90"><a href="#cb29-90" aria-hidden="true" tabindex="-1"></a><span class="ss">                NewRel(X,Y)&lt;-S(X,Y,3),T(X,Y,X)-&gt;(Y,Z).</span></span>
+<span id="cb29-91"><a href="#cb29-91" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb29-92"><a href="#cb29-92" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-93"><a href="#cb29-93" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"IERelation 'T' input expected schema"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-94"><a href="#cb29-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-95"><a href="#cb29-95" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-96"><a href="#cb29-96" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-97"><a href="#cb29-97" aria-hidden="true" tabindex="-1"></a><span class="ss">                NewRel(X,Y)&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,2).</span></span>
+<span id="cb29-98"><a href="#cb29-98" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb29-99"><a href="#cb29-99" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-100"><a href="#cb29-100" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"IERelation 'T' output expected schema"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-101"><a href="#cb29-101" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-102"><a href="#cb29-102" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-103"><a href="#cb29-103" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-104"><a href="#cb29-104" aria-hidden="true" tabindex="-1"></a><span class="ss">                NewRel(X,Y)&lt;-S(X,Y,3),T3(X,Y)-&gt;(Y,X).</span></span>
+<span id="cb29-105"><a href="#cb29-105" aria-hidden="true" tabindex="-1"></a><span class="ss">                """</span>)</span>
+<span id="cb29-106"><a href="#cb29-106" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-107"><a href="#cb29-107" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"ie function 'T3' was not registered"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-108"><a href="#cb29-108" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-109"><a href="#cb29-109" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb29-110"><a href="#cb29-110" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="ss">f"""</span></span>
+<span id="cb29-111"><a href="#cb29-111" aria-hidden="true" tabindex="-1"></a><span class="ss">            NewRel3(X,sums(Y))&lt;-R(X,Y).</span></span>
+<span id="cb29-112"><a href="#cb29-112" aria-hidden="true" tabindex="-1"></a><span class="ss">            """</span>)</span>
+<span id="cb29-113"><a href="#cb29-113" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb29-114"><a href="#cb29-114" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"agg function 'sums' was not registered"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb29-115"><a href="#cb29-115" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-116"><a href="#cb29-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-117"><a href="#cb29-117" aria-hidden="true" tabindex="-1"></a><span class="co"># assert  [serialize_tree(ast) for ast in asts] </span></span>
+<span id="cb29-118"><a href="#cb29-118" aria-hidden="true" tabindex="-1"></a><span class="co"># [serialize_tree(ast) for ast in asts]</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Adding or removing facts cannot have free variables, found in Z(hello,x)
+Relation 'Z' is not defined
+Relation 'R' expected schema R(str,int) but got called with R(hello,4,3)
+Relation 'R' expected schema R(str,int) but got called with R(4,4)
+Relation 'R' expected schema R(str,int) but got called with R(hello,hello)
+Relation 'R' expected schema R(str,int) but got called with R(4,Y)
+IERelation 'T' input expected schema [str,Real] but got called with [X,Y,X]
+IERelation 'T' output expected schema [Real,str] but got called with [Y,2]
+ie function 'T3' was not registered, registered functions are ['T', 'T2']
+agg function 'sums' was not registered, registered functions are ['sum', 'count']</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="cast-rules-to-data-classes" class="level2">
+<h2 class="anchored" data-anchor-id="cast-rules-to-data-classes">cast rules to data classes</h2>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L287" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="rules_to_dataclasses" class="level3">
+<h3 class="anchored" data-anchor-id="rules_to_dataclasses">rules_to_dataclasses</h3>
+<blockquote class="blockquote">
+<pre><code> rules_to_dataclasses (ast, engine)</code></pre>
+</blockquote>
+<div id="cell-38" class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>    check_referenced_paths_exist,</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>    dereference_vars,</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>    inline_aggregation,</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>    relations_to_dataclasses,</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># verify_referenced_relations_and_functions,</span></span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>    rules_to_dataclasses</span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a><span class="st">R(X,Y,Z)&lt;-S(X,Y),T(X,Y).</span></span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a><span class="st">R(X,Y,Z)&lt;-S(X,Y),T(X,Y)-&gt;(Y,Z).</span></span>
+<span id="cb32-15"><a href="#cb32-15" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>)</span>
+<span id="cb32-16"><a href="#cb32-16" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb32-17"><a href="#cb32-17" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span>
+<span id="cb32-18"><a href="#cb32-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-19"><a href="#cb32-19" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span>  [serialize_tree(ast) <span class="cf">for</span> ast <span class="kw">in</span> asts] <span class="op">==</span> [{<span class="st">'type'</span>: <span class="st">'rule'</span>,</span>
+<span id="cb32-20"><a href="#cb32-20" aria-hidden="true" tabindex="-1"></a>  <span class="st">'val'</span>: Rule(head<span class="op">=</span>Relation(name<span class="op">=</span><span class="st">'R'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>), FreeVar(name<span class="op">=</span><span class="st">'Z'</span>)]),</span>
+<span id="cb32-21"><a href="#cb32-21" aria-hidden="true" tabindex="-1"></a>               body<span class="op">=</span>[Relation(name<span class="op">=</span><span class="st">'S'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)]), </span>
+<span id="cb32-22"><a href="#cb32-22" aria-hidden="true" tabindex="-1"></a>                     Relation(name<span class="op">=</span><span class="st">'T'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)])]),</span>
+<span id="cb32-23"><a href="#cb32-23" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb32-24"><a href="#cb32-24" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: []},</span>
+<span id="cb32-25"><a href="#cb32-25" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'rule'</span>,</span>
+<span id="cb32-26"><a href="#cb32-26" aria-hidden="true" tabindex="-1"></a>  <span class="st">'val'</span>: Rule(head<span class="op">=</span>Relation(name<span class="op">=</span><span class="st">'R'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>), FreeVar(name<span class="op">=</span><span class="st">'Z'</span>)]), </span>
+<span id="cb32-27"><a href="#cb32-27" aria-hidden="true" tabindex="-1"></a>              body<span class="op">=</span>[Relation(name<span class="op">=</span><span class="st">'S'</span>, terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)]), </span>
+<span id="cb32-28"><a href="#cb32-28" aria-hidden="true" tabindex="-1"></a>                    IERelation(name<span class="op">=</span><span class="st">'T'</span>, in_terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'X'</span>), FreeVar(name<span class="op">=</span><span class="st">'Y'</span>)], out_terms<span class="op">=</span>[FreeVar(name<span class="op">=</span><span class="st">'Y'</span>), FreeVar(name<span class="op">=</span><span class="st">'Z'</span>)])]),</span>
+<span id="cb32-29"><a href="#cb32-29" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb32-30"><a href="#cb32-30" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: []}]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OywgdmFsPVJ1bGUoaGVhZD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSwgRnJlZVZhcihuYW1lPSNxdW90O1ojcXVvdDspXSwgYWdnPU5vbmUpLCBib2R5PVtSZWxhdGlvbihuYW1lPSNxdW90O1MjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KV0sIGFnZz1Ob25lKSwgUmVsYXRpb24obmFtZT0jcXVvdDtUI3F1b3Q7LCB0ZXJtcz1bRnJlZVZhcihuYW1lPSNxdW90O1gjcXVvdDspLCBGcmVlVmFyKG5hbWU9I3F1b3Q7WSNxdW90OyldLCBhZ2c9Tm9uZSldKSJdCg==">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cnVsZSNxdW90OywgdmFsPVJ1bGUoaGVhZD1SZWxhdGlvbihuYW1lPSNxdW90O1IjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KSwgRnJlZVZhcihuYW1lPSNxdW90O1ojcXVvdDspXSwgYWdnPU5vbmUpLCBib2R5PVtSZWxhdGlvbihuYW1lPSNxdW90O1MjcXVvdDssIHRlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KV0sIGFnZz1Ob25lKSwgSUVSZWxhdGlvbihuYW1lPSNxdW90O1QjcXVvdDssIGluX3Rlcm1zPVtGcmVlVmFyKG5hbWU9I3F1b3Q7WCNxdW90OyksIEZyZWVWYXIobmFtZT0jcXVvdDtZI3F1b3Q7KV0sIG91dF90ZXJtcz1bRnJlZVZhcihuYW1lPSNxdW90O1kjcXVvdDspLCBGcmVlVmFyKG5hbWU9I3F1b3Q7WiNxdW90OyldKV0pIl0K">
+</div>
+</div>
+</section>
+</section>
+<section id="rule-safety" class="level2">
+<h2 class="anchored" data-anchor-id="rule-safety">Rule safety</h2>
+<pre><code>/opt/hostedtoolcache/Python/3.11.11/x64/lib/python3.11/site-packages/fastcore/docscrape.py:230: UserWarning: potentially wrong underline length... 
+Checks that the Spannerlog Rule is safe 
+--- in 
+Checks that the Spannerlog Rule is safe
+---...
+  else: warn(msg)</code></pre>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L300" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="is_rule_safe" class="level3">
+<h3 class="anchored" data-anchor-id="is_rule_safe">is_rule_safe</h3>
+<blockquote class="blockquote">
+<pre><code> is_rule_safe (rule:spannerlib.data_types.Rule)</code></pre>
+</blockquote>
+</section>
+</section>
+<section id="checks-that-the-spannerlog-rule-is-safe" class="level2">
+<h2 class="anchored" data-anchor-id="checks-that-the-spannerlog-rule-is-safe">*Checks that the Spannerlog Rule is safe</h2>
+<p>In spannerlog, rule safety is a semantic property that ensures that IE relation’s inputs are limited in the values they can be assigned to by other relations in the rule body. This could include outputs of other IE relations.</p>
+<p>We call a free variable in a rule body “bound” if it exists in the output of any safe relation in the rule body. For normal relations, they only have output terms, so all their free variables are considered bound.</p>
+<p>We call a relation in a rule’s body safe if all its input free variables are bound. For normal relations, they don’t have input relations, so they are always considered safe.</p>
+<p>We call a rule safe if all of its body relations are safe.</p>
+<p>This basically means that we need to make sure there is at least one order of IE relation evaluation, in which each IE relation input variables is bound by the normal relations and the output relation of the previous IE relations.</p>
+<p>Examples: * <code>rel2(X,Y) &lt;- rel1(X,Z), ie1(X)-&gt;(Y).</code> is a safe rule as the only input free variable, <code>X</code>, exists in the output of the safe relation <code>rel1(X, Z)</code>.<br>
+* <code>rel2(Y) &lt;- ie1(Z)-&gt;(Y).</code> is not safe as the input free variable <code>Z</code> does not exist in the output of any safe relation. * <code>rel2(Z,W) &lt;- rel1(X,Y),ie1(Z,Y)-&gt;(W),ie2(W,Y)-&gt;Z.</code> is not safe as both ie functions require each other’s output as input, creating a circular dependency. —*</p>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L375" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="check_rule_safety" class="level3">
+<h3 class="anchored" data-anchor-id="check_rule_safety">check_rule_safety</h3>
+<blockquote class="blockquote">
+<pre><code> check_rule_safety (ast, engine)</code></pre>
+</blockquote>
+<div id="cell-42" class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>    relations_to_dataclasses,</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>    rules_to_dataclasses,</span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>    check_rule_safety,</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a><span class="co"># safe rules</span></span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a><span class="st">S(X,Y)&lt;-R(X,Y).</span></span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a><span class="st">rel2(X,Y) &lt;- rel1(X,Z), ie1(X)-&gt;(Y).</span></span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a><span class="st">rel2(X,Y) &lt;- rel1(X,Z), ie1(X)-&gt;(Y), ie2(Y)-&gt;(Z).</span></span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a><span class="st">rel2(X,Y) &lt;- rel1(X), ie1(X)-&gt;(Y), ie2(Y)-&gt;(Z).</span></span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>)</span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> serialize_tree(asts[<span class="dv">0</span>])</span>
+<span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-18"><a href="#cb36-18" aria-hidden="true" tabindex="-1"></a><span class="co"># change types of R to make it illegal</span></span>
+<span id="cb36-19"><a href="#cb36-19" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb36-20"><a href="#cb36-20" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb36-21"><a href="#cb36-21" aria-hidden="true" tabindex="-1"></a><span class="st">    rel2(Y) &lt;- ie1(Z)-&gt;(Y).</span></span>
+<span id="cb36-22"><a href="#cb36-22" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb36-23"><a href="#cb36-23" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb36-24"><a href="#cb36-24" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"is not safe"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span>
+<span id="cb36-25"><a href="#cb36-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-26"><a href="#cb36-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-27"><a href="#cb36-27" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb36-28"><a href="#cb36-28" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb36-29"><a href="#cb36-29" aria-hidden="true" tabindex="-1"></a><span class="st">    rel2(Z,W) &lt;- rel1(X,Y),ie1(Z,Y)-&gt;(W),ie2(W,Y)-&gt;(Z).</span></span>
+<span id="cb36-30"><a href="#cb36-30" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb36-31"><a href="#cb36-31" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_info.value)</span>
+<span id="cb36-32"><a href="#cb36-32" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"is not safe"</span> <span class="kw">in</span> <span class="bu">str</span>(exc_info.value)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rule 'rel2(Y) &lt;- ie1(Z) -&gt; (Y).' is not safe:
+the following free vars where bound by normal relations: set()
+the following ie relations where safe: set()
+leading to the following free vars being bound: set()
+However the following ie relations could not be bound: ['ie1(Z) -&gt; (Y)']
+
+Rule 'rel2(Z,W) &lt;- rel1(X,Y),ie1(Z,Y) -&gt; (W),ie2(W,Y) -&gt; (Z).' is not safe:
+the following free vars where bound by normal relations: {'Y', 'X'}
+the following ie relations where safe: set()
+leading to the following free vars being bound: {'Y', 'X'}
+However the following ie relations could not be bound: ['ie1(Z,Y) -&gt; (W)', 'ie2(W,Y) -&gt; (Z)']
+</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="consistent-free-var-types" class="level2">
+<h2 class="anchored" data-anchor-id="consistent-free-var-types">Consistent Free Var types</h2>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L479" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="consistent_free_var_types_in_rule" class="level3">
+<h3 class="anchored" data-anchor-id="consistent_free_var_types_in_rule">consistent_free_var_types_in_rule</h3>
+<blockquote class="blockquote">
+<pre><code> consistent_free_var_types_in_rule (ast, engine)</code></pre>
+</blockquote>
+<div id="cell-45" class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>    check_referenced_paths_exist,</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>    dereference_vars,</span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>    inline_aggregation,</span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>    relations_to_dataclasses,</span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>    verify_referenced_relations_and_functions,</span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>    rules_to_dataclasses,</span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>    check_rule_safety,</span>
+<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a>    consistent_free_var_types_in_rule,</span>
+<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-14"><a href="#cb39-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-15"><a href="#cb39-15" aria-hidden="true" tabindex="-1"></a>sess.engine.set_var(<span class="st">'a'</span>,<span class="dv">1</span>)</span>
+<span id="cb39-16"><a href="#cb39-16" aria-hidden="true" tabindex="-1"></a>sess.engine.set_var(<span class="st">'b'</span>,<span class="st">'hello'</span>)</span>
+<span id="cb39-17"><a href="#cb39-17" aria-hidden="true" tabindex="-1"></a>sess.engine.set_relation(RelationDefinition(name<span class="op">=</span><span class="st">'R'</span>,scheme<span class="op">=</span>[<span class="bu">str</span>,<span class="bu">int</span>]))</span>
+<span id="cb39-18"><a href="#cb39-18" aria-hidden="true" tabindex="-1"></a>sess.engine.set_relation(RelationDefinition(name<span class="op">=</span><span class="st">'S'</span>,scheme<span class="op">=</span>[<span class="bu">str</span>,<span class="bu">int</span>,<span class="bu">int</span>]))</span>
+<span id="cb39-19"><a href="#cb39-19" aria-hidden="true" tabindex="-1"></a>sess.engine.set_relation(RelationDefinition(name<span class="op">=</span><span class="st">'S2'</span>,scheme<span class="op">=</span>[<span class="bu">str</span>,<span class="bu">float</span>,<span class="bu">float</span>]))</span>
+<span id="cb39-20"><a href="#cb39-20" aria-hidden="true" tabindex="-1"></a>sess.engine.set_relation(RelationDefinition(name<span class="op">=</span><span class="st">'NewRel'</span>,scheme<span class="op">=</span>[<span class="bu">str</span>,<span class="bu">int</span>]))</span>
+<span id="cb39-21"><a href="#cb39-21" aria-hidden="true" tabindex="-1"></a>sess.engine.set_ie_function(IEFunction(name<span class="op">=</span><span class="st">'T'</span>,in_schema<span class="op">=</span>[<span class="bu">str</span>,Real],out_schema<span class="op">=</span>[Real,<span class="bu">str</span>],func<span class="op">=</span><span class="kw">lambda</span> x,y:(y,x)))</span>
+<span id="cb39-22"><a href="#cb39-22" aria-hidden="true" tabindex="-1"></a>sess.engine.set_agg_function(AGGFunction(name<span class="op">=</span><span class="st">'sum'</span>,func<span class="op">=</span><span class="st">'sum'</span>,in_schema<span class="op">=</span>[<span class="bu">int</span>],out_schema<span class="op">=</span>[<span class="bu">int</span>]))</span>
+<span id="cb39-23"><a href="#cb39-23" aria-hidden="true" tabindex="-1"></a>sess.engine.set_agg_function(AGGFunction(name<span class="op">=</span><span class="st">'count'</span>,func<span class="op">=</span><span class="st">'count'</span>,in_schema<span class="op">=</span>[<span class="bu">object</span>],out_schema<span class="op">=</span>[<span class="bu">int</span>]))</span>
+<span id="cb39-24"><a href="#cb39-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-25"><a href="#cb39-25" aria-hidden="true" tabindex="-1"></a><span class="co"># legal query</span></span>
+<span id="cb39-26"><a href="#cb39-26" aria-hidden="true" tabindex="-1"></a><span class="co"># with checkLogs():</span></span>
+<span id="cb39-27"><a href="#cb39-27" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb39-28"><a href="#cb39-28" aria-hidden="true" tabindex="-1"></a><span class="st">NewRel(X,Y)&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Z),R(Z,Y).</span></span>
+<span id="cb39-29"><a href="#cb39-29" aria-hidden="true" tabindex="-1"></a><span class="st">NewRel(X,sum(Y))&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Z),R(Z,Y).</span></span>
+<span id="cb39-30"><a href="#cb39-30" aria-hidden="true" tabindex="-1"></a><span class="st">NewRel2(X,sum(Y),"yes")&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Z),R(Z,Y).</span></span>
+<span id="cb39-31"><a href="#cb39-31" aria-hidden="true" tabindex="-1"></a><span class="st">S3(X,Y,'yes')&lt;-R(X,Y).</span></span>
+<span id="cb39-32"><a href="#cb39-32" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>)</span>
+<span id="cb39-33"><a href="#cb39-33" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> serialize_tree(asts[<span class="dv">0</span>])</span>
+<span id="cb39-34"><a href="#cb39-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-35"><a href="#cb39-35" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> sess.engine.get_relation(<span class="st">'NewRel'</span>).scheme <span class="op">==</span> [<span class="bu">str</span>,<span class="bu">int</span>]</span>
+<span id="cb39-36"><a href="#cb39-36" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> sess.engine.get_relation(<span class="st">'NewRel2'</span>).scheme <span class="op">==</span> [<span class="bu">str</span>,<span class="bu">int</span>,<span class="bu">str</span>]</span>
+<span id="cb39-37"><a href="#cb39-37" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> sess.engine.get_relation(<span class="st">'S3'</span>).scheme <span class="op">==</span> [<span class="bu">str</span>,<span class="bu">int</span>,<span class="bu">str</span>]</span>
+<span id="cb39-38"><a href="#cb39-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-39"><a href="#cb39-39" aria-hidden="true" tabindex="-1"></a><span class="co"># change types of R to make it illegal</span></span>
+<span id="cb39-40"><a href="#cb39-40" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb39-41"><a href="#cb39-41" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb39-42"><a href="#cb39-42" aria-hidden="true" tabindex="-1"></a><span class="st">    NewRel(X,Y)&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Z),R(Y,Z).</span></span>
+<span id="cb39-43"><a href="#cb39-43" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb39-44"><a href="#cb39-44" aria-hidden="true" tabindex="-1"></a>exc_msg <span class="op">=</span> <span class="bu">str</span>(exc_info.value).replace(<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>,<span class="st">' '</span>)</span>
+<span id="cb39-45"><a href="#cb39-45" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_msg)</span>
+<span id="cb39-46"><a href="#cb39-46" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"FreeVar Y is used with type str but was previously defined with type int in relation S"</span> <span class="kw">in</span> exc_msg</span>
+<span id="cb39-47"><a href="#cb39-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-48"><a href="#cb39-48" aria-hidden="true" tabindex="-1"></a><span class="co"># change types of R to make it illegal</span></span>
+<span id="cb39-49"><a href="#cb39-49" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb39-50"><a href="#cb39-50" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb39-51"><a href="#cb39-51" aria-hidden="true" tabindex="-1"></a><span class="st">    NewRel(X,Y)&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Y).</span></span>
+<span id="cb39-52"><a href="#cb39-52" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb39-53"><a href="#cb39-53" aria-hidden="true" tabindex="-1"></a>exc_msg <span class="op">=</span> <span class="bu">str</span>(exc_info.value).replace(<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>,<span class="st">' '</span>)</span>
+<span id="cb39-54"><a href="#cb39-54" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_msg)</span>
+<span id="cb39-55"><a href="#cb39-55" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"Y is used with type str but was previously defined with type int in relation S"</span> <span class="kw">in</span> exc_msg</span>
+<span id="cb39-56"><a href="#cb39-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-57"><a href="#cb39-57" aria-hidden="true" tabindex="-1"></a><span class="co"># free var in head, bound by body</span></span>
+<span id="cb39-58"><a href="#cb39-58" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb39-59"><a href="#cb39-59" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb39-60"><a href="#cb39-60" aria-hidden="true" tabindex="-1"></a><span class="st">    NewRel(X,Y,W)&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Z),R(Z,Y).</span></span>
+<span id="cb39-61"><a href="#cb39-61" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb39-62"><a href="#cb39-62" aria-hidden="true" tabindex="-1"></a>exc_msg <span class="op">=</span> <span class="bu">str</span>(exc_info.value).replace(<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>,<span class="st">' '</span>)</span>
+<span id="cb39-63"><a href="#cb39-63" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_msg)</span>
+<span id="cb39-64"><a href="#cb39-64" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"FreeVar W is used in the head but was not defined in the body"</span> <span class="kw">in</span> exc_msg</span>
+<span id="cb39-65"><a href="#cb39-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-66"><a href="#cb39-66" aria-hidden="true" tabindex="-1"></a><span class="co"># head free var type mismatch</span></span>
+<span id="cb39-67"><a href="#cb39-67" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb39-68"><a href="#cb39-68" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb39-69"><a href="#cb39-69" aria-hidden="true" tabindex="-1"></a><span class="st">    NewRel(Y,X)&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Z),R(Z,Y).</span></span>
+<span id="cb39-70"><a href="#cb39-70" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb39-71"><a href="#cb39-71" aria-hidden="true" tabindex="-1"></a>exc_msg <span class="op">=</span> <span class="bu">str</span>(exc_info.value).replace(<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>,<span class="st">' '</span>)</span>
+<span id="cb39-72"><a href="#cb39-72" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_msg)</span>
+<span id="cb39-73"><a href="#cb39-73" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"expected schema NewRel(str,int) from a previously defined rule to NewRel but got NewRel(int,str)"</span> <span class="kw">in</span> exc_msg</span>
+<span id="cb39-74"><a href="#cb39-74" aria-hidden="true" tabindex="-1"></a>t</span>
+<span id="cb39-75"><a href="#cb39-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-76"><a href="#cb39-76" aria-hidden="true" tabindex="-1"></a><span class="co"># aggregation got wrong input type</span></span>
+<span id="cb39-77"><a href="#cb39-77" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb39-78"><a href="#cb39-78" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb39-79"><a href="#cb39-79" aria-hidden="true" tabindex="-1"></a><span class="st">    NewRel(sum(X),Y)&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Z),R(Z,Y).</span></span>
+<span id="cb39-80"><a href="#cb39-80" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb39-81"><a href="#cb39-81" aria-hidden="true" tabindex="-1"></a>exc_msg <span class="op">=</span> <span class="bu">str</span>(exc_info.value).replace(<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>,<span class="st">' '</span>)</span>
+<span id="cb39-82"><a href="#cb39-82" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_msg)</span>
+<span id="cb39-83"><a href="#cb39-83" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"FreeVar X is aggregated with sum which expects input type int but got str"</span> <span class="kw">in</span> exc_msg</span>
+<span id="cb39-84"><a href="#cb39-84" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-85"><a href="#cb39-85" aria-hidden="true" tabindex="-1"></a><span class="co"># aggregation caused conflict with previous type</span></span>
+<span id="cb39-86"><a href="#cb39-86" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>) <span class="im">as</span> exc_info:</span>
+<span id="cb39-87"><a href="#cb39-87" aria-hidden="true" tabindex="-1"></a>    asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb39-88"><a href="#cb39-88" aria-hidden="true" tabindex="-1"></a><span class="st">    NewRel(count(X),Y)&lt;-S(X,Y,3),T(X,Y)-&gt;(Y,Z),R(Z,Y).</span></span>
+<span id="cb39-89"><a href="#cb39-89" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>)</span>
+<span id="cb39-90"><a href="#cb39-90" aria-hidden="true" tabindex="-1"></a>exc_msg <span class="op">=</span> <span class="bu">str</span>(exc_info.value).replace(<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>,<span class="st">' '</span>)</span>
+<span id="cb39-91"><a href="#cb39-91" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(exc_msg)</span>
+<span id="cb39-92"><a href="#cb39-92" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">"expected schema NewRel(str,int) from a previously defined rule to NewRel but got NewRel(int,int)"</span> <span class="kw">in</span> exc_msg</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>In rule NewRel(X,Y) &lt;- S(X,Y,3),T(X,Y) -&gt; (Y,Z),R(Y,Z). in relation R FreeVar Y is used with type str but was previously defined with type int in relation S
+In rule NewRel(X,Y) &lt;- S(X,Y,3),T(X,Y) -&gt; (Y,Y). in ie output relation T FreeVar Y is used with type str but was previously defined with type int in relation S
+In rule NewRel(X,Y,W) &lt;- S(X,Y,3),T(X,Y) -&gt; (Y,Z),R(Z,Y). FreeVar W is used in the head but was not defined in the body
+In rule NewRel(Y,X) &lt;- S(X,Y,3),T(X,Y) -&gt; (Y,Z),R(Z,Y). expected schema NewRel(str,int) from a previously defined rule to NewRel but got NewRel(int,str)
+In rule NewRel(sum(X),Y) &lt;- S(X,Y,3),T(X,Y) -&gt; (Y,Z),R(Z,Y). in head clause NewRel FreeVar X is aggregated with sum which expects input type int but got str
+In rule NewRel(count(X),Y) &lt;- S(X,Y,3),T(X,Y) -&gt; (Y,Z),R(Z,Y). expected schema NewRel(str,int) from a previously defined rule to NewRel but got NewRel(int,int)</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="preprocess-assignments" class="level2">
+<h2 class="anchored" data-anchor-id="preprocess-assignments">Preprocess assignments</h2>
+<hr>
+<p><a href="https://github.com/DeanLight/spannerlib/blob/master/spannerlib/micro_passes.py#L486" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="assignments_to_name_val_tuple" class="level3">
+<h3 class="anchored" data-anchor-id="assignments_to_name_val_tuple">assignments_to_name_val_tuple</h3>
+<blockquote class="blockquote">
+<pre><code> assignments_to_name_val_tuple (ast, engine)</code></pre>
+</blockquote>
+<div id="cell-48" class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>sess <span class="op">=</span> DummySession(passes<span class="op">=</span>[</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>    convert_primitive_values_to_objects,</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>    CheckReservedRelationNames(<span class="st">'spanner_'</span>),</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># check_referenced_paths_exist,</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># dereference_vars,</span></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>    inline_aggregation,</span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>    relations_to_dataclasses,</span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># verify_referenced_relations_and_functions,</span></span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a>    rules_to_dataclasses,</span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a>    check_rule_safety,</span>
+<span id="cb42-11"><a href="#cb42-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># consistent_free_var_types_in_rule,</span></span>
+<span id="cb42-12"><a href="#cb42-12" aria-hidden="true" tabindex="-1"></a>    assignments_to_name_val_tuple</span>
+<span id="cb42-13"><a href="#cb42-13" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb42-14"><a href="#cb42-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-15"><a href="#cb42-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-16"><a href="#cb42-16" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span> <span class="op">=</span> Path(<span class="st">"file.txt"</span>)</span>
+<span id="cb42-17"><a href="#cb42-17" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span>.write_text(<span class="st">"hello file"</span>)</span>
+<span id="cb42-18"><a href="#cb42-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-19"><a href="#cb42-19" aria-hidden="true" tabindex="-1"></a><span class="co"># safe rules</span></span>
+<span id="cb42-20"><a href="#cb42-20" aria-hidden="true" tabindex="-1"></a>asts <span class="op">=</span> sess.run_query(<span class="st">"""</span></span>
+<span id="cb42-21"><a href="#cb42-21" aria-hidden="true" tabindex="-1"></a><span class="st">x=3</span></span>
+<span id="cb42-22"><a href="#cb42-22" aria-hidden="true" tabindex="-1"></a><span class="st">y="hello"</span></span>
+<span id="cb42-23"><a href="#cb42-23" aria-hidden="true" tabindex="-1"></a><span class="st">z="hello </span><span class="ch">\</span></span>
+<span id="cb42-24"><a href="#cb42-24" aria-hidden="true" tabindex="-1"></a><span class="st">world"</span></span>
+<span id="cb42-25"><a href="#cb42-25" aria-hidden="true" tabindex="-1"></a><span class="st">f=read("file.txt")</span></span>
+<span id="cb42-26"><a href="#cb42-26" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>)</span>
+<span id="cb42-27"><a href="#cb42-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-28"><a href="#cb42-28" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ast <span class="kw">in</span> asts:</span>
+<span id="cb42-29"><a href="#cb42-29" aria-hidden="true" tabindex="-1"></a>    draw(ast)</span>
+<span id="cb42-30"><a href="#cb42-30" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> [serialize_tree(ast) <span class="cf">for</span> ast <span class="kw">in</span> asts] <span class="op">==</span> [{<span class="st">'type'</span>: <span class="st">'assignment'</span>, <span class="st">'val'</span>: (<span class="st">'x'</span>, <span class="dv">3</span>), <span class="st">'id'</span>: <span class="dv">0</span>, <span class="st">'children'</span>: []},</span>
+<span id="cb42-31"><a href="#cb42-31" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'assignment'</span>, <span class="st">'val'</span>: (<span class="st">'y'</span>, <span class="st">'hello'</span>), <span class="st">'id'</span>: <span class="dv">0</span>, <span class="st">'children'</span>: []},</span>
+<span id="cb42-32"><a href="#cb42-32" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'assignment'</span>, <span class="st">'val'</span>: (<span class="st">'z'</span>, <span class="st">'hello world'</span>), <span class="st">'id'</span>: <span class="dv">0</span>, <span class="st">'children'</span>: []},</span>
+<span id="cb42-33"><a href="#cb42-33" aria-hidden="true" tabindex="-1"></a> {<span class="st">'type'</span>: <span class="st">'read_assignment'</span>,</span>
+<span id="cb42-34"><a href="#cb42-34" aria-hidden="true" tabindex="-1"></a>  <span class="st">'val'</span>: (<span class="st">'f'</span>, <span class="st">'file.txt'</span>),</span>
+<span id="cb42-35"><a href="#cb42-35" aria-hidden="true" tabindex="-1"></a>  <span class="st">'id'</span>: <span class="dv">0</span>,</span>
+<span id="cb42-36"><a href="#cb42-36" aria-hidden="true" tabindex="-1"></a>  <span class="st">'children'</span>: []}]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OywgdmFsPSgjcXVvdDt4I3F1b3Q7LCAzKSJdCg==">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OywgdmFsPSgjcXVvdDt5I3F1b3Q7LCAjcXVvdDtoZWxsbyNxdW90OykiXQo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7YXNzaWdubWVudCNxdW90OywgdmFsPSgjcXVvdDt6I3F1b3Q7LCAjcXVvdDtoZWxsbyB3b3JsZCNxdW90OykiXQo=">
+</div>
+<div class="cell-output cell-output-display">
+<img src="https://mermaid.ink/img/CmZsb3djaGFydCBUQgowWyIwCnR5cGU9I3F1b3Q7cmVhZF9hc3NpZ25tZW50I3F1b3Q7LCB2YWw9KCNxdW90O2YjcXVvdDssICNxdW90O2ZpbGUudHh0I3F1b3Q7KSJdCg==">
+</div>
+</div>
+
+
+</section>
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp("https:\/\/DeanLight\.github\.io\/spannerlib");
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/DeanLight/spannerlib/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>
