@@ -22,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 from graph_rewrite import draw
 
+from spannerflow.span import Span
 from .utils import checkLogs,get_base_file_path,assert_df_equals,DefaultIEs,DefaultAGGs
 from .grammar import parse_spannerlog,reconstruct
-from .span import Span
 from spannerlib.data_types import (
     _infer_relation_schema,
      Var,
@@ -141,29 +141,68 @@ def register_agg(self:Session,
 
 # %% ../nbs/030_session.ipynb 11
 @patch
+def _import_csv(self:Session,
+        name:str, # name of the relation in spannerlog
+        csv_filepath:Union[str,Path], # path to the csv file
+        delim:str = None, # the delimiter of the csv file
+        has_header: bool = False, # does the first line is a header line
+        scheme: list[type] = None, # the schema of the relation
+    ):
+    """Imports a csv file into the current session. Will load to the rust engine"""
+    csv_file_name = Path(csv_filepath)
+    if not csv_file_name.is_file():
+        raise IOError("csv file does not exist")
+    if os.stat(csv_file_name).st_size == 0:
+        raise IOError("csv file is empty")
+    if not scheme:
+        with open(csv_file_name) as csv_file:
+            reader = csv.reader(csv_file, delimiter=delim)
+            first_row = next(reader)
+            if has_header:
+                first_row = next(reader)
+        scheme = _infer_relation_schema(first_row)
+    
+    rel_def = RelationDefinition(name=name,scheme=scheme)
+    
+    if self.engine.get_relation(name):
+        if self.engine.get_relation(name) != rel_def:
+            raise ValueError(f"Relation {name} already exists with a different schema")
+    else:
+        self.engine.set_relation(rel_def)
+    self.engine.load_csv(name, csv_file_name, delim=delim, has_header=has_header)
+
+
+
+
+# %% ../nbs/030_session.ipynb 12
+@patch
 def import_rel(self:Session,
     name:str, # name of the relation in spannerlog
     data:Union[str,Path,pd.DataFrame], # either a pandas dataframe or a path to a csv file
     delim:str = None, # the delimiter of the csv file
-    header = None, # the header of the csv file
+    has_header: bool = False, # does the first line is a header line
+    scheme: list[type] = None
     ):
     """Imports a relation into the current session, either from a dataframe or from a csv file."""
-    if isinstance(data, (Path,str)):
-        csv_file_name = Path(data)
-        if not csv_file_name.is_file():
-            raise IOError("csv file does not exist")
-        if os.stat(csv_file_name).st_size == 0:
-            raise IOError("csv file is empty")
-        data = pd.read_csv(csv_file_name, delimiter=delim,header=header)
 
-    first_row = list(data.iloc[0,:])
-    scheme = _infer_relation_schema(first_row)
+    if isinstance(data, (Path,str)):
+        self._import_csv(name,data,delim=delim,has_header=has_header, scheme=scheme)
+        return
+    if not scheme:
+        first_row = list(data.iloc[0,:])
+        scheme = _infer_relation_schema(first_row)
+    
     rel_def = RelationDefinition(name=name,scheme=scheme)
-    self.engine.set_relation(rel_def)
+    
+    if self.engine.get_relation(name):
+        if self.engine.get_relation(name) != rel_def:
+            raise ValueError(f"Relation {name} already exists with a different schema")
+    else:
+        self.engine.set_relation(rel_def)
     self.engine.add_facts(name,data)
 
 
-# %% ../nbs/030_session.ipynb 12
+# %% ../nbs/030_session.ipynb 13
 @patch
 def import_var(self:Session,
     name, # name of the variable in spannerlog
@@ -172,7 +211,7 @@ def import_var(self:Session,
     """Imports a variable into the current session."""
     self.engine.set_var(name,value)
 
-# %% ../nbs/030_session.ipynb 14
+# %% ../nbs/030_session.ipynb 15
 # parsing statements
 #TODO from here seperate parse and check semantics so we can know the number of statements
 # before we iterate on semantic checks that might depend on execution of previous statements
@@ -208,7 +247,7 @@ def _check_semantics(self:Session,statements):
                 raise e
         yield ast,statement_lark
 
-# %% ../nbs/030_session.ipynb 15
+# %% ../nbs/030_session.ipynb 16
 ## executing statements
 def _statement_type_and_value(ast):
     """gets the type and value of a statement from the ast
@@ -226,6 +265,7 @@ def _execute_statement(
     engine, # the spannerlog engine to execute the statement on
     plan_only=False, # if True, plans queries returns the graph and root, but does not execute them
     draw_graph=False, # if True, draws the graph of the query plan
+    output_csv_path: str | Path | None = None, # if not None, saves the result of the query to a csv file
     ):
     """executes a single statement from the ast
     """
@@ -249,7 +289,7 @@ def _execute_statement(
                 draw(graph)
             if plan_only:
                 return graph,root
-            return engine.execute_plan(graph,root)
+            return engine.execute_plan(graph,root, output_csv_path=output_csv_path)
         case _:
             raise ValueError(f"Unknown statement type {statement}")
     return None
@@ -257,7 +297,7 @@ def _execute_statement(
 
     
 
-# %% ../nbs/030_session.ipynb 16
+# %% ../nbs/030_session.ipynb 17
 # formatting query results
 def _sort_df(df):
     """sort df, if possible by value of rows else sort by string representation of rows.        
@@ -310,7 +350,7 @@ def _display_result(result,statement_lark):
 
 
 
-# %% ../nbs/030_session.ipynb 17
+# %% ../nbs/030_session.ipynb 18
 @patch
 def export(self:Session,
     code:str , # the spannerlog code to execute
@@ -318,6 +358,7 @@ def export(self:Session,
     draw_query=False, # if True, draws the query graph of queries to screen
     plan_query=False, # if True, if last statement is a query, plans the query and returns the query graph and root node.
     return_statements_meta=False, # if True, returns both the return value and the statements meta data, used internally.
+    output_csv_path: str | Path | None = None, # if not None, saves the results of the last query to a csv file
     ):
     """Takes a string of spannerlog code, and executes it, returning the value of the last statement in the code string.
     All statements that are not queries, return None.
@@ -331,7 +372,7 @@ def export(self:Session,
         is_last_statement = statement_index == num_statements - 1
         plan_only = plan_query and is_last_statement
         try:
-            result = _execute_statement(clean_ast,self.engine,draw_graph=draw_query,plan_only=plan_only)
+            result = _execute_statement(clean_ast,self.engine,draw_graph=draw_query,plan_only=plan_only, output_csv_path=output_csv_path)
             result = _format_results(result)
         except Exception as e:
             print(f"RUNTIME ERROR:\n"
@@ -356,7 +397,7 @@ def export(self:Session,
     else:
         return ret_val
 
-# %% ../nbs/030_session.ipynb 18
+# %% ../nbs/030_session.ipynb 19
 @patch  
 def print_rules(self:Session):
     """Prints all the rules in the engine. and returns them as a list"""
@@ -379,7 +420,7 @@ def get_all_functions(self:Session):
     }
 
 
-# %% ../nbs/030_session.ipynb 21
+# %% ../nbs/030_session.ipynb 22
 @patch
 def remove_rule(self:Session,
     rule:str # the rule string to remove
@@ -389,7 +430,7 @@ def remove_rule(self:Session,
     self.engine.del_rule(rule)
 
 
-# %% ../nbs/030_session.ipynb 22
+# %% ../nbs/030_session.ipynb 23
 @patch
 def remove_head(self:Session,head:str):
     """removes all rules of a given head relation
@@ -397,7 +438,7 @@ def remove_head(self:Session,head:str):
     self.engine.del_head(head)
 
 
-# %% ../nbs/030_session.ipynb 23
+# %% ../nbs/030_session.ipynb 24
 @patch
 def remove_all_rules(self:Session):
     """removes all rules from the engine
@@ -407,7 +448,7 @@ def remove_all_rules(self:Session):
         self.remove_rule(rule)
 
 
-# %% ../nbs/030_session.ipynb 24
+# %% ../nbs/030_session.ipynb 25
 @patch
 def remove_relation(self:Session,relation:str):
     """removes a relation from the engine, either a extrinsic or intrinsic relation
@@ -416,7 +457,7 @@ def remove_relation(self:Session,relation:str):
 
 
 
-# %% ../nbs/030_session.ipynb 26
+# %% ../nbs/030_session.ipynb 27
 def test_session(
     code_strings,
     expected_outputs=None,# list of expected dfs

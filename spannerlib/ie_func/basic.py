@@ -10,7 +10,7 @@ from typing import Iterable, Sequence,Union
 from numbers import Real
 from pathlib import Path
 
-from ..span import Span
+from spannerflow.span import Span
 from ..utils import DefaultIEs,DefaultAGGs,visualize_callback_df
 
 # %% ../../nbs/callbacks/001_basic_ies.ipynb 5
@@ -190,7 +190,7 @@ DefaultIEs().add(
 # %% ../../nbs/callbacks/001_basic_ies.ipynb 30
 def span_contained(s1, s2):
     """yields True if s1 is contained in s2, otherwise yield False"""
-    if s1.doc == s2.doc and s1.start >= s2.start and s1.end <= s2.end:
+    if s1.name == s2.name and s1.start >= s2.start and s1.end <= s2.end:
         yield True
     else:
         yield False

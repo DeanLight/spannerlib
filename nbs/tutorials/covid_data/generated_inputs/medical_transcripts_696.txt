@@ -1,0 +1,1 @@
+Patient presents to be tested for COVID-19. A coworker tested positive for COVID-19. Patient was asymptomatic. The test results returned negative for COVID-19. Patient underwent no COVID-19 education.

@@ -1,0 +1,6 @@
+.*education.*#IGNORE
+.* \?#IGNORE
+(?=.*\b(?:deny|denies|denied)\b)(?=.*\b(?:contact|confirm)\b).*#IGNORE
+(?=.*\b(?:setting of|s/o)\b)(?!.*\b(?:COVID-19 infection|COVID-19 ards)\b).*#no_positive
+(?i)(.*benign.*)#uncertain
+admitted to COVID-19 unit#positive

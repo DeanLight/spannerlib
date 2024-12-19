@@ -1,0 +1,1 @@
+ECHO : Contact with COVID-positive individual.

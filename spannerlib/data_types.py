@@ -19,7 +19,7 @@ import networkx as nx
 import itertools
 from graph_rewrite import draw, draw_match, rewrite, rewrite_iter
 from .utils import serialize_graph,serialize_df_values,checkLogs,get_new_node_name
-from .span import Span
+from spannerflow.span import Span
 
 import logging
 logger = logging.getLogger(__name__)
