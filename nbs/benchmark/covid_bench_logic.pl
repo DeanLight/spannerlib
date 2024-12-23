@@ -28,7 +28,7 @@ PositiveSections(P,D,Sec,Content)<-Sections(P,D,Sec,Content),SectionTags(Sec,Tag
 
 Sents(P,S)<-Docs(P,D,"target_concept"),split_sentence(D)->(S).
 
-SentPairs(P,S1,S2)<-Sents(P,S1),Sents(P,S2),expr_eval("{0}.end +1 == {1}.start",S1,S2)->(True).
+SentPairs(P,S1,S2)<-Sents(P,S1),Sents(P,S2),is_adjacent(S1,S2)->(True).
 
 # first we get the covid mentions and their surrounding sentences, using the span_contained ie function
 CovidMentions(Path, Span) <- Docs(Path,D,"target_concept"), rgx("COVID-19",D) -> (Span).

@@ -1,1 +1,0 @@
-ECHO : COVID-like symptoms present.

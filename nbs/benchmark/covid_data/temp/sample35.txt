@@ -1,1 +1,0 @@
-Reports contact with a COVID-positive coworker. #positive
