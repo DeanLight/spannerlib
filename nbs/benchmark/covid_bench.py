@@ -1,20 +1,36 @@
 import time
+
+start_time = time.time()
+
 from glob import glob
 import pandas as pd
+import spacy
 from pandas import DataFrame
 from pathlib import Path
-from spannerlib import get_magic_session,Session,Span
-sess = get_magic_session()
+from spannerlib import get_magic_session,Session
+from spannerlib.ie_func.basic import rgx, rgx_split, rgx_is_match, span_contained, span_arity
 
-import spacy
+VERSION = "OLD"
+if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
+    from spannerflow.span import Span
+else:
+    from spannerlib import Span
+
+
 nlp = spacy.load("en_core_web_sm")
 
 # configurations
-slog_file = Path('covid_bench_logic.pl')
+if VERSION == "SPANNERFLOW_PYTHON_IE":
+    slog_file = Path('covid_bench_logic_python_ie.pl')
+else:
+    slog_file = Path('covid_bench_logic.pl')
 input_dir = Path('covid_data/sample_inputs')
 data_dir = Path('covid_data/rules_data')
 
-start_time = time.time()
+
+def is_adjacent(span1,span2):
+    yield span1.name==span2.name and span1.end +1 == span2.start
+
 
 def split_sentence(text):
     """
@@ -68,15 +84,17 @@ def agg_mention(group):
     """
     aggregates attribute groups of covid spans
     """
-    if 'IGNORE' in group.values:
+    if VERSION == "OLD":
+        group = group.values
+    if 'IGNORE' in group:
         return 'IGNORE'
-    elif 'negated' in group.values and not 'no_negated' in group.values:
+    elif 'negated' in group and not 'no_negated' in group:
         return 'negated'
-    elif 'future' in group.values and not 'no_future' in group.values:
+    elif 'future' in group and not 'no_future' in group:
         return 'negated'
-    elif 'other experiencer' in group.values or 'not relevant' in group.values:
+    elif 'other experiencer' in group or 'not relevant' in group:
         return 'negated'
-    elif 'positive' in group.values and not 'uncertain' in group.values and not 'no_positive' in group.values:
+    elif 'positive' in group and not 'uncertain' in group and not 'no_positive' in group:
         return 'positive'
     else:
         return 'uncertain'
@@ -85,11 +103,13 @@ def AggDocumentTags(group):
     """
     Classifies a document as 'POS', 'UNK', or 'NEG' based on COVID-19 attributes.
     """
-    if 'positive' in group.values:
+    if VERSION == "OLD":
+        group = group.values
+    if 'positive' in group:
         return 'POS'
-    elif 'uncertain' in group.values:
+    elif 'uncertain' in group:
         return 'UNK'
-    elif 'negated' in group.values:
+    elif 'negated' in group:
         return 'NEG'
     else:
         return 'UNK'
@@ -138,10 +158,20 @@ file_paths = []
 def main(input_dir,data_dir,logic_file, start=0, end=10):
     global file_paths
     sess = Session()
+    sess.register('py_rgx', rgx, [str, Span], span_arity)
+    sess.register('py_rgx_split', rgx_split, [str, Span], [Span,Span])
+    sess.register('py_rgx_is_match', rgx_is_match, [str, Span], [bool])
+    sess.register('py_span_contained', span_contained, [Span, Span], [bool])
+    sess.register('is_adjacent',is_adjacent,[Span,Span],[bool])
     # define callback functions
-    sess.register('split_sentence',split_sentence,[(str,Span)],[Span])
-    sess.register('pos',pos_annotator,[(Span,str)],[Span,str])
-    sess.register('lemma',lemmatizer,[(Span,str)],[Span,str])
+    if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
+        sess.register('split_sentence',split_sentence,[Span],[Span])
+        sess.register('pos',pos_annotator,[Span],[Span,str])
+        sess.register('lemma',lemmatizer,[Span],[Span,str])
+    else:
+        sess.register('split_sentence',split_sentence,[str],[Span])
+        sess.register('pos',pos_annotator,[str],[Span,str])
+        sess.register('lemma',lemmatizer,[str],[Span,str])
     sess.register_agg('agg_mention',agg_mention,[str],[str])
     sess.register_agg('agg_doc_tags',AggDocumentTags,[str],[str])
     
@@ -169,7 +199,10 @@ def main(input_dir,data_dir,logic_file, start=0, end=10):
         [p.name,p.read_text(),'raw_text'] for p in file_paths
     ],columns=['Path','Doc','Version']
     )
-    sess.import_rel('Docs',raw_docs)
+    if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
+        sess.import_rel('Docs',raw_docs, scheme=[str, Span, str])
+    else:
+        sess.import_rel('Docs',raw_docs)
 
     # load logic, note that since we did not define the data relations in the logic file,
     # we need to load the logic after the data has been loaded
@@ -178,19 +211,32 @@ def main(input_dir,data_dir,logic_file, start=0, end=10):
     ## Rewritting the documents
     lemma_tags = sess.export('?Lemmas(P,D,W,L)')
     lemma_docs = rewrite_docs(raw_docs,lemma_tags,'lemma')
-    sess.import_rel('Docs',lemma_docs)
+    if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
+        sess.import_rel('Docs',lemma_docs, scheme=[str, Span, str])
+    else:
+        sess.import_rel('Docs',lemma_docs)
+    
 
     lemma_concept_matches = sess.export('?LemmaConceptMatches(Path,Doc,Span,Label)')
     lemma_concepts = rewrite_docs(lemma_docs,lemma_concept_matches,'lemma_concept')
-    sess.import_rel('Docs',lemma_concepts)
+    if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
+        sess.import_rel('Docs',lemma_concepts, scheme=[str, Span, str])
+    else:
+        sess.import_rel('Docs',lemma_concepts)
 
     pos_concept_matches = sess.export('?PosConceptMatches(P,D,W,L)')
     pos_concept_docs = rewrite_docs(lemma_concepts,pos_concept_matches,'pos_concept')
-    sess.import_rel('Docs',pos_concept_docs)
+    if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
+        sess.import_rel('Docs',pos_concept_docs, scheme=[str, Span, str])
+    else:
+        sess.import_rel('Docs',pos_concept_docs)
 
     target_matches = sess.export('?TargetMatches(P,D,W,L)')
     target_rule_docs = rewrite_docs(pos_concept_docs,target_matches,'target_concept')
-    sess.import_rel('Docs',target_rule_docs)
+    if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
+        sess.import_rel('Docs',target_rule_docs, scheme=[str, Span, str])
+    else:
+        sess.import_rel('Docs',target_rule_docs)
 
     ## computing the tags based on the target concept documents
     doc_tags = sess.export('?DocumentTags(P,T)')
@@ -203,9 +249,9 @@ def main(input_dir,data_dir,logic_file, start=0, end=10):
 
     return classification
 
-
-for i in range(0, 1000, 20):
-    res = main(input_dir,data_dir,slog_file, start=i, end=i+20)
+k = 50
+for i in range(0, 100-k, k):
+    res = main(input_dir,data_dir,slog_file, start=i, end=i+k)
     print(res)
 
 end_time = time.time()
