@@ -1,0 +1,1 @@
+Service : COVID-19 detected.
