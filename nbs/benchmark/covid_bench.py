@@ -245,15 +245,16 @@ def main(input_dir,data_dir,logic_file, start=0, end=10):
     paths = pd.DataFrame([p.name for p in file_paths],columns=['P'])
     classification = paths.merge(doc_tags,on='P',how='outer')
     classification['T']=classification['T'].fillna('UNK')
-    classification
 
     return classification
 
-k = 50
-for i in range(0, 100-k, k):
+k = 10
+total_docs = 0
+for i in range(0, 101-k, k):
     res = main(input_dir,data_dir,slog_file, start=i, end=i+k)
+    total_docs += len(res)
     print(res)
 
 end_time = time.time()
-print(f"Number of Documents: {len(file_paths)}")
+print(f"Number of Documents: {total_docs}")
 print(f"Time taken: {end_time-start_time:.2f} seconds")
