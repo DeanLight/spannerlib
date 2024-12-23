@@ -10,25 +10,26 @@ from pathlib import Path
 from spannerlib import get_magic_session,Session
 from spannerlib.ie_func.basic import rgx, rgx_split, rgx_is_match, span_contained, span_arity
 
-VERSION = "SPANNERFLOW"
+VERSION = "SPANNERFLOW_PYTHON_IE"
 if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     from spannerflow.span import Span
 else:
     from spannerlib import Span
 
-def is_adjacent(span1,span2):
-    yield span1.name==span2.name and span1.end +1 == span2.start
-
-
-
 
 nlp = spacy.load("en_core_web_sm")
 
 # configurations
-slog_file = Path('covid_bench_logic.pl')
+if VERSION == "SPANNERFLOW_PYTHON_IE":
+    slog_file = Path('covid_bench_logic_python_ie.pl')
+else:
+    slog_file = Path('covid_bench_logic.pl')
 input_dir = Path('covid_data/sample_inputs')
 data_dir = Path('covid_data/rules_data')
 
+
+def is_adjacent(span1,span2):
+    yield span1.name==span2.name and span1.end +1 == span2.start
 
 
 def split_sentence(text):
@@ -83,15 +84,17 @@ def agg_mention(group):
     """
     aggregates attribute groups of covid spans
     """
-    if 'IGNORE' in group.values:
+    if VERSION == "OLD":
+        group = group.values
+    if 'IGNORE' in group:
         return 'IGNORE'
-    elif 'negated' in group.values and not 'no_negated' in group.values:
+    elif 'negated' in group and not 'no_negated' in group:
         return 'negated'
-    elif 'future' in group.values and not 'no_future' in group.values:
+    elif 'future' in group and not 'no_future' in group:
         return 'negated'
-    elif 'other experiencer' in group.values or 'not relevant' in group.values:
+    elif 'other experiencer' in group or 'not relevant' in group:
         return 'negated'
-    elif 'positive' in group.values and not 'uncertain' in group.values and not 'no_positive' in group.values:
+    elif 'positive' in group and not 'uncertain' in group and not 'no_positive' in group:
         return 'positive'
     else:
         return 'uncertain'
@@ -100,11 +103,13 @@ def AggDocumentTags(group):
     """
     Classifies a document as 'POS', 'UNK', or 'NEG' based on COVID-19 attributes.
     """
-    if 'positive' in group.values:
+    if VERSION == "OLD":
+        group = group.values
+    if 'positive' in group:
         return 'POS'
-    elif 'uncertain' in group.values:
+    elif 'uncertain' in group:
         return 'UNK'
-    elif 'negated' in group.values:
+    elif 'negated' in group:
         return 'NEG'
     else:
         return 'UNK'
