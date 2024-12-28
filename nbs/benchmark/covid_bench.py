@@ -10,7 +10,7 @@ from pathlib import Path
 from spannerlib import get_magic_session,Session
 from spannerlib.ie_func.basic import rgx, rgx_split, rgx_is_match, span_contained, span_arity
 
-VERSION = "SPANNERFLOW_PYTHON_IE"
+VERSION = "SPANNERFLOW"
 if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
     from spannerflow.span import Span
 else:
@@ -192,7 +192,7 @@ def main(input_dir,data_dir,logic_file, start=0, end=10):
     sess.import_var('section_delimeter_pattern',section_delimeter_pattern)
 
     # bring in data
-    file_paths = [Path(p) for p in glob(str(input_dir/'*.txt'))]
+    file_paths = [Path(f"{input_dir}/sample{i}.txt") for i in range(start, end)]
     file_paths.sort()
     file_paths = file_paths[start:end]
     raw_docs = pd.DataFrame([
