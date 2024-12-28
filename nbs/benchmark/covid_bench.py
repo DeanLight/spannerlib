@@ -155,9 +155,12 @@ def rewrite_docs(docs,span_label,new_version):
     return pd.DataFrame(new_tuples,columns=['P','D','V'])
 
 file_paths = []
-def main(input_dir,data_dir,logic_file, start=0, end=10):
+def main(input_dir,data_dir,logic_file, start=0, end=10, cache=None):
     global file_paths
     sess = Session()
+    if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"] and cache:
+        sess.engine.spannerflow_engine.set_cache(cache)
+    
     sess.register('py_rgx', rgx, [str, Span], span_arity)
     sess.register('py_rgx_split', rgx_split, [str, Span], [Span,Span])
     sess.register('py_rgx_is_match', rgx_is_match, [str, Span], [bool])
@@ -193,8 +196,6 @@ def main(input_dir,data_dir,logic_file, start=0, end=10):
 
     # bring in data
     file_paths = [Path(f"{input_dir}/sample{i}.txt") for i in range(start, end)]
-    file_paths.sort()
-    file_paths = file_paths[start:end]
     raw_docs = pd.DataFrame([
         [p.name,p.read_text(),'raw_text'] for p in file_paths
     ],columns=['Path','Doc','Version']
@@ -246,15 +247,23 @@ def main(input_dir,data_dir,logic_file, start=0, end=10):
     classification = paths.merge(doc_tags,on='P',how='outer')
     classification['T']=classification['T'].fillna('UNK')
 
-    return classification
+    if VERSION in ["SPANNERFLOW", "SPANNERFLOW_PYTHON_IE"]:
+        cache = sess.engine.spannerflow_engine.get_cache()
+    return cache, classification
 
-k = 10
-total_docs = 0
-for i in range(0, 101-k, k):
-    res = main(input_dir,data_dir,slog_file, start=i, end=i+k)
-    total_docs += len(res)
-    print(res)
+k = 6000
+steps = 100
+round = 1 
+cache = {}
+last_round_end_time = start_time
+for i in range(1, k+1, steps):
+    cache, res = main(input_dir,data_dir,slog_file, start=i, end=i+steps, cache=cache)
+    res.to_csv(f'covid_data/results/{start_time}-{VERSION}.csv', index=False, mode='a')
+    current_time = time.time()
+    print(f"Time taken for round {round}: {current_time-last_round_end_time:.2f} seconds")
+    round += 1
+    last_round_end_time = current_time
 
 end_time = time.time()
-print(f"Number of Documents: {total_docs}")
+print(f"Number of Documents: {k}")
 print(f"Time taken: {end_time-start_time:.2f} seconds")
