@@ -1,6 +1,5 @@
 import time
-
-start_time = time.time()
+import os
 
 from glob import glob
 import pandas as pd
@@ -251,19 +250,50 @@ def main(input_dir,data_dir,logic_file, start=0, end=10, cache=None):
         cache = sess.engine.spannerflow_engine.get_cache()
     return cache, classification
 
-k = 6000
-steps = 100
-round = 1 
-cache = {}
-last_round_end_time = start_time
-for i in range(1, k+1, steps):
-    cache, res = main(input_dir,data_dir,slog_file, start=i, end=i+steps, cache=cache)
-    res.to_csv(f'covid_data/results/{start_time}-{VERSION}.csv', index=False, mode='a')
-    current_time = time.time()
-    print(f"Time taken for round {round}: {current_time-last_round_end_time:.2f} seconds")
-    round += 1
-    last_round_end_time = current_time
 
-end_time = time.time()
-print(f"Number of Documents: {k}")
-print(f"Time taken: {end_time-start_time:.2f} seconds")
+def run_benchmark(k, steps, write_to_file=True):
+    start_time = time.time()
+    round = 1 
+    cache = {}
+    last_round_end_time = start_time
+    print(f"Running benchmark for {k} samples with batch size {steps}")
+    round_times = []
+    for i in range(1, k+1, steps):
+        cache, res = main(input_dir,data_dir,slog_file, start=i, end=i+steps, cache=cache)
+        current_time = time.time()
+        res.to_csv(f'covid_data/results/{start_time}-{VERSION}.csv', index=False, mode='a')
+        round_times.append(current_time-last_round_end_time)
+        print(f"Time taken for round {round}: {current_time-last_round_end_time:.2f} seconds")
+        round += 1
+        last_round_end_time = current_time
+
+    end_time = time.time()
+    df = pd.DataFrame(round_times, columns=['RoundTime'])
+    if write_to_file:
+        file_path = f"covid_data/time-results/{VERSION}-batch-size-{steps}-total-size-{k}.csv"
+        df.to_csv(file_path, index=False)
+    return df
+
+if __name__ == "__main__":
+    os.makedirs("covid_data/results", exist_ok=True)
+    os.makedirs("covid_data/time-results", exist_ok=True)
+    
+    # AVG BATCH Size - Run per implementation
+    results = []
+    # for batch_size in range(110, 210, 10):
+    #     time_result = run_benchmark(10*batch_size, batch_size)
+    #     avg_with_first = time_result.mean().values[0]
+    #     avg_without_first = time_result[1:].mean().values[0]
+    #     results.append((batch_size, avg_with_first, avg_without_first))
+
+    # avg_df = pd.DataFrame(results, columns=['BatchSize', 'AvgWithFirst', 'AvgWithoutFirst'])
+    # avg_df.to_csv(f'covid_data/time-results/{VERSION}-avg-batch-time-results.csv', index=False)
+
+    # Total run time for number of total samples for batch size 25
+    #run_benchmark(6000, 25)
+
+    # Total run time for number of total samples for batch size 50
+    #run_benchmark(6000, 50)
+
+    # Total run time for number of total samples for batch size 100
+    run_benchmark(10000, 5000)
