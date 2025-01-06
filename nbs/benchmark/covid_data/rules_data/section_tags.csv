@@ -1,0 +1,111 @@
+Lab results:,labs
+ADDENDUM:,addendum
+Addendum:,addendum
+ALLERGIC REACTIONS:,allergies
+ALLERGIES:,allergies
+CC:,chief_complaint
+CHIEF COMPLAINT:,chief_complaint
+Chief Complaint:,chief_complaint
+COMMENTS:,comments
+ADMISSION DIAGNOSES:,diagnoses
+DIAGNOSES:,diagnoses
+Diagnosis:,diagnoses
+Primary Diagnosis:,diagnoses
+Primary:,diagnoses
+SECONDARY DIAGNOSES:,diagnoses
+Secondary Diagnoses:,diagnoses
+Secondary Diagnosis:,diagnoses
+Secondary:,diagnoses
+Family History:,family_history
+Brief Hospital Course:,hospital_course
+CONCISE SUMMARY OF HOSPITAL COURSE BY ISSUE/SYSTEM:,hospital_course
+HOSPITAL COURSE:,hospital_course
+SUMMARY OF HOSPITAL COURSE:,hospital_course
+IMAGING:,imaging
+INTERPRETATION:,imaging
+Imaging:,imaging
+MRI:,imaging
+Radiology:,imaging
+ADMISSION LABS:,labs_and_studies
+Admission Labs:,labs_and_studies
+Discharge Labs:,labs_and_studies
+ECHO:,labs_and_studies
+FINDINGS:,labs_and_studies
+Findings:,labs_and_studies
+INDICATION:,labs_and_studies
+LABS:,labs_and_studies
+Labs:,labs_and_studies
+MICRO:,labs_and_studies
+Micro:,labs_and_studies
+Microbiology:,labs_and_studies
+Pertinent Results:,labs_and_studies
+STUDIES:,labs_and_studies
+Studies:,labs_and_studies
+ACTIVE MEDICATIONS LIST:,medications
+ACTIVE MEDICATIONS:,medications
+ADMISSION MEDICATIONS:,medications
+CURRENT MEDICATIONS:,medications
+DISCHARGE MEDICATIONS:,medications
+Discharge Medications:,medications
+HOME MEDICATIONS:,medications
+MEDICATIONS AT HOME:,medications
+MEDICATIONS LIST:,medications
+MEDICATIONS ON ADMISSION:,medications
+MEDICATIONS ON DISCHARGE:,medications
+MEDICATIONS ON TRANSFER:,medications
+MEDICATIONS PRIOR TO ADMISSION:,medications
+MEDICATIONS:,medications
+MEDICATIONS:,medications
+Neuro:,neurological
+A/P:,observation_and_plan
+ASSESSMENT/PLAN:,observation_and_plan
+ASSESSMENT:,observation_and_plan
+Assessment/Plan:,observation_and_plan
+Clinical Impression:,observation_and_plan
+DISCHARGE DIAGNOSES:,observation_and_plan
+DISCHARGE DIAGNOSIS:,observation_and_plan
+Discharge Condition:,observation_and_plan
+Discharge Diagnoses:,observation_and_plan
+Discharge Diagnosis:,observation_and_plan
+Discharge Disposition:,observation_and_plan
+FINAL DIAGNOSES:,observation_and_plan
+FINAL DIAGNOSIS:,observation_and_plan
+IMPRESSION:,observation_and_plan
+Impression and Plan:,observation_and_plan
+Impression and Recommendation:,observation_and_plan
+Facility:,other
+Service:,other
+Current Medical Problems:,past_medical_history
+History of Chronic Illness:,past_medical_history
+MHx:,past_medical_history
+PAST HISTORY:,past_medical_history
+PAST MEDICAL HISTORY:,past_medical_history
+PAST MEDICAL Hx:,past_medical_history
+PAST SURGICAL HISTORY:,past_medical_history
+PMH:,past_medical_history
+PMHx:,past_medical_history
+Past Medical History:,past_medical_history
+UNDERLYING MEDICAL CONDITION:,past_medical_history
+Education:,patient_education
+Patient Education:,patient_education
+DISCHARGE INSTRUCTIONS/FOLLOWUP:,patient_instructions
+DISCHARGE INSTRUCTIONS:,patient_instructions
+Discharge Instructions:,patient_instructions
+Followup Instructions:,patient_instructions
+PE:,physical_exam
+PHYSICAL EXAM:,physical_exam
+PHYSICAL EXAMINATION:,physical_exam
+Physical Exam:,physical_exam
+Active Problem List:,problem_list
+Current Problems:,problem_list
+Medical Problems:,problem_list
+PROBLEM LIST:,problem_list
+Problem List:,problem_list
+REASON FOR THIS EXAMINATION:,reason_for_examination
+Electronic Signature:,signature
+Signed electronically by:,signature
+PMHSx:,social_history
+PSH:,social_history
+SH:,social_history
+Sexual History:,social_history
+Social History:,social_history

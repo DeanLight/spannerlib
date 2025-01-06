@@ -1,0 +1,1 @@
+ECHO : COVID-19 detected.

@@ -1,0 +1,5 @@
+.*pending.*#negated#no_negated
+.*(?:should|unless|either|if comes back|if returns|if s?he tests positive).*#positive#uncertain
+.*precaution.*#positive#no_future
+.*(?:re[ -]?test|second test|repeat).*#negated#no_negated
+.*(?:sign|symptom|s/s).*#positive#uncertain
