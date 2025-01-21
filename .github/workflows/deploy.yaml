@@ -19,6 +19,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
           cache-dependency-path: settings.ini
+      
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
 
       - name: Install Dependencies
         env:
