@@ -2,7 +2,7 @@ name: CI
 on: [workflow_dispatch, pull_request, push]
 
 env:
-  PYTHON_VERSION: 3.11
+  PYTHON_VERSION: 3.12
 
 jobs:
   test:
@@ -25,6 +25,7 @@ jobs:
           
       - name: Run Tests
         run: |
+          find $(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])') -name rust_grpc_server -exec sh -c 'current_rpath=$(patchelf --print-rpath "{}"); binary_dir=$(dirname "{}"); new_rpath="${current_rpath:+$current_rpath:}$binary_dir/target/release"; patchelf --set-rpath "$new_rpath" "{}"' \;
           # Capture both stdout and stderr to a temporary file
           python nbdev_test.py > /tmp/test_output.txt
           cat /tmp/test_output.txt  # Print the test output for debugging purposes
