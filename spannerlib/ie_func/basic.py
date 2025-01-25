@@ -43,7 +43,7 @@ DefaultIEs().add(
     "print",
     print_ie,
     object_arity,
-    [object]
+    [str]
 )
 
 # %% ../../nbs/callbacks/001_basic_ies.ipynb 10
