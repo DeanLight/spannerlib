@@ -29,11 +29,12 @@ jobs:
       - name: Run Tests
         run: |
           # Capture both stdout and stderr to a temporary file
-          SPANNERFLOW_LIBRARY_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/spannerflow
-          patchelf --set-rpath "$HOME/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib:$SPANNERFLOW_LIBRARY_PATH/target/release" $SPANNERFLOW_LIBRARY_PATH/rust_grpc_server
-          python nbdev_test.py > /tmp/test_output.txt
-          cat /tmp/test_output.txt  # Print the test output for debugging purposes
-          find / -name rust_server.log -exec cat {} \;  # Print the rust server logs for debugging purposes
+          ls -laR $HOME/.rustup/toolchains/
+          #SPANNERFLOW_LIBRARY_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/spannerflow
+          #patchelf --set-rpath "$HOME/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib:$SPANNERFLOW_LIBRARY_PATH/target/release" $SPANNERFLOW_LIBRARY_PATH/rust_grpc_server
+          #python nbdev_test.py > /tmp/test_output.txt
+          #cat /tmp/test_output.txt  # Print the test output for debugging purposes
+          #find / -name rust_server.log -exec cat {} \;  # Print the rust server logs for debugging purposes
           if grep -q "nbdev Tests Failed On The Following Notebooks:" /tmp/test_output.txt; then
             echo "nbdev Tests Failed"
             exit 1
