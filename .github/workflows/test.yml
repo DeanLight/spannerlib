@@ -32,6 +32,7 @@ jobs:
           python nbdev_test.py > /tmp/test_output.txt
           cat /tmp/test_output.txt  # Print the test output for debugging purposes
           find / -name rust_server.log -exec cat {} \;  # Print the rust server logs for debugging purposes
+          find / -name libstd-057643b1ee86c6e4.so
           if grep -q "nbdev Tests Failed On The Following Notebooks:" /tmp/test_output.txt; then
             echo "nbdev Tests Failed"
             exit 1
