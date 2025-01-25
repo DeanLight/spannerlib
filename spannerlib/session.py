@@ -103,6 +103,8 @@ def clear(self:Session,
     register_stdlib=True, # if True, registers the standard library of IEs and AGGs
     ):
     """Resets the engine and clears all relations, functions and rules."""
+    if hasattr(self,'engine'):
+        self.engine.spannerflow_engine.close()
     self.engine = Engine()
     if not register_stdlib:
         return
