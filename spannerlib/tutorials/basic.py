@@ -10,7 +10,8 @@ import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
 from ..utils import load_env
-from .. import get_magic_session,Session,Span
+from .. import get_magic_session,Session
+from spannerflow.span import Span
 
 # %% ../../nbs/tutorials/001_basic_tasks.ipynb 16
 # this implementation is naive

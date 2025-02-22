@@ -1,0 +1,22 @@
+(?i)(?:Lab results :),labs :
+(?i)(?:Addendum :),addendum :
+(?i)(?:(?:ALLERGIC REACTIONS|ALLERGIES) :),allergies :
+(?i)(?:(?:CC|Chief Complaint) :),chief_complaint :
+(?i)(?:COMMENTS :),comments :
+(?i)(?:(?:(?:ADMISSION )?DIAGNOSES|Diagnosis|Primary Diagnosis|Primary|Secondary(?: (?:Diagnoses|Diagnosis))) :),diagnoses :
+(?i)(?:(?:Brief Hospital Course|CONCISE SUMMARY OF HOSPITAL COURSE BY ISSUE/SYSTEM|HOSPITAL COURSE|SUMMARY OF HOSPITAL COURSE) :),hospital_course :
+(?i)(?:(?:Imaging|MRI|INTERPRETATION|Radiology) :),imaging :
+(?i)(?:(?:ADMISSION LABS|Discharge Labs|ECHO|Findings|INDICATION|Labs|Micro|Microbiology|Studies|Pertinent Results) :),labs_and_studies :
+(?i)(?:(?:ACTIVE MEDICATIONS(?: LIST)|ADMISSION MEDICATIONS|CURRENT MEDICATIONS|DISCHARGE MEDICATIONS|HOME MEDICATIONS|MEDICATIONS) :),medications :
+(?i)(?:(?:MEDICATIONS AT HOME|MEDICATIONS LIST|MEDICATIONS ON ADMISSION|MEDICATIONS ON DISCHARGE|MEDICATIONS ON TRANSFER|MEDICATIONS PRIOR TO ADMISSION) :),medications :
+(?i)(?:Neuro :),neurological :
+(?i)(?:(?:A/P|MEDICATIONS LIST|ASSESSMENT/PLAN|ASSESSMENT|Clinical Impression|DISCHARGE DIAGNOSES|DISCHARGE DIAGNOSIS) :),observation_and_plan :
+(?i)(?:(?:Discharge Condition|Discharge Disposition|FINAL DIAGNOSES|FINAL DIAGNOSIS|IMPRESSION|Impression and Plan|Impression and Recommendation) :),observation_and_plan :
+(?i)(?:(?:Facility|Service) :),other :
+(?i)(?:(?:Current Medical Problems|History of Chronic Illness|MHx|PAST HISTORY|PAST MEDICAL Hx|PAST SURGICAL HISTORY|PMH|PMHx|PAST MEDICAL HISTORY|UNDERLYING MEDICAL CONDITION) :),past_medical_history :
+(?i)(?:(?:Education|Patient Education|DISCHARGE INSTRUCTIONS/FOLLOWUP|DISCHARGE INSTRUCTIONS|Followup Instructions) :),patient_education :
+(?i)(?:(?:PE|PHYSICAL EXAM|PHYSICAL EXAMINATION) :),physical_exam :
+(?i)(?:(?:Active Problem List|Current Problems|Medical Problems|PROBLEM LIST) :),problem_list :
+(?i)(?:REASON FOR THIS EXAMINATION :),reason_for_examination :
+(?i)(?:(?:Electronic Signature|Signed electronically by) :),signature :
+(?i)(?:(?:PMHSx|PSH|SH|Sexual History:|Social History) :),social_history :

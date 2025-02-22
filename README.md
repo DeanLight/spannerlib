@@ -14,10 +14,10 @@ spannerlog is an extension of statically types datalog which allows
 users to define their own ie functions which can be used to derive new
 structured information from relations.
 
-The spannerlog repl, shown bellow is served using the [jupyter magic
+The spannerlog repl, shown below is served using the [jupyter magic
 commands](https://opensarlab-docs.asf.alaska.edu/user-guides/jupyter_magic/)
 
-Bellow, we will show you how to install and use spannerlog through
+Below, we will show you how to install and use spannerlog through
 Spannerlib.
 
 For more comprehensive walkthroughs, see our tutorials section.

@@ -43,7 +43,7 @@ DefaultIEs().add(
     "print",
     print_ie,
     object_arity,
-    [object]
+    [str]
 )
 
 # %% ../../nbs/callbacks/001_basic_ies.ipynb 10
@@ -93,7 +93,7 @@ def rgx_split(delim, # the delimeter pattern to split on
     try:
         first_span = next(delim_iter)
         if first_span.start != 0:
-            yield(initial_tag,text[:first_span.start])
+            yield(Span(initial_tag),text[:first_span.start])
     except StopIteration:
         return
     prev_span = first_span
@@ -190,7 +190,7 @@ DefaultIEs().add(
 # %% ../../nbs/callbacks/001_basic_ies.ipynb 30
 def span_contained(s1, s2):
     """yields True if s1 is contained in s2, otherwise yield False"""
-    if s1.doc == s2.doc and s1.start >= s2.start and s1.end <= s2.end:
+    if s1.name == s2.name and s1.start >= s2.start and s1.end <= s2.end:
         yield True
     else:
         yield False
