@@ -17,7 +17,7 @@ import networkx as nx
 import itertools
 
 from .utils import assert_df_equals,is_of_schema,schema_match
-from .span import Span
+from spannerflow.span import Span
 from .data_types import _infer_relation_schema,pretty
 
 import logging

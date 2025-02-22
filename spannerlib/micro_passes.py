@@ -26,7 +26,6 @@ from spannerlib.utils import (
     schema_match,is_of_schema,type_merge,schema_merge
 )
 from .grammar import parse_spannerlog
-from .span import Span
 from spannerlib.engine import (
     Engine,
     Var,
@@ -99,7 +98,7 @@ def convert_primitive_values_to_objects(ast,session):
             match['x']['val']=decl_class
 
 
-# %% ../nbs/020_micro_passes.ipynb 15
+# %% ../nbs/020_micro_passes.ipynb 17
 class CheckReservedRelationNames():
     def __init__(self,reserved_prefix):
         self.reserved_prefix = reserved_prefix
@@ -109,7 +108,7 @@ class CheckReservedRelationNames():
             if relation_name.startswith(self.reserved_prefix):
                 raise ValueError(f"Relation name '{relation_name}' starts with reserved prefix '{self.reserved_prefix}'")
 
-# %% ../nbs/020_micro_passes.ipynb 19
+# %% ../nbs/020_micro_passes.ipynb 22
 def dereference_vars(ast,engine):
 
     # first rename all left hand sign variables 
@@ -131,7 +130,7 @@ def dereference_vars(ast,engine):
         match['X']['val'] = var_value
 
 
-# %% ../nbs/020_micro_passes.ipynb 22
+# %% ../nbs/020_micro_passes.ipynb 26
 def check_referenced_paths_exist(ast,engine):
     for match in rewrite_iter(ast,
     lhs='X[type="read_assignment"]-[idx=1]->PathNode[val]',
@@ -143,7 +142,7 @@ def check_referenced_paths_exist(ast,engine):
             raise ValueError(f'path {path} was not found in {os.getcwd()}')
 
 
-# %% ../nbs/020_micro_passes.ipynb 25
+# %% ../nbs/020_micro_passes.ipynb 30
 def inline_aggregation(ast,engine):
     for match in rewrite_iter(ast,
         lhs='''
@@ -160,7 +159,7 @@ def inline_aggregation(ast,engine):
         match['agg_marker']['agg'] = match['agg_func']['val']
 
 
-# %% ../nbs/020_micro_passes.ipynb 29
+# %% ../nbs/020_micro_passes.ipynb 36
 def relations_to_dataclasses(ast,engine):
 
    # regular relations
@@ -225,7 +224,7 @@ def relations_to_dataclasses(ast,engine):
       match['statement']['val'] = ie_obj
       ast.remove_nodes_from(in_term_nodes+out_term_nodes)
 
-# %% ../nbs/020_micro_passes.ipynb 35
+# %% ../nbs/020_micro_passes.ipynb 44
 def verify_referenced_relations_and_functions(ast,engine):
 
     def resolve_var_types(terms):
@@ -283,7 +282,7 @@ def verify_referenced_relations_and_functions(ast,engine):
                 raise ValueError(f"agg function '{agg_func}' was not registered, registered functions are {list(engine.agg_functions.keys())}")
 
 
-# %% ../nbs/020_micro_passes.ipynb 39
+# %% ../nbs/020_micro_passes.ipynb 48
 def rules_to_dataclasses(ast,engine):
    for match in rewrite_iter(ast,
       lhs='''
@@ -296,7 +295,7 @@ def rules_to_dataclasses(ast,engine):
       ast.remove_nodes_from(body_nodes)
    return ast
 
-# %% ../nbs/020_micro_passes.ipynb 42
+# %% ../nbs/020_micro_passes.ipynb 52
 def is_rule_safe(rule:Rule):
     """
     Checks that the Spannerlog Rule is safe
@@ -371,14 +370,14 @@ def is_rule_safe(rule:Rule):
 
     return True
 
-# %% ../nbs/020_micro_passes.ipynb 43
+# %% ../nbs/020_micro_passes.ipynb 53
 def check_rule_safety(ast,engine):
     for match in rewrite_iter(ast,lhs='X[type="rule",val]'):
         rule = match['X']['val']
         is_rule_safe(rule)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 46
+# %% ../nbs/020_micro_passes.ipynb 57
 from .term_graph import get_bounding_order
 
 def _check_rule_consistency(rule,engine):
@@ -475,14 +474,14 @@ def _check_rule_consistency(rule,engine):
         engine.set_relation(current_head_schema)
 
 
-# %% ../nbs/020_micro_passes.ipynb 47
+# %% ../nbs/020_micro_passes.ipynb 58
 def consistent_free_var_types_in_rule(ast,engine):
     for match in rewrite_iter(ast,lhs='X[type="rule",val]'):
         rule = match['X']['val']
         _check_rule_consistency(rule,engine)
     return ast
 
-# %% ../nbs/020_micro_passes.ipynb 50
+# %% ../nbs/020_micro_passes.ipynb 62
 def assignments_to_name_val_tuple(ast,engine):
     for match in rewrite_iter(ast,lhs='''
                                 statement[type]-[idx=0]->var_name_node[val];

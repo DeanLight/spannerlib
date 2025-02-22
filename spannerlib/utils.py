@@ -33,7 +33,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from numbers import Real
-from .span import Span
+from spannerflow.span import Span
 
 # %% ../nbs/001_utils.ipynb 6
 @singleton

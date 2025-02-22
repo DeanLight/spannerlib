@@ -6,65 +6,46 @@
 __all__ = ['logger', 'op_to_func', 'DB', 'Engine', 'get_rel', 'compute_acyclic_node', 'compute_recursive_node', 'compute_node']
 
 # %% ../nbs/010_engine.ipynb 3
-from abc import ABC, abstractmethod
-import pytest
-from collections import defaultdict
-
-import pandas as pd
-from pathlib import Path
-from typing import no_type_check, Set, Sequence, Any,Optional,List,Callable,Dict,Union
-from pydantic import BaseModel
-import networkx as nx
+import atexit
 import itertools
 import logging
+import os
+from abc import ABC, abstractmethod
+from collections import defaultdict
+from copy import deepcopy
+from numbers import Real
+from pathlib import Path
+from typing import (Any, Callable, Dict, List, Optional, Sequence, Set, Union,
+                    no_type_check)
+
+import networkx as nx
+import numpy as np
+import pandas as pd
+import pytest
+from pydantic import BaseModel
+from spannerflow.engine import Engine as SpannerflowEngine
+from spannerflow.span import Span
+
 logger = logging.getLogger(__name__)
 
 from graph_rewrite import draw, draw_match, rewrite, rewrite_iter
-from spannerlib.utils import (
-    serialize_graph,
-    assert_df_equals,
-    checkLogs,
-    get_new_node_name
-    )
 
-from .span import Span
-from spannerlib.data_types import (
-    Var, 
-    FreeVar, 
-    RelationDefinition, 
-    Relation, 
-    IEFunction,
-    AGGFunction,
-    IERelation, 
-    Rule, 
-    pretty
-)
-from spannerlib.ra import (
-    _col_names,
-    get_const,
-    select,
-    project,
-    rename,
-    union,
-    intersection,
-    difference,
-    join,
-    product,
-    groupby,
-    ie_map,
-    merge_rows
-)
-
-from .term_graph import graph_compose, merge_term_graphs_pair,rule_to_graph,add_relation,add_project_uniq_free_vars
-
-
+from .data_types import (AGGFunction, FreeVar, IEFunction,
+                                   IERelation, Relation, RelationDefinition,
+                                   Rule, Var, pretty)
+from .ra import (_col_names, difference, get_const, groupby, ie_map,
+                           intersection, join, merge_rows, product, project,
+                           rename, select, union)
+from .term_graph import (add_project_uniq_free_vars, add_relation,
+                                   graph_compose, merge_term_graphs_pair,
+                                   rule_to_graph)
+from .utils import (assert_df_equals, checkLogs, get_new_node_name,
+                              serialize_graph)
 
 # %% ../nbs/010_engine.ipynb 5
 def _pd_drop_row(df,row_vals):
     new_df = df[(df!=row_vals).all(axis=1)]
     return new_df
-
-
 
 # %% ../nbs/010_engine.ipynb 7
 class DB(dict):
@@ -73,9 +54,8 @@ class DB(dict):
         return f'DB({key_str})'
 
 # %% ../nbs/010_engine.ipynb 9
-from copy import deepcopy
 class Engine():
-    def __init__(self,rewrites=None):
+    def __init__(self, rewrites=None):
         if rewrites is None:
             self.rewrites = []
         self.symbol_table={
@@ -99,7 +79,8 @@ class Engine():
         self.db = DB(
             # relation_name: dataframe
         )
-
+        self.collections = set()
+        self.rules = set()
         # lets skip this for now and keep it a an attribute in the node graph
         self.rules_to_ids = {
             # rule pretty string: ( node id in term_graph, head_name)
@@ -110,7 +91,8 @@ class Engine():
         # self.rels_to_nodes() = {
         #     # relation name to node that represents it
         # }
-    
+        self.spannerflow_engine = SpannerflowEngine()
+        atexit.register(self.spannerflow_engine.close)
 
     def set_var(self,var_name,value,read_from_file=False):
         symbol_table = self.symbol_table
@@ -121,48 +103,85 @@ class Engine():
                                 f" but is trying to be redefined to {value}({pretty(type(value))}) of a different type which might interfere with previous rule definitions")    
         symbol_table[var_name] = type(value),value
         return
+
     def get_var(self,var_name):
         return self.symbol_table.get(var_name,None)
     
     def del_var(self,var_name):
         del self.symbol_table[var_name]
 
-    def get_relation(self,rel_name:str):
+    def get_relation(self,rel_name:str)-> RelationDefinition:
         return self.Relation_defs.get(rel_name,None)
 
-    def set_relation(self,rel_def:RelationDefinition):
-        if rel_def.name in self.Relation_defs:
+    def set_relation(self,rel_def:RelationDefinition, rule=False):
+        if rel_def.name in self.spannerflow_engine.get_collections():
             existing_def = self.Relation_defs[rel_def.name]
             if existing_def != rel_def:
                 raise ValueError(f"Relation {rel_def.name} was previously defined with {existing_def}"
                                 f"but is trying to be redefined to {rel_def} which might interfere with previous rule definitions")
-        else:
-            self.Relation_defs[rel_def.name] = rel_def
-            #TODO fix make sure that the empty df has the correct types based on the rel_def
-            empty_df = pd.DataFrame(columns=_col_names(len(rel_def.scheme)))
-            self.db[rel_def.name] = empty_df
-            self.term_graph.add_node(rel_def.name,rel=rel_def.name,rule_id={'fact'})
 
+        SPANNER_LIB_TO_SPANNER_FLOW_TYPES_DICT = {
+            str: "DATA_TYPE_STRING",
+            int: "DATA_TYPE_INT",
+            float: "DATA_TYPE_FLOAT",
+            bool: "DATA_TYPE_BOOL",
+            Span: "DATA_TYPE_SPAN",
+            Real: "DATA_TYPE_FLOAT",
+            np.int64: "DATA_TYPE_INT64",
+            object: "DATA_TYPE_CUSTOM",
+        }
+
+        spannerflow_schema = []
+        for col_type in rel_def.scheme:
+            if col_type not in SPANNER_LIB_TO_SPANNER_FLOW_TYPES_DICT:
+                raise ValueError(f"Type {col_type} not supported by spannerflow")
+            spannerflow_schema.append(SPANNER_LIB_TO_SPANNER_FLOW_TYPES_DICT[col_type])
+        
+        self.term_graph.add_node(rel_def.name, rel=rel_def.name, rule_id={'fact'})
+        self.Relation_defs[rel_def.name] = rel_def
+        if not rule:
+            self.collections.add(rel_def.name)
+            self.spannerflow_engine.add_collection(rel_def.name, spannerflow_schema)
+        else:
+            self.rules.add(rel_def.name)
+        
     def del_relation(self,rel_name:str):
-        # TODO we need to think about what to do with all relations that used this rule
-        raise NotImplementedError("deleting relations is not supported yet")
-        return
+        if rel_name not in self.spannerflow_engine.get_collections():
+            raise ValueError(f"Relation {rel_name.name} is not defined")
+        
+        if rel_name in self.Relation_defs:
+            self.Relation_defs.pop(rel_name)
+            if rel_name in self.rules:
+                self.rules.remove(rel_name)
+            elif rel_name in self.collections:
+                self.collections.remove(rel_name)
+
+        self.spannerflow_engine.delete_collection(rel_name)
 
     def add_fact(self,fact:Relation):
-        facts = pd.DataFrame([fact.terms])
-        self.db[fact.name] = merge_rows(self.db[fact.name],facts)
-
+        self.spannerflow_engine.add_row(fact.name, fact.terms)
+        
     def add_facts(self,rel_name,facts:pd.DataFrame):
-        self.db[rel_name] = merge_rows(self.db[rel_name],facts)
-
+        self.spannerflow_engine.add_rows(rel_name, facts.values.tolist())
+        
+    def load_csv(self, rel_name:str , path: str|Path, delim: str = ',', has_header: bool = False):
+        if not os.path.exists(path):
+            raise ValueError(f"Path {path} does not exist")
+        self.spannerflow_engine.load_from_csv(rel_name, path, delim, has_header)
+        
     def del_fact(self,fact:Relation):
-        self.db[fact.name] = _pd_drop_row(df = self.db[fact.name],row_vals=fact.terms)
+        self.spannerflow_engine.delete_row(fact.name, fact.terms)
+        # self.db[fact.name] = _pd_drop_row(df = self.db[fact.name],row_vals=fact.terms)
 
+    def get_span(self, document_id: str, start: int, end: int):
+        return self.spannerflow_engine.get_span(document_id, start, end)
+    
     def get_ie_function(self,name:str):
         return self.ie_functions.get(name,None)
 
     def set_ie_function(self,ie_func:IEFunction):
         self.ie_functions[ie_func.name]=ie_func
+        self.spannerflow_engine.set_ie_function(ie_func.name, ie_func.func, ie_func.in_schema, ie_func.out_schema)
 
     def del_ie_function(self,name:str):
         del self.ie_functions[name]
@@ -172,6 +191,7 @@ class Engine():
     
     def set_agg_function(self,agg_func:AGGFunction):
         self.agg_functions[agg_func.name]=agg_func
+        self.spannerflow_engine.set_agg_function(agg_func.name, agg_func.func, agg_func.in_schema, agg_func.out_schema)
     
     def del_agg_function(self,name:str):
         del self.agg_functions[name]
@@ -186,7 +206,7 @@ class Engine():
             return
 
         if not schema is None:
-            self.set_relation(schema)
+            self.set_relation(schema, rule=True)
 
         rule_id = next(self.rule_counter)
 
@@ -198,7 +218,6 @@ class Engine():
         merge_term_graph = merge_term_graphs_pair(self.term_graph,g2)
         self.term_graph = merge_term_graph
         
-
     def del_rule(self,rule_str:str):
         #TODO here we need to save rules by their head and when removing the last rule of a head, remove its definition from db as well
         if not rule_str in self.rules_to_ids:
@@ -250,9 +269,9 @@ class Engine():
             elif g.nodes[u]['op'] == 'groupby':
                 aggregate_func_names = g.nodes[u]['agg']
                 aggregate_funcs = [self.agg_functions[name].func if name is not None else None for name in aggregate_func_names]
+                g.nodes[u]['agg_names'] = aggregate_func_names
                 g.nodes[u]['agg'] = aggregate_funcs
         return g
-
 
     def plan_query(self,q_rel:Relation,rewrites=None):
         if rewrites is None:
@@ -270,19 +289,21 @@ class Engine():
         # TODO for all rewrites, run them
         return query_graph,root_node
 
-    def execute_plan(self,query_graph,root_node,return_intermediate=False):
-        results = compute_node(query_graph,root_node,ret_inter = return_intermediate)
-        return results
+    def execute_plan(self, query_graph, root_node, output_csv_path: Path | str | None = None):
+        if isinstance(output_csv_path, Path):
+            output_csv_path = str(output_csv_path.resolve())
+        res =  self.spannerflow_engine.run_dataflow(nx.reverse(query_graph), output_csv_path=output_csv_path)
+        return pd.DataFrame(columns=query_graph.nodes[root_node]['schema'], data=res)
 
-    def run_query(self,q:Relation,rewrites=None,return_intermediate=False):
-        query_graph,root_node = self.plan_query(q,rewrites)
-        return self.execute_plan(query_graph,root_node,return_intermediate=return_intermediate)
-
+    def run_query(self,q:Relation,rewrites=None, output_csv_path: Path | str | None = None):
+        query_graph, root_node = self.plan_query(q,rewrites)
+        return self.execute_plan(query_graph, root_node, output_csv_path)
 
 # %% ../nbs/010_engine.ipynb 29
 def get_rel(rel,db,**kwargs):
     # helper function to get the relation from the db for external relations
     return db[rel]
+
 
 op_to_func = {
     'union':union,
@@ -304,6 +325,7 @@ def _in_cycle(g):
     return list(set(
         itertools.chain.from_iterable(nx.cycles.simple_cycles(g))
     ))
+
 
 def _depends_on_cycle(g):
     in_cycle_nodes = _in_cycle(g)
@@ -336,13 +358,13 @@ def _collect_children_and_run(G,u,results,stack,log=False):
     results[u].append(res)
     return res
 
-
 # %% ../nbs/010_engine.ipynb 32
 def compute_acyclic_node(G,u,results,stack=None):
     res = _collect_children_and_run(G,u,results,[])
     logger.debug(f"setting {u} to final since it is acyclic\n")
     G.nodes[u]['final'] = True
     return res
+
 
 def compute_recursive_node(G,u,results,stack=None):
 
@@ -356,9 +378,7 @@ def compute_recursive_node(G,u,results,stack=None):
     if u_data.get('final',False):
         return results[u][-1]    
 
-
     logger.debug(f"computing node {u} with stack {stack}")
-
 
     went_in_a_cycle = u in stack
     if went_in_a_cycle:
@@ -394,7 +414,6 @@ def compute_recursive_node(G,u,results,stack=None):
     return res
 
 
-
 def compute_node(G,root,ret_inter=False):
 
     # makes sure there is always a last value in the list for each key
@@ -424,4 +443,3 @@ def compute_node(G,root,ret_inter=False):
         return res,results_dict
     else:
         return res
-
