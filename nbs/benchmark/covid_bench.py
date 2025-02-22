@@ -1,6 +1,9 @@
 import time
 import os
+import requests
+import zipfile
 
+from base64 import b64decode
 from glob import glob
 import pandas as pd
 import spacy
@@ -23,6 +26,16 @@ if VERSION == "SPANNERFLOW_PYTHON_IE":
     slog_file = Path('covid_bench_logic_python_ie.pl')
 else:
     slog_file = Path('covid_bench_logic.pl')
+
+
+if not os.path.exists("covid_data/sample_inputs.zip"):
+    res = requests.get("https://gist.githubusercontent.com/techofer/31596eabea057508e0dd38cad9cc052e/raw/5fc8bc3ee99e6ead6f477ee2f287932f5ef70f12/sample_inputs.zip.base64")
+    with open("covid_data/sample_inputs.zip", "wb") as f:
+        f.write(b64decode(res.content))
+        
+    with zipfile.ZipFile("covid_data/sample_inputs.zip", "r") as z:
+        z.extractall("covid_data/")
+    
 input_dir = Path('covid_data/sample_inputs')
 data_dir = Path('covid_data/rules_data')
 

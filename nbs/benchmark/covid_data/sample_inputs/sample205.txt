@@ -1,1 +1,0 @@
-ECHO : Diagnosed with COVID-19.
